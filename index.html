@@ -83,7 +83,6 @@
       background: #E0F4FF !important;
     }
 
-
     body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text-dark); min-height: 100vh; position: relative; overflow-x: hidden; }
 
     /* Theme decorations */
@@ -545,8 +544,8 @@
 
     /* ── MODAL (shared) ── */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200; backdrop-filter: blur(4px); }
-    .modal-overlay.open { display: flex; align-items: flex-end; justify-content: center; }
-    .modal { background: var(--white); border-radius: 24px 24px 0 0; padding: 24px 20px; width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+    .modal-overlay.open { display: flex; align-items: flex-end; }
+    .modal { background: var(--white); border-radius: 24px 24px 0 0; padding: 24px 20px; width: 100%; max-height: 92vh; overflow-y: auto; animation: slideUp 0.3s ease; }
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     .modal-title { font-size: 1.1em; font-weight: 900; color: var(--text-dark); }
@@ -607,7 +606,6 @@
     .theme-card.space .tc-name, .theme-card.space .tc-desc { color: #C8C8FF; }
     /* Theme: Ocean */
     .theme-card.ocean { background: linear-gradient(135deg, #E0F4FF, #B3E5FC); }
-
     /* Theme: Default */
     .theme-card.default { background: linear-gradient(135deg, #FFF9E6, #FFF0B0); }
 
@@ -630,7 +628,6 @@
     /* Ocean elements */
     .ocean-wave { position: fixed; pointer-events: none; font-size: 2em; animation: waveFloat 5s ease-in-out infinite; z-index: 0; opacity: 0; transition: opacity 0.5s; }
     body.theme-ocean .ocean-wave { opacity: 0.25; }
-
     @keyframes waveFloat { 0%,100%{transform:translateX(0) rotate(0deg)} 50%{transform:translateX(15px) rotate(10deg)} }
 
     /* ── DECORATIVE ── */
@@ -767,8 +764,8 @@
     .nw-hero { background:linear-gradient(155deg,#1B1F5E 0%,#2D1B69 50%,#3D1A6E 100%); border-radius:20px; padding:28px 22px 24px; margin-bottom:16px; color:white; position:relative; overflow:hidden; }
     .nw-hero::before { content:''; position:absolute; top:-60px; right:-60px; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.05); pointer-events:none; }
     .nw-hero::after  { content:''; position:absolute; bottom:-70px; left:-40px; width:190px; height:190px; border-radius:50%; background:rgba(100,80,200,0.12); pointer-events:none; }
-    .nw-hero-label { font-size:0.72em; font-weight:800; opacity:0.65; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px; text-align:left; }
-    .nw-hero-amount { font-size:3em; font-weight:900; line-height:1.05; letter-spacing:-1px; text-align:left; }
+    .nw-hero-label { font-size:0.72em; font-weight:800; opacity:0.65; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px; }
+    .nw-hero-amount { font-size:3em; font-weight:900; line-height:1.05; letter-spacing:-1px; }
     .nw-hero-change { font-size:0.82em; font-weight:700; margin-top:6px; opacity:0.9; display:flex; align-items:center; gap:4px; }
     .nw-hero-bars { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:18px; }
     .nw-hero-bar-block { background:rgba(255,255,255,0.10); backdrop-filter:blur(4px); border-radius:14px; padding:12px 10px; border:1px solid rgba(255,255,255,0.08); }
@@ -788,9 +785,6 @@
     .nw-insight-sub   { font-size:0.75em; font-weight:600; color:var(--text-med); line-height:1.4; }
     /* ══ TREND CARD ══ */
     .nw-trend-card { background:var(--white); border-radius:var(--radius); box-shadow:var(--card-shadow); padding:18px; margin-bottom:14px; }
-    .nw-masked { filter:blur(8px); user-select:none; pointer-events:none; transition:filter 0.3s; }
-    .nw-eye-btn { background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:3px 10px; cursor:pointer; font-size:0.72em; font-weight:800; color:rgba(255,255,255,0.7); font-family:Nunito,sans-serif; letter-spacing:0.3px; display:flex; align-items:center; gap:4px; flex-shrink:0; transition:all 0.2s; }
-    .nw-eye-btn:hover { background:rgba(255,255,255,0.2); }
     .nw-trend-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
     .nw-trend-title { font-size:0.72em; font-weight:900; color:var(--text-light); text-transform:uppercase; letter-spacing:0.5px; }
     .nw-trend-badge { font-size:0.72em; font-weight:900; color:var(--text-light); background:#F5F5F5; padding:3px 10px; border-radius:20px; }
@@ -1211,54 +1205,54 @@
   <div class="ob-slides-wrap" id="ob-slides-wrap">
     <div class="ob-slides-track" id="ob-track">
 
-      <!-- Slide 1: Privacy Promise -->
+      <!-- Slide 1: Welcome -->
       <div class="ob-slide">
-        <div class="ob-bg-circle" style="width:300px;height:300px;background:#1B1F5E;top:-80px;right:-80px;"></div>
-        <div class="ob-bg-circle" style="width:200px;height:200px;background:#F5C842;bottom:-40px;left:-60px;"></div>
-        <div class="ob-slide-art">🔒</div>
-        <div class="ob-slide-tag">Your Privacy, First</div>
-        <div class="ob-slide-title">Your data stays <span class="ob-highlight">with you</span></div>
-        <div class="ob-slide-desc">MoneyFi stores everything on your device and your personal iCloud. No servers. No database. Nobody — not even us — can see your numbers.</div>
+        <div class="ob-bg-circle" style="width:300px;height:300px;background:#F5C842;top:-80px;right:-80px;"></div>
+        <div class="ob-bg-circle" style="width:200px;height:200px;background:#3B4A9C;bottom:-40px;left:-60px;"></div>
+        <div class="ob-slide-art">💰</div>
+        <div class="ob-slide-tag">Welcome</div>
+        <div class="ob-slide-title">Meet <span class="ob-highlight">MoneyFi</span></div>
+        <div class="ob-slide-desc">Your personal finance companion — built for clarity, designed for real life. Track every dollar, across every country.</div>
       </div>
 
-      <!-- Slide 2: Family -->
+      <!-- Slide 2: Tracking -->
       <div class="ob-slide">
-        <div class="ob-bg-circle" style="width:260px;height:260px;background:#10B981;top:-60px;left:-60px;"></div>
-        <div class="ob-bg-circle" style="width:200px;height:200px;background:#F5C842;bottom:-30px;right:-50px;"></div>
-        <div class="ob-slide-art">👨‍👩‍👧</div>
-        <div class="ob-slide-tag">Built for Families</div>
-        <div class="ob-slide-title">One home, <span class="ob-highlight">one view</span></div>
-        <div class="ob-slide-desc">Invite up to 6 family members. Everyone adds transactions, everyone sees the full picture. Filter by person, track together — no shared passwords needed.</div>
-      </div>
-
-      <!-- Slide 3: Track Everything -->
-      <div class="ob-slide">
-        <div class="ob-bg-circle" style="width:280px;height:280px;background:#7C3AED;top:-70px;right:-70px;"></div>
-        <div class="ob-bg-circle" style="width:160px;height:160px;background:#F97316;bottom:-20px;left:-40px;"></div>
+        <div class="ob-bg-circle" style="width:250px;height:250px;background:#10B981;top:-60px;left:-60px;"></div>
+        <div class="ob-bg-circle" style="width:180px;height:180px;background:#F5C842;bottom:-30px;right:-50px;"></div>
         <div class="ob-slide-art">📊</div>
         <div class="ob-slide-tag">Track</div>
-        <div class="ob-slide-title">Every rupee, <span class="ob-highlight">every account</span></div>
-        <div class="ob-slide-desc">Income, expenses, investments, gold, real estate — all in one place. Multi-currency with FX rates you control. Works across India, US, UAE and beyond.</div>
+        <div class="ob-slide-title">Income, Spending <span class="ob-highlight">&amp; Beyond</span></div>
+        <div class="ob-slide-desc">Log income, expenses, investments and debts. View by day, week, month or year. Spot trends instantly.</div>
       </div>
 
-      <!-- Slide 4: Net Worth Intelligence -->
+      <!-- Slide 3: Net Worth -->
       <div class="ob-slide">
-        <div class="ob-bg-circle" style="width:260px;height:260px;background:#F5C842;top:-50px;left:-70px;"></div>
-        <div class="ob-bg-circle" style="width:200px;height:200px;background:#1B1F5E;bottom:-50px;right:-50px;"></div>
+        <div class="ob-bg-circle" style="width:280px;height:280px;background:#7C3AED;top:-70px;right:-70px;"></div>
+        <div class="ob-bg-circle" style="width:160px;height:160px;background:#EF4444;bottom:-20px;left:-40px;"></div>
         <div class="ob-slide-art">💎</div>
         <div class="ob-slide-tag">Net Worth</div>
-        <div class="ob-slide-title">Watch your wealth <span class="ob-highlight">grow</span></div>
-        <div class="ob-slide-desc">Live gold &amp; silver prices, real estate, budgets and monthly snapshots. MoneyFi builds your financial story month by month — automatically.</div>
+        <div class="ob-slide-title">Your <span class="ob-highlight">Full Picture</span></div>
+        <div class="ob-slide-desc">Assets, liabilities, real estate, gold &amp; silver — all in one place. Multi-currency with live FX rates you control.</div>
+      </div>
+
+      <!-- Slide 4: Goals -->
+      <div class="ob-slide">
+        <div class="ob-bg-circle" style="width:260px;height:260px;background:#F97316;top:-50px;left:-70px;"></div>
+        <div class="ob-bg-circle" style="width:200px;height:200px;background:#3B4A9C;bottom:-50px;right:-50px;"></div>
+        <div class="ob-slide-art">🎯</div>
+        <div class="ob-slide-tag">Goals</div>
+        <div class="ob-slide-title">Dream It. <span class="ob-highlight">Track It.</span></div>
+        <div class="ob-slide-desc">Set goals to grow savings, buy property, or pay off a loan. Watch your progress bar fill up in real time.</div>
       </div>
 
       <!-- Slide 5: Get Started -->
       <div class="ob-slide">
-        <div class="ob-bg-circle" style="width:320px;height:320px;background:#F5C842;top:-100px;right:-100px;opacity:0.15;"></div>
-        <div class="ob-bg-circle" style="width:220px;height:220px;background:#10B981;bottom:-60px;left:-60px;opacity:0.15;"></div>
+        <div class="ob-bg-circle" style="width:320px;height:320px;background:#F5C842;top:-100px;right:-100px;opacity:0.1;"></div>
+        <div class="ob-bg-circle" style="width:220px;height:220px;background:#10B981;bottom:-60px;left:-60px;opacity:0.1;"></div>
         <div class="ob-slide-art">🚀</div>
         <div class="ob-slide-tag">You're all set</div>
-        <div class="ob-slide-title">Your family's money, <span class="ob-highlight">your devices</span></div>
-        <div class="ob-slide-desc">Add your first transaction in under a minute. Invite your family when you're ready. Your data never leaves your hands.</div>
+        <div class="ob-slide-title">Let's <span class="ob-highlight">Get Started</span></div>
+        <div class="ob-slide-desc">Your financial story starts now. Tap below and add your first account — it takes less than a minute.</div>
       </div>
 
     </div>
@@ -1283,27 +1277,26 @@
 <!-- ══ THEME DECORATION ELEMENTS (always present, visible only when theme active) ══ -->
 <!-- Looney -->
 <div class="looney-char" style="bottom:160px;right:15px;animation-delay:0s;">🐰</div>
-<div class="looney-char" style="bottom:320px;left:-20px;animation-delay:1.2s;font-size:2em;">🦆</div>
+<div class="looney-char" style="bottom:320px;left:10px;animation-delay:1.2s;font-size:2em;">🦆</div>
 <div class="looney-char" style="top:120px;right:8px;animation-delay:0.6s;font-size:1.8em;">🐦</div>
-<div class="looney-char" style="top:300px;left:-20px;animation-delay:1.8s;font-size:2.2em;">🐱</div>
+<div class="looney-char" style="top:300px;left:5px;animation-delay:1.8s;font-size:2.2em;">🐱</div>
 <!-- Jungle -->
 <div class="jungle-leaf" style="top:80px;right:5px;animation-delay:0s;">🍃</div>
-<div class="jungle-leaf" style="bottom:200px;left:-20px;animation-delay:1s;font-size:2.5em;">🌿</div>
+<div class="jungle-leaf" style="bottom:200px;left:8px;animation-delay:1s;font-size:2.5em;">🌿</div>
 <div class="jungle-leaf" style="top:280px;right:12px;animation-delay:2s;font-size:1.8em;">🐒</div>
-<div class="jungle-leaf" style="bottom:350px;left:-20px;animation-delay:0.5s;font-size:2.2em;">🦜</div>
-<div class="jungle-leaf" style="top:180px;left:-15px;animation-delay:1.5s;">🌺</div>
+<div class="jungle-leaf" style="bottom:350px;left:5px;animation-delay:0.5s;font-size:2.2em;">🦜</div>
+<div class="jungle-leaf" style="top:180px;left:3px;animation-delay:1.5s;">🌺</div>
 <!-- Space -->
 <div class="space-star" style="top:100px;right:20px;animation-delay:0s;">⭐</div>
-<div class="space-star" style="top:200px;left:-15px;animation-delay:0.8s;">🌙</div>
+<div class="space-star" style="top:200px;left:15px;animation-delay:0.8s;">🌙</div>
 <div class="space-star" style="bottom:250px;right:25px;animation-delay:0.4s;">✨</div>
 <div class="space-star" style="top:350px;right:10px;animation-delay:1.2s;font-size:1.5em;">🚀</div>
-<div class="space-star" style="bottom:300px;left:-15px;animation-delay:1.6s;">💫</div>
+<div class="space-star" style="bottom:300px;left:12px;animation-delay:1.6s;">💫</div>
 <!-- Ocean -->
 <div class="ocean-wave" style="bottom:160px;right:8px;animation-delay:0s;">🐠</div>
-<div class="ocean-wave" style="top:200px;left:-18px;animation-delay:1s;font-size:1.5em;">🌊</div>
+<div class="ocean-wave" style="top:200px;left:6px;animation-delay:1s;font-size:1.5em;">🌊</div>
 <div class="ocean-wave" style="bottom:340px;right:12px;animation-delay:2s;font-size:1.8em;">🐚</div>
-<div class="ocean-wave" style="top:320px;left:-18px;animation-delay:0.5s;">🐟</div>
-
+<div class="ocean-wave" style="top:320px;left:8px;animation-delay:0.5s;">🐟</div>
 
 <!-- ══ LOCK SCREEN — COMMENTED OUT (RE-ENABLE LATER) ══
 === To re-enable: uncomment this entire block and the JS PIN section below ===
@@ -1480,7 +1473,7 @@
   <div class="cal-grid-wrap" id="cal-grid-wrap"
     ontouchstart="calSwipeStart(event)"
     ontouchend="calSwipeEnd(event)">
-    <div class="cal-dow-row" id="cal-dow-row">
+    <div class="cal-dow-row">
       <div class="cal-dow">SUN</div><div class="cal-dow">MON</div><div class="cal-dow">TUE</div>
       <div class="cal-dow">WED</div><div class="cal-dow">THU</div><div class="cal-dow">FRI</div><div class="cal-dow">SAT</div>
     </div>
@@ -1623,20 +1616,12 @@
       <div class="metal-detail-usd gold" id="metal-detail-usd">$0</div>
     </div>
     <div style="background:#F8F8F8;border-radius:8px;padding:6px 10px;font-size:0.72em;font-weight:800;color:var(--text-med);text-align:center;flex-shrink:0;">
-      <div style="font-size:0.72em;color:var(--text-light);" id="metal-price-base-label">—/gram (24K pure)</div>
+      <div style="font-size:0.72em;color:var(--text-light);" id="metal-price-base-label">$/gram (24K pure)</div>
       <div style="display:flex;align-items:center;gap:6px;">
-        <span style="font-size:1.3em;font-weight:900;color:var(--text-dark);" id="metal-live-price">—</span>
-        <button onclick="showMetalPriceEdit()" style="background:#F0F4FF;border:none;border-radius:7px;padding:3px 8px;font-size:0.72em;font-weight:800;color:var(--primary);cursor:pointer;">⚙️ Price</button>
+        <span style="font-size:1.3em;font-weight:900;color:var(--text-dark);" id="metal-live-price">$96.50</span>
+        <button onclick="showMetalPriceEdit()" style="background:#F0F4FF;border:none;border-radius:7px;padding:3px 8px;font-size:0.72em;font-weight:800;color:var(--primary);cursor:pointer;">✏️ Edit</button>
       </div>
       <div id="metal-price-override-panel" style="display:none;margin-top:8px;background:white;border:1.5px solid #DDD;border-radius:10px;padding:10px 12px;text-align:left;">
-          <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:8px;">
-            <span style="font-size:0.72em;font-weight:700;color:var(--text-med);">Price per:</span>
-            <select id="metal-price-unit-toggle" onchange="toggleMetalPriceUnit()"
-              style="font-family:Nunito,sans-serif;font-weight:800;font-size:0.78em;border:1.5px solid #DDD;border-radius:7px;padding:3px 8px;background:#F8F8F8;cursor:pointer;">
-              <option value="g">gram (g)</option>
-              <option value="oz">troy oz</option>
-            </select>
-          </div>
         <div style="font-size:0.78em;font-weight:800;color:var(--text-dark);margin-bottom:6px;" id="metal-price-override-label">Set base $/gram:</div>
         <div style="display:flex;gap:8px;margin-bottom:8px;">
           <input type="number" id="metal-price-override-input" step="0.01" placeholder="e.g. 96.50" style="flex:1;border:1.5px solid #DDD;border-radius:8px;padding:6px 10px;font-size:0.9em;font-weight:700;">
@@ -1652,43 +1637,6 @@
     <div class="metal-stat-box"><div class="metal-stat-box-val" id="metal-stat-oz">0</div><div class="metal-stat-box-lbl">Troy Oz</div></div>
     <div class="metal-stat-box"><div class="metal-stat-box-val" id="metal-stat-avg">$0</div><div class="metal-stat-box-lbl">Avg Cost/g</div></div>
   </div>
-  <!-- ROI Performance Card -->
-  <div id="metal-roi-card" style="background:var(--white);border-radius:var(--radius);box-shadow:var(--card-shadow);margin-bottom:14px;overflow:hidden;">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;">
-      <div style="font-weight:900;font-size:0.92em;color:var(--text-dark);">📈 Portfolio Performance</div>
-      <div id="metal-roi-gain-badge" style="font-size:0.78em;font-weight:800;padding:3px 10px;border-radius:20px;background:#D1FAE5;color:#10B981;">+0%</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-top:1px solid #F5F5F5;">
-      <div style="text-align:center;padding:10px 6px;border-right:1px solid #F5F5F5;">
-        <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;">Cost Basis</div>
-        <div style="font-weight:900;font-size:0.95em;color:var(--text-dark);" id="metal-roi-cost">$0</div>
-      </div>
-      <div style="text-align:center;padding:10px 6px;border-right:1px solid #F5F5F5;">
-        <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;">Market Value</div>
-        <div style="font-weight:900;font-size:0.95em;color:#F59E0B;" id="metal-roi-value">$0</div>
-      </div>
-      <div style="text-align:center;padding:10px 6px;">
-        <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;">Gain / Loss</div>
-        <div style="font-weight:900;font-size:0.95em;" id="metal-roi-gain">$0</div>
-      </div>
-    </div>
-    <!-- Cost vs Value bar -->
-    <div style="padding:12px 16px 14px;">
-      <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;margin-bottom:6px;">Cost vs Live Value</div>
-      <div style="position:relative;height:20px;background:#F5F5F5;border-radius:10px;overflow:hidden;">
-        <div id="metal-roi-bar-cost" style="position:absolute;left:0;top:0;height:100%;background:#94A3B8;border-radius:10px;transition:width 0.5s ease;"></div>
-        <div id="metal-roi-bar-value" style="position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,#F59E0B,#FBBF24);border-radius:10px;opacity:0.85;transition:width 0.5s ease;"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px;">
-        <div style="display:flex;align-items:center;gap:4px;"><div style="width:8px;height:8px;border-radius:2px;background:#94A3B8;"></div><div style="font-size:0.65em;font-weight:700;color:var(--text-light);">Cost</div></div>
-        <div style="display:flex;align-items:center;gap:4px;"><div style="font-size:0.65em;font-weight:700;color:var(--text-light);">Live Value</div><div style="width:8px;height:8px;border-radius:2px;background:#F59E0B;"></div></div>
-      </div>
-      <!-- Cumulative acquisition chart by date -->
-      <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;margin:12px 0 6px;">Acquisition Over Time</div>
-      <canvas id="metal-roi-canvas" height="70" style="width:100%;display:block;border-radius:8px;"></canvas>
-    </div>
-  </div>
-
   <div class="metal-add-panel">
     <div class="metal-add-panel-header" onclick="toggleAddPanel()">
       <div class="metal-add-panel-title"><span id="metal-add-icon">🥇</span> Add <span id="metal-add-label">Gold</span> Entry</div>
@@ -1696,7 +1644,7 @@
     </div>
     <div class="metal-add-panel-body" id="metal-add-panel-body">
       <div class="metal-form-grid">
-        <div class="metal-form-field"><label>Source / Name</label><input type="text" id="metal-name" placeholder="e.g. Physical, Coin, Digital Gold"></div>
+        <div class="metal-form-field"><label>Source / Name</label><input type="text" id="metal-name" placeholder="e.g. OneGold, Coin"></div>
         <div class="metal-form-field"><label>Weight (grams)</label><input type="number" id="metal-grams" placeholder="0.00" step="0.001"></div>
         <div class="metal-form-field"><label>Purity</label><input type="text" id="metal-purity" placeholder="e.g. 22K, 999"></div>
         <div class="metal-form-field"><label>Occasion</label><input type="text" id="metal-occasion" placeholder="e.g. Purchase, Gift"></div>
@@ -1749,7 +1697,7 @@
       <div class="inv-field"><label>Avg Cost / Share ($)</label><input type="number" id="inv-cost" placeholder="0.00" step="0.01"></div>
       <div class="inv-field"><label>Current Price ($)</label><input type="number" id="inv-price" placeholder="0.00" step="0.01"></div>
       <div class="inv-field"><label>Date Added</label><input type="date" id="inv-date"></div>
-      <div class="inv-field full"><label>Account / Broker</label><input type="text" id="inv-broker" placeholder="e.g. Zerodha, Groww, Fidelity, Schwab"></div>
+      <div class="inv-field full"><label>Account / Broker</label><input type="text" id="inv-broker" placeholder="e.g. Fidelity, Robinhood, Webull"></div>
     </div>
     <button class="add-invest-btn" onclick="addInvestEntry()">+ Add to Portfolio</button>
   </div>
@@ -1947,7 +1895,6 @@
           <div class="tc-desc">Dive deep into your finances</div>
           <div class="tc-active-badge">✓</div>
         </div>
-
       </div>
     </div>
   </div>
@@ -2292,13 +2239,8 @@
 <div class="screen" id="screen-networth">
   <!-- ── Hero ── -->
   <div class="nw-hero">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-      <div class="nw-hero-label" style="margin-bottom:0;">💎 Total Net Worth</div>
-      <button class="nw-eye-btn" id="nw-eye-btn" onclick="toggleNWVisibility()" title="Hide/show balances">
-        <span id="nw-eye-icon">🔓</span>
-      </button>
-    </div>
-    <div class="nw-hero-amount" id="nw-total" style="text-align:left;">$0</div>
+    <div class="nw-hero-label">💎 Total Net Worth</div>
+    <div class="nw-hero-amount" id="nw-total">$0</div>
     <div class="nw-hero-change" id="nw-change"></div>
     <div class="nw-hero-bars">
       <div class="nw-hero-bar-block">
@@ -2319,55 +2261,22 @@
 
   <!-- ── CTA Buttons ── -->
   <div class="nw-cta-row">
-    <button class="nw-btn-snapshot" onclick="saveNWSnapshot()">📸 Snapshot Month</button>
+    <button class="nw-btn-snapshot" onclick="saveNWSnapshot()">📸 Save Snapshot</button>
     <button class="nw-btn-add" onclick="openNWSheet()">+ Add Account</button>
   </div>
 
   <!-- ── Insights Cards ── -->
   <div id="nw-insights-list"></div>
 
-  <!-- ── Monthly Intelligence ── -->
-  <div id="nw-intelligence-card" style="display:none;margin-bottom:14px;">
-
-    <!-- NW Trend Chart -->
-    <div class="nw-trend-card" id="nw-chart-card">
-      <div class="nw-trend-header">
-        <div class="nw-trend-title">📈 Net Worth Progression</div>
-        <div class="nw-trend-badge" id="nw-snap-count">0 months</div>
-      </div>
-      <div class="nw-chart-wrap"><canvas id="nw-trend-chart"></canvas></div>
+  <!-- ── Trend + Snapshots Card ── -->
+  <div class="nw-trend-card" id="nw-chart-card" style="display:none;">
+    <div class="nw-trend-header">
+      <div class="nw-trend-title">📈 Net Worth Trend</div>
+      <div class="nw-trend-badge" id="nw-snap-count">0 Snapshots</div>
     </div>
-
-    <!-- Month Comparison selector -->
-    <div style="background:white;border-radius:var(--radius);box-shadow:var(--card-shadow);padding:16px;margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div style="font-size:0.75em;font-weight:900;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;">📊 Monthly Comparison</div>
-        <div style="display:flex;gap:6px;">
-          <select id="mi-month-a" onchange="renderMonthlyIntelligence()" style="font-family:Nunito,sans-serif;font-weight:800;font-size:0.75em;border:1.5px solid #E8E8E8;border-radius:8px;padding:4px 6px;background:white;"></select>
-          <span style="font-weight:900;color:var(--text-light);align-self:center;">vs</span>
-          <select id="mi-month-b" onchange="renderMonthlyIntelligence()" style="font-family:Nunito,sans-serif;font-weight:800;font-size:0.75em;border:1.5px solid #E8E8E8;border-radius:8px;padding:4px 6px;background:white;"></select>
-        </div>
-      </div>
-      <!-- KPI comparison row -->
-      <div id="mi-kpi-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px;"></div>
-      <!-- Category breakdown -->
-      <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">Top Spending Categories</div>
-      <div id="mi-cat-bars"></div>
-      <!-- Budget performance -->
-      <div id="mi-budget-section" style="margin-top:12px;"></div>
-      <!-- Savings trend -->
-      <div style="margin-top:12px;">
-        <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Savings Rate Trend</div>
-        <canvas id="mi-savings-chart" height="50" style="width:100%;display:block;"></canvas>
-      </div>
-    </div>
-
-    <!-- Snapshot list -->
-    <div style="background:white;border-radius:var(--radius);box-shadow:var(--card-shadow);padding:16px;">
-      <div style="font-size:0.75em;font-weight:900;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">📸 Saved Snapshots</div>
-      <div id="nw-snapshots-list"></div>
-    </div>
-
+    <div class="nw-chart-wrap"><canvas id="nw-trend-chart"></canvas></div>
+    <div class="nw-snaps-label">Recent Snapshots</div>
+    <div id="nw-snapshots-list"></div>
   </div>
 
   <!-- ── Asset Allocation ── -->
@@ -3049,15 +2958,8 @@
             </select>
           </div>
         </div>
-        <div style="margin-top:8px;">
-          <div style="font-size:0.68em;font-weight:800;color:var(--text-light);margin-bottom:4px;">PURITY</div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="text" id="qa-metal-purity" placeholder="e.g. 22K, 24K, 999" 
-              style="flex:1;background:var(--white);border:1.5px solid #E8E8E8;border-radius:9px;padding:8px 10px;font-family:Nunito,sans-serif;font-weight:800;font-size:0.9em;outline:none;">
-            <button onclick="document.getElementById('qa-metal-purity').value='24K'" style="background:white;border:1.5px solid #E8E8E8;border-radius:8px;padding:5px 8px;font-size:0.72em;font-weight:800;color:var(--text-dark);cursor:pointer;">24K</button>
-            <button onclick="document.getElementById('qa-metal-purity').value='22K'" style="background:white;border:1.5px solid #E8E8E8;border-radius:8px;padding:5px 8px;font-size:0.72em;font-weight:800;color:var(--text-dark);cursor:pointer;">22K</button>
-            <button onclick="document.getElementById('qa-metal-purity').value='18K'" style="background:white;border:1.5px solid #E8E8E8;border-radius:8px;padding:5px 8px;font-size:0.72em;font-weight:800;color:var(--text-dark);cursor:pointer;">18K</button>
-          </div>
+        <div style="font-size:0.68em;color:#A07800;font-weight:700;margin-top:8px;line-height:1.5;">
+          💡 Records <strong>this month's purchase</strong> for budget tracking. Your total holdings in Net Worth are separate — update them there when you want a snapshot.
         </div>
       </div>
     </div>
@@ -3251,34 +3153,10 @@ function fmtConvertedFull(amount, entryCurrencyCode) {
 }
 
 const commonCategories = [
-  // 🍔 Food & Dining
-  'Groceries','FastFood','Restaurant','Coffee','Breakfast','Lunch','Dinner','Snacks','Takeout','Swiggy','Zomato',
-  // 🚌 Transport
-  'Gas','Fuel','Uber','Ola','Auto','Transport','Metro','Bus','Parking','Toll',
-  // 🏠 Housing & Utilities
-  'Rent','Mortgage','Electricity','Water','Internet','WiFi','Gas Bill','Utility','Maintenance','Repair',
-  // 💊 Health
-  'Doctor','Medicine','Pharmacy','Dental','Hospital','Health Insurance','Gym','Lab Test',
-  // 📱 Bills & Subscriptions
-  'Phone','Mobile','Netflix','Spotify','Amazon Prime','Hotstar','YouTube Premium','Software',
-  // 🛍️ Shopping
-  'Clothing','Electronics','Cosmetics','Household','Furniture','Amazon','Flipkart',
-  // 🎓 Education
-  'School Fees','College','Course','Books','Tuition','Coaching',
-  // ❤️ Family & Giving
-  'Parents','Family','Kids','Spouse','Charity','Donation','Gift',
-  // ✈️ Travel & Entertainment
-  'Travel','Flight','Hotel','Vacation','Movies','Entertainment','Sports','Hobby',
-  // 💼 Professional
-  'Business','Office','Professional','Freelance Expense',
-  // 🔄 Returns & Credits
-  'Return','Refund','Credit','Reimbursement',
-  // 💰 Income
-  'Salary','Bonus','Freelance','Interest','Dividend','Rental Income','Side Income','Other Income',
-  // 📈 Investments
-  'Stocks','ETF','Mutual Fund','SIP','Crypto','Gold','Silver','NPS','PPF','EPF','VPF','FD','RD','Bonds',
-  // 📋 Other
-  'Insurance','EMI','Loan Payment','Tax','Miscellaneous','Other'
+  'KP-PC1','KP-PC2','SK-PC1','SK-PC2','SK-PC3','PKD-SHOPS',
+  'Groceries','FastFood','Gas','Utility','T-Mobile','Insurance',
+  'OneGold','OneSilver','Fidelity','Robinhood','Webull','MF',
+  'Parents','Health Care','Entertainment','Auto','Gifts','Return','Refund','Credit'
 ];
 const catList = document.getElementById('catlist');
 commonCategories.forEach(c => { const o = document.createElement('option'); o.value = c; catList.appendChild(o); });
@@ -3310,32 +3188,12 @@ const catConfig = [
 ];
 
 const DEFAULT_CATS = {
-  expense: [
-    'Groceries','FastFood','Restaurant','Coffee','Breakfast','Lunch','Dinner','Snacks','Takeout',
-    'Gas','Fuel','Transport','Uber','Ola','Auto','Metro','Parking','Toll',
-    'Rent','Electricity','Water','Internet','Phone','Utility','Maintenance',
-    'Doctor','Medicine','Pharmacy','Dental','Gym',
-    'Shopping','Clothing','Electronics','Cosmetics','Household',
-    'Netflix','Spotify','Amazon Prime','Hotstar','Subscription',
-    'School Fees','Tuition','Books','Course',
-    'Parents','Kids','Gift','Charity','Donation',
-    'EMI','Insurance','Tax','Entertainment','Travel','Other'
-  ],
-  income: [
-    'Salary','Bonus','Freelance','Side Income','Rental Income',
-    'Interest','Dividend','Capital Gains',
-    'Gift','Return','Refund','Reimbursement','Other'
-  ],
-  investment: [
-    'Stocks','ETF','Mutual Fund','SIP','Index Fund',
-    'NPS','PPF','EPF','VPF','401k','IRA','Pension',
-    'Fixed Deposit','Recurring Deposit','Bonds',
-    'Crypto','Gold','Silver','Real Estate',
-    'Insurance Policy','Other'
-  ],
-  debt:       ['Credit Card','Personal Loan','Home Loan','Car Loan','Student Loan','Medical Debt','Other'],
-  given:      ['Parents','Spouse','Kids','Sibling','Friend','Relative','Charity','Other'],
-  additional: ['Entertainment','Travel','Hotel','Flight','Vacation','Sports','Hobby','Auto Service','Other']
+  expense:    ['Breakfast','Lunch','Dinner','Snacks','Coffee','Groceries','FastFood','Transport','Uber','Gas','Health','Dental','Shopping','Clothing','Cosmetics','Electric','Utility','Phone','Internet'],
+  income:     ['Salary','Freelance','Bonus','Interest','Dividend','Gift','Return','Refund','Other'],
+  investment: ['Stocks','ETF','Crypto','Gold','Silver','Real Estate','401k','IRA','Mutual Fund','Other'],
+  debt:       ['Credit Card','Loan','Mortgage','Medical','Other'],
+  given:      ['Parents','Family','Friend','Charity','Other'],
+  additional: ['Entertainment','Travel','Auto','Insurance','Subscription','Other']
 };
 
 function getCustomCats() {
@@ -3463,8 +3321,8 @@ function getPriceForMetal(metalType, purity) {
 }
 
 const METAL_CONFIG = {
-  gold:     { label:'Gold',     emoji:'🥇', pricePerGram: 96.50,  hint:'Use ✏️ Price to set your local gold price per gram. 22K = 91.7%, 18K = 75% of 24K price.' },
-  silver:   { label:'Silver',   emoji:'🥈', pricePerGram: 1.03,   hint:'Use ✏️ Price to set your local silver price per gram. 925 Sterling = 92.5%, 900 = 90%.' },
+  gold:     { label:'Gold',     emoji:'🥇', pricePerGram: 96.50,  hint:'24K pure gold ≈ $96.50/g. 22K ≈ $88.42/g, 18K ≈ $72.38/g. Use ✏️ Edit to set live price.' },
+  silver:   { label:'Silver',   emoji:'🥈', pricePerGram: 1.03,   hint:'999 Fine silver ≈ $1.03/g. 925 Sterling ≈ $0.95/g, 900 Coin ≈ $0.93/g.' },
   platinum: { label:'Platinum', emoji:'🔷', pricePerGram: 30.50,  hint:'Pt999 ≈ $30.50/g. Pt950 ≈ $28.98/g. Use ✏️ Edit to set current price — per-purity overrides supported.' },
 };
 
@@ -3477,9 +3335,7 @@ function updateMetalPriceOverride(metalType, price, purity) {
   save();
   renderMetals();
   renderNetWorth();
-  // Re-render purity prices in panel (if still open for per-purity Set buttons)
-  const panel = document.getElementById('metal-price-override-panel');
-  if (panel && panel.style.display !== 'none') renderPurityPrices(metalType);
+  renderPurityPrices(metalType);
   showToast('✅ Price updated — Net Worth recalculated!');
 }
 
@@ -3495,9 +3351,7 @@ function resetMetalPriceOverride(metalType, purity) {
     });
   }
   save(); renderMetals(); renderNetWorth();
-  // Close price panel after reset too
-  const _rp = document.getElementById('metal-price-override-panel');
-  if (_rp) _rp.style.display = 'none';
+  renderPurityPrices(metalType);
   showToast('Price reset to default');
 }
 
@@ -3864,7 +3718,7 @@ function renderHomeInsights(expenses, income, investments) {
   if (expGoals.length > 0 && currentPeriod !== 'year') {
     const overBudget = expGoals.map(g => {
       const actual = getBudgetActual(g, viewMonth);
-      const budget = g.currency && g.currency !== currentCurrency.code ? convertAmt(Number(g.amount||0), g.currency) : Number(g.amount || 0);
+      const budget = Number(g.amount || 0);
       return { name: g.name, over: actual - budget, pct: budget > 0 ? actual/budget*100 : 0 };
     }).filter(g => g.over > 0).sort((a,b) => b.pct - a.pct);
     if (overBudget.length > 0) {
@@ -3906,19 +3760,16 @@ function renderHomeInsights(expenses, income, investments) {
     </div>`).join('');
 }
 const DEFAULT_INV_CARDS = [
-  // ── Visible by default — universal investment types ──
-  { key:'Stocks',        label:'Stocks',           icon:'📊', color:'#4A9EFF', bg:'#EEF5FF', fieldTemplate:'Stocks',      visible:true  },
-  { key:'ETF/MF',        label:'ETF / Mutual Fund',icon:'🗂',  color:'#7C3AED', bg:'#F3EEFF', fieldTemplate:'ETF/MF',      visible:true  },
-  { key:'Crypto',        label:'Crypto',            icon:'🪙', color:'#F59E0B', bg:'#FFFBEE', fieldTemplate:'Crypto',      visible:true  },
-  { key:'Metals',        label:'Gold & Metals',     icon:'🥇', color:'#C8900A', bg:'#FFF8E0', fieldTemplate:'Metals',      visible:true  },
-  { key:'Real Estate',   label:'Real Estate',       icon:'🏡', color:'#10B981', bg:'#F0FBF3', fieldTemplate:'Real Estate', visible:true  },
-  { key:'Retirement',    label:'Retirement',        icon:'🏛️', color:'#0EA5E9', bg:'#E0F2FE', fieldTemplate:'General',     visible:true  },
-  // ── Hidden by default — enable in Settings → Investments ──
-  { key:'Fixed Deposit', label:'Fixed Deposit',     icon:'🏦', color:'#D97706', bg:'#FFFBEB', fieldTemplate:'General',     visible:false },
-  { key:'PPF/PF',        label:'PPF / PF / EPF',    icon:'📮', color:'#059669', bg:'#ECFDF5', fieldTemplate:'General',     visible:false },
-  { key:'NPS',           label:'NPS / Pension',     icon:'🧓', color:'#8B5CF6', bg:'#F3EEFF', fieldTemplate:'General',     visible:false },
-  { key:'Bonds',         label:'Bonds & T-Bills',   icon:'📜', color:'#64748B', bg:'#F1F5F9', fieldTemplate:'General',     visible:false },
-  { key:'Insurance',     label:'Insurance Policy',  icon:'🛡️', color:'#DC2626', bg:'#FEF2F2', fieldTemplate:'General',     visible:false },
+  { key:'Stocks',      label:'Stocks',          icon:'📊', color:'#4A9EFF', bg:'#EEF5FF', fieldTemplate:'Stocks',      visible:true },
+  { key:'Crypto',      label:'Crypto',          icon:'🪙', color:'#F59E0B', bg:'#FFFBEE', fieldTemplate:'Crypto',      visible:true },
+  { key:'Metals',      label:'Metals',          icon:'🥇', color:'#C8900A', bg:'#FFF8E0', fieldTemplate:'Metals',      visible:true },
+  { key:'Real Estate', label:'Real Estate',     icon:'🏡', color:'#10B981', bg:'#F0FBF3', fieldTemplate:'Real Estate', visible:true },
+  { key:'ETF/MF',      label:'ETF / MF',        icon:'🗂', color:'#7C3AED', bg:'#F3EEFF', fieldTemplate:'ETF/MF',      visible:true },
+  { key:'PF/VPF',      label:'PF / VPF',        icon:'🏛️', color:'#0EA5E9', bg:'#E0F2FE', fieldTemplate:'General',     visible:true },
+  { key:'NPS',         label:'NPS',             icon:'🧓', color:'#8B5CF6', bg:'#F3EEFF', fieldTemplate:'General',     visible:true },
+  { key:'PPF',         label:'PPF',             icon:'📮', color:'#059669', bg:'#ECFDF5', fieldTemplate:'General',     visible:true },
+  { key:'FD',          label:'Fixed Deposit',   icon:'🏦', color:'#D97706', bg:'#FFFBEB', fieldTemplate:'General',     visible:false },
+  { key:'Insurance',   label:'Insurance',       icon:'🛡️', color:'#DC2626', bg:'#FEF2F2', fieldTemplate:'General',     visible:false },
 ];
 
 // INV_CATS kept as an alias for any legacy reads
@@ -3926,7 +3777,7 @@ const INV_CATS = DEFAULT_INV_CARDS;
 
 // General field template for savings/contribution-style investments (PF, NPS, FD etc.)
 const INV_FIELDS_GENERAL = [
-  {id:'inv-scheme',   label:'Scheme / Account',  type:'text',   placeholder:'e.g. NPS Tier-1, PPF Account, 401k',  full:true},
+  {id:'inv-scheme',   label:'Scheme / Account',  type:'text',   placeholder:'e.g. VPF, NPS Tier-1',  full:true},
   {id:'inv-contrib',  label:'Contribution',       type:'number', placeholder:'0.00',                  full:false, calc:true},
   {id:'inv-total-acc',label:'Total Accumulated',  type:'number', placeholder:'0.00 (optional)',        full:false},
   {id:'inv-rate',     label:'Interest / Return %',type:'number', placeholder:'e.g. 8.25',             full:false},
@@ -3949,17 +3800,34 @@ function renderInvestHome(investments) {
     const type = inv.investType||inv.category||'Stocks';
     totals[type]=(totals[type]||0)+convertAmt(inv.amount, inv.currency);
   });
-  // Note: data._investments (portfolio positions) also excluded from monthly total —
-  // portfolio value ≠ amount invested this month.
 
   const grandTotal = Object.values(totals).reduce((s,v)=>s+v,0);
   document.getElementById('home-invest-total').textContent = fmt(grandTotal);
 
-  // Use dynamic cards
+  // Use dynamic cards — support subcats[] just like spend cards
   const cards = getHomeInvCards().filter(c=>c.visible!==false);
   const grid = document.getElementById('invest-cat-grid');
   grid.innerHTML = cards.map(card=>{
-    const amt = totals[card.key]||0;
+    const subcats = card.subcats||[];
+    // Match: (1) explicit subcats, (2) exact key, (3) any total key that matches card key case-insensitively
+    let amt;
+    if (subcats.length > 0) {
+      amt = subcats.reduce((s,sc)=>s+(totals[sc]||0),0);
+    } else {
+      // Exact key first
+      amt = totals[card.key] || 0;
+      // Also accumulate any total whose key starts with or equals card.key (case-insensitive)
+      // e.g. card.key='Onegold' catches category='OneGold','onegold','Gold','Onegold' etc.
+      if (amt === 0) {
+        const cardKeyLow = card.key.toLowerCase();
+        Object.entries(totals).forEach(([k,v]) => {
+          const kl = k.toLowerCase();
+          if (kl === cardKeyLow || kl.includes(cardKeyLow) || cardKeyLow.includes(kl)) {
+            amt += v;
+          }
+        });
+      }
+    }
     const pct = grandTotal>0?Math.min(amt/grandTotal*100,100):0;
     return `<div class="invest-cat-card" style="background:${card.bg||'#F8F8F8'};user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;"
       ontouchstart="homeCardTouchStart(event,'${card.key}','investment','${card.key}')"
@@ -4118,7 +3986,6 @@ function qaRenderSubCats() {
     qaSubCat = cats[0] || '';
   }
   _renderQaPills(cats);
-  _qaToggleMetalFields(); // Issue 3: auto-show metal fields if metal category preselected
 }
 
 function _renderQaPills(cats) {
@@ -4267,6 +4134,7 @@ function qaSave() {
 
   // If this is a metal purchase, attach grams so the transaction carries full context
   const isMetal = qaType === 'investment' && _METAL_CATS.some(m => (qaSubCat||'').toLowerCase().includes(m));
+  let _metalEntryAdded = false;
   if (isMetal) {
     const gramsEl = document.getElementById('qa-metal-grams');
     const unitEl  = document.getElementById('qa-metal-unit');
@@ -4277,6 +4145,33 @@ function qaSave() {
     if (grams > 0) {
       entry.metalGrams = parseFloat(grams.toFixed(4));
       entry.metalType  = typeEl?.value || 'gold';
+      // Auto-create a matching Metals page entry so it appears in Metal holdings
+      if (!data._metals) data._metals = [];
+      const mType  = entry.metalType;
+      const mk     = getMonthKey(date) || getCurrentMonthKey();
+      const shortMonthTag = new Date((date||localDateStr())+'T00:00:00').toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+      // Price per gram in the transaction's own currency (not converted)
+      const pricePerGram = finalAmt > 0 ? finalAmt / grams : (METAL_CONFIG[mType]||{}).pricePerGram || 0;
+      // Shared link ID so deleting either side can remove the other
+      const _linkId = 'inv_metal_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      entry._metalLinkId = _linkId;   // written to the investment transaction too
+      data._metals.push({
+        metalType: mType,
+        name: note || (qaSubCat || mType),
+        grams: parseFloat(grams.toFixed(4)),
+        price: parseFloat(pricePerGram.toFixed(4)),       // purchase price per gram in _purchaseCurrency
+        _purchaseCurrency: currentCurrency.code,          // so display can show correct symbol
+        date: normalizeDate(date),
+        form: 'ETF / Digital',
+        notes: '',
+        purity: '',
+        occasion: '',
+        _fromInvesting: true,       // marks this as auto-created from investing
+        _invMonth: shortMonthTag,   // e.g. "Feb '26" — shown as tag like Imported
+        _invMonthKey: mk,
+        _linkId,                    // used for two-way delete propagation
+      });
+      _metalEntryAdded = true;
     }
   }
 
@@ -4297,37 +4192,12 @@ function qaSave() {
   }
   save();
 
-  // F: If metal investment — auto-create matching _metals portfolio entry
-  if (isMetal && entry.metalGrams && entry.metalGrams > 0) {
-    if (!data._metals) data._metals = [];
-    // Stable link ID so both entries can find each other regardless of array shifts
-    const _qaLinkId = 'qal_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-    // Tag the investment entry with the link ID
-    const invArr = data[monthKey][typeMap[qaType]];
-    if (invArr.length > 0) invArr[invArr.length - 1]._qaLinkId = _qaLinkId;
-    const metalEntry = {
-      metalType: entry.metalType || 'gold',
-      name: entry.description || (entry.category && entry.category !== entry.metalType ? entry.category : null) || (METAL_CONFIG[entry.metalType||'gold']||{}).label || 'Gold',
-      grams: entry.metalGrams,
-      price: amount / entry.metalGrams,
-      purity: (document.getElementById('qa-metal-purity')||{}).value||'',
-      date: entry.date,
-      form: 'Purchase',
-      notes: entry.description || '',
-      _fromQA: true,
-      _fromMonth: monthKey,
-      _fromQAMonth: monthKey,
-      _qaLinkId, // stable — survives array mutations
-    };
-    data._metals.push(metalEntry);
-    save();
-  }
-
   // Build toast message
   let toastMsg = '✅ Saved!';
   if (isMetal && entry.metalGrams) {
     const mc = METAL_CONFIG[entry.metalType] || METAL_CONFIG['gold'];
-    toastMsg = `${mc.emoji} ${entry.metalGrams.toFixed(2)}g ${entry.metalType} · ${fmt(amount)} · added to Metals & NW ✅`;
+    const metalNote = _metalEntryAdded ? ' + added to Metals page' : '';
+    toastMsg = `${mc.emoji} ${entry.metalGrams.toFixed(2)}g ${entry.metalType} · ${fmt(amount)} recorded${metalNote}`;
   }
 
   // Handle recurring rule creation
@@ -4365,7 +4235,6 @@ function qaSave() {
   document.getElementById('qa-amount-display').value = '0';
   document.getElementById('qa-note-input').value = '';
   const _mg2 = document.getElementById('qa-metal-grams'); if (_mg2) _mg2.value = '';
-  const _mp2 = document.getElementById('qa-metal-purity'); if (_mp2) _mp2.value = '';
   const _mf2 = document.getElementById('qa-metal-fields'); if (_mf2) _mf2.style.display = 'none';
   // Reset recurring UI
   const _rc = document.getElementById('qa-recurring-check'); if (_rc) _rc.checked = false;
@@ -4374,7 +4243,8 @@ function qaSave() {
   showToast(toastMsg);
   if(monthKey === viewMonth) renderHome();
   renderTransactions();
-  if (isMetal) { renderMetals(); renderNetWorth(); } // propagate to metals & NW immediately
+  // If a metal entry was added, refresh the metals page
+  if (_metalEntryAdded) { try { renderMetals(); } catch(e){} }
 }
 
 // ══════════════════════════════════════════════════════
@@ -4386,7 +4256,7 @@ const INV_FIELDS = {
     {id:'inv-shares',  label:'Shares',            type:'number', placeholder:'0.00',              full:false, calc:true},
     {id:'inv-avgcost', label:'Avg Cost / Share',  type:'number', placeholder:'0.00',              full:false, calc:true},
     {id:'inv-curprice',label:'Current Price',     type:'number', placeholder:'0.00',              full:false},
-    {id:'inv-broker',  label:'Broker / Platform', type:'text',   placeholder:'e.g. Zerodha, Groww, Fidelity',     full:true},
+    {id:'inv-broker',  label:'Broker / Platform', type:'text',   placeholder:'e.g. Fidelity',     full:true},
   ],
   'Crypto': [
     {id:'inv-coin',    label:'Coin / Token',      type:'text',   placeholder:'e.g. BTC, ETH',     full:false},
@@ -4646,22 +4516,11 @@ function selectCurrency(code) {
     updateInvCurrBtn();
     calcInvTotal();
   } else {
-    // Stamp goals that lack stored currency with CURRENT (old) code before switching
-    const _oldCurrCode = currentCurrency.code;
-    ['_expenseGoals','_savingsGoals'].forEach(k => {
-      (data[k] || []).forEach(g => { if (!g.currency) g.currency = _oldCurrCode; });
-    });
-    if (data._expenseGoals || data._savingsGoals) save();
     saveCurrency(c);
-    renderHome();
-    try { renderTransactions(); } catch(e) {}
-    try { renderBudget(); } catch(e) {}
-    try { renderNetWorth(); } catch(e) {}
-    try { renderMetals(); } catch(e) {}
-    try { renderSettings(); } catch(e) {}
+    renderHome(); renderSettings();
   }
   closeModal('currency-modal');
-  showToast(`${c.flag} Currency set to ${c.code} — all screens updated`);
+  showToast(`${c.flag} Currency set to ${c.code}`);
 }
 
 // ══════════════════════════════════════════════════════
@@ -5016,7 +4875,7 @@ function switchScreen(name, btn) {
   if(name==='invest') renderInvestments();
   if(name==='data') { populateDataMonthSelect(); renderDataScreen(); }
   if(name==='settings') { renderRecurringRules(); }
-  if(name==='budget') { budgetViewMonth = viewMonth; document.getElementById('budget-month-label').textContent = getDisplayMonth(budgetViewMonth); renderBudgetModule(); }
+  if(name==='budget') { document.getElementById('budget-month-label').textContent = getDisplayMonth(viewMonth); renderBudgetModule(); }
   if(name==='networth') renderNetWorth();
   if(name==='import') { setImportTab('transactions', document.querySelector('.import-tab')); renderGivenLedger(); renderResetSummary(); renderMonthsList(); }
 }
@@ -5054,16 +4913,13 @@ function setCalView(mode) {
   const btnList  = document.getElementById('cal-view-btn-list');
   const activeStyle  = 'background:#1E2A6E;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:0.78em;font-weight:800;cursor:pointer;';
   const inactiveStyle= 'background:#F0F0F0;color:var(--text-med);border:none;border-radius:8px;padding:5px 12px;font-size:0.78em;font-weight:800;cursor:pointer;';
-  const dowRow = document.getElementById('cal-dow-row');
   if (mode === 'calendar') {
     if (calGrid) calGrid.style.display = '';
     if (listView) listView.style.display = 'none';
-    if (dowRow) dowRow.style.display = ''; // Issue 2: show DOW in calendar mode
     if (btnCal)  btnCal.style.cssText  = activeStyle;
     if (btnList) btnList.style.cssText = inactiveStyle;
   } else {
     if (calGrid) calGrid.style.display = 'none';
-    if (dowRow) dowRow.style.display = 'none'; // Issue 2: hide DOW in list mode
     if (listView) { listView.style.display = ''; renderCalListView(listView); }
     if (btnCal)  btnCal.style.cssText  = inactiveStyle;
     if (btnList) btnList.style.cssText = activeStyle;
@@ -5075,16 +4931,13 @@ function renderCalListView(container) {
   const mk = viewMonth;
   if (!data[mk]) { container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-light);font-weight:700;">No data for this month</div>'; return; }
   const toDisp = t => convertAmt(t.amount, t.currency);
-  // Assign _idx so Edit/Delete buttons resolve correctly to the real array position
-  const exp  = (data[mk].expenses    || []).map((t, i) => ({...t, _type:'expense',     _idx:i}));
-  const inc  = (data[mk].income      || []).map((t, i) => ({...t, _type:'income',      _idx:i}));
-  const inv  = (data[mk].investments || []).map((t, i) => ({...t, _type:'investment',  _idx:i}));
-  const add  = (data[mk].additional  || []).map((t, i) => ({...t, _type:'additional',  _idx:i}));
-  // Apply family author filter (same as calendar day view)
-  const authorOk = t => !_authorFilter || (t._addedBy||'').toLowerCase() === _authorFilter.toLowerCase();
-  const all  = [...inc, ...exp, ...inv, ...add]
-    .filter(authorOk)
-    .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  // Apply author filter for list view too
+  const _listFilter = t => _authorFilter === 'all' || t._addedBy === _authorFilter;
+  const exp  = (data[mk].expenses    || []).map(t => ({...t, date: normalizeDate(t.date), _type:'expense'})).filter(_listFilter);
+  const inc  = (data[mk].income      || []).map(t => ({...t, date: normalizeDate(t.date), _type:'income'})).filter(_listFilter);
+  const inv  = (data[mk].investments || []).map(t => ({...t, date: normalizeDate(t.date), _type:'investment'})).filter(_listFilter);
+  const add  = (data[mk].additional  || []).map(t => ({...t, date: normalizeDate(t.date), _type:'additional'})).filter(_listFilter);
+  const all  = [...inc, ...exp, ...inv, ...add].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
   const typeColors = { expense:'#EF4444', income:'#10B981', investment:'#7C3AED', additional:'#F59E0B' };
   const typeLabels = { expense:'Expense', income:'Income', investment:'Invest', additional:'Other' };
@@ -5102,7 +4955,13 @@ function renderCalListView(container) {
   const totalExp = exp.reduce((s,t)=>s+toDisp(t),0);
   const totalInv = inv.reduce((s,t)=>s+toDisp(t),0);
 
-  let html = ''; // 2a: No summary tiles in list view — transactions only
+  let html = `<div style="background:white;border-radius:14px;padding:12px 16px;margin-bottom:10px;box-shadow:var(--card-shadow);">
+    <div style="display:flex;justify-content:space-around;text-align:center;">
+      <div><div style="font-size:0.7em;font-weight:800;color:var(--text-light);text-transform:uppercase;">Income</div><div style="font-weight:900;color:var(--income);">${fmt(totalInc)}</div></div>
+      <div><div style="font-size:0.7em;font-weight:800;color:var(--text-light);text-transform:uppercase;">Expenses</div><div style="font-weight:900;color:var(--expenses);">${fmt(totalExp)}</div></div>
+      <div><div style="font-size:0.7em;font-weight:800;color:var(--text-light);text-transform:uppercase;">Investing</div><div style="font-weight:900;color:#7C3AED;">${fmt(totalInv)}</div></div>
+    </div>
+  </div>`;
 
   dateKeys.forEach(date => {
     const txns = byDate[date];
@@ -5122,16 +4981,13 @@ function renderCalListView(container) {
       const color = typeColors[t._type] || '#888';
       const label = typeLabels[t._type] || t._type;
       const prefix = t._type === 'income' ? '+' : '-';
-      const tIdx = all.indexOf(t);
-      html += `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #F5F5F5;">
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid #F5F5F5;">
         <div style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0;"></div>
         <div style="flex:1;min-width:0;">
           <div style="font-weight:700;font-size:0.85em;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.description||t.category||'—'}</div>
           <div style="font-size:0.72em;font-weight:600;color:var(--text-light);">${t.category||''} · ${label}</div>
         </div>
-        <div style="font-weight:900;font-size:0.88em;color:${color};flex-shrink:0;margin-right:4px;">${prefix}${fmt(toDisp(t))}</div>
-        <button onclick="listEditTx('${mk}','${t._type}',${t._idx})" style="background:#F0F4FF;border:none;border-radius:7px;padding:4px 7px;font-size:0.7em;color:var(--primary);cursor:pointer;flex-shrink:0;">✏️</button>
-        <button onclick="listDeleteTx('${mk}','${t._type}',${t._idx})" style="background:#FFF0F0;border:none;border-radius:7px;padding:4px 7px;font-size:0.7em;color:var(--expenses);cursor:pointer;flex-shrink:0;">✕</button>
+        <div style="font-weight:900;font-size:0.88em;color:${color};flex-shrink:0;">${prefix}${fmt(toDisp(t))}</div>
       </div>`;
     });
     html += `</div>`;
@@ -5159,11 +5015,9 @@ function calSwipeEnd(e) {
 }
 
 function calChangeMonth(dir) {
-  autoSnapshot(); // silently snapshot current month before leaving
   const [y,m] = viewMonth.split('-').map(Number);
   const d = new Date(y, m-1+dir, 1);
   viewMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  budgetViewMonth = viewMonth; // A: keep budget always in sync
   // Refresh list view if active
   if (calViewMode === 'list') { const lv=document.getElementById('cal-list-view'); if(lv&&lv.style.display!=='none') renderCalListView(lv); }
   const topbarMonth = document.getElementById('topbar-month');
@@ -5183,12 +5037,15 @@ function renderAuthorChips() {
   const row   = document.getElementById('author-chips-row');
   if (!strip || !row) return;
 
-  // Gather all authors across current month
-  const m = data[viewMonth] || {};
-  const allEntries = [
-    ...(m.expenses||[]), ...(m.income||[]), ...(m.investments||[]),
-    ...(m.debts||[]), ...(m.givenToOthers||[]), ...(m.additional||[])
-  ];
+  // Gather all authors across ALL months so family chips always appear regardless of current month
+  const allEntries = [];
+  Object.keys(data).filter(mk => /^\d{4}-\d{2}$/.test(mk)).forEach(mk => {
+    const m = data[mk] || {};
+    allEntries.push(
+      ...(m.expenses||[]), ...(m.income||[]), ...(m.investments||[]),
+      ...(m.debts||[]), ...(m.givenToOthers||[]), ...(m.additional||[])
+    );
+  });
   const authors = [...new Set(allEntries.map(e => e._addedBy).filter(Boolean))];
 
   // Show family icon if there are ANY family members (firebase users sharing)
@@ -5325,12 +5182,6 @@ function renderTransactions() {
 
   const calGrid = document.getElementById('cal-grid');
   if(calGrid) calGrid.innerHTML = cells;
-  // B: Auto-select most recent day that has transactions (not just today)
-  if (!calSelectedDay) {
-    const datesWithTx = Object.keys(byDate).sort().reverse();
-    const todayStr = localDateStr();
-    calSelectedDay = datesWithTx.includes(todayStr) ? todayStr : (datesWithTx[0] || todayStr);
-  }
   renderCalDayDetail(visibleTx);
 }
 
@@ -5575,7 +5426,7 @@ function renderRecurringRules() {
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <div style="font-weight:900;font-size:0.92em;color:${r.type==='income'?'var(--income)':'var(--expenses)'};">${fmtConverted(r.amount, r.currency||currentCurrency.code)}</div>
+        <div style="font-weight:900;font-size:0.92em;color:${r.type==='income'?'var(--income)':'var(--expenses)'};">${fmt(r.amount)}</div>
         <div style="font-size:0.68em;font-weight:700;margin-top:2px;">
           <span style="cursor:pointer;color:${r.active?'#10B981':'#EF4444'};" onclick="toggleRecurringRule(${i})">
             ${r.active ? '● Active' : '○ Paused'}
@@ -5688,14 +5539,6 @@ function toggleAuthorChips() {
 
 function setAuthorFilter(author) {
   _authorFilter = author;
-  if (_txSearchActive) {
-    // H/E: Re-run active search with new author filter
-    const input = document.getElementById('tx-search-input');
-    if (input && input.value) {
-      onTxSearch(input.value);
-      return;
-    }
-  }
   renderTransactions(); // re-renders chips + day detail
 }
 
@@ -5722,8 +5565,6 @@ function onTxSearch(q) {
     if (listView) listView.style.display = 'none';
     if (dayWrap) dayWrap.style.display = '';
     if (resultsEl) resultsEl.style.display = 'none';
-    // Restore summary to current month totals
-    renderTransactions();
     return;
   }
 
@@ -5756,23 +5597,6 @@ function onTxSearch(q) {
   // Apply family author filter on top of search if active
   if (_authorFilter !== 'all') {
     results = results.filter(r => r._addedBy === _authorFilter);
-  }
-
-  // ── Update summary bar to reflect search results ──
-  const _srInc = results.filter(r => r._type === 'income').reduce((s,r) => s + convertAmt(r.amount, r.currency), 0);
-  const _srExp = results.filter(r => r._type === 'expense').reduce((s,r) => s + convertAmt(r.amount, r.currency), 0);
-  const _srInv = results.filter(r => r._type === 'investment').reduce((s,r) => s + convertAmt(r.amount, r.currency), 0);
-  const _srNet = _srInc - _srExp - _srInv;
-  const _elInc = document.getElementById('cal-total-income');
-  const _elExp = document.getElementById('cal-total-expense');
-  const _elSav = document.getElementById('cal-total-savings');
-  const _elNet = document.getElementById('cal-total-net');
-  if (_elInc) _elInc.textContent = fmt(_srInc);
-  if (_elExp) _elExp.textContent = fmt(_srExp);
-  if (_elSav) { _elSav.textContent = fmt(_srInv); _elSav.style.color = '#7C3AED'; }
-  if (_elNet) {
-    _elNet.textContent = (_srNet >= 0 ? '+' : '-') + fmt(Math.abs(_srNet));
-    _elNet.style.color = _srNet >= 0 ? 'var(--income)' : 'var(--expenses)';
   }
 
   if (results.length === 0) {
@@ -5823,8 +5647,7 @@ function onTxSearch(q) {
             <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;">
               <button onclick="searchEditTx('${t._month}','${t._type}',${t._idx})"
                 style="background:#F0F4FF;border:none;border-radius:8px;padding:5px 12px;font-size:0.72em;font-weight:800;color:var(--primary);cursor:pointer;">✏️ Edit</button>
-              <button data-month="${t._month}" data-type="${t._type}" data-idx="${t._idx}" data-amt="${Math.abs(Number(t.amount||0))}" data-cat="${(t.category||'').replace(/"/g,'&quot;')}"
-                onclick="searchDeleteTxByEl(this)"
+              <button onclick="searchDeleteTx('${t._month}','${t._type}',${t._idx})"
                 style="background:#FFF0F0;border:none;border-radius:8px;padding:5px 12px;font-size:0.72em;font-weight:800;color:var(--expenses);cursor:pointer;">✕ Delete</button>
             </div>
           </div>`;
@@ -5842,80 +5665,19 @@ function searchEditTx(monthKey, type, idx) {
   setTimeout(() => openEditTx(monthKey, type, idx), 150);
 }
 
-function searchDeleteTxByEl(btn) {
-  const monthKey = btn.dataset.month;
-  const type = btn.dataset.type;
-  const idx = parseInt(btn.dataset.idx);
-  const amt = parseFloat(btn.dataset.amt);
-  const cat = btn.dataset.cat;
-  searchDeleteTx(monthKey, type, idx, amt, cat);
-}
-
-function searchDeleteTx(monthKey, type, snapshotIdx, snapshotAmt, snapshotCat) {
-  // Use snapshot values to verify we're deleting the right item
-  // Re-find by matching category+amount+approximate index for safety
+function searchDeleteTx(monthKey, type, idx) {
   const typeMap = {expense:'expenses',income:'income',investment:'investments',debt:'debts',given:'givenToOthers',additional:'additional'};
   const listKey = typeMap[type];
   if (!listKey || !data[monthKey] || !data[monthKey][listKey]) return;
-  // Re-resolve current index: find item matching the snapshot fingerprint
-  const list = data[monthKey][listKey];
-  let resolvedIdx = -1;
-  // First try exact match by category+amount at stored index (fast path)
-  if (list[snapshotIdx] &&
-      String(list[snapshotIdx].category) === String(snapshotCat) &&
-      Math.abs(Number(list[snapshotIdx].amount)) === Math.abs(Number(snapshotAmt))) {
-    resolvedIdx = snapshotIdx;
-  } else {
-    // Fallback: search entire list for matching item
-    resolvedIdx = list.findIndex(t =>
-      String(t.category) === String(snapshotCat) &&
-      Math.abs(Number(t.amount)) === Math.abs(Number(snapshotAmt))
-    );
-  }
-  if (resolvedIdx < 0) { showToast('Transaction not found — may already be deleted'); return; }
-  const tx = list[resolvedIdx];
-  if (!confirm(`Delete "${tx.category}" · ${fmtConverted(Math.abs(tx.amount), tx.currency||currentCurrency.code)}?`)) return;
-  // If metal-linked — also remove the _metals entry
-  if (tx._qaLinkId && data._metals) {
-    const mi = data._metals.findIndex(m => m._qaLinkId === tx._qaLinkId);
-    if (mi >= 0) data._metals.splice(mi, 1);
-  }
-  list.splice(resolvedIdx, 1);
-  save();
-  renderHome(); renderMetals(); renderNetWorth();
-  showToast('🗑 Deleted');
-  const input = document.getElementById('tx-search-input');
-  if (input && input.value) onTxSearch(input.value);
-}
-
-function listEditTx(monthKey, type, idx) {
-  // 2b: Edit from list view — switch to calendar view on that date, open edit
-  const typeMap = {expense:'expenses',income:'income',investment:'investments',debt:'debts',given:'givenToOthers',additional:'additional'};
-  const tx = data[monthKey] && data[monthKey][typeMap[type]] && data[monthKey][typeMap[type]][idx];
-  if (!tx) return;
-  setCalViewMode('calendar', document.querySelector('.cal-view-btn'));
-  calSelectedDay = tx.date || null;
-  viewMonth = monthKey;
-  renderTransactions();
-  setTimeout(() => openEditTx(monthKey, type, idx), 200);
-}
-function listDeleteTx(monthKey, type, idx) {
-  const typeMap = {expense:'expenses',income:'income',investment:'investments',debt:'debts',given:'givenToOthers',additional:'additional'};
-  const listKey = typeMap[type];
-  if (!data[monthKey] || !data[monthKey][listKey]) return;
   const tx = data[monthKey][listKey][idx];
   if (!tx) return;
-  if (!confirm(`Delete "${tx.category}" · ${fmtConverted(Math.abs(tx.amount), tx.currency||currentCurrency.code)}?`)) return;
-  // If metal-linked — also remove the _metals entry
-  if (tx._qaLinkId && data._metals) {
-    const mi = data._metals.findIndex(m => m._qaLinkId === tx._qaLinkId);
-    if (mi >= 0) data._metals.splice(mi, 1);
-  }
+  if (!confirm(`Delete "${tx.category}" · ${fmt(Math.abs(tx.amount))}?`)) return;
   data[monthKey][listKey].splice(idx, 1);
-  save(); renderHome(); renderMetals(); renderNetWorth();
+  save();
   showToast('🗑 Deleted');
-  const lv = document.getElementById('cal-list-view');
-  if (lv && lv.style.display !== 'none') renderCalListView(lv);
+  // Re-run the current search to refresh results
+  const input = document.getElementById('tx-search-input');
+  if (input && input.value) onTxSearch(input.value);
 }
 
 function clearTxSearch() {
@@ -6030,16 +5792,8 @@ function setTxFilter(filter, el) { /* legacy – no-op in calendar view */ }
 function deleteTx(monthKey, type, idx) {
   if(!confirm('Delete this transaction?')) return;
   const typeMap={expense:'expenses',income:'income',investment:'investments',debt:'debts',given:'givenToOthers',additional:'additional'};
-  const listKey = typeMap[type];
-  const tx = data[monthKey] && data[monthKey][listKey] && data[monthKey][listKey][idx];
-  // If metal-linked investment — also remove the paired _metals entry
-  if (tx && tx._qaLinkId && data._metals) {
-    const mi = data._metals.findIndex(m => m._qaLinkId === tx._qaLinkId);
-    if (mi >= 0) data._metals.splice(mi, 1);
-  }
-  data[monthKey][listKey].splice(idx,1);
-  save(); renderTransactions(); renderHome(); renderMetals(); renderNetWorth();
-  showToast('🗑 Transaction deleted');
+  data[monthKey][typeMap[type]].splice(idx,1);
+  save(); renderTransactions(); renderHome(); showToast('Transaction deleted');
 }
 
 // ══════════════════════════════════════════════════════
@@ -6509,93 +6263,14 @@ function deleteMonth(key) { if(!confirm(`Delete all data for ${getDisplayMonth(k
 // EXPORT / IMPORT / BACKUP
 // ══════════════════════════════════════════════════════
 function downloadBackup() {
-  // Full envelope — data object + separate localStorage prefs
-  const envelope = {
-    _appVersion: 'MoneyFi-2.0',
-    _exportedAt: new Date().toISOString(),
-    _theme: localStorage.getItem('mf_theme') || 'default',
-    _currency: localStorage.getItem('mf_currency') || null,
-    data: data
-  };
-  const blob = new Blob([JSON.stringify(envelope, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'MoneyFi_Backup_' + new Date().toISOString().slice(0,10) + '.json';
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-  // Summary toast
-  const months = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k)).length;
-  const txCount = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k))
-    .reduce((s,mk) => s + ['expenses','income','investments','debts','givenToOthers','additional']
-      .reduce((ss,t) => ss + (data[mk][t]||[]).length, 0), 0);
-  showToast('✅ Backup saved · ' + months + ' months · ' + txCount + ' transactions', 3500);
+  const str="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(data));
+  const a=document.createElement('a'); a.setAttribute("href",str); a.setAttribute("download","moneyflow_backup_"+new Date().toISOString().slice(0,10)+".json");
+  document.body.appendChild(a); a.click(); a.remove(); showToast('Backup downloaded ✅');
 }
 function restoreBackup(input) {
-  const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const parsed = JSON.parse(e.target.result);
-      // Support both formats: new envelope {_appVersion, data} or legacy raw data object
-      const isEnvelope = parsed._appVersion || parsed.data;
-      const importedData = isEnvelope ? parsed.data : parsed;
-      const importedTheme = isEnvelope ? parsed._theme : null;
-      const importedCurrency = isEnvelope ? parsed._currency : null;
-
-      // Build preview summary
-      const months = Object.keys(importedData).filter(k => /^\d{4}-\d{2}$/.test(k));
-      const txCount = months.reduce((s,mk) => s +
-        ['expenses','income','investments','debts','givenToOthers','additional']
-          .reduce((ss,t) => ss + (importedData[mk]?.[t]||[]).length, 0), 0);
-      const metalsCount = (importedData._metals||[]).length;
-      const nwCount = (importedData._nwAccounts||[]).length;
-      const exportedAt = parsed._exportedAt ? new Date(parsed._exportedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'unknown date';
-
-      const summary = [
-        '📦 Backup from: ' + exportedAt,
-        '📅 ' + months.length + ' months of transactions',
-        '💳 ' + txCount + ' total transactions',
-        '🥇 ' + metalsCount + ' metal entries',
-        '💎 ' + nwCount + ' NW accounts',
-        importedTheme ? '🎨 Theme: ' + importedTheme : '',
-        importedCurrency ? '💱 Currency: ' + JSON.parse(importedCurrency).code : '',
-      ].filter(Boolean).join('\n');
-
-      if (!confirm('⚠️ RESTORE BACKUP\n\n' + summary + '\n\nThis will OVERWRITE all current data. Continue?')) return;
-
-      // Restore data
-      data = importedData;
-
-      // Restore theme if present
-      if (importedTheme) {
-        localStorage.setItem('mf_theme', importedTheme);
-        setTheme(importedTheme);
-      }
-
-      // Restore currency if present
-      if (importedCurrency) {
-        try {
-          const cur = JSON.parse(importedCurrency);
-          currentCurrency = cur;
-          localStorage.setItem('mf_currency', importedCurrency);
-        } catch(e) {}
-      }
-
-      // Save and full re-render
-      save();
-      populateDataMonthSelect();
-      renderHome();
-      try { renderTransactions(); } catch(e) {}
-      try { renderBudget(); } catch(e) {}
-      try { renderNetWorth(); } catch(e) {}
-      try { renderMetals(); } catch(e) {}
-      try { renderSettings(); } catch(e) {}
-      showToast('✅ Restored · ' + months.length + ' months · ' + txCount + ' transactions', 3500);
-    } catch(err) {
-      showToast('❌ Invalid backup file — ' + err.message);
-    }
-  };
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{ try{ const imported=JSON.parse(e.target.result); if(confirm('⚠️ This will OVERWRITE all data. Continue?')){ data=imported; save(); populateDataMonthSelect(); renderHome(); showToast('✅ Data restored!'); } }catch(err){showToast('❌ Invalid JSON');} };
   reader.readAsText(file);
 }
 function exportAllData() {
@@ -6717,39 +6392,20 @@ function showMetalPriceEdit() {
   panel.style.display = isVisible ? 'none' : '';
   if (!isVisible) {
     const base = getMetalBasePrice(currentMetal);
-    const unitToggle = document.getElementById('metal-price-unit-toggle');
-    const unit = unitToggle ? unitToggle.value : 'g';
-    const baseInUnit = unit === 'oz' ? (base * 31.1035) : base;
-    document.getElementById('metal-price-override-input').value = baseInUnit.toFixed(2);
+    document.getElementById('metal-price-override-input').value = base.toFixed(2);
     document.getElementById('metal-price-override-label').textContent =
-      `Set base price (${currentMetal === 'gold' ? '24K pure' : currentMetal === 'silver' ? '999 Fine' : 'Pt999'}) ${sym()}/${unit} for ${METAL_CONFIG[currentMetal].label}:`;
+      `Set base price (${currentMetal === 'gold' ? '24K pure' : currentMetal === 'silver' ? '999 Fine' : 'Pt999'}) $/gram for ${METAL_CONFIG[currentMetal].label}:`;
     renderPurityPrices(currentMetal);
   }
 }
 
-function toggleMetalPriceUnit() {
-  const unit = document.getElementById('metal-price-unit-toggle')?.value || 'g';
-  const base = getMetalBasePrice(currentMetal);
-  const displayPrice = unit === 'oz' ? (base * 31.1035) : base;
-  const inp = document.getElementById('metal-price-override-input');
-  if (inp) inp.value = displayPrice.toFixed(2);
-  const metalLabel = currentMetal === 'gold' ? '24K pure' : currentMetal === 'silver' ? '999 Fine' : 'Pt999';
-  const lbl = document.getElementById('metal-price-override-label');
-  if (lbl) lbl.textContent = `Set base price (${metalLabel}) ${sym()}/${unit} for ${METAL_CONFIG[currentMetal].label}:`;
-  renderPurityPrices(currentMetal);
-}
-
 function applyMetalPriceOverride() {
-  let price = parseFloat(document.getElementById('metal-price-override-input').value);
+  const price = parseFloat(document.getElementById('metal-price-override-input').value);
   if (!price || price <= 0) { showToast('Enter a valid price ❌'); return; }
-  // Close panel FIRST (before any re-renders that might race on iOS)
+  updateMetalPriceOverride(currentMetal, price); // no purity = sets base price
+  // Close the panel after saving
   const panel = document.getElementById('metal-price-override-panel');
   if (panel) panel.style.display = 'none';
-  // Convert oz → g if user is in oz mode
-  const unit = document.getElementById('metal-price-unit-toggle')?.value || 'g';
-  if (unit === 'oz') price = price / 31.1035; // 1 troy oz = 31.1035g
-  updateMetalPriceOverride(currentMetal, price);
-  showToast('✅ Price updated');
 }
 
 function renderPurityPrices(metalType) {
@@ -6774,7 +6430,7 @@ function renderPurityPrices(metalType) {
     return `<tr style="border-bottom:1px solid #F0F0F0;">
       <td style="padding:4px 6px;font-weight:800;color:var(--text-dark);font-size:0.82em;">${p}</td>
       <td style="padding:4px 6px;font-weight:700;color:var(--text-med);font-size:0.78em;">${hasOverride ? '' : (mult*100).toFixed(1)+'%'}</td>
-      <td style="padding:4px 6px;font-weight:900;color:var(--primary);font-size:0.88em;">${sym()}${(document.getElementById('metal-price-unit-toggle')?.value==='oz'?(effectivePrice*31.1035):effectivePrice).toFixed(2)}/${document.getElementById('metal-price-unit-toggle')?.value||'g'} ${overrideBadge}</td>
+      <td style="padding:4px 6px;font-weight:900;color:var(--primary);font-size:0.88em;">$${effectivePrice.toFixed(2)}/g ${overrideBadge}</td>
       <td style="padding:4px 2px;text-align:right;">
         <button onclick="openPurityOverride('${metalType}','${p}',${effectivePrice})"
           style="background:#F0F4FF;border:none;border-radius:5px;padding:2px 7px;font-size:0.7em;font-weight:800;color:var(--primary);cursor:pointer;">Set</button>
@@ -6806,7 +6462,7 @@ function openPurityOverride(metalType, purity, currentPrice) {
   const label = document.getElementById('poi-label');
   const input = document.getElementById('poi-input');
   if (!panel) return;
-  if (label) label.textContent = `Set ${sym()}/gram for ${purity} ${metalType.charAt(0).toUpperCase()+metalType.slice(1)}:`;
+  if (label) label.textContent = `Set $/gram for ${purity} ${metalType.charAt(0).toUpperCase()+metalType.slice(1)}:`;
   if (input) { input.value = currentPrice.toFixed(2); input.focus(); }
   panel.style.display = '';
 }
@@ -6825,8 +6481,11 @@ function switchMetal(type) {
   document.getElementById('metal-detail-usd').className='metal-detail-usd '+type;
   const basePrice = getMetalBasePrice(type);
   const hasOverride = (data._metalPriceOverrides||{})[type] !== undefined;
-  document.getElementById('metal-live-price').textContent=sym()+basePrice.toFixed(2)+(hasOverride?' ✏️':'');
-  const baseLabel = type === 'gold' ? sym()+'/gram (24K pure)' : type === 'silver' ? sym()+'/gram (999 Fine)' : sym()+'/gram (Pt999)';
+  document.getElementById('metal-live-price').textContent='$'+basePrice.toFixed(2);
+  // Show a small indicator badge next to price if a custom override is set (avoid double ✏️ with Edit button)
+  const _priceEl = document.getElementById('metal-live-price');
+  if (_priceEl) _priceEl.style.color = hasOverride ? '#10B981' : 'var(--text-dark)';
+  const baseLabel = type === 'gold' ? '$/gram (24K pure)' : type === 'silver' ? '$/gram (999 Fine)' : '$/gram (Pt999)';
   const baseLabelEl = document.getElementById('metal-price-base-label');
   if (baseLabelEl) baseLabelEl.textContent = baseLabel;
   document.getElementById('metal-add-icon').textContent=cfg.emoji;
@@ -6878,216 +6537,70 @@ function renderMetals() {
   document.getElementById('metal-detail-usd').textContent=fmt(convertAmt(active.usd,'USD'));
   document.getElementById('metal-stat-entries').textContent=active.entries.length;
   document.getElementById('metal-stat-oz').textContent=(active.grams/31.1035).toFixed(3);
-  document.getElementById('metal-stat-avg').textContent=active.avgCost>0?sym()+active.avgCost.toFixed(2):sym()+'0';
-  // Sync live price display to current currency (so currency switch updates it)
-  const _lp = document.getElementById('metal-live-price');
-  if (_lp) {
-    const _lpBase = getMetalBasePrice(currentMetal);
-    const _lpOv = (data._metalPriceOverrides||{})[currentMetal] !== undefined;
-    _lp.textContent = sym() + _lpBase.toFixed(2) + (_lpOv?' ✏️':'');
-  }
-  const _bll = document.getElementById('metal-price-base-label');
-  if (_bll) {
-    _bll.textContent = currentMetal==='gold' ? sym()+'/gram (24K pure)' :
-                       currentMetal==='silver' ? sym()+'/gram (999 Fine)' : sym()+'/gram (Pt999)';
-  }
+  document.getElementById('metal-stat-avg').textContent=active.avgCost>0?'$'+active.avgCost.toFixed(2):'$0';
   document.getElementById('holdings-list-count').textContent=active.entries.length+(active.entries.length===1?' entry':' entries');
   const hl=document.getElementById('metals-holdings-list');
   if(active.entries.length===0){hl.innerHTML=`<div class="metal-empty"><div class="metal-empty-icon">${ac.emoji}</div><div class="metal-empty-text">No ${ac.label.toLowerCase()} entries yet.<br>Tap + above to add one.</div></div>`;return;}
   // Combine _metals + NW accounts for this metal type
   const nwMetalForType = (data._nwAccounts||[]).filter(a=>a.type==='metals'&&a.meta&&a.meta.metalType===currentMetal);
   const allEntries = [
-    ...active.entries.map((m,i) => ({ ...m, _source: 'portfolio', _metalIdx: (data._metals||[]).indexOf(m) })),
+    ...active.entries.map(m => ({ ...m, _source: 'portfolio' })),
     ...nwMetalForType.map(a => ({
       name: a.name, grams: Number(a.meta.grams||0), price: 0,
       purity: a.meta.purity||'', occasion: a.meta.occasion||'', form: a.meta.form||'',
       date: a.lastUpdated||'', notes: a.meta.notes||'', _source: 'networth', _nwId: a.id
     }))
   ];
-  // Issue 6: Sort newest first
-  allEntries.sort((a,b) => (b.date||'').localeCompare(a.date||''));
-  renderMetalROI(); // ROI chart
   document.getElementById('holdings-list-count').textContent = allEntries.length + (allEntries.length===1?' entry':' entries');
   if(allEntries.length===0){hl.innerHTML=`<div class="metal-empty"><div class="metal-empty-icon">${ac.emoji}</div><div class="metal-empty-text">No ${ac.label.toLowerCase()} entries yet.<br>Tap + above to add one.</div></div>`;return;}
-  // Issue 8: Group entries by date — no-date at bottom with friendly label
-  const datedEntries   = allEntries.filter(m => m.date);
-  const undatedEntries = allEntries.filter(m => !m.date);
-  const byDateGroup = {};
-  datedEntries.forEach(m => {
-    const dk = m.date; // YYYY-MM-DD
-    if (!byDateGroup[dk]) byDateGroup[dk] = [];
-    byDateGroup[dk].push(m);
-  });
-  const dateGroupKeys = Object.keys(byDateGroup).sort().reverse(); // newest first
-
-  let holdingHtml = '';
-  dateGroupKeys.forEach(dk => {
-    const groupLabel = new Date(dk+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-    holdingHtml += `<div style="font-size:0.72em;font-weight:800;color:var(--text-light);padding:8px 20px 2px;text-transform:uppercase;letter-spacing:0.04em;background:#FAFAFA;border-bottom:1px solid #F0F0F0;">${groupLabel}</div>`;
-    byDateGroup[dk].forEach((m,idx) => {
-      holdingHtml += renderMetalHoldingRow(m, allEntries.indexOf(m));
-    });
-  });
-  if (undatedEntries.length > 0) {
-    holdingHtml += `<div style="font-size:0.72em;font-weight:800;color:var(--text-light);padding:8px 20px 2px;text-transform:uppercase;letter-spacing:0.04em;background:#FAFAFA;border-bottom:1px solid #F0F0F0;">📦 No Date Recorded</div>`;
-    undatedEntries.forEach((m,idx) => {
-      holdingHtml += renderMetalHoldingRow(m, allEntries.indexOf(m));
-    });
-  }
-  hl.innerHTML = holdingHtml;
-}
-
-function renderMetalROI() {
-  const entries = getMetals().filter(m => m.metalType === currentMetal);
-  if (!entries.length) {
-    const card = document.getElementById('metal-roi-card');
-    if (card) card.style.display = 'none';
-    return;
-  }
-  const card = document.getElementById('metal-roi-card');
-  if (card) card.style.display = '';
-
-  // Compute cost basis (entries with stored price) and live value
-  // Cost basis: m.price is stored as $/gram at purchase time in USD
-  // Live value: always USD via getPriceForMetal
-  // Both in USD → convert together at end for display
-  let totalCostUSD = 0, totalValueUSD = 0, gramsWithCost = 0;
-  entries.forEach(m => {
-    const g = Number(m.grams || m.weightGms || 0);
-    const livePrice = getPriceForMetal(currentMetal, m.purity || '');
-    totalValueUSD += g * livePrice;
-    if (Number(m.price || 0) > 0) {
-      // m.price = display_currency / gram at purchase time
-      // Reverse-convert to USD: divide by the USD→displayCurrency multiplier
-      const fxMult = convertAmt(1, 'USD'); // 1 USD in display currency
-      const priceInUSD = fxMult > 0 ? Number(m.price) / fxMult : Number(m.price);
-      totalCostUSD += g * priceInUSD;
-      gramsWithCost += g;
+  hl.innerHTML=allEntries.map((m,idx)=>{
+    const grams=Number(m.grams||m.weightGms||0);
+    const purity = m.purity||'';
+    // Always show live price per gram (purchase price shown separately as avg cost)
+    const price = getPriceForMetal(currentMetal, purity);
+    const usdVal=grams*price;
+    const oz=(grams/31.1035).toFixed(3);
+    const purityTag = purity ? `<span style="background:#F5F5F5;border-radius:5px;padding:1px 6px;font-size:0.75em;font-weight:700;color:#7C3AED;">${purity}</span>` : '';
+    // Show live price in display currency (always computed from live USD price converted to display)
+    const livePriceDisp = convertAmt(price, 'USD'); // price is always USD/g from getPriceForMetal
+    const priceTag = `<span style="color:var(--text-light);font-size:0.75em;">${fmt(livePriceDisp)}/g (live)</span>`;
+    // For investing-sourced entries, also show the purchase cost per gram
+    let purchaseCostTag = '';
+    if (m._fromInvesting && m.price > 0 && m._purchaseCurrency) {
+      // price stored in _purchaseCurrency per gram
+      const pCur = CURRENCIES.find(c=>c.code===m._purchaseCurrency)||{symbol:m._purchaseCurrency};
+      purchaseCostTag = ` · <span style="color:#7C3AED;font-size:0.75em;">paid ${pCur.symbol}${m.price.toFixed(0)}/g</span>`;
     }
-  });
-  if (gramsWithCost === 0) totalCostUSD = totalValueUSD; // no cost data — no gain display
-
-  const gainUSD = totalValueUSD - totalCostUSD;
-  const gainPct = totalCostUSD > 0 ? gainUSD / totalCostUSD * 100 : 0;
-  const gainColor = gainUSD >= 0 ? '#10B981' : '#EF4444';
-  const gainBg   = gainUSD >= 0 ? '#D1FAE5' : '#FEE2E2';
-
-  // Update tiles
-  const costEl  = document.getElementById('metal-roi-cost');
-  const valEl   = document.getElementById('metal-roi-value');
-  const gainEl  = document.getElementById('metal-roi-gain');
-  const badgeEl = document.getElementById('metal-roi-gain-badge');
-  if (costEl)  costEl.textContent  = fmt(convertAmt(totalCostUSD, 'USD'));
-  if (valEl)   valEl.textContent   = fmt(convertAmt(totalValueUSD, 'USD'));
-  if (gainEl)  { gainEl.textContent = (gainUSD >= 0 ? '+' : '') + fmt(convertAmt(gainUSD, 'USD')); gainEl.style.color = gainColor; }
-  if (badgeEl) { badgeEl.textContent = (gainPct >= 0 ? '+' : '') + gainPct.toFixed(1) + '%'; badgeEl.style.background = gainBg; badgeEl.style.color = gainColor; }
-
-  // Progress bar — cost as grey, value as gold overlay
-  const maxVal = Math.max(totalCostUSD, totalValueUSD);
-  const costBar  = document.getElementById('metal-roi-bar-cost');
-  const valueBar = document.getElementById('metal-roi-bar-value');
-  if (costBar)  costBar.style.width  = maxVal > 0 ? (totalCostUSD  / maxVal * 100) + '%' : '0%';
-  if (valueBar) valueBar.style.width = maxVal > 0 ? (totalValueUSD / maxVal * 100) + '%' : '0%';
-
-  // Acquisition over time chart — cumulative grams by date
-  const dated = entries.filter(m => m.date).sort((a,b) => a.date.localeCompare(b.date));
-  if (!dated.length) return;
-
-  const canvas = document.getElementById('metal-roi-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.offsetWidth || 300;
-  canvas.width = W * (window.devicePixelRatio || 1);
-  canvas.height = 70 * (window.devicePixelRatio || 1);
-  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-
-  // Build cumulative grams timeline
-  let cumGrams = 0;
-  const points = dated.map(m => {
-    cumGrams += Number(m.grams || m.weightGms || 0);
-    return { date: m.date, grams: cumGrams };
-  });
-
-  const minG = 0, maxG = points[points.length - 1].grams;
-  const padL = 0, padR = 0, padT = 8, padB = 0;
-  const chartW = W - padL - padR;
-  const chartH = 70 - padT - padB;
-
-  const xScale = (i) => padL + (i / (points.length - 1 || 1)) * chartW;
-  const yScale = (g) => padT + chartH - (maxG > 0 ? (g / maxG) * chartH : 0);
-
-  // Gradient fill
-  const grad = ctx.createLinearGradient(0, padT, 0, padT + chartH);
-  grad.addColorStop(0, 'rgba(245,158,11,0.35)');
-  grad.addColorStop(1, 'rgba(245,158,11,0.03)');
-
-  ctx.beginPath();
-  points.forEach((p, i) => {
-    const x = xScale(i), y = yScale(p.grams);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.lineTo(xScale(points.length - 1), padT + chartH);
-  ctx.lineTo(xScale(0), padT + chartH);
-  ctx.closePath();
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  // Line
-  ctx.beginPath();
-  points.forEach((p, i) => {
-    const x = xScale(i), y = yScale(p.grams);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.strokeStyle = '#F59E0B';
-  ctx.lineWidth = 2.5;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  // End dot
-  const lastX = xScale(points.length - 1), lastY = yScale(points[points.length - 1].grams);
-  ctx.beginPath();
-  ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
-  ctx.fillStyle = '#F59E0B';
-  ctx.fill();
-}
-
-function renderMetalHoldingRow(m, idx) {
-  // Standalone helper — uses currentMetal from outer scope
-  const ac = METAL_CONFIG[currentMetal];
-  const grams=Number(m.grams||m.weightGms||0);
-  const purity = m.purity||'';
-  const price = getPriceForMetal(currentMetal, purity);
-  const usdVal=grams*price;
-  const oz=(grams/31.1035).toFixed(3);
-  const purityTag = purity ? `<span style="background:#F5F5F5;border-radius:5px;padding:1px 6px;font-size:0.75em;font-weight:700;color:#7C3AED;">${purity}</span>` : '';
-  const priceTag = `<span style="color:var(--text-light);font-size:0.75em;">$${price.toFixed(2)}/g <span style="color:#10B981;font-size:0.85em;font-weight:800;">live</span></span>`;
-  const sourceTag = m._source==='networth' ? `<span style="font-size:0.7em;color:var(--text-light);"> · 📊 NW</span>` : '';
-  const paidCostUSD = (m.price && m.price > 0) ? m.price * grams : 0;
-  const paidTag = paidCostUSD > 0 ? `<div style="font-size:0.7em;color:#7C3AED;font-weight:700;margin-top:1px;">paid ${fmt(convertAmt(paidCostUSD,'USD'))}</div>` : '';
-  const qaTag = ''; // Propagation is seamless — no need to show source chip
-  const delBtn = m._source==='networth'
-    ? `<button class="metal-holding-del" onclick="navigateTo('networth')" title="Manage in Net Worth">↗️</button>`
-    : `<button class="metal-holding-del" onclick="deleteMetalEntry(${m._metalIdx})" title="Delete">✕</button>`;
-  return `<div class="metal-holding-item">
+    const sourceTag = m._source==='networth'
+      ? `<span style="font-size:0.7em;color:var(--text-light);"> · 📊 NW</span>`
+      : m._fromInvesting
+        ? `<span style="background:#7C3AED15;color:#7C3AED;font-size:0.68em;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:3px;">📈 ${m._invMonth||'Investing'}</span>`
+        : '';
+    const delBtn = m._source==='networth'
+      ? `<button class="metal-holding-del" onclick="navigateTo('networth')" title="Edit in Net Worth">↗️</button>`
+      : `<button class="metal-holding-del" onclick="deleteMetalEntryByLink(${JSON.stringify(m._linkId||null)},${metals.indexOf(m)})">✕</button>`;
+    return `<div class="metal-holding-item">
       <div class="metal-holding-badge ${currentMetal}">${ac.emoji}</div>
       <div class="metal-holding-main">
         <div class="metal-holding-top">
           <span class="metal-holding-name-text">${m.name||m.itemName||'Unnamed'}</span>
-          ${purityTag}${qaTag||''}
+          ${purityTag}
         </div>
-        <div class="metal-holding-bottom">${grams.toFixed(2)}g · ${oz}oz ${priceTag}${m.occasion?' · '+m.occasion:''}${m.notes?' · '+m.notes:''}${sourceTag}</div>
+        <div class="metal-holding-bottom">${grams.toFixed(2)}g · ${oz}oz ${priceTag}${purchaseCostTag}${m.occasion?' · '+m.occasion:''}${m.notes?' · '+m.notes:''}${sourceTag}</div>
       </div>
       <div class="metal-holding-right">
         <div class="metal-holding-value">${fmt(convertAmt(usdVal,'USD'))}</div>
-        <div class="metal-holding-weight">${grams.toFixed(2)} g</div>
-        ${paidTag||''}
+        ${m._fromInvesting && m.price > 0 && m._purchaseCurrency
+          ? `<div style="font-size:0.68em;color:#7C3AED;font-weight:700;margin-top:1px;">
+               paid ${(()=>{ const pc=CURRENCIES.find(c=>c.code===m._purchaseCurrency)||{symbol:m._purchaseCurrency}; return pc.symbol; })()}${(m.price*grams).toLocaleString(undefined,{maximumFractionDigits:0})}
+             </div>`
+          : `<div class="metal-holding-weight">${grams.toFixed(2)} g</div>`
+        }
       </div>
-      <button class="metal-holding-del" onclick="openEditMetalSheet(${m._metalIdx})" title="Edit" style="color:#4A9EFF;">${m._source==='portfolio'?'✏️':''}</button>
       ${delBtn}
     </div>`;
+  }).join('');
 }
-
 function addMetalEntry() {
   const name=document.getElementById('metal-name').value.trim(), grams=parseFloat(document.getElementById('metal-grams').value), price=parseFloat(document.getElementById('metal-price').value)||0, date=document.getElementById('metal-date').value||localDateStr(), form=document.getElementById('metal-form').value, notes=document.getElementById('metal-notes').value.trim(), purity=document.getElementById('metal-purity').value.trim(), occasion=document.getElementById('metal-occasion').value.trim();
   if(!name){showToast('Enter a source/name ❌');return;} if(!grams||grams<=0){showToast('Enter a valid weight ❌');return;}
@@ -7098,117 +6611,86 @@ function addMetalEntry() {
   showToast(METAL_CONFIG[currentMetal].emoji+' '+METAL_CONFIG[currentMetal].label+' entry added!');
 }
 function deleteMetalEntry(idx) {
-  if (idx < 0 || idx >= (data._metals||[]).length) { showToast('Cannot find entry ❌'); return; }
-  if (!confirm('Delete this metal entry?')) return;
-  const entry = data._metals[idx];
-  // Use stable _qaLinkId to find and delete linked investment tx
-  if (entry && entry._qaLinkId) {
-    const mk = entry._fromQAMonth;
-    if (mk && data[mk] && data[mk].investments) {
-      const invIdx = data[mk].investments.findIndex(t => t._qaLinkId === entry._qaLinkId);
-      if (invIdx >= 0) data[mk].investments.splice(invIdx, 1);
-    }
-  }
+  const entry = (data._metals||[])[idx];
+  if (!entry) return;
+  const isLinked = !!entry._linkId;
+  const confirmMsg = isLinked
+    ? 'Delete this metal entry and the linked investing transaction?'
+    : 'Delete this metal entry?';
+  if (!confirm(confirmMsg)) return;
+
+  // Remove the metals entry
   data._metals.splice(idx, 1);
-  save();
-  // Refresh all affected views
-  renderMetals();
-  renderNetWorth();
-  renderHome();
-  renderTransactions();
-  showToast('🗑 Entry deleted from Metals, Investing & NW');
+
+  // If it was auto-created from an investing transaction, remove that too
+  if (isLinked) {
+    const linkId = entry._linkId;
+    const typeMap = { expense:'expenses', income:'income', investment:'investments',
+                      debt:'debts', given:'givenToOthers', additional:'additional' };
+    let txRemoved = false;
+    Object.keys(data).filter(mk => /^\d{4}-\d{2}$/.test(mk)).forEach(mk => {
+      const invList = (data[mk].investments || []);
+      const beforeLen = invList.length;
+      data[mk].investments = invList.filter(t => t._metalLinkId !== linkId);
+      if (data[mk].investments.length < beforeLen) txRemoved = true;
+    });
+    save();
+    renderMetals();
+    renderTransactions();
+    if (typeof renderHome === 'function') renderHome();
+    showToast(txRemoved ? '🗑 Metal entry + investing transaction deleted' : '🗑 Metal entry deleted');
+  } else {
+    save();
+    renderMetals();
+    showToast('Entry deleted');
+  }
+}
+
+function deleteMetalEntryByLink(linkId, fallbackIdx) {
+  // Find the index by _linkId first (most reliable), fall back to positional index
+  const idx = linkId
+    ? (data._metals||[]).findIndex(m => m._linkId === linkId)
+    : fallbackIdx;
+  deleteMetalEntry(idx >= 0 ? idx : fallbackIdx);
 }
 
 // Delete an imported metal entry directly from NW screen
 function deleteImportedMetal(idx) {
   if (!confirm('Delete this metal entry?')) return;
   if (!data._metals || !data._metals[idx]) return;
-  const entry = data._metals[idx];
-  if (entry && entry._qaLinkId) {
-    const mk = entry._fromQAMonth;
-    if (mk && data[mk] && data[mk].investments) {
-      const invIdx = data[mk].investments.findIndex(t => t._qaLinkId === entry._qaLinkId);
-      if (invIdx >= 0) data[mk].investments.splice(invIdx, 1);
-    }
-  }
   data._metals.splice(idx, 1);
-  save(); renderNetWorth(); renderMetals(); renderHome(); renderTransactions();
-  showToast('🗑 Metal entry deleted');
+  save(); renderNetWorth(); renderMetals();
+  showToast('✅ Metal entry deleted');
 }
 
 // Open edit sheet for an imported metal entry from NW screen
 function openEditMetalSheet(idx) {
   const m = (data._metals || [])[idx];
   if (!m) return;
-  // Issue 5: Use inline modal instead of browser prompts
-  let modal = document.getElementById('metal-edit-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'metal-edit-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
-    modal.innerHTML = `<div style="background:white;border-radius:20px 20px 0 0;padding:24px 20px 32px;width:100%;max-width:480px;box-shadow:0 -8px 32px rgba(0,0,0,0.15);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-        <div style="font-weight:900;font-size:1.1em;color:#222;">✏️ Edit Metal Entry</div>
-        <button onclick="document.getElementById('metal-edit-modal').remove()" style="background:#F5F5F5;border:none;border-radius:50%;width:32px;height:32px;font-size:1.1em;cursor:pointer;">✕</button>
-      </div>
-      <div style="display:grid;gap:10px;">
-        <input id="me-name" placeholder="Item name" style="width:100%;padding:10px 12px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito,sans-serif;font-weight:700;font-size:0.9em;box-sizing:border-box;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <input id="me-grams" type="number" placeholder="Weight (g)" step="0.001" min="0" style="padding:10px 12px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito,sans-serif;font-weight:700;font-size:0.9em;">
-          <input id="me-purity" placeholder="Purity e.g. 22K" style="padding:10px 12px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito,sans-serif;font-weight:700;font-size:0.9em;">
-        </div>
-        <input id="me-occasion" placeholder="Occasion (e.g. Wedding)" style="width:100%;padding:10px 12px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito,sans-serif;font-weight:700;font-size:0.9em;box-sizing:border-box;">
-        <div style="position:relative;">
-          <input id="me-price" type="number" placeholder="Purchase price / gram (optional)" step="0.01" min="0"
-            style="width:100%;padding:10px 12px 10px 36px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito,sans-serif;font-weight:700;font-size:0.9em;box-sizing:border-box;">
-          <span id="me-price-sym" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:800;font-size:0.85em;color:#9AA0B2;">$</span>
-          <div style="font-size:0.62em;color:#9AA0B2;font-weight:700;margin-top:3px;padding-left:2px;">💡 Cost basis per gram — used for ROI calculation</div>
-        </div>
-        <select id="me-type" style="width:100%;padding:10px 12px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito,sans-serif;font-weight:700;font-size:0.9em;background:white;box-sizing:border-box;">
-          <option value="gold">🥇 Gold</option>
-          <option value="silver">🥈 Silver</option>
-          <option value="platinum">⬜ Platinum</option>
-        </select>
-        <button onclick="saveMetalEdit()" style="background:#10B981;color:white;border:none;border-radius:12px;padding:14px;font-weight:900;font-size:1em;cursor:pointer;font-family:Nunito,sans-serif;">✅ Save Changes</button>
-      </div>
-    </div>`;
-    document.body.appendChild(modal);
-  }
-  // Pre-fill fields
-  document.getElementById('me-name').value    = m.itemName || m.name || '';
-  document.getElementById('me-grams').value   = m.grams || m.weightGms || '';
-  document.getElementById('me-purity').value  = m.purity || '';
-  document.getElementById('me-occasion').value = m.occasion || '';
-  document.getElementById('me-price').value   = m.price || '';
-  document.getElementById('me-type').value    = m.metalType || 'gold';
-  // Show correct currency symbol for price field
-  const symEl = document.getElementById('me-price-sym');
-  if (symEl) symEl.textContent = sym();
-  modal.dataset.idx = idx;
-  modal.style.display = 'flex';
-}
-
-function saveMetalEdit() {
-  const modal = document.getElementById('metal-edit-modal');
-  if (!modal) return;
-  const idx = parseInt(modal.dataset.idx);
-  const m = (data._metals || [])[idx];
-  if (!m) return;
-  const name   = document.getElementById('me-name').value.trim();
-  const grams  = parseFloat(document.getElementById('me-grams').value);
-  const purity = document.getElementById('me-purity').value.trim();
-  const occasion = document.getElementById('me-occasion').value.trim();
-  const priceRaw = document.getElementById('me-price').value;
-  const price  = priceRaw !== '' ? parseFloat(priceRaw) : undefined;
-  const type   = document.getElementById('me-type').value;
-  if (!name) { showToast('Enter item name ❌'); return; }
-  if (!grams || grams <= 0) { showToast('Enter valid weight ❌'); return; }
-  const updatedEntry = { ...m, metalType:type, name, itemName:name, grams, weightGms:grams, purity, occasion };
-  if (price !== undefined && !isNaN(price) && price > 0) updatedEntry.price = price;
-  else if (price === 0) delete updatedEntry.price; // cleared explicitly → remove cost basis
-  data._metals[idx] = updatedEntry;
-  save(); renderMetals(); renderNetWorth();
-  modal.remove(); // Issue 5: close cleanly
+  // Navigate to Data screen → Metals section and open edit inline
+  // Simplest approach: open a quick edit modal pre-filled
+  const newType  = prompt('Metal type (gold/silver/platinum):', m.metalType || 'gold');
+  if (newType === null) return;
+  const newPurity  = prompt('Purity (e.g. 22K, 18K):', m.purity || '');
+  if (newPurity === null) return;
+  const newOccasion = prompt('Occasion (e.g. Wedding, Gift):', m.occasion || '');
+  if (newOccasion === null) return;
+  const newItem  = prompt('Item name:', m.itemName || m.name || '');
+  if (newItem === null) return;
+  const newGrams = prompt('Weight in grams:', m.grams || m.weightGms || '');
+  if (newGrams === null) return;
+  const g = parseFloat(newGrams);
+  if (!g || g <= 0) { showToast('Invalid weight ❌'); return; }
+  data._metals[idx] = {
+    ...m,
+    metalType: newType.toLowerCase().trim() || 'gold',
+    purity: newPurity.trim(),
+    occasion: newOccasion.trim(),
+    itemName: newItem.trim(),
+    name: newItem.trim() || newType,
+    grams: g, weightGms: g,
+  };
+  save(); renderNetWorth(); renderMetals();
   showToast('✅ Metal entry updated');
 }
 
@@ -7288,7 +6770,7 @@ function updateSettingsPinUI(){ ... }
 // ══════════════════════════════════════════════════════
 // BUDGET MODULE
 // ══════════════════════════════════════════════════════
-let budgetViewMonth = getCurrentMonthKey();
+// viewMonth removed — viewMonth is the single source of truth
 let currentBudgetTab = 'overview';
 let currentBudgetCatDetail = null; // {type:'expense'|'savings', goalKey}
 let editingBudgetKey = null; // null = new, string = existing key
@@ -7298,28 +6780,8 @@ let pickedBudgetEmoji = '💸';
 const BUDGET_EMOJIS = ['💸','🛒','🚗','🏠','💊','🎭','🍔','☕','🎓','🐾','✈️','👗','🎮','🏋️','🎁','📱','⚡','🚌','💈','🎪','🏥','🏦','🔧','🌮','📚','🐟','🌿','💡','🎯','🏡','🥇','💰','📈','🏛️','🎉','🍕','🌺','🌊','🎶','🧘'];
 
 // Default budgets — empty for new users, they set up their own
-const DEFAULT_EXPENSE_BUDGETS = [
-  // 🍔 Food & Daily Living
-  { key:'Groceries & Food',   name:'Groceries & Food',   amount:0, linkedCats:['Groceries','FastFood','Restaurant','Breakfast','Lunch','Dinner','Takeout','Swiggy','Zomato','Snacks','Coffee'], icon:'🛒', type:'expense' },
-  { key:'Transport',          name:'Transport',           amount:0, linkedCats:['Gas','Fuel','Uber','Ola','Auto','Transport','Metro','Bus','Parking','Toll'],              icon:'🚌', type:'expense' },
-  { key:'Housing & Utilities',name:'Housing & Utilities', amount:0, linkedCats:['Rent','Mortgage','Electricity','Water','Internet','WiFi','Gas Bill','Utility','Maintenance'], icon:'🏠', type:'expense' },
-  { key:'Health & Medical',   name:'Health & Medical',    amount:0, linkedCats:['Doctor','Medicine','Pharmacy','Dental','Hospital','Gym','Lab Test'],                      icon:'💊', type:'expense' },
-  { key:'Phone & Subscriptions',name:'Phone & Subscriptions',amount:0,linkedCats:['Phone','Mobile','Netflix','Spotify','Amazon Prime','Hotstar','YouTube Premium','Software'],icon:'📱', type:'expense' },
-  { key:'Shopping',           name:'Shopping',            amount:0, linkedCats:['Clothing','Electronics','Cosmetics','Household','Furniture','Amazon','Flipkart','Shopping'],icon:'🛍️', type:'expense' },
-  { key:'Family & Giving',    name:'Family & Giving',     amount:0, linkedCats:['Parents','Family','Kids','Spouse','Gift','Charity','Donation'],                            icon:'❤️', type:'expense' },
-  { key:'Entertainment & Travel',name:'Entertainment & Travel',amount:0,linkedCats:['Travel','Flight','Hotel','Vacation','Movies','Entertainment','Sports','Hobby'],        icon:'✈️', type:'expense' },
-  { key:'Education',          name:'Education',           amount:0, linkedCats:['School Fees','College','Course','Books','Tuition','Coaching'],                            icon:'🎓', type:'expense' },
-  { key:'EMI & Loan',         name:'EMI & Loan',          amount:0, linkedCats:['EMI','Loan Payment','Mortgage'],                                                           icon:'🏦', type:'expense' },
-];
-
-const DEFAULT_SAVINGS_BUDGETS = [
-  // 📈 Investments & Savings
-  { key:'Equity Investments',  name:'Equity Investments',  amount:0, linkedCats:['Stocks','ETF','Mutual Fund','SIP','Crypto'],         icon:'📈', type:'savings' },
-  { key:'Gold & Metals',       name:'Gold & Metals',        amount:0, linkedCats:['Gold','Silver','Gold & Metals','Metals'],               icon:'🥇', type:'savings' },
-  { key:'Retirement Savings',  name:'Retirement Savings',   amount:0, linkedCats:['NPS','PPF','EPF','VPF','401k','IRA','Retirement'],   icon:'🏛️', type:'savings' },
-  { key:'Fixed Income',        name:'Fixed Income',         amount:0, linkedCats:['FD','RD','Bonds','Fixed Deposit'],                   icon:'🏦', type:'savings' },
-  { key:'Emergency Fund',      name:'Emergency Fund',       amount:0, linkedCats:['Emergency','Savings','Liquid'],                      icon:'🛡️', type:'savings' },
-];
+const DEFAULT_EXPENSE_BUDGETS = [];
+const DEFAULT_SAVINGS_BUDGETS = [];
 
 function getBudgetGoals(type) {
   const key = type === 'savings' ? '_savingsGoals' : '_expenseGoals';
@@ -7929,12 +7391,7 @@ function homeCardTouchStart(e, cardKey, type, subcat) {
     _didLongPress       = true;
     _homeLongPressTimer = null;
     if (navigator.vibrate) navigator.vibrate(50);
-    // Route correctly: investments → search by invest type; expense/income → budget detail
-    if (_homeLongPressType === 'investment') {
-      goToInvestDetail(cardKey);
-    } else {
-      goToBudgetDetail(cardKey);
-    }
+    goToBudgetDetail(cardKey);
   }, 600);
 }
 
@@ -7977,10 +7434,6 @@ function goToInvestDetail(cardKey) {
     if (searchInput) {
       searchInput.value = cardKey;
       onTxSearch(cardKey);
-      // Show context toast with total for that invest category
-      const cards = getHomeInvCards();
-      const card = cards.find(c => c.key === cardKey);
-      if (card) showToast(`📈 ${card.label || cardKey} · all history`);
     }
   }, 80);
 }
@@ -8022,39 +7475,29 @@ function goToBudgetDetail(cardKey) {
 
 // ── Budget swipe gesture ────────────────────────────────────────
 let _budgetSwipeX = null;
-let _budgetSwipeBlocked = false; // Issue 7: block if swipe started on bubble scroll
 
 function budgetSwipeStart(e) {
-  // Issue 7: Don't capture swipe if it starts inside a scrollable bubble area
-  const target = e.target;
-  const inBubbleScroll = target.closest('.budget-cats-scroll');
-  if (inBubbleScroll) {
-    _budgetSwipeBlocked = true;
-    _budgetSwipeX = null;
-    return;
-  }
-  _budgetSwipeBlocked = false;
   _budgetSwipeX = e.touches ? e.touches[0].clientX : null;
 }
 
 function budgetSwipeEnd(e) {
-  if (_budgetSwipeBlocked || _budgetSwipeX === null) { _budgetSwipeBlocked = false; return; }
+  if (_budgetSwipeX === null) return;
   const endX = e.changedTouches ? e.changedTouches[0].clientX : null;
   if (endX === null) { _budgetSwipeX = null; return; }
   const delta = endX - _budgetSwipeX;
   _budgetSwipeX = null;
-  if (Math.abs(delta) < 60) return; // slightly higher threshold for intentional swipe
+  if (Math.abs(delta) < 50) return;
   budgetChangeMonth(delta < 0 ? 1 : -1);
 }
 
 function budgetChangeMonth(dir) {
-  const [y, m] = budgetViewMonth.split('-').map(Number);
+  const [y, m] = viewMonth.split('-').map(Number);
   const d = new Date(y, m - 1 + dir, 1);
-  budgetViewMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  viewMonth = budgetViewMonth; // keep global month in sync
-  document.getElementById('budget-month-label').textContent = getDisplayMonth(budgetViewMonth);
-  // Issue 1: update ALL month labels so Home stays in sync
-  updatePeriodLabel();
+  viewMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('budget-month-label').textContent = getDisplayMonth(viewMonth);
+  // Update topbar month if visible
+  const topbarMonth = document.getElementById('topbar-month');
+  if (topbarMonth) topbarMonth.textContent = getDisplayMonth(viewMonth);
   renderBudgetModule();
   // If detail pane is open, re-render it for the new month
   if (currentBudgetCatDetail) {
@@ -8098,11 +7541,9 @@ function getBudgetActual(goal, monthKey) {
   let total = 0;
   ['expenses', 'investments', 'additional'].forEach(listKey => {
     (m[listKey] || []).forEach(e => {
-      const ec  = (e.category   || '').toLowerCase().trim();
-      const eit = (e.investType || '').toLowerCase().trim(); // G: also check investType
-      const esc = (e.subCategory|| '').toLowerCase().trim();
-      // Match on category OR investType OR subCategory
-      if (cats.some(c => ec === c || eit === c || esc === c)) {
+      const ec = (e.category || '').toLowerCase().trim();
+      // Exact match only — prevents 'parent' matching 'parents', 'gold' matching 'onegold' etc.
+      if (cats.some(c => ec === c)) {
         total += convertAmt(e.amount, e.currency);
       }
     });
@@ -8122,7 +7563,7 @@ function getLast12Months(fromMonthKey) {
 }
 
 function renderBudgetModule() {
-  document.getElementById('budget-month-label').textContent = getDisplayMonth(budgetViewMonth);
+  document.getElementById('budget-month-label').textContent = getDisplayMonth(viewMonth);
   if (currentBudgetTab === 'overview') renderBudgetOverview();
   else if (currentBudgetTab === 'expenses') renderBudgetGoalsList('expense');
   else if (currentBudgetTab === 'savings') renderBudgetGoalsList('savings');
@@ -8150,19 +7591,12 @@ function renderBudgetOverview() {
   const expGoals = getBudgetGoals('expense');
   const savGoals = getBudgetGoals('savings');
   const isYear = budgetViewMode === 'year';
-  const year = budgetViewMonth.split('-')[0];
+  const year = viewMonth.split('-')[0];
 
   // ── Compute totals depending on mode ──
   let totalExpBudget, totalSavBudget, totalExpActual, totalSavActual;
-  // Convert goal amount from stored currency to current display currency
-  // Goals without stored currency are assumed to be in current display currency
-  const goalToDisp = g => {
-    const raw = Number(g.amount || 0);
-    if (!g.currency || g.currency === currentCurrency.code) return raw;
-    return convertAmt(raw, g.currency);
-  };
-  const monthlyExpBudget = expGoals.reduce((s, g) => s + goalToDisp(g), 0);
-  const monthlySavBudget = savGoals.reduce((s, g) => s + goalToDisp(g), 0);
+  const monthlyExpBudget = expGoals.reduce((s, g) => s + Number(g.amount || 0), 0);
+  const monthlySavBudget = savGoals.reduce((s, g) => s + Number(g.amount || 0), 0);
 
   if (isYear) {
     // Annualized budget = monthly × 12
@@ -8170,15 +7604,15 @@ function renderBudgetOverview() {
     totalSavBudget = monthlySavBudget * 12;
     // YTD actuals — sum only months in this year UP TO the selected/current month
     const todayMk = new Date().toISOString().slice(0,7);
-    const capMk = budgetViewMonth < todayMk ? budgetViewMonth : todayMk;
-    const yearMonths = getYearMonthKeys(budgetViewMonth).filter(mk => mk <= capMk);
+    const capMk = viewMonth < todayMk ? viewMonth : todayMk;
+    const yearMonths = getYearMonthKeys(viewMonth).filter(mk => mk <= capMk);
     totalExpActual = yearMonths.reduce((s, mk) => s + expGoals.reduce((ss, g) => ss + getBudgetActual(g, mk), 0), 0);
     totalSavActual = yearMonths.reduce((s, mk) => s + savGoals.reduce((ss, g) => ss + getBudgetActual(g, mk), 0), 0);
   } else {
     totalExpBudget = monthlyExpBudget;
     totalSavBudget = monthlySavBudget;
-    totalExpActual = expGoals.reduce((s, g) => s + getBudgetActual(g, budgetViewMonth), 0);
-    totalSavActual = savGoals.reduce((s, g) => s + getBudgetActual(g, budgetViewMonth), 0);
+    totalExpActual = expGoals.reduce((s, g) => s + getBudgetActual(g, viewMonth), 0);
+    totalSavActual = savGoals.reduce((s, g) => s + getBudgetActual(g, viewMonth), 0);
   }
 
   const totalBudget = totalExpBudget + totalSavBudget;
@@ -8211,11 +7645,11 @@ function renderBudgetOverview() {
   if (ctx) {
     if (isYear) {
       // Year view: grouped bar chart Jan–Dec with expense + savings bars per month
-      const yearMonths = getYearMonthKeys(budgetViewMonth);
+      const yearMonths = getYearMonthKeys(viewMonth);
       const labels = yearMonths.map(mk => { const [,mo] = mk.split('-'); return ['J','F','M','A','M','J','J','A','S','O','N','D'][parseInt(mo)-1]; });
       const expData = yearMonths.map(mk => expGoals.reduce((s, g) => s + getBudgetActual(g, mk), 0));
       const savData = yearMonths.map(mk => savGoals.reduce((s, g) => s + getBudgetActual(g, mk), 0));
-      const curIdx = yearMonths.indexOf(budgetViewMonth);
+      const curIdx = yearMonths.indexOf(viewMonth);
       charts[canvasId] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -8236,7 +7670,7 @@ function renderBudgetOverview() {
       });
     } else {
       // Month view: dual line chart — last 12 months
-      const months12 = getLast12Months(budgetViewMonth);
+      const months12 = getLast12Months(viewMonth);
       const expActuals12 = months12.map(mk => expGoals.reduce((s, g) => s + getBudgetActual(g, mk), 0));
       const savActuals12 = months12.map(mk => savGoals.reduce((s, g) => s + getBudgetActual(g, mk), 0));
       const labels12 = months12.map(mk => { const [,mo] = mk.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo)-1]; });
@@ -8261,12 +7695,12 @@ function renderBudgetOverview() {
     let actual, budget;
     if (isYear) {
       const todayMk2 = new Date().toISOString().slice(0,7);
-      const capMk2 = budgetViewMonth < todayMk2 ? budgetViewMonth : todayMk2;
-      const ytdMonths = getYearMonthKeys(budgetViewMonth).filter(mk => mk <= capMk2);
+      const capMk2 = viewMonth < todayMk2 ? viewMonth : todayMk2;
+      const ytdMonths = getYearMonthKeys(viewMonth).filter(mk => mk <= capMk2);
       actual = ytdMonths.reduce((s, mk) => s + getBudgetActual(goal, mk), 0);
       budget = Number(goal.amount || 0) * 12;
     } else {
-      actual = getBudgetActual(goal, budgetViewMonth);
+      actual = getBudgetActual(goal, viewMonth);
       budget = Number(goal.amount || 0);
     }
     const pct = budget > 0 ? Math.min(actual / budget, 1) : 0;
@@ -8328,8 +7762,8 @@ function renderBudgetGoalsList(type) {
   }
 
   el.innerHTML = goals.map(goal => {
-    const actual = getBudgetActual(goal, budgetViewMonth);
-    const budget = goal.currency && goal.currency !== currentCurrency.code ? convertAmt(Number(goal.amount||0), goal.currency) : Number(goal.amount||0);
+    const actual = getBudgetActual(goal, viewMonth);
+    const budget = Number(goal.amount || 0);
     const pct = budget > 0 ? Math.min(actual / budget * 100, 100) : 0;
     const isOver = actual > budget && budget > 0;
     const isSav = type === 'savings';
@@ -8344,7 +7778,7 @@ function renderBudgetGoalsList(type) {
         <div class="bgr-icon" style="background:${iconBg};">${goal.icon || '💸'}</div>
         <div class="bgr-info">
           <div class="bgr-name">${goal.name}</div>
-          <div class="bgr-type">${isSav ? '💰 Savings Goal' : '💸 Expense Budget'} · ${getDisplayMonth(budgetViewMonth)}</div>
+          <div class="bgr-type">${isSav ? '💰 Savings Goal' : '💸 Expense Budget'} · ${getDisplayMonth(viewMonth)}</div>
         </div>
         <div class="bgr-right">
           <div class="bgr-spent" style="color:${amtColor};">${fmt(actual)}</div>
@@ -8362,8 +7796,8 @@ function renderBudgetGoalsList(type) {
 
 // Shared function to (re)build the detail view for a given goal
 function _renderBudgetDetail(prefix, goal, type) {
-  const actual  = getBudgetActual(goal, budgetViewMonth);
-  const budget  = goal.currency && goal.currency !== currentCurrency.code ? convertAmt(Number(goal.amount||0), goal.currency) : Number(goal.amount||0);
+  const actual  = getBudgetActual(goal, viewMonth);
+  const budget  = Number(goal.amount || 0);
   const leftAmt = budget - actual;
   const isOver  = actual > budget && budget > 0;
   const isSav   = type === 'savings';
@@ -8383,10 +7817,10 @@ function _renderBudgetDetail(prefix, goal, type) {
   if (chipInput) chipInput.value = budget;
 
   // ── Chart ──
-  const months12  = getLast12Months(budgetViewMonth);
+  const months12  = getLast12Months(viewMonth);
   const actuals12 = months12.map(mk => getBudgetActual(goal, mk));
   const labels12  = months12.map(mk => { const [,mo] = mk.split('-'); return ['J','F','M','A','M','J','J','A','S','O','N','D'][parseInt(mo)-1]; });
-  const curIdx    = months12.indexOf(budgetViewMonth);
+  const curIdx    = months12.indexOf(viewMonth);
 
   const lineColor = isSav ? '#10B981' : '#1E2A6E';
   const barColors = actuals12.map((a, i) => {
@@ -8452,7 +7886,7 @@ function _renderBudgetDetail(prefix, goal, type) {
   });
 
   // ── Metrics ──
-  const yearStart  = budgetViewMonth.split('-')[0];
+  const yearStart  = viewMonth.split('-')[0];
   const yearMonths = Object.keys(data).filter(k => k.startsWith(yearStart + '-') && !k.startsWith('_'));
   const yearTotal  = yearMonths.reduce((s, mk) => s + getBudgetActual(goal, mk), 0);
   const avgPerMonth = yearMonths.length > 0 ? yearTotal / yearMonths.length : 0;
@@ -8465,23 +7899,21 @@ function _renderBudgetDetail(prefix, goal, type) {
   `;
 
   // ── Transactions ──
-  ensureMonth(budgetViewMonth);
-  const m    = data[budgetViewMonth];
+  ensureMonth(viewMonth);
+  const m    = data[viewMonth];
   const cats = (goal.linkedCats || [goal.key]).map(c => c.toLowerCase().trim());
   let txns   = [];
   ['expenses', 'investments', 'additional'].forEach(listKey => {
     (m[listKey] || []).forEach(e => {
-      const ec  = (e.category    || '').toLowerCase().trim();
-      const eit = (e.investType  || '').toLowerCase().trim();
-      const esc = (e.subCategory || '').toLowerCase().trim();
-      // G: match category OR investType OR subCategory
-      if (cats.some(c => ec === c || eit === c || esc === c)) txns.push({ ...e, _type: listKey });
+      const ec = (e.category || '').toLowerCase().trim();
+      // Exact match — keep in sync with getBudgetActual
+      if (cats.some(c => ec === c)) txns.push({ ...e, _type: listKey });
     });
   });
   txns.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   const txnMonthLabel = document.getElementById(`bcd-${prefix}-txn-month`);
-  if (txnMonthLabel) txnMonthLabel.textContent = `${getDisplayMonth(budgetViewMonth)} Transactions (${txns.length})`;
+  if (txnMonthLabel) txnMonthLabel.textContent = `${getDisplayMonth(viewMonth)} Transactions (${txns.length})`;
 
   const txnsEl = document.getElementById(`bcd-${prefix}-txns`);
   if (txnsEl) {
@@ -8560,7 +7992,6 @@ function saveBudgetChip(type) {
   const goal  = goals.find(g => g.key === det.goalKey);
   if (goal) {
     goal.amount = newAmt;
-    goal.currency = currentCurrency.code; // store currency at time of quick-edit
     save();
     showToast(`✅ Budget updated to ${fmt(newAmt)}`);
     // Re-render everything
@@ -8649,10 +8080,10 @@ function saveEditedBudget() {
   if (editingBudgetKey) {
     const idx = goals.findIndex(g => g.key === editingBudgetKey);
     if (idx >= 0) {
-      goals[idx] = {...goals[idx], name, amount, currency: currentCurrency.code, icon: pickedBudgetEmoji, linkedCats};
+      goals[idx] = {...goals[idx], name, amount, icon: pickedBudgetEmoji, linkedCats};
     }
   } else {
-    goals.push({key, name, icon: pickedBudgetEmoji, amount, currency: currentCurrency.code, linkedCats});
+    goals.push({key, name, icon: pickedBudgetEmoji, amount, linkedCats});
   }
 
   const storageKey = type === 'savings' ? '_savingsGoals' : '_expenseGoals';
@@ -8736,31 +8167,7 @@ function getNWAccounts() {
 
 function getNWSnapshots() {
   if (!data._nwSnapshots) data._nwSnapshots = [];
-  // Filter out any future-month snapshots caused by UTC timezone drift (IST +5:30 edge)
-  const nowMk = getCurrentMonthKey();
-  return data._nwSnapshots.filter(s => {
-    const mk = s.month || (s.date || '').slice(0, 7) || '2000-01';
-    return mk <= nowMk;
-  });
-}
-
-// Convert a snapshot's stored value to the CURRENT display currency
-// Snapshots store value in whatever currency was active at capture time
-function snapValue(s) {
-  if (!s) return 0;
-  const storedCurrency = (s.currency || 'USD').toUpperCase();
-  const raw = s.value || 0;
-  if (storedCurrency === currentCurrency.code.toUpperCase()) return raw;
-  // Convert: stored → USD → current display currency
-  return nwConvert(raw, storedCurrency);
-}
-// Same for income/expenses/investments fields in a snapshot
-function snapField(s, field) {
-  if (!s) return 0;
-  const storedCurrency = (s.currency || 'USD').toUpperCase();
-  const raw = s[field] || 0;
-  if (storedCurrency === currentCurrency.code.toUpperCase()) return raw;
-  return nwConvert(raw, storedCurrency);
+  return data._nwSnapshots;
 }
 
 function getRealEstateAssets() {
@@ -8950,7 +8357,7 @@ function buildNWMetalsBody(accounts, cfg, addBtnLabel) {
         const displayName = occasion
           ? (originalName && originalName.toLowerCase() !== mt ? occasion + ' · ' + originalName : occasion)
           : (originalName && originalName.toLowerCase() !== mt ? originalName : acc.name);
-        const dateStr = acc.lastUpdated ? new Date(acc.lastUpdated+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+        const dateStr = acc.lastUpdated ? new Date(acc.lastUpdated+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}) : '';
         // For imported metals — use _metals array index for edit/delete
         const metalIdx = acc.id.replace('import_metal_','');
         const editBtn = acc._imported
@@ -9035,7 +8442,7 @@ function renderNetWorth() {
             return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
           }),
           datasets: [{
-            data: snaps.map(s => snapValue(s)),
+            data: snaps.map(s => s.value),
             borderColor: '#C8900A',
             backgroundColor: 'rgba(245,200,66,0.12)',
             borderWidth: 2.5,
@@ -9057,10 +8464,23 @@ function renderNetWorth() {
         }
       });
     }
-    renderMonthlyIntelligence();
+    // Snapshot list with progress bars
+    const snapListEl = document.getElementById('nw-snapshots-list');
+    if (snapListEl) {
+      const maxVal = Math.max(...snaps.map(s => s.value), 1);
+      snapListEl.innerHTML = snaps.map((s, i) => {
+        const d = new Date(s.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
+        const pct = (s.value / maxVal * 100).toFixed(0);
+        return `<div class="nw-snap-row">
+          <div class="nw-snap-date">${d}</div>
+          <div class="nw-snap-bar-wrap"><div class="nw-snap-bar-fill" style="width:${pct}%;"></div></div>
+          <div class="nw-snap-val">${fmt(s.value)}</div>
+          <button class="nw-snap-del" onclick="deleteNWSnapshot(${i})" title="Delete">×</button>
+        </div>`;
+      }).join('');
+    }
   } else {
-    const intCard = document.getElementById('nw-intelligence-card');
-    if (intCard) intCard.style.display = 'none';
+    chartCard.style.display = 'none';
   }
 
   // ── Asset Allocation donut ──
@@ -9201,23 +8621,10 @@ function renderNetWorth() {
   });
 }
 
-function deleteNWSnapshot(snapId) {
-  // snapId is either _id (string) or fallback numeric index
+function deleteNWSnapshot(idx) {
   const snaps = getNWSnapshots();
-  let resolvedIdx = -1;
-  if (typeof snapId === 'string') {
-    resolvedIdx = snaps.findIndex(s => s._id === snapId);
-  }
-  if (resolvedIdx < 0) {
-    // Fallback: treat as index
-    resolvedIdx = parseInt(snapId);
-  }
-  if (resolvedIdx < 0 || resolvedIdx >= snaps.length) {
-    showToast('Snapshot not found'); return;
-  }
   if (!confirm('Delete this snapshot?')) return;
-  snaps.splice(resolvedIdx, 1);
-  data._nwSnapshots = snaps;
+  snaps.splice(idx, 1);
   save();
   renderNetWorth();
   showToast('Snapshot deleted');
@@ -9436,448 +8843,17 @@ function toggleNWSection(name) {
   if (chev) chev.classList.toggle('open');
 }
 
-// ── NW Balance Visibility Toggle ──────────────────────────────
-let _nwHidden = false;
-function toggleNWVisibility() {
-  _nwHidden = !_nwHidden;
-  const iconEl = document.getElementById('nw-eye-icon');
-  if (iconEl) iconEl.textContent = _nwHidden ? '🔒' : '🔓';
-  // Mask/unmask all monetary value elements in NW screen
-  const targets = document.querySelectorAll(
-    '#nw-total, #nw-assets-hero, #nw-liab-hero, #nw-change, ' +
-    '#nw-assets-total, #nw-liab-total, #nw-alloc-total, ' +
-    '.nw-section-val, .nw-group-total, .nw-snap-val, ' +
-    '[id^="nw-val-"], .nw-account-val, .nw-holding-val, ' +
-    '.nw-holding-row-val, .metal-holding-value, ' +
-    '#mi-kpi-row, #mi-cat-bars, #mi-budget-section'
-  );
-  // Also mask/unmask inline-rendered account body values (dynamically generated)
-  document.querySelectorAll('#screen-networth [style*="font-weight:900"]').forEach(el => {
-    // Only target elements that look like monetary values (contain $ or currency sym)
-    if (el.textContent && /[$₹€£¥]|,\d{3}/.test(el.textContent)) {
-      el.classList.toggle('nw-masked', _nwHidden);
-    }
-  });
-  targets.forEach(el => {
-    el.classList.toggle('nw-masked', _nwHidden);
-  });
-  // Also mask the insight cards amounts
-  document.querySelectorAll('#nw-insights-list .nw-insight-val').forEach(el => {
-    el.classList.toggle('nw-masked', _nwHidden);
-  });
-}
-
-function buildMonthlySnapshot(monthKey) {
-  // Build a rich snapshot for a given month capturing full financial picture
-  const nw = computeNetWorth();
-  const mk = monthKey || viewMonth;
-  const mdata = data[mk] || {};
-  const toDisp = (amt, cur) => convertAmt(amt, cur || currentCurrency.code);
-
-  // NW by type
-  const byType = {};
-  Object.keys(nw.byType).forEach(t => { byType[t] = nw.byType[t].total; });
-
-  // Monthly P&L
-  const expenses   = (mdata.expenses    || []).reduce((s,e) => s + toDisp(e.amount, e.currency), 0);
-  const income     = (mdata.income      || []).reduce((s,e) => s + toDisp(e.amount, e.currency), 0);
-  const investments= (mdata.investments || []).reduce((s,e) => s + toDisp(e.amount, e.currency), 0);
-  const savingsRate = income > 0 ? ((income - expenses) / income * 100) : 0;
-
-  // Top spending categories
-  const catTotals = {};
-  (mdata.expenses || []).forEach(e => {
-    const c = e.category || 'Other';
-    catTotals[c] = (catTotals[c] || 0) + toDisp(e.amount, e.currency);
-  });
-  const topCategories = Object.entries(catTotals)
-    .sort((a,b) => b[1]-a[1]).slice(0,5)
-    .map(([cat, amt]) => ({ cat, amt }));
-
-  // Budget performance (goals vs actual)
-  const budgetPerformance = [];
-  try {
-    const expGoals = getBudgetGoals('expense');
-    expGoals.forEach(g => {
-      const actual = getBudgetActual(g, mk);
-      const _gDisp = g.currency && g.currency !== currentCurrency.code ? convertAmt(Number(g.amount||0), g.currency) : Number(g.amount||0);
-      budgetPerformance.push({ name: g.key, goal: _gDisp, actual, pct: _gDisp > 0 ? actual/_gDisp*100 : 0 });
-    });
-  } catch(e) {}
-
-  const now = new Date();
-  const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-  return {
-    date: localDateStr(),
-    time: timeStr,
-    month: mk,
-    value: nw.netWorth,
-    totalAssets: nw.totalAssets,
-    liabilities: nw.liabTotal,
-    byType,
-    income, expenses, investments,
-    savingsRate,
-    topCategories,
-    budgetPerformance,
-    currency: currentCurrency.code,
-  };
-}
-
-
-// ══════════════════════════════════════════════════════════════════
-// MONTHLY INTELLIGENCE — full render
-// ══════════════════════════════════════════════════════════════════
-function _snapMonthLabel(snap, fmt) {
-  // Safe cross-browser month label from a snapshot — no Date() parsing
-  const mk = snap.month || snap.date || '';
-  // mk is either 'YYYY-MM' or 'YYYY-MM-DD'
-  const parts = mk.split('-');
-  if (parts.length < 2) return mk || '—';
-  const year = parseInt(parts[0]);
-  const month = parseInt(parts[1]) - 1; // 0-indexed
-  if (isNaN(year) || isNaN(month)) return '—';
-  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const MONTHS_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const mo = MONTHS_SHORT[month] || '?';
-  const moL = MONTHS_LONG[month] || '?';
-  if (fmt === 'short') return mo + " '" + String(year).slice(2);      // Jan '26
-  if (fmt === 'medium') return mo + ' ' + year;                        // Jan 2026
-  if (fmt === 'long') return moL + ' ' + year;                         // January 2026
-  if (fmt === 'axis') return mo + ' ' + String(year).slice(2);         // Jan 26
-  return mo + ' ' + year;
-}
-
-function renderMonthlyIntelligence() {
-  const allSnaps = getNWSnapshots().slice().sort((a,b) => (a.month||a.date||'').localeCompare(b.month||b.date||''));
-  // For the trend chart + comparison: use one entry per month (latest value wins)
-  const monthMap = new Map();
-  allSnaps.forEach(s => {
-    const mk = s.month || s.date?.slice(0,7) || '';
-    const prev = monthMap.get(mk);
-    // Keep the one with richer data or higher _id (most recent manual)
-    if (!prev || (s._id && (!prev._id || s._id > prev._id))) monthMap.set(mk, s);
-  });
-  const snaps = [...monthMap.values()].sort((a,b) => (a.month||a.date||'').localeCompare(b.month||b.date||''));
-  const intCard = document.getElementById('nw-intelligence-card');
-  if (!intCard) return;
-
-  if (snaps.length === 0) { intCard.style.display = 'none'; return; }
-  intCard.style.display = '';
-
-  // ── NW Trend Chart ──────────────────────────────────────────────
-  const chartCard = document.getElementById('nw-chart-card');
-  if (chartCard) chartCard.style.display = '';
-  document.getElementById('nw-snap-count').textContent = snaps.length + (snaps.length===1?' month':' months');
-
-  const chartEl = document.getElementById('nw-trend-chart');
-  if (chartEl && typeof Chart !== 'undefined') {
-    const existing = Chart.getChart(chartEl);
-    if (existing) existing.destroy();
-    const labels = snaps.map(s => _snapMonthLabel(s, 'axis'));
-    const values = snaps.map(s => snapValue(s));
-    const minVal = Math.min(...values);
-    new Chart(chartEl, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          data: values,
-          borderColor: '#7C3AED',
-          backgroundColor: 'rgba(124,58,237,0.08)',
-          borderWidth: 2.5,
-          tension: 0.35,
-          fill: true,
-          pointBackgroundColor: '#7C3AED',
-          pointRadius: 4,
-          pointHoverRadius: 6,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false }, tooltip: {
-          callbacks: { label: ctx => ' ' + fmt(ctx.raw) }
-        }},
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 9, family:'Nunito', weight:'700' }, color:'#9AA0B2' }},
-          y: { display: false, min: minVal * 0.95 }
-        }
-      }
-    });
-  }
-
-  // ── Month selector dropdowns ─────────────────────────────────────
-  const selA = document.getElementById('mi-month-a');
-  const selB = document.getElementById('mi-month-b');
-  if (selA && selB) {
-    const opts = snaps.map((s,i) => `<option value="${i}">${_snapMonthLabel(s,'medium')}</option>`).join('');
-    selA.innerHTML = opts;
-    selB.innerHTML = opts;
-    // Default: latest vs one before
-    selA.value = Math.max(0, snaps.length - 2);
-    selB.value = snaps.length - 1;
-  }
-
-  _renderMIComparison();
-
-  // ── Snapshot list ───────────────────────────────────────────────
-  const snapListEl = document.getElementById('nw-snapshots-list');
-  if (snapListEl) {
-    const listSnaps = allSnaps.slice().reverse(); // ALL snapshots in list (newest first)
-    const maxVal = Math.max(...listSnaps.map(s => snapValue(s)), 1);
-    // Group by year for collapsible display
-    const byYear = {};
-    listSnaps.forEach((s, i) => {
-      const yr = (s.month || s.date || '2000').slice(0,4);
-      if (!byYear[yr]) byYear[yr] = [];
-      byYear[yr].push({ s, i });
-    });
-    const years = Object.keys(byYear).sort().reverse();
-    const currentYr = new Date().getFullYear().toString();
-
-    snapListEl.innerHTML = years.map((yr, yi) => {
-      const isCurrentYear = yr === currentYr;
-      const colId = 'snap-yr-' + yr;
-      const entries = byYear[yr].map(({ s, i }) => {
-        const realIdx = allSnaps.length - 1 - i;
-      // Label: manual snapshots show full date + time, auto-snapshots show month only
-      const monthLabel = _snapMonthLabel(s, 'medium');
-      const isManual = s._manual;
-      const timeLabel = isManual && s.time ? ` · ${s.time}` : '';
-      const dateLabel = isManual && s.date ? new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-      const d = isManual ? `${dateLabel}${timeLabel}` : monthLabel;
-      const subLabel = isManual ? `<div style="font-size:0.65em;color:var(--text-light);font-weight:700;">${monthLabel}</div>` : '';
-      const pct = (snapValue(s) / maxVal * 100).toFixed(0);
-      const hasFull = s.income !== undefined;
-      const savTag = hasFull && s.savingsRate !== undefined && s.savingsRate !== 0
-        ? `<span style="font-size:0.62em;background:${s.savingsRate>=0?'#D1FAE5':'#FEE2E2'};color:${s.savingsRate>=0?'#10B981':'#EF4444'};border-radius:4px;padding:1px 5px;font-weight:800;white-space:nowrap;">${s.savingsRate>=0?'+':''}${s.savingsRate.toFixed(0)}% saved</span>`
-        : '';
-      return `<div class="nw-snap-row" style="align-items:flex-start;padding:9px 0;">
-        <div class="nw-snap-date" style="width:90px;flex-shrink:0;">
-          <div style="font-size:0.78em;font-weight:800;color:var(--text-dark);line-height:1.3;">${d}</div>
-          ${subLabel}
-          ${savTag}
-        </div>
-        <div class="nw-snap-bar-wrap" style="margin-top:6px;"><div class="nw-snap-bar-fill" style="width:${pct}%;"></div></div>
-        <div class="nw-snap-val">${fmt(snapValue(s))}</div>
-        <button class="nw-snap-del" onclick="deleteNWSnapshot('${s._id||realIdx}')" title="Delete">×</button>
-      </div>`;
-    }).join('');
-
-    // Wrap entries in collapsible year accordion
-    return `
-      <div style="margin-bottom:4px;">
-        <div onclick="const b=document.getElementById('${colId}');const ch=document.getElementById('${colId}-ch');b.style.display=b.style.display==='none'?'':'none';ch.style.transform=b.style.display==='none'?'rotate(-90deg)':'';"
-          style="display:flex;align-items:center;justify-content:space-between;padding:7px 2px;cursor:pointer;user-select:none;">
-          <div style="font-size:0.72em;font-weight:900;color:var(--text-med);letter-spacing:0.5px;">
-            ${yr}${isCurrentYear ? ' · Current' : ''}
-            <span style="font-size:0.85em;color:var(--text-light);font-weight:700;margin-left:6px;">${byYear[yr].length} snapshot${byYear[yr].length!==1?'s':''}</span>
-          </div>
-          <span id="${colId}-ch" style="font-size:0.7em;color:var(--text-light);transition:transform 0.2s;">▼</span>
-        </div>
-        <div id="${colId}" style="display:${isCurrentYear?'':'none'};">${entries}</div>
-      </div>`;
-  }).join('');
-  }
-
-  // ── Savings rate sparkline ───────────────────────────────────────
-  _renderSavingsTrend(snaps);
-}
-
-function _renderMIComparison() {
-  const snaps = getNWSnapshots().slice().sort((a,b) => (a.month||a.date||'').localeCompare(b.month||b.date||''));
-  const selA = document.getElementById('mi-month-a');
-  const selB = document.getElementById('mi-month-b');
-  if (!selA || !selB || snaps.length < 1) return;
-
-  const idxA = parseInt(selA.value) || 0;
-  const idxB = parseInt(selB.value) || Math.min(1, snaps.length-1);
-  const a = snaps[Math.min(idxA, snaps.length-1)] || snaps[0];
-  const b = snaps[Math.min(idxB, snaps.length-1)] || snaps[0];
-  const hasFull = a.income !== undefined && b.income !== undefined;
-
-  // KPI cards
-  const kpiEl = document.getElementById('mi-kpi-row');
-  if (kpiEl) {
-    const kpis = [
-      { label:'Net Worth', valA: snapValue(a), valB: snapValue(b), fmt: v => sym()+getCompactNum(v), icon:'💎' },
-      { label:'Income', valA: snapField(a,'income'), valB: snapField(b,'income'), fmt: v => sym()+getCompactNum(v), icon:'💵', hidden: !hasFull },
-      { label:'Expenses', valA: snapField(a,'expenses'), valB: snapField(b,'expenses'), fmt: v => sym()+getCompactNum(v), icon:'💸', flip: true, hidden: !hasFull },
-      { label:'Savings %', valA: a.savingsRate||0, valB: b.savingsRate||0, fmt: v => v.toFixed(1)+'%', icon:'🏦', hidden: !hasFull },
-    ].filter(k => !k.hidden);
-
-    kpiEl.style.gridTemplateColumns = `repeat(${kpis.length},1fr)`;
-    kpiEl.innerHTML = kpis.map(k => {
-      const delta = k.valB - k.valA;
-      const pct = k.valA !== 0 ? delta / Math.abs(k.valA) * 100 : 0;
-      const up = k.flip ? delta <= 0 : delta >= 0;
-      const arrow = delta === 0 ? '→' : delta > 0 ? '↑' : '↓';
-      const color = delta === 0 ? '#9AA0B2' : up ? '#10B981' : '#EF4444';
-      return `<div style="background:#FAFAFA;border-radius:10px;padding:8px 6px;text-align:center;">
-        <div style="font-size:0.65em;font-weight:800;color:var(--text-light);text-transform:uppercase;">${k.icon} ${k.label}</div>
-        <div style="font-weight:900;font-size:0.82em;color:var(--text-dark);margin:3px 0;">${k.fmt(k.valB)}</div>
-        <div style="font-size:0.65em;font-weight:800;color:${color};">${arrow} ${Math.abs(pct).toFixed(1)}%</div>
-      </div>`;
-    }).join('');
-  }
-
-  // Category comparison bars
-  const catEl = document.getElementById('mi-cat-bars');
-  if (catEl && hasFull) {
-    const allCats = new Set([
-      ...(a.topCategories||[]).map(c=>c.cat),
-      ...(b.topCategories||[]).map(c=>c.cat)
-    ]);
-    const pairs = [...allCats].map(cat => {
-      const ca = (a.topCategories||[]).find(c=>c.cat===cat);
-      const cb = (b.topCategories||[]).find(c=>c.cat===cat);
-      // Convert category amounts from snapshot's stored currency to current display currency
-      const convA = ca ? nwConvert(ca.amt||0, a.currency||'USD') : 0;
-      const convB = cb ? nwConvert(cb.amt||0, b.currency||'USD') : 0;
-      return { cat, amtA: convA, amtB: convB };
-    }).sort((x,y) => Math.max(y.amtA,y.amtB) - Math.max(x.amtA,x.amtB)).slice(0,6);
-
-    const maxAmt = Math.max(...pairs.map(p => Math.max(p.amtA, p.amtB)), 1);
-    const mkLabel = (s) => _snapMonthLabel(s, 'short');
-
-    catEl.innerHTML = `
-      <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:6px;font-size:0.62em;font-weight:800;color:var(--text-light);">
-        <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;border-radius:2px;background:#C4B5FD;display:inline-block;"></span>${_snapMonthLabel(a,"short")}</span>
-        <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;border-radius:2px;background:#7C3AED;display:inline-block;"></span>${_snapMonthLabel(b,"short")}</span>
-      </div>
-      ${pairs.map(p => {
-        const pctA = p.amtA / maxAmt * 100;
-        const pctB = p.amtB / maxAmt * 100;
-        const delta = p.amtB - p.amtA;
-        const deltaColor = delta <= 0 ? '#10B981' : '#EF4444';
-        return `<div style="margin-bottom:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-            <div style="font-size:0.72em;font-weight:800;color:var(--text-dark);">${p.cat}</div>
-            <div style="font-size:0.65em;font-weight:800;color:${deltaColor};">${delta>=0?'+':''}${sym()}${getCompactNum(Math.abs(delta))}</div>
-          </div>
-          <div style="display:flex;gap:3px;height:7px;">
-            <div style="flex:1;background:#F0F0F0;border-radius:4px;overflow:hidden;">
-              <div style="width:${pctA.toFixed(1)}%;height:100%;background:#C4B5FD;border-radius:4px;"></div>
-            </div>
-            <div style="flex:1;background:#F0F0F0;border-radius:4px;overflow:hidden;">
-              <div style="width:${pctB.toFixed(1)}%;height:100%;background:#7C3AED;border-radius:4px;"></div>
-            </div>
-          </div>
-        </div>`;
-      }).join('')}`;
-  } else if (catEl && !hasFull) {
-    catEl.innerHTML = `<div style="font-size:0.72em;color:var(--text-light);text-align:center;padding:8px 0;">Save a snapshot to start seeing category trends</div>`;
-  }
-
-  // Budget performance
-  const budgetEl = document.getElementById('mi-budget-section');
-  if (budgetEl && hasFull && (b.budgetPerformance||[]).length > 0) {
-    budgetEl.innerHTML = `
-      <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">Budget Performance — ${_snapMonthLabel(b,'long')}</div>
-      ${(b.budgetPerformance||[]).slice(0,5).map(bp => {
-        const pct = Math.min(bp.pct, 150);
-        const over = bp.pct > 100;
-        const bCurr = b.currency||'USD';
-        const bActual = nwConvert(bp.actual||0, bCurr);
-        const bGoal = nwConvert(bp.goal||0, bCurr);
-        return `<div style="margin-bottom:6px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
-            <div style="font-size:0.72em;font-weight:800;color:var(--text-dark);">${bp.name}</div>
-            <div style="font-size:0.65em;font-weight:800;color:${over?'#EF4444':'#10B981'};">${fmt(bActual)} / ${fmt(bGoal)}</div>
-          </div>
-          <div style="height:6px;background:#F0F0F0;border-radius:4px;overflow:hidden;">
-            <div style="width:${Math.min(pct,100).toFixed(1)}%;height:100%;background:${over?'#EF4444':'#10B981'};border-radius:4px;"></div>
-          </div>
-        </div>`;
-      }).join('')}`;
-  } else if (budgetEl) {
-    budgetEl.innerHTML = '';
-  }
-}
-
-function _renderSavingsTrend(snaps) {
-  const canvas = document.getElementById('mi-savings-chart');
-  if (!canvas) return;
-  const richSnaps = snaps.filter(s => s.savingsRate !== undefined);
-  if (richSnaps.length < 2) {
-    canvas.style.display = 'none'; return;
-  }
-  canvas.style.display = 'block';
-  const W = canvas.offsetWidth || 300;
-  canvas.width = W * (window.devicePixelRatio || 1);
-  canvas.height = 50 * (window.devicePixelRatio || 1);
-  const ctx = canvas.getContext('2d');
-  ctx.scale(window.devicePixelRatio||1, window.devicePixelRatio||1);
-
-  const rates = richSnaps.map(s => s.savingsRate || 0);
-  const minR = Math.min(...rates, 0);
-  const maxR = Math.max(...rates, 1);
-  const range = maxR - minR || 1;
-  const padT = 6, padB = 14, chartH = 50 - padT - padB;
-  const xScale = i => (i / (rates.length - 1)) * W;
-  const yScale = v => padT + chartH - ((v - minR) / range * chartH);
-
-  // Zero line
-  const zeroY = yScale(0);
-  ctx.beginPath(); ctx.moveTo(0, zeroY); ctx.lineTo(W, zeroY);
-  ctx.strokeStyle = '#E0E0E0'; ctx.lineWidth = 1; ctx.setLineDash([3,3]); ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Fill above zero (green) / below zero (red)
-  rates.forEach((r, i) => {
-    if (i === 0) return;
-    const x1 = xScale(i-1), x2 = xScale(i);
-    const y1 = yScale(rates[i-1]), y2 = yScale(r);
-    const isPos = r >= 0 && rates[i-1] >= 0;
-    ctx.beginPath();
-    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    ctx.lineTo(x2, zeroY); ctx.lineTo(x1, zeroY);
-    ctx.closePath();
-    ctx.fillStyle = isPos ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
-    ctx.fill();
-  });
-
-  // Line
-  ctx.beginPath();
-  rates.forEach((r, i) => { const x=xScale(i), y=yScale(r); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
-  ctx.strokeStyle = '#10B981'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
-
-  // Month labels below
-  ctx.fillStyle = '#9AA0B2'; ctx.font = `bold ${9 * (window.devicePixelRatio||1)}px Nunito`;
-  ctx.scale(1/(window.devicePixelRatio||1), 1/(window.devicePixelRatio||1));
-  richSnaps.forEach((s, i) => {
-    const mk = s.month || s.date || '';
-    const label = _snapMonthLabel(s, 'short').split("'")[0].trim(); // "Jan '26" → "Jan" for sparkline
-    const x = xScale(i) * (window.devicePixelRatio||1);
-    ctx.textAlign = i === 0 ? 'left' : i === richSnaps.length-1 ? 'right' : 'center';
-    ctx.fillText(label, x, (50 - 2) * (window.devicePixelRatio||1));
-  });
-}
-
-function autoSnapshot() {
-  // Called when month changes — silently save previous month's snapshot
-  const snaps = getNWSnapshots();
-  const snap = buildMonthlySnapshot(viewMonth);
-  const existing = snaps.find(s => s.month === snap.month);
-  if (existing) {
-    Object.assign(existing, snap); // update
-  } else {
-    snaps.push(snap);
-  }
-  save();
-}
-
 function saveNWSnapshot() {
-  const snap = buildMonthlySnapshot(viewMonth);
-  snap._manual = true; // flag as manual — shown with full date+time
-  snap._id = 'snap_' + Date.now(); // unique id so multiple per month are allowed
-  // Push directly to data._nwSnapshots — NOT the filtered copy from getNWSnapshots()
-  if (!data._nwSnapshots) data._nwSnapshots = [];
-  const tooRecent = data._nwSnapshots.find(s => s._id && Math.abs(Date.now() - parseInt(s._id.split('_')[1]||0)) < 5000);
-  if (!tooRecent) data._nwSnapshots.push(snap);
+  const nw = computeNetWorth();
+  const snaps = getNWSnapshots();
+  const today = localDateStr();
+  // Don't duplicate same-day snapshot, update it
+  const existing = snaps.find(s => s.date === today);
+  if (existing) { existing.value = nw.netWorth; }
+  else { snaps.push({ date: today, value: nw.netWorth }); }
   save();
   renderNetWorth();
-  renderMonthlyIntelligence();
-  showToast('📸 Snapshot saved · ' + fmt(snapValue(snap)));
+  showToast('📸 Snapshot saved: ' + fmt(nw.netWorth));
 }
 
 function _nwsBuildTypePicker() {
@@ -10310,7 +9286,7 @@ function buildFinalPreview() {
   const preview = records.slice(0, 20);
   const tbl = document.getElementById('itx-final-table');
   tbl.innerHTML = `<thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th></tr></thead><tbody>${
-    preview.map(r=>`<tr><td>${r.date}</td><td>${r.category}</td><td>${fmtConverted(r.amount, r.currency||currentCurrency.code)}</td><td>${r.description||''}</td></tr>`).join('')
+    preview.map(r=>`<tr><td>${r.date}</td><td>${r.category}</td><td>${fmt(r.amount)}</td><td>${r.description||''}</td></tr>`).join('')
   }${records.length>20?`<tr><td colspan="4" style="text-align:center;color:var(--text-light);font-style:italic;">... and ${records.length-20} more</td></tr>`:''}</tbody>`;
 }
 
@@ -10608,11 +9584,7 @@ function renderResetSummary() {
 function renderMonthsList() {
   const el = document.getElementById('months-list');
   if (!el) return;
-  const ALL_TX_TYPES = ['expenses','income','investments','debts','givenToOthers','additional'];
-  const hasTransactions = mk => ALL_TX_TYPES.some(t => (data[mk]?.[t]||[]).length > 0);
-  const monthKeys = Object.keys(data)
-    .filter(k => !k.startsWith('_') && /^\d{4}-\d{2}$/.test(k) && hasTransactions(k))
-    .sort().reverse();
+  const monthKeys = Object.keys(data).filter(k => !k.startsWith('_') && /^\d{4}-\d{2}$/.test(k)).sort().reverse();
   if (!monthKeys.length) { el.innerHTML = '<p style="color:var(--text-light);font-size:0.85em;padding:4px 0;">No month data yet.</p>'; return; }
 
   // Group by year
@@ -10678,33 +9650,14 @@ function clearDataset(type) {
 }
 
 function confirmResetAll() {
-  if (!confirm('⚠️ CLEAN RESTART\n\nThis deletes ALL your data and resets cards + categories to defaults.\n\nYour currency, theme and family members will be kept.\n\nAre you sure?')) return;
-  if (!confirm('🚨 Final confirmation — this cannot be undone. Reset everything?')) return;
-
-  // Wipe ALL transaction months (YYYY-MM keys)
-  Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k)).forEach(k => delete data[k]);
-
-  // Wipe ALL _keys — cards, categories, goals, everything resets to code defaults
-  // Only keep: currency preference, family roster (so members don't get kicked), NW type structure
-  const KEEP = ['_familyMembers', '_nwCustomTypes', '_nwTypeVisible'];
-  Object.keys(data).filter(k => k.startsWith('_')).forEach(k => {
-    if (!KEEP.includes(k)) delete data[k];
-  });
-  // _homeSpendCards + _homeInvCards deliberately NOT in KEEP
-  // → getHomeSpendCards() / getHomeInvCards() will auto-return DEFAULT_* on next call
-  // _customCats deliberately NOT in KEEP → getCatsForType() returns DEFAULT_CATS
-  // _expenseGoals + _savingsGoals deliberately NOT in KEEP → getBudgetGoals() re-seeds defaults
-
-  // Theme + currency stay (they are separate localStorage keys, not in data)
+  if (!confirm('⚠️ This will delete ALL data permanently. Are you sure?')) return;
+  if (!confirm('🚨 Final confirmation — delete everything?')) return;
+  const keepKeys = ['_currency','_homeSpendCards','_homeInvCards','_customCats','_expenseGoals','_savingsGoals'];
+  Object.keys(data).forEach(k => { if (!keepKeys.includes(k)) delete data[k]; });
   save();
-  try { renderResetSummary(); } catch(e) {}
-  try { renderMonthsList(); } catch(e) {}
+  renderResetSummary();
   renderHome();
-  try { renderTransactions(); } catch(e) {}
-  try { renderBudget(); } catch(e) {}
-  try { renderNetWorth(); } catch(e) {}
-  try { renderMetals(); } catch(e) {}
-  showToast('🧹 Factory reset complete — fresh start ready', 3000);
+  showToast('🗑️ All transaction data cleared');
 }
 
 // ══════════════════════════════════════════════════════
@@ -10788,7 +9741,7 @@ const COACH_STEPS = [
   {
     screen: 'home',
     elementId: 'fab-add-btn',
-    tag: 'Quick Add · Step 1 of 11',
+    tag: 'Quick Add · Step 1 of 9',
     title: '➕ The Add Button',
     desc: 'This golden ＋ button is your fastest way in. Tap it from any screen to log an expense, income, or investment in seconds.',
     arrow: 'down'
@@ -10796,7 +9749,7 @@ const COACH_STEPS = [
   {
     screen: 'home',
     elementId: 'fmi-expense',
-    tag: 'Quick Add · Step 2 of 11',
+    tag: 'Quick Add · Step 2 of 9',
     title: '💸 Log an Expense',
     desc: 'Tap 💸 Expense to record spending. Pick a category, enter the amount and description — done in under 10 seconds.',
     arrow: 'right',
@@ -10807,38 +9760,14 @@ const COACH_STEPS = [
     }
   },
   {
-    screen: 'home',
-    elementId: 'tx-search-input',
-    tag: 'Recurring · Step 3 of 11',
-    title: '🔁 Recurring Transactions',
-    desc: 'Long-press any transaction to make it recurring — weekly, biweekly or monthly. MoneyFi auto-posts it every period. Perfect for salary, rent, subscriptions.',
-    arrow: 'down',
-    preAction: () => {
-      const menu = document.getElementById('fab-menu');
-      const fab  = document.getElementById('fab-add-btn');
-      if (fab && menu && menu.classList.contains('open')) fab.click();
-      switchScreen('home', document.querySelector('.nav-item:nth-child(1)'));
-    }
-  },
-  {
-    screen: 'home',
-    elementId: 'author-toggle-btn',
-    tag: 'Family · Step 4 of 11',
-    title: '👨‍👩‍👧 Family View',
-    desc: 'Tap the people icon to filter transactions by family member. See just your entries, or your partner\'s — everyone adds to the same shared ledger.',
-    arrow: 'down',
-    preAction: () => {
-      switchScreen('home', document.querySelector('.nav-item:nth-child(1)'));
-    }
-  },
-  {
     screen: 'budget',
     elementId: 'btab-goals',
-    tag: 'Budget & Goals · Step 5 of 11',
+    tag: 'Budget & Goals · Step 3 of 9',
     title: '🎯 Goals Tab',
     desc: 'Switch to Goals here to set financial milestones — save for a house, pay off a loan, build an emergency fund.',
     arrow: 'down',
     preAction: () => {
+      // Close fab menu if open
       const menu = document.getElementById('fab-menu');
       const fab  = document.getElementById('fab-add-btn');
       if (fab && menu && menu.classList.contains('open')) fab.click();
@@ -10848,7 +9777,7 @@ const COACH_STEPS = [
   {
     screen: 'budget',
     elementId: 'goals-fab-btn',
-    tag: 'Budget & Goals · Step 6 of 11',
+    tag: 'Budget & Goals · Step 4 of 9',
     title: '＋ Add a Goal',
     desc: 'Tap this to create a new goal. Choose Grow (build savings) or Reduce (pay down debt). Map your accounts to track progress automatically.',
     arrow: 'up',
@@ -10859,7 +9788,7 @@ const COACH_STEPS = [
   {
     screen: 'networth',
     elementId: 'nw-total',
-    tag: 'Net Worth · Step 7 of 11',
+    tag: 'Net Worth · Step 5 of 9',
     title: '💎 Your Net Worth',
     desc: 'This is the big number — total assets minus total liabilities. It updates live as you add accounts and transactions.',
     arrow: 'down',
@@ -10871,7 +9800,7 @@ const COACH_STEPS = [
     screen: 'networth',
     // Target the always-visible section header, not the collapsible body
     elementId: 'nw-sec-checking',
-    tag: 'Net Worth · Step 8 of 11',
+    tag: 'Net Worth · Step 6 of 9',
     title: '🏦 Add Accounts',
     desc: 'Tap any row to expand it, then tap "+ Add Account" inside. Add checking, savings, real estate, loans — each category stays organised.',
     arrow: 'up',
@@ -10880,7 +9809,7 @@ const COACH_STEPS = [
   {
     screen: 'metals',
     elementId: 'mini-gold',
-    tag: 'Metals · Step 9 of 11',
+    tag: 'Metals · Step 7 of 9',
     title: '🥇 Gold, Silver & Platinum',
     desc: 'Switch between metals using these cards. Each shows your total weight and current estimated value based on your set prices.',
     arrow: 'down',
@@ -10889,7 +9818,7 @@ const COACH_STEPS = [
   {
     screen: 'metals',
     elementId: 'metal-live-price',
-    tag: 'Metals · Step 10 of 11',
+    tag: 'Metals · Step 8 of 9',
     title: '✏️ Set Your Own Price',
     desc: 'Tap Edit next to this price to override it. You can set a base rate AND a specific price per purity — 22K vs 24K gold will differ.',
     arrow: 'down'
@@ -10897,7 +9826,7 @@ const COACH_STEPS = [
   {
     screen: 'settings',
     elementId: 'fx-rates-list',
-    tag: 'Settings · Step 11 of 11',
+    tag: 'Settings · Step 9 of 9',
     title: '💱 FX Rate Overrides',
     desc: 'Every foreign currency in your data appears here. Tap ✏️ Set on any row to correct the rate — all your valuations update instantly.',
     arrow: 'up',
@@ -11121,19 +10050,6 @@ updatePeriodLabel();
 
 // Render home
 renderHome();
-
-// Auto-snapshot previous month on first load if not captured yet
-try {
-  const prevDate = new Date(); prevDate.setMonth(prevDate.getMonth() - 1);
-  const prevMk = prevDate.getFullYear() + '-' + String(prevDate.getMonth()+1).padStart(2,'0');
-  const existing = getNWSnapshots().find(s => (s.month||s.date||'').startsWith(prevMk));
-  if (!existing && data[prevMk]) {
-    const tmpView = viewMonth;
-    viewMonth = prevMk;
-    autoSnapshot();
-    viewMonth = tmpView;
-  }
-} catch(e) {}
 
 // Show onboarding on first ever load
 if (!localStorage.getItem(OB_SEEN_KEY)) {
@@ -11428,7 +10344,7 @@ function getAllAvailableCats(budgetType) {
       getCatsForType(t).forEach(c => all.add(c))
     );
     // Pull actual investment transactions used
-    const mk = budgetViewMonth || getCurrentMonthKey();
+    const mk = viewMonth || getCurrentMonthKey();
     const monthData = data[mk] || {};
     (monthData.investments || []).forEach(tx => {
       if (tx.category)    all.add(tx.category);
