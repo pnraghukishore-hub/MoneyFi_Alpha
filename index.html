@@ -169,7 +169,7 @@
     .income-sub-card .isc-amount { font-size: 1em; font-weight: 900; color: var(--income); }
 
     .budget-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-    .budget-card { background: var(--white); border-radius: var(--radius); padding: 16px 12px 14px; text-align: center; box-shadow: var(--card-shadow); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    .budget-card { background: var(--white); border-radius: var(--radius); padding: 16px 12px 14px; text-align: center; box-shadow: var(--card-shadow); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
     .budget-card:hover { transform: translateY(-2px); box-shadow: var(--card-shadow-hover); }
     .budget-card .cat-icon { width: 48px; height: 48px; border-radius: 14px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4em; }
     .budget-card .cat-name { font-size: 0.72em; font-weight: 700; color: var(--text-med); margin-bottom: 4px; }
@@ -245,11 +245,6 @@
     .cal-sum-item.net .cal-sum-val { color:var(--text-dark); }
     .cal-sum-divider { width:1px; height:32px; background:#F0F0F0; }
     .cal-grid-wrap { background:var(--white); border-radius:var(--radius); box-shadow:var(--card-shadow); overflow:hidden; margin-bottom:14px; }
-    .settings-accordion { background:white; border-radius:16px; box-shadow:0 1px 6px rgba(0,0,0,0.06); margin-bottom:10px; overflow:hidden; }
-    .acc-header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; cursor:pointer; font-size:0.82em; font-weight:900; color:var(--text-dark); user-select:none; }
-    .acc-header:hover { background:#FAFAFA; }
-    .acc-chev { font-size:1em; font-weight:900; color:var(--text-light); transition:transform 0.2s; flex-shrink:0; }
-    .acc-body { padding:0 16px 16px; }
     .cal-dow-row { display:grid; grid-template-columns:repeat(7,1fr); padding:10px 0 8px; border-bottom:1px solid #F5F5F5; }
     .cal-dow { text-align:center; font-size:0.7em; font-weight:900; color:var(--text-light); letter-spacing:0.3px; }
     .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); }
@@ -265,15 +260,6 @@
     .cal-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
     .cal-cell-amt { font-size:0.58em; font-weight:900; line-height:1.3; text-align:center; }
     .cal-detail-header { font-size:0.82em; font-weight:800; color:var(--text-light); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; padding:0 4px; display:flex; justify-content:space-between; align-items:center; }
-    .author-filter-wrap { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-    .author-toggle-btn { flex-shrink:0; width:34px; height:34px; border-radius:50%; background:var(--white); border:1.5px solid #E8E8E8; display:flex; align-items:center; justify-content:center; font-size:1em; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,0.08); transition:all 0.2s; }
-    .author-toggle-btn.active { background:var(--yellow); border-color:var(--yellow); }
-    .author-chips-slide { display:flex; gap:6px; flex:1; overflow:hidden; max-width:0; transition:max-width 0.35s ease, opacity 0.25s ease; opacity:0; }
-    .author-chips-slide.open { max-width:600px; opacity:1; }
-    .author-chips-scroll { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; }
-    .author-chips-scroll::-webkit-scrollbar { display:none; }
-    .author-chip { flex-shrink:0; padding:5px 12px; border-radius:20px; font-size:0.72em; font-weight:800; border:1.5px solid #E8E8E8; background:white; color:var(--text-med); cursor:pointer; transition:all 0.15s; font-family:Nunito,sans-serif; white-space:nowrap; }
-    .author-chip.active { background:var(--yellow); border-color:var(--yellow); color:var(--text-dark); }
     .cal-detail-header .cal-det-right { display:flex; gap:8px; }
     .cal-empty-day { background:var(--white); border-radius:var(--radius); box-shadow:var(--card-shadow); padding:24px; text-align:center; color:var(--text-light); }
 
@@ -581,7 +567,6 @@
     .qa-key.qa-dot { font-size: 1.3em; }
     .qa-key.qa-save { background: var(--yellow); color: var(--text-dark); font-size: 0.9em; font-weight: 900; }
     .qa-key.qa-save:active { background: #E8B800; }
-    #qa-refund-toggle.active { background:#EF4444 !important;color:white !important;border-color:#EF4444 !important; }
 
     /* ══ SETTINGS ══ */
     .settings-card { background: var(--white); border-radius: var(--radius); padding: 24px; box-shadow: var(--card-shadow); margin-bottom: 16px; }
@@ -1378,21 +1363,15 @@
         <div class="home-income-total" id="home-income">$0</div>
       </div>
       <div class="income-sub-grid">
-        <div class="income-sub-card" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;"
-          ontouchstart="homeCardTouchStart(event,'Salary','income','Salary')"
-          ontouchend="homeCardTouchEnd(event)" ontouchmove="homeCardTouchMove(event)">
+        <div class="income-sub-card" onclick="openQuickAdd('income','Salary')">
           <div class="isc-icon">💼</div><div class="isc-name">Salary</div>
           <div class="isc-amount" id="home-salary">$0</div>
         </div>
-        <div class="income-sub-card" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;"
-          ontouchstart="homeCardTouchStart(event,'Gift','income','Gift')"
-          ontouchend="homeCardTouchEnd(event)" ontouchmove="homeCardTouchMove(event)">
+        <div class="income-sub-card" onclick="openQuickAdd('income','Gift')">
           <div class="isc-icon">🎁</div><div class="isc-name">Gifts</div>
           <div class="isc-amount" id="home-gifts">$0</div>
         </div>
-        <div class="income-sub-card" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;"
-          ontouchstart="homeCardTouchStart(event,'Other','income','Other')"
-          ontouchend="homeCardTouchEnd(event)" ontouchmove="homeCardTouchMove(event)">
+        <div class="income-sub-card" onclick="openQuickAdd('income','Other')">
           <div class="isc-icon">💰</div><div class="isc-name">Others</div>
           <div class="isc-amount" id="home-other-income">$0</div>
         </div>
@@ -1444,35 +1423,8 @@
       <div class="cal-sum-val" id="cal-total-net">$0</div>
     </div>
   </div>
-  <!-- Search Bar -->
-  <div style="position:relative;margin-bottom:10px;">
-    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1em;pointer-events:none;">🔍</span>
-    <input type="text" id="tx-search-input" placeholder="Search transactions..." autocomplete="off"
-      oninput="onTxSearch(this.value)"
-      style="width:100%;box-sizing:border-box;padding:10px 36px 10px 36px;border:1.5px solid #E8E8E8;
-             border-radius:12px;font-family:Nunito,sans-serif;font-weight:700;font-size:0.88em;
-             background:var(--white);color:var(--text-dark);outline:none;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-    <button id="tx-search-clear" onclick="clearTxSearch()" style="
-      display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);
-      background:none;border:none;font-size:1em;cursor:pointer;color:var(--text-light);
-      font-weight:900;padding:2px 6px;">✕</button>
-  </div>
-  <!-- Author filter — 👥 icon, tap to slide out member chips -->
-  <div id="author-filter-strip" style="display:none;">
-    <div class="author-filter-wrap">
-      <div class="author-toggle-btn" id="author-toggle-btn" onclick="toggleAuthorChips()" title="Filter by family member">👥</div>
-      <div class="author-chips-slide" id="author-chips-slide">
-        <div class="author-chips-scroll" id="author-chips-row"></div>
-      </div>
-    </div>
-  </div>
-  <!-- Search Results (hidden when not searching) -->
-  <div id="tx-search-results" style="display:none;"></div>
-
   <!-- Calendar Grid -->
-  <div class="cal-grid-wrap" id="cal-grid-wrap"
-    ontouchstart="calSwipeStart(event)"
-    ontouchend="calSwipeEnd(event)">
+  <div class="cal-grid-wrap">
     <div class="cal-dow-row">
       <div class="cal-dow">SUN</div><div class="cal-dow">MON</div><div class="cal-dow">TUE</div>
       <div class="cal-dow">WED</div><div class="cal-dow">THU</div><div class="cal-dow">FRI</div><div class="cal-dow">SAT</div>
@@ -1482,9 +1434,7 @@
   <div id="cal-list-view" style="display:none;"></div>
   </div>
   <!-- Day Detail -->
-  <div id="cal-day-detail-wrap">
-    <div id="cal-day-detail"></div>
-  </div>
+  <div id="cal-day-detail"></div>
 </div>
 
 <!-- ══════════════ ADD ══════════════ -->
@@ -1705,234 +1655,208 @@
 
 <!-- ══════════════ SETTINGS ══════════════ -->
 <div class="screen" id="screen-settings">
-
-  <!-- ═══ Cloud Sync — Always visible, no toggle ═══ -->
-  <div style="background:white;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 6px rgba(0,0,0,0.06);">
-    <div style="font-size:0.7em;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">☁️ Cloud Sync Account</div>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-      <img id="firebase-user-avatar" src="" style="display:none;width:40px;height:40px;border-radius:50%;border:2px solid #E8E8E8;">
-      <div>
-        <div id="firebase-user-display" style="font-weight:800;font-size:0.9em;color:#1E2A6E;">Loading...</div>
-        <div style="font-size:0.72em;color:#10B981;font-weight:700;">✅ Synced across devices</div>
-      </div>
-    </div>
-    <button onclick="signOut()" style="width:100%;padding:10px;background:#FFF0F0;border:1.5px solid #FFCDD2;border-radius:10px;color:#EF4444;font-weight:800;font-size:0.82em;cursor:pointer;">
-      Sign Out
-    </button>
-  </div>
-
-  <!-- ═══ Recurring Transactions — Open by default ═══ -->
-  <div class="settings-accordion" id="acc-recurring">
-    <div class="acc-header" onclick="toggleAccordion('acc-recurring')">
-      <span>🔁 Recurring Transactions</span>
-      <span class="acc-chev">▾</span>
-    </div>
-    <div class="acc-body">
-      <div id="recurring-rules-list"></div>
-    </div>
-  </div>
-
-  <!-- ═══ Currency & FX — Collapsible, closed ═══ -->
-  <div class="settings-accordion collapsed" id="acc-currency">
-    <div class="acc-header" onclick="toggleAccordion('acc-currency')">
-      <span>💱 Currency & Exchange Rates</span>
-      <span class="acc-chev">▸</span>
-    </div>
-    <div class="acc-body" style="display:none;">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">All amounts display in your chosen currency symbol.</p>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+  <!-- Data Management (moved from Home) -->
+  
+    <!-- ═══ Firebase Account ═══ -->
+    <div style="background:white;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 6px rgba(0,0,0,0.06);">
+      <div style="font-size:0.7em;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">☁️ Cloud Sync Account</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <img id="firebase-user-avatar" src="" style="display:none;width:40px;height:40px;border-radius:50%;border:2px solid #E8E8E8;">
         <div>
-          <div style="font-weight:900;font-size:1.1em;" id="settings-curr-display">🇺🇸 USD — $</div>
-          <div style="font-size:0.78em;color:var(--text-light);margin-top:2px;" id="settings-curr-name">US Dollar</div>
+          <div id="firebase-user-display" style="font-weight:800;font-size:0.9em;color:#1E2A6E;">Loading...</div>
+          <div style="font-size:0.72em;color:#10B981;font-weight:700;">✅ Synced across devices</div>
         </div>
-        <button onclick="openCurrencyPicker('settings')" style="background:var(--yellow);border:none;border-radius:10px;padding:10px 18px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.88em;cursor:pointer;">Change</button>
       </div>
-      <div style="border-top:1px solid #F0F0F0;padding-top:14px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <span style="font-size:0.78em;font-weight:800;color:var(--text-med);">FX OVERRIDE RATES <span id="fx-override-badge" style="display:none;background:#F0FFF4;color:#10B981;font-size:0.65em;border-radius:8px;padding:2px 8px;font-weight:800;margin-left:6px;">✏️ Custom</span></span>
-          <button onclick="clearAllFXOverrides()" id="fx-clear-all-btn" style="display:none;background:#FFF0F0;border:1.5px solid #EF444430;border-radius:8px;padding:4px 10px;font-size:0.72em;font-weight:800;color:#EF4444;cursor:pointer;">🗑 Clear All</button>
-        </div>
-        <p style="font-size:0.78em;color:var(--text-light);font-weight:600;margin-bottom:10px;">Override any rate if the built-in estimate is off. Only currencies in your data appear here.</p>
-        <div id="fx-rates-list"></div>
-      </div>
+      <button onclick="signOut()" style="width:100%;padding:10px;background:#FFF0F0;border:1.5px solid #FFCDD2;border-radius:10px;color:#EF4444;font-weight:800;font-size:0.82em;cursor:pointer;">
+        Sign Out
+      </button>
     </div>
-  </div>
-
-  <!-- ═══ Home Spending Cards — Open by default ═══ -->
-  <div class="settings-accordion" id="acc-homecards">
-    <div class="acc-header" onclick="toggleAccordion('acc-homecards')">
-      <span>🏠 Home Spending Cards</span>
-      <span class="acc-chev">▾</span>
+    <!-- ══════════════════════ -->
+<div class="settings-card">
+    <div class="settings-title">💾 Data Management</div>
+    <div class="form-row">
+      <span class="form-icon">💾</span><span class="form-label">Backup</span>
+      <button onclick="downloadBackup()" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">⬇️ Download</button>
     </div>
-    <div class="acc-body">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Choose which category cards appear on your home screen. Toggle ✓ to show/hide, ✕ to permanently remove.</p>
-      <div class="home-card-grid" id="home-card-grid"></div>
-      <div style="margin-top:10px;">
-        <div style="font-size:0.78em;font-weight:800;color:var(--text-med);margin-bottom:8px;">ADD CUSTOM CARD</div>
-        <div class="home-card-emoji-pick" id="home-card-emoji-row"></div>
-        <div class="home-card-add-row">
-          <input type="text" class="cat-add-input" id="home-card-name-input" placeholder="Card name (e.g. Groceries)">
-          <button class="cat-add-btn" onclick="addHomeCard()">+ Add</button>
-        </div>
+    <div class="form-row">
+      <span class="form-icon">📊</span><span class="form-label">Export</span>
+      <button onclick="exportAllData()" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">Export Excel</button>
+    </div>
+    <div class="form-row" style="border-bottom:none;">
+      <span class="form-icon">📥</span><span class="form-label">Restore</span>
+      <label for="restore-settings-file" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">⬆️ Upload</label>
+      <input type="file" id="restore-settings-file" accept=".json" style="display:none;" onchange="restoreBackup(this)">
+    </div>
+    <div class="form-row" style="border-bottom:none;margin-top:4px;">
+      <span class="form-icon">🎬</span><span class="form-label">Intro Tour</span>
+      <div style="display:flex;gap:6px;">
+        <button onclick="showOnboarding()" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 12px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">▶ Slides</button>
+        <button onclick="startCoachTour()" style="background:var(--primary-light);border:none;border-radius:8px;padding:8px 12px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--primary);">🎯 Coach</button>
       </div>
     </div>
   </div>
 
-  <!-- ═══ Home Investment Cards — Closed by default ═══ -->
-  <div class="settings-accordion collapsed" id="acc-invcards">
-    <div class="acc-header" onclick="toggleAccordion('acc-invcards')">
-      <span>📈 Home Investment Cards</span>
-      <span class="acc-chev">▸</span>
+  <!-- PIN Lock — COMMENTED OUT, RE-ENABLE LATER -->
+  <!-- 
+  === PIN LOCK SETTINGS UI — Uncomment to re-enable ===
+  <div class="settings-card">
+    <div class="settings-title">🔒 App Lock</div>
+    <div class="form-row">
+      <span class="form-icon">🔑</span>
+      <div style="flex:1;">
+        <div style="font-weight:800;font-size:0.9em;color:var(--text-dark);">PIN Lock</div>
+        <div style="font-size:0.76em;color:var(--text-light);font-weight:600;margin-top:2px;" id="pin-status-label">Not set up</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="pin-toggle-btn" onclick="handlePinToggle()">Set PIN</button>
+        <button id="pin-change-btn" onclick="showChangePIN()" style="display:none;">Change</button>
+      </div>
     </div>
-    <div class="acc-body" style="display:none;">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Choose which investment cards appear on the Investing tab. Toggle ✓ to show/hide, ✕ to remove.</p>
-      <div class="home-card-grid" id="inv-card-grid"></div>
-      <div style="margin-top:10px;">
-        <div style="font-size:0.78em;font-weight:800;color:var(--text-med);margin-bottom:8px;">ADD CUSTOM INVESTMENT CARD</div>
-        <div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-bottom:8px;">Pick an emoji, name your card, choose how it tracks</div>
-        <div class="home-card-emoji-pick" id="inv-card-emoji-row"></div>
-        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-          <input type="text" class="cat-add-input" id="inv-card-name-input" placeholder="Card name (e.g. PF/VPF, NPS, FD)" style="flex:2;min-width:140px;">
-          <select id="inv-card-template" class="cat-add-input" style="flex:1;min-width:110px;">
-            <option value="General">💰 Contribution</option>
-            <option value="ETF/MF">📊 Units × NAV</option>
-            <option value="Stocks">📈 Shares × Price</option>
-            <option value="Crypto">🪙 Coins × Price</option>
-            <option value="Metals">🥇 Weight × Cost</option>
-            <option value="Real Estate">🏡 Property</option>
-          </select>
-        </div>
-        <button class="cat-add-btn" style="width:100%;" onclick="addInvCard()">+ Add Investment Card</button>
+  </div>
+  === END PIN LOCK SETTINGS === -->
+
+  <!-- Currency -->
+  <div class="settings-card">
+    <div class="settings-title">💱 Currency</div>
+    <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">All amounts display in your chosen currency symbol.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-weight:900;font-size:1.1em;" id="settings-curr-display">🇺🇸 USD — $</div>
+        <div style="font-size:0.78em;color:var(--text-light);margin-top:2px;" id="settings-curr-name">US Dollar</div>
+      </div>
+      <button onclick="openCurrencyPicker('settings')" style="background:var(--yellow);border:none;border-radius:10px;padding:10px 18px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.88em;cursor:pointer;">Change</button>
+    </div>
+  </div>
+
+  <!-- FX Exchange Rates -->
+  <div class="settings-card">
+    <div class="settings-title">💱 Exchange Rates <span id="fx-override-badge" style="display:none;background:#F0FFF4;color:#10B981;font-size:0.65em;border-radius:8px;padding:2px 8px;font-weight:800;margin-left:6px;vertical-align:middle;">✏️ Custom</span></div>
+    <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Rates used to convert your multi-currency assets &amp; transactions to <span id="fx-base-label">USD</span>. Override any rate if the built-in estimate is off.</p>
+    <div id="fx-rates-list"></div>
+    <div style="margin-top:10px;font-size:0.72em;color:var(--text-light);font-weight:600;">
+      💡 Rates shown as: 1 USD = N units. Only currencies found in your data appear here.
+    </div>
+  </div>
+
+  <!-- Home Spending Cards Manager -->
+  <div class="settings-card">
+    <div class="settings-title">🏠 Home Spending Cards</div>
+    <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Choose which category cards appear on your home screen. Toggle ✓ to show/hide, ✕ to permanently remove.</p>
+    <div class="home-card-grid" id="home-card-grid"></div>
+    <div style="margin-top:10px;">
+      <div style="font-size:0.78em;font-weight:800;color:var(--text-med);margin-bottom:8px;">ADD CUSTOM CARD</div>
+      <div class="home-card-emoji-pick" id="home-card-emoji-row"></div>
+      <div class="home-card-add-row">
+        <input type="text" class="cat-add-input" id="home-card-name-input" placeholder="Card name (e.g. Groceries)">
+        <button class="cat-add-btn" onclick="addHomeCard()">+ Add</button>
       </div>
     </div>
   </div>
 
-  <!-- ═══ Manage Categories — Closed by default ═══ -->
-  <div class="settings-accordion collapsed" id="acc-categories">
-    <div class="acc-header" onclick="toggleAccordion('acc-categories')">
-      <span>🏷️ Manage Categories</span>
-      <span class="acc-chev">▸</span>
-    </div>
-    <div class="acc-body" style="display:none;">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Customize subcategories used in Quick Add. Tap ✕ to remove, or add your own below.</p>
-      <div class="cat-mgr-tabs" id="cat-mgr-tabs">
-        <button class="cat-mgr-tab active" onclick="showCatMgrTab('expense',this)">💸 Expense</button>
-        <button class="cat-mgr-tab" onclick="showCatMgrTab('income',this)">💵 Income</button>
-        <button class="cat-mgr-tab" onclick="showCatMgrTab('investment',this)">📈 Invest</button>
-        <button class="cat-mgr-tab" onclick="showCatMgrTab('debt',this)">📉 Debt</button>
-        <button class="cat-mgr-tab" onclick="showCatMgrTab('given',this)">🤝 Given</button>
-        <button class="cat-mgr-tab" onclick="showCatMgrTab('additional',this)">🎁 Additional</button>
+  <!-- Investment Cards Manager -->
+  <div class="settings-card">
+    <div class="settings-title">📈 Home Investment Cards</div>
+    <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Choose which investment cards appear on the Investing tab. Toggle ✓ to show/hide, ✕ to remove. Add custom cards like PF, NPS, FD, etc.</p>
+    <div class="home-card-grid" id="inv-card-grid"></div>
+    <div style="margin-top:10px;">
+      <div style="font-size:0.78em;font-weight:800;color:var(--text-med);margin-bottom:8px;">ADD CUSTOM INVESTMENT CARD</div>
+      <div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-bottom:8px;">Pick an emoji, name your card, choose how it tracks (contributions like PF/VPF/FD, or units like ETF)</div>
+      <div class="home-card-emoji-pick" id="inv-card-emoji-row"></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <input type="text" class="cat-add-input" id="inv-card-name-input" placeholder="Card name (e.g. PF/VPF, NPS, FD)" style="flex:2;min-width:140px;">
+        <select id="inv-card-template" class="cat-add-input" style="flex:1;min-width:110px;">
+          <option value="General">💰 Contribution</option>
+          <option value="ETF/MF">📊 Units × NAV</option>
+          <option value="Stocks">📈 Shares × Price</option>
+          <option value="Crypto">🪙 Coins × Price</option>
+          <option value="Metals">🥇 Weight × Cost</option>
+          <option value="Real Estate">🏡 Property</option>
+        </select>
       </div>
-      <div class="cat-pills-wrap" id="cat-pills-wrap"></div>
-      <div class="cat-add-row">
-        <input type="text" class="cat-add-input" id="cat-add-input" placeholder="New category name..." onkeydown="if(event.key==='Enter')addCustomCat()">
-        <button class="cat-add-btn" onclick="addCustomCat()">+ Add</button>
+      <button class="cat-add-btn" style="width:100%;" onclick="addInvCard()">+ Add Investment Card</button>
+    </div>
+  </div>
+
+  <!-- Category Manager -->
+  <div class="settings-card">
+    <div class="settings-title">🏷️ Manage Categories</div>
+    <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Customize subcategories used in Quick Add. Tap ✕ to remove, or add your own below.</p>
+    <div class="cat-mgr-tabs" id="cat-mgr-tabs">
+      <button class="cat-mgr-tab active" onclick="showCatMgrTab('expense',this)">💸 Expense</button>
+      <button class="cat-mgr-tab" onclick="showCatMgrTab('income',this)">💵 Income</button>
+      <button class="cat-mgr-tab" onclick="showCatMgrTab('investment',this)">📈 Invest</button>
+      <button class="cat-mgr-tab" onclick="showCatMgrTab('debt',this)">📉 Debt</button>
+      <button class="cat-mgr-tab" onclick="showCatMgrTab('given',this)">🤝 Given</button>
+      <button class="cat-mgr-tab" onclick="showCatMgrTab('additional',this)">🎁 Additional</button>
+    </div>
+    <div class="cat-pills-wrap" id="cat-pills-wrap"></div>
+    <div class="cat-add-row">
+      <input type="text" class="cat-add-input" id="cat-add-input" placeholder="New category name..." onkeydown="if(event.key==='Enter')addCustomCat()">
+      <button class="cat-add-btn" onclick="addCustomCat()">+ Add</button>
+    </div>
+  </div>
+
+  <!-- Net Worth Account Types -->
+  <div class="settings-card" id="settings-nw-card">
+    <div class="settings-title">💎 Net Worth Account Types</div>
+    <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Choose which types appear in the Add Account picker. Toggle ✓ to show/hide, ✕ to remove custom types.</p>
+    <div class="home-card-grid" id="nw-type-visibility-grid"></div>
+    <div style="margin-top:12px;border-top:1px solid #F0F0F0;padding-top:12px;">
+      <div style="font-size:0.78em;font-weight:800;color:var(--text-med);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Add Custom Type</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div id="nw-type-emoji-row" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <input type="text" id="nw-type-name-input" class="cat-add-input" placeholder="e.g. Auto Loan, Other Asset" style="flex:1;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:0.8em;font-weight:700;cursor:pointer;">
+          <input type="checkbox" id="nw-type-is-liab"> Liability
+        </label>
+        <button class="cat-add-btn" onclick="addCustomNWType()">+ Add</button>
       </div>
     </div>
   </div>
 
-  <!-- ═══ Net Worth Account Types — Closed by default ═══ -->
-  <div class="settings-accordion collapsed" id="acc-nwtypes">
-    <div class="acc-header" onclick="toggleAccordion('acc-nwtypes')">
-      <span>💎 Net Worth Account Types</span>
-      <span class="acc-chev">▸</span>
-    </div>
-    <div class="acc-body" style="display:none;">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Choose which types appear in the Add Account picker. Toggle ✓ to show/hide, ✕ to remove custom types.</p>
-      <div class="home-card-grid" id="nw-type-visibility-grid"></div>
-      <div style="margin-top:12px;border-top:1px solid #F0F0F0;padding-top:12px;">
-        <div style="font-size:0.78em;font-weight:800;color:var(--text-med);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Add Custom Type</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <div id="nw-type-emoji-row" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <input type="text" id="nw-type-name-input" class="cat-add-input" placeholder="e.g. Auto Loan, Other Asset" style="flex:1;">
-          <label style="display:flex;align-items:center;gap:4px;font-size:0.8em;font-weight:700;cursor:pointer;">
-            <input type="checkbox" id="nw-type-is-liab"> Liability
-          </label>
-          <button class="cat-add-btn" onclick="addCustomNWType()">+ Add</button>
-        </div>
+  <!-- Theme Selector -->
+  <div class="settings-card">
+    <div class="settings-title">🎨 App Theme</div>
+    <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:14px;">Pick a vibe! Each theme adds fun decorations and colors.</p>
+    <div class="theme-grid">
+      <div class="theme-card default active-theme" id="theme-default" onclick="setTheme('default')">
+        <div class="tc-preview">☀️💰</div>
+        <div class="tc-name">Classic MoneyFlow</div>
+        <div class="tc-desc">The original warm & sunny look</div>
+        <div class="tc-active-badge">✓</div>
+      </div>
+      <div class="theme-card looney" id="theme-looney" onclick="setTheme('looney')">
+        <div class="tc-preview">🐰🦆😜</div>
+        <div class="tc-name">Looney Tunes!</div>
+        <div class="tc-desc">Wabbit season for your wallet</div>
+        <div class="tc-active-badge">✓</div>
+      </div>
+      <div class="theme-card jungle" id="theme-jungle" onclick="setTheme('jungle')">
+        <div class="tc-preview">🐒🌿🦜</div>
+        <div class="tc-name">Jungle Vibes</div>
+        <div class="tc-desc">Go bananas with your budget!</div>
+        <div class="tc-active-badge">✓</div>
+      </div>
+      <div class="theme-card space" id="theme-space" onclick="setTheme('space')">
+        <div class="tc-preview">🚀⭐🌙</div>
+        <div class="tc-name">Space Explorer</div>
+        <div class="tc-desc">Finance at warp speed</div>
+        <div class="tc-active-badge">✓</div>
+      </div>
+      <div class="theme-card ocean" id="theme-ocean" onclick="setTheme('ocean')">
+        <div class="tc-preview">🐠🌊🐚</div>
+        <div class="tc-name">Deep Ocean</div>
+        <div class="tc-desc">Dive deep into your finances</div>
+        <div class="tc-active-badge">✓</div>
       </div>
     </div>
   </div>
 
-  <!-- ═══ App Theme — Open by default ═══ -->
-  <div class="settings-accordion" id="acc-theme">
-    <div class="acc-header" onclick="toggleAccordion('acc-theme')">
-      <span>🎨 App Theme</span>
-      <span class="acc-chev">▾</span>
-    </div>
-    <div class="acc-body">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:14px;">Pick a vibe! Each theme adds fun decorations and colors.</p>
-      <div class="theme-grid">
-        <div class="theme-card default active-theme" id="theme-default" onclick="setTheme('default')">
-          <div class="tc-preview">☀️💰</div>
-          <div class="tc-name">Classic MoneyFlow</div>
-          <div class="tc-desc">The original warm & sunny look</div>
-          <div class="tc-active-badge">✓</div>
-        </div>
-        <div class="theme-card looney" id="theme-looney" onclick="setTheme('looney')">
-          <div class="tc-preview">🐰🦆😜</div>
-          <div class="tc-name">Looney Tunes!</div>
-          <div class="tc-desc">Wabbit season for your wallet</div>
-          <div class="tc-active-badge">✓</div>
-        </div>
-        <div class="theme-card jungle" id="theme-jungle" onclick="setTheme('jungle')">
-          <div class="tc-preview">🐒🌿🦜</div>
-          <div class="tc-name">Jungle Vibes</div>
-          <div class="tc-desc">Go bananas with your budget!</div>
-          <div class="tc-active-badge">✓</div>
-        </div>
-        <div class="theme-card space" id="theme-space" onclick="setTheme('space')">
-          <div class="tc-preview">🚀⭐🌙</div>
-          <div class="tc-name">Space Explorer</div>
-          <div class="tc-desc">Finance at warp speed</div>
-          <div class="tc-active-badge">✓</div>
-        </div>
-        <div class="theme-card ocean" id="theme-ocean" onclick="setTheme('ocean')">
-          <div class="tc-preview">🐠🌊🐚</div>
-          <div class="tc-name">Deep Ocean</div>
-          <div class="tc-desc">Dive deep into your finances</div>
-          <div class="tc-active-badge">✓</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ Data Management — Closed by default ═══ -->
-  <div class="settings-accordion collapsed" id="acc-data">
-    <div class="acc-header" onclick="toggleAccordion('acc-data')" style="color:#EF4444;">
-      <span>🗑 Data Management</span>
-      <span class="acc-chev">▸</span>
-    </div>
-    <div class="acc-body" style="display:none;">
-      <div class="settings-card" style="box-shadow:none;padding:0;margin-bottom:0;">
-        <div class="form-row">
-          <span class="form-icon">💾</span><span class="form-label">Backup</span>
-          <button onclick="downloadBackup()" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">⬇️ Download</button>
-        </div>
-        <div class="form-row">
-          <span class="form-icon">📊</span><span class="form-label">Export</span>
-          <button onclick="exportAllData()" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">Export Excel</button>
-        </div>
-        <div class="form-row" style="border-bottom:none;">
-          <span class="form-icon">📥</span><span class="form-label">Restore</span>
-          <label for="restore-settings-file" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">⬆️ Upload</label>
-          <input type="file" id="restore-settings-file" accept=".json" style="display:none;" onchange="restoreBackup(this)">
-        </div>
-        <div class="form-row" style="border-bottom:none;margin-top:4px;">
-          <span class="form-icon">🎬</span><span class="form-label">Intro Tour</span>
-          <div style="display:flex;gap:6px;">
-            <button onclick="showOnboarding()" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 12px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">▶ Slides</button>
-            <button onclick="startCoachTour()" style="background:var(--primary-light);border:none;border-radius:8px;padding:8px 12px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--primary);">🎯 Coach</button>
-          </div>
-        </div>
-      </div>
-      <div id="reset-data-summary" style="margin-top:12px;"></div>
-    </div>
-  </div>
 
 </div>
+
 <!-- FAB BACKDROP -->
 <div class="fab-backdrop" id="fab-backdrop" onclick="closeFabMenu()"></div>
 
@@ -1982,9 +1906,7 @@
   </div>
 
   <!-- OVERVIEW TAB -->
-  <div id="bsec-overview" class="budget-section"
-    ontouchstart="budgetSwipeStart(event)"
-    ontouchend="budgetSwipeEnd(event)">
+  <div id="bsec-overview" class="budget-section">
     <!-- Hero card: Total left + dual line chart -->
     <div class="budget-hero-card" id="bh-card">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
@@ -2027,9 +1949,7 @@
   <!-- EXPENSES GOALS TAB -->
   <div id="bsec-expenses" class="budget-section" style="display:none;">
     <!-- Category detail view (shown when a category is clicked) -->
-    <div class="bcat-detail-view" id="bcat-detail-expenses"
-      ontouchstart="budgetSwipeStart(event)"
-      ontouchend="budgetSwipeEnd(event)">
+    <div class="bcat-detail-view" id="bcat-detail-expenses">
       <button class="bcd-back-btn" onclick="closeBudgetCatDetail('expenses')">← Back</button>
       <div class="bcd-header">
         <div class="bcd-icon" id="bcd-exp-icon"></div>
@@ -2069,9 +1989,7 @@
 
   <!-- SAVINGS GOALS TAB -->
   <div id="bsec-savings" class="budget-section" style="display:none;">
-    <div class="bcat-detail-view" id="bcat-detail-savings"
-      ontouchstart="budgetSwipeStart(event)"
-      ontouchend="budgetSwipeEnd(event)">
+    <div class="bcat-detail-view" id="bcat-detail-savings">
       <button class="bcd-back-btn" onclick="closeBudgetCatDetail('savings')">← Back</button>
       <div class="bcd-header">
         <div class="bcd-icon" id="bcd-sav-icon"></div>
@@ -2822,27 +2740,8 @@
       <input type="number" id="ebp-amount" placeholder="0.00" step="0.01" min="0">
     </div>
     <div class="ebp-field" id="ebp-linked-cats-field">
-      <label id="ebp-linked-cats-label">Linked Transaction Categories</label>
-      <div id="ebp-linked-cats-hint" style="font-size:0.72em;color:var(--text-light);font-weight:600;margin-bottom:6px;"></div>
-      <!-- Selected chips -->
-      <div id="ebp-linked-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:0;"></div>
-      <!-- Search input -->
-      <div style="position:relative;">
-        <input type="text" id="ebp-linked-search"
-          placeholder="Type to search categories..."
-          autocomplete="off"
-          oninput="filterLinkedCatSuggestions(this.value)"
-          onfocus="filterLinkedCatSuggestions(this.value)"
-          style="width:100%;background:#F8F8F8;border:1.5px solid #EEE;border-radius:10px;padding:10px 12px;font-family:inherit;font-weight:700;font-size:0.88em;color:var(--text-dark);outline:none;box-sizing:border-box;">
-        <!-- Suggestions dropdown -->
-        <div id="ebp-linked-suggestions" style="
-          display:none;position:absolute;top:100%;left:0;right:0;z-index:999;
-          background:white;border:1.5px solid #EEE;border-radius:10px;
-          box-shadow:0 8px 24px rgba(0,0,0,0.1);max-height:180px;overflow-y:auto;margin-top:4px;
-        "></div>
-      </div>
-      <!-- Hidden input carries the actual comma-separated value for save logic -->
-      <input type="hidden" id="ebp-linked-cats">
+      <label>Linked Transaction Categories (comma-separated)</label>
+      <input type="text" id="ebp-linked-cats" placeholder="e.g. FastFood, Restaurants">
     </div>
     <div class="ebp-actions">
       <button class="ebp-save-btn" onclick="saveEditedBudget()">✅ Save</button>
@@ -2867,28 +2766,6 @@
   </div>
 </div>
 
-<!-- RECURRING DELETE CHOICE MODAL -->
-<div class="modal-overlay" id="rec-delete-modal" style="display:none;" onclick="if(event.target===this)closeRecDeleteModal()">
-  <div class="modal" style="max-width:340px;">
-    <div class="modal-header">
-      <div class="modal-title">🗑 Delete Rule</div>
-      <button class="modal-close" onclick="closeRecDeleteModal()">✕</button>
-    </div>
-    <div id="rec-delete-body" style="padding:0 4px 4px;"></div>
-  </div>
-</div>
-
-<!-- RECURRING RULE POPUP — triggered by long press on transaction -->
-<div class="modal-overlay" id="recurring-popup-modal" style="display:none;" onclick="if(event.target===this)closeRecurringPopup()">
-  <div class="modal" style="max-width:360px;">
-    <div class="modal-header">
-      <div class="modal-title">🔁 Make Recurring</div>
-      <button class="modal-close" onclick="closeRecurringPopup()">✕</button>
-    </div>
-    <div id="recurring-popup-body" style="padding:0 4px 4px;"></div>
-  </div>
-</div>
-
 <!-- QUICK ADD POPUP (for home screen category icons) -->
 <div class="modal-overlay" id="quick-add-modal">
   <div class="modal">
@@ -2904,15 +2781,6 @@
       <div class="qa-type-chip" onclick="qaSetType('debt',this)">📉 Debt</div>
       <div class="qa-type-chip" onclick="qaSetType('given',this)">🤝 Given</div>
       <div class="qa-type-chip" onclick="qaSetType('additional',this)">🎁 Additional</div>
-    </div>
-    <!-- Refund toggle — shown only for Expense type -->
-    <div id="qa-refund-wrap" style="display:none;margin-bottom:10px;">
-      <button id="qa-refund-toggle" onclick="qaToggleRefund()" style="
-        display:inline-flex;align-items:center;gap:6px;
-        background:#FFF0F0;border:1.5px solid #EF444440;border-radius:20px;
-        padding:7px 16px;font-family:Nunito,sans-serif;font-weight:800;
-        font-size:0.82em;color:#EF4444;cursor:pointer;width:100%;justify-content:center;
-      ">↩️ Mark as Refund / Return</button>
     </div>
     <!-- Amount display -->
     <div class="qa-amount-row">
@@ -2963,35 +2831,6 @@
         </div>
       </div>
     </div>
-    <!-- Recurring toggle — only shown in edit mode, sits above numpad -->
-    <div id="qa-recurring-wrap" style="display:none;margin-bottom:8px;">
-      <div style="background:#F0F4FF;border-radius:12px;padding:10px 14px;">
-        <label style="font-weight:900;font-size:0.85em;color:#1E2A6E;cursor:pointer;display:flex;align-items:center;gap:8px;">
-          <input type="checkbox" id="qa-recurring-check" onchange="qaToggleRecurring()"
-            style="width:16px;height:16px;accent-color:#1E2A6E;cursor:pointer;">
-          🔁 Make this Recurring
-        </label>
-        <div id="qa-recurring-options" style="display:none;margin-top:10px;">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <select id="qa-rec-frequency" style="flex:1;background:var(--white);border:1.5px solid #DDD;border-radius:8px;padding:6px 8px;font-family:Nunito,sans-serif;font-weight:800;font-size:0.82em;">
-              <option value="monthly">Monthly</option>
-              <option value="biweekly">Bi-weekly (every 2 weeks)</option>
-              <option value="weekly">Weekly</option>
-              <option value="yearly">Yearly</option>
-            </select>
-            <div style="flex:1;display:flex;align-items:center;gap:6px;">
-              <span style="font-size:0.78em;font-weight:800;color:var(--text-med);white-space:nowrap;">on day</span>
-              <input type="number" id="qa-rec-day" min="1" max="31" placeholder="1"
-                style="width:60px;background:var(--white);border:1.5px solid #DDD;border-radius:8px;padding:6px 8px;font-family:Nunito,sans-serif;font-weight:800;font-size:0.82em;">
-            </div>
-          </div>
-          <div style="font-size:0.72em;color:var(--text-light);font-weight:600;margin-top:6px;">
-            Auto-posts every month on this day starting next month
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Numpad -->
     <div class="qa-numpad" id="qa-numpad"></div>
   </div>
@@ -3091,11 +2930,6 @@ let dataSortState = {};
 let qaType = 'expense';
 let qaAmountStr = '';
 let qaSubCat = '';
-// Edit mode state
-let qaEditMode = false;
-let qaEditMonthKey = null;
-let qaEditType = null;
-let qaEditIdx = null;
 let qaPreselectType = null;
 let qaPreselectSubCat = null;
 let currentTheme = localStorage.getItem('mf_theme') || 'default';
@@ -3124,14 +2958,13 @@ function sym() { return currentCurrency.symbol; }
 // ── Approximate FX rates relative to USD (updated periodically by user via Settings if needed)
 // Values = 1 USD → N units of that currency
 const FX_USD_BASE = {
-  // Rates as of Feb 2026 — override any in Settings → Currency for precision
-  USD:1, EUR:0.96, GBP:0.80, INR:86.5, AED:3.67, SAR:3.75,
-  CAD:1.43, AUD:1.60, JPY:151, CNY:7.28, SGD:1.35, CHF:0.91,
-  MYR:4.45, HKD:7.78, NZD:1.77, KWD:0.31, QAR:3.64, OMR:0.38,
-  PKR:279, BDT:110, LKR:310, NPR:133, MXN:20.4, BRL:5.85,
-  ZAR:18.3, NGN:1600, KES:129, EGP:48.5, TRY:36.5, RUB:91,
-  SEK:10.8, NOK:11.1, DKK:7.15, IDR:16200, PHP:58.5, THB:34,
-  VND:25400, KRW:1450,
+  USD:1, EUR:0.92, GBP:0.79, INR:83.5, AED:3.67, SAR:3.75,
+  CAD:1.36, AUD:1.53, JPY:149, CNY:7.24, SGD:1.34, CHF:0.89,
+  MYR:4.72, HKD:7.82, NZD:1.63, KWD:0.31, QAR:3.64, OMR:0.38,
+  PKR:278, BDT:110, LKR:310, NPR:133, MXN:17.1, BRL:4.97,
+  ZAR:18.6, NGN:1550, KES:129, EGP:48.5, TRY:32.2, RUB:91,
+  SEK:10.4, NOK:10.6, DKK:6.88, IDR:15700, PHP:55.8, THB:35,
+  VND:24500, KRW:1320,
 };
 
 // Convert an amount from entryCurrency to displayCurrency
@@ -3365,47 +3198,10 @@ function getMetalBasePrice(metalType) {
 // HELPERS
 // ══════════════════════════════════════════════════════
 function getCurrentMonthKey() { const n=new Date(); return `${n.getFullYear()}-${(n.getMonth()+1).toString().padStart(2,'0')}`; }
-
-// Always use local device date — never UTC (avoids IST +5:30 tomorrow bug)
-function localDateStr(d) {
-  const dt = d || new Date();
-  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-}
 function getMonthKey(dateStr) { if(!dateStr) return null; const dt=new Date(dateStr); if(isNaN(dt.getTime())) return null; return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`; }
 function getDisplayMonth(key) { if(!key) return ''; const[y,m]=key.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]+' '+y; }
 function getFullDisplayMonth(key) { if(!key) return ''; const[y,m]=key.split('-'); return ['January','February','March','April','May','June','July','August','September','October','November','December'][parseInt(m)-1]+' '+y; }
-function normalizeDate(raw) {
-  if (!raw) return todayStr();
-  let str = String(raw).trim();
-  // Excel serial date number
-  if (typeof raw === 'number' && raw > 30000) {
-    const d = Math.floor(raw - 25569);
-    return parseDateSafe(new Date(d * 86400 * 1000).toISOString().split('T')[0]);
-  }
-  // Already YYYY-MM-DD — use as-is, no timezone conversion needed
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-  return parseDateSafe(str);
-}
-
-// Safe local date parser — avoids UTC midnight shifting to previous day
-function parseDateSafe(str) {
-  if (!str) return todayStr();
-  str = String(str).trim();
-  // Already YYYY-MM-DD — return directly
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-  // Try parsing — use local date parts to avoid UTC shift
-  const d = new Date(str);
-  if (isNaN(d.getTime())) return todayStr();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
+function normalizeDate(raw) { if(!raw) return new Date().toISOString().split('T')[0]; let str=String(raw).trim(); if(typeof raw==='number'&&raw>30000){const d=Math.floor(raw-25569);return new Date(d*86400*1000).toISOString().split('T')[0];} if(/^\d{4}-\d{2}-\d{2}$/.test(str)) return str; const dt=new Date(str); if(!isNaN(dt.getTime())) return dt.toISOString().split('T')[0]; return new Date().toISOString().split('T')[0]; }
 function ensureMonth(key) { if(!data[key]) data[key]={income:[],expenses:[],investments:[],additional:[],realEstate:[],metals:[],givenToOthers:[],debts:[]}; }
 function save() {
   // Always keep localStorage as offline backup
@@ -3464,12 +3260,12 @@ function changePeriod(dir) {
   } else if(currentPeriod === 'week') {
     const d = selectedDay ? new Date(selectedDay+'T00:00:00') : new Date();
     d.setDate(d.getDate() + dir*7);
-    selectedDay = localDateStr(d);
+    selectedDay = d.toISOString().split('T')[0];
     viewMonth = getMonthKey(selectedDay);
   } else if(currentPeriod === 'day') {
     const d = selectedDay ? new Date(selectedDay+'T00:00:00') : new Date();
     d.setDate(d.getDate() + dir);
-    selectedDay = localDateStr(d);
+    selectedDay = d.toISOString().split('T')[0];
     viewMonth = getMonthKey(selectedDay);
   }
   updatePeriodLabel();
@@ -3511,11 +3307,11 @@ function renderPeriodDetail() {
     const anchor = selectedDay ? new Date(selectedDay+'T00:00:00') : new Date();
     const weekStart = new Date(anchor);
     weekStart.setDate(anchor.getDate() - anchor.getDay());
-    const today = localDateStr();
+    const today = new Date().toISOString().split('T')[0];
     const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
     detail.innerHTML = Array.from({length:7}).map((_,i) => {
       const d = new Date(weekStart); d.setDate(weekStart.getDate()+i);
-      const ds = localDateStr(d);
+      const ds = d.toISOString().split('T')[0];
       const isToday = ds === today;
       const isSel = ds === selectedDay;
       return `<div class="day-chip ${isToday?'today':''} ${isSel?'selected':''}" onclick="selectDay('${ds}')">
@@ -3549,15 +3345,15 @@ function getPeriodEntries(monthData, type) {
   const entries = (monthData[type] || []);
   if(currentPeriod === 'month' || currentPeriod === 'year') return entries;
   if(currentPeriod === 'day') {
-    const d = selectedDay || localDateStr();
+    const d = selectedDay || new Date().toISOString().split('T')[0];
     return entries.filter(e => e.date === d);
   }
   if(currentPeriod === 'week') {
     const anchor = selectedDay ? new Date(selectedDay+'T00:00:00') : new Date();
     const weekStart = new Date(anchor); weekStart.setDate(anchor.getDate()-anchor.getDay());
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6);
-    const ws = localDateStr(weekStart);
-    const we = localDateStr(weekEnd);
+    const ws = weekStart.toISOString().split('T')[0];
+    const we = weekEnd.toISOString().split('T')[0];
     return entries.filter(e => e.date >= ws && e.date <= we);
   }
   return entries;
@@ -3630,12 +3426,7 @@ function renderHome() {
         ? subcats.reduce((s,sc)=>s+(catTotals[sc]||0),0)
         : (catTotals[card.label]||0);
       const pct = allExp>0 ? Math.min(amt/allExp*100,100) : 0;
-      return `<div class="budget-card ${card.cls||'other-cat'}"
-        ontouchstart="homeCardTouchStart(event,'${card.key||card.label}','expense','${subcats[0]||card.label}')"
-        ontouchend="homeCardTouchEnd(event)"
-        ontouchmove="homeCardTouchMove(event)"
-        oncontextmenu="event.preventDefault();goToBudgetDetail('${card.key||card.label}')"
-        title="Tap to add · Hold to view transactions">
+      return `<div class="budget-card ${card.cls||'other-cat'}" onclick="openQuickAdd('expense','${subcats[0]||card.label}')">
         <div class="cat-icon" style="background:${card.color}22;">${card.icon}</div>
         <div class="cat-name">${card.label}</div>
         <div class="cat-amount">${fmt(amt)}</div>
@@ -3800,44 +3591,23 @@ function renderInvestHome(investments) {
     const type = inv.investType||inv.category||'Stocks';
     totals[type]=(totals[type]||0)+convertAmt(inv.amount, inv.currency);
   });
+  // Note: data._investments (portfolio positions) also excluded from monthly total —
+  // portfolio value ≠ amount invested this month.
 
   const grandTotal = Object.values(totals).reduce((s,v)=>s+v,0);
   document.getElementById('home-invest-total').textContent = fmt(grandTotal);
 
-  // Use dynamic cards — support subcats[] just like spend cards
+  // Use dynamic cards
   const cards = getHomeInvCards().filter(c=>c.visible!==false);
   const grid = document.getElementById('invest-cat-grid');
   grid.innerHTML = cards.map(card=>{
-    const subcats = card.subcats||[];
-    // Match: (1) explicit subcats, (2) exact key, (3) any total key that matches card key case-insensitively
-    let amt;
-    if (subcats.length > 0) {
-      amt = subcats.reduce((s,sc)=>s+(totals[sc]||0),0);
-    } else {
-      // Exact key first
-      amt = totals[card.key] || 0;
-      // Also accumulate any total whose key starts with or equals card.key (case-insensitive)
-      // e.g. card.key='Onegold' catches category='OneGold','onegold','Gold','Onegold' etc.
-      if (amt === 0) {
-        const cardKeyLow = card.key.toLowerCase();
-        Object.entries(totals).forEach(([k,v]) => {
-          const kl = k.toLowerCase();
-          if (kl === cardKeyLow || kl.includes(cardKeyLow) || cardKeyLow.includes(kl)) {
-            amt += v;
-          }
-        });
-      }
-    }
+    const amt = totals[card.key]||0;
     const pct = grandTotal>0?Math.min(amt/grandTotal*100,100):0;
-    return `<div class="invest-cat-card" style="background:${card.bg||'#F8F8F8'};user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;"
-      ontouchstart="homeCardTouchStart(event,'${card.key}','investment','${card.key}')"
-      ontouchend="homeCardTouchEnd(event)"
-      ontouchmove="homeCardTouchMove(event)"
-      oncontextmenu="event.preventDefault();goToInvestDetail('${card.key}')">
+    return `<div class="invest-cat-card" style="background:${card.bg||'#F8F8F8'};" onclick="closeFabMenu();openQuickAdd('investment','${card.key}')">
       <div class="inv-card-icon" style="background:${card.color}22;">${card.icon}</div>
       <div class="inv-card-label">${card.label||card.key}</div>
       <div class="inv-card-amt">${fmt(amt)}</div>
-      <div class="inv-card-units">${amt>0?'Tap to add · Hold to view':'Tap to start tracking'}</div>
+      <div class="inv-card-units">${amt>0?'Tap to add more':'Tap to start tracking'}</div>
       <div class="inv-card-bar"><div class="inv-card-bar-fill" style="width:${pct}%;background:${card.color};"></div></div>
     </div>`;
   }).join('') +
@@ -3861,10 +3631,7 @@ function openQuickAdd(type, subCat) {
 
   // Reset amount
   document.getElementById('qa-amount-display').value = '0';
-  // Use local date (not UTC) to avoid timezone off-by-one for IST/+5:30 users
-  const _now = new Date();
-  const _localDate = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
-  document.getElementById('qa-date-input').value = _localDate;
+  document.getElementById('qa-date-input').value = new Date().toISOString().split('T')[0];
   document.getElementById('qa-note-input').value = '';
   const _mg = document.getElementById('qa-metal-grams'); if (_mg) _mg.value = '';
   const _mf = document.getElementById('qa-metal-fields'); if (_mf) _mf.style.display = 'none';
@@ -3876,88 +3643,11 @@ function openQuickAdd(type, subCat) {
   const icons = { expense:'💸', income:'💵', investment:'📈', debt:'📉', given:'🤝', additional:'🎁' };
   document.getElementById('qa-modal-title').textContent = (icons[type]||'➕') + ' Quick Add ' + (type.charAt(0).toUpperCase()+type.slice(1));
 
-  // Reset edit mode
-  qaEditMode = false; qaEditMonthKey = null; qaEditType = null; qaEditIdx = null;
-  const _rw = document.getElementById('qa-refund-wrap');
-  const _rt = document.getElementById('qa-refund-toggle');
-  // Show refund toggle immediately if opening as expense type
-  if (_rw) _rw.style.display = (qaType === 'expense') ? 'block' : 'none';
-  if (_rt) { _rt.classList.remove('active'); _rt.textContent = '↩️ Mark as Refund / Return'; }
-  // Hide recurring in normal quick add
-  const _recWrap = document.getElementById('qa-recurring-wrap');
-  const _recCheck = document.getElementById('qa-recurring-check');
-  const _recOpts = document.getElementById('qa-recurring-options');
-  if (_recWrap) _recWrap.style.display = 'none';
-  if (_recCheck) _recCheck.checked = false;
-  if (_recOpts) _recOpts.style.display = 'none';
-  document.getElementById('quick-add-modal').classList.add('open');
-}
-
-// ── Open Quick Add in EDIT mode pre-filled with existing transaction ───────
-function openEditTx(monthKey, type, idx) {
-  const typeMap = {expense:'expenses',income:'income',investment:'investments',debt:'debts',given:'givenToOthers',additional:'additional'};
-  const tx = data[monthKey][typeMap[type]][idx];
-  if (!tx) return;
-
-  // Set edit state
-  qaEditMode = true;
-  qaEditMonthKey = monthKey;
-  qaEditType = type;
-  qaEditIdx = idx;
-
-  // Open modal in correct type
-  qaType = type;
-  qaAmountStr = String(Math.abs(tx.amount || 0));
-  qaPreselectSubCat = tx.category || null;
-
-  // Set type chip
-  document.querySelectorAll('.qa-type-chip').forEach(c => c.classList.remove('active'));
-  const chip = [...document.querySelectorAll('.qa-type-chip')].find(c => c.textContent.toLowerCase().includes(type));
-  if (chip) chip.classList.add('active');
-
-  // Pre-fill fields
-  document.getElementById('qa-amount-display').value = qaAmountStr;
-  document.getElementById('qa-date-input').value = tx.date || localDateStr();
-  document.getElementById('qa-note-input').value = tx.description || '';
-
-  qaRenderSubCats();
-  qaRenderNumpad();
-
-  // Show refund toggle for expense — pre-tick if amount was negative
-  const refundWrap = document.getElementById('qa-refund-wrap');
-  const refundBtn = document.getElementById('qa-refund-toggle');
-  if (type === 'expense') {
-    if (refundWrap) refundWrap.style.display = 'block';
-    if (Number(tx.amount) < 0) {
-      refundBtn.classList.add('active');
-      refundBtn.textContent = '↩️ Refund / Return (ON)';
-    } else {
-      refundBtn.classList.remove('active');
-      refundBtn.textContent = '↩️ Mark as Refund / Return';
-    }
-  } else {
-    if (refundWrap) refundWrap.style.display = 'none';
-    if (refundBtn) refundBtn.classList.remove('active');
-  }
-
-  // Update title
-  const icons = { expense:'💸', income:'💵', investment:'📈', debt:'📉', given:'🤝', additional:'🎁' };
-  document.getElementById('qa-modal-title').textContent = (icons[type]||'✏️') + ' Edit ' + (type.charAt(0).toUpperCase()+type.slice(1));
-
-  // Recurring is handled via long press — keep wrap hidden in edit modal
-  const recWrap = document.getElementById('qa-recurring-wrap');
-  if (recWrap) recWrap.style.display = 'none';
-
   document.getElementById('quick-add-modal').classList.add('open');
 }
 
 function qaSetType(type, el) {
   qaType = type;
-  // Show refund toggle only for expense type
-  const refundWrap = document.getElementById('qa-refund-wrap');
-  const refundBtn  = document.getElementById('qa-refund-toggle');
-  if (refundWrap) refundWrap.style.display = type === 'expense' ? 'block' : 'none';
-  if (refundBtn)  { refundBtn.classList.remove('active'); refundBtn.textContent = '↩️ Mark as Refund / Return'; }
   document.querySelectorAll('.qa-type-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   qaPreselectSubCat = null;
@@ -3972,17 +3662,8 @@ let qaDeleteMode = false;
 function qaRenderSubCats() {
   qaDeleteMode = false;
   const cats = getCatsForType(qaType);
-  if (qaPreselectSubCat) {
-    // Case-insensitive match first
-    const match = cats.find(c => c.toLowerCase() === qaPreselectSubCat.toLowerCase());
-    if (match) {
-      qaSubCat = match; // use exact casing from list
-    } else {
-      // Category not in list — insert it at front so it's selectable
-      cats.unshift(qaPreselectSubCat);
-      qaSubCat = qaPreselectSubCat;
-    }
-  } else {
+  qaSubCat = qaPreselectSubCat || cats[0] || '';
+  if(qaPreselectSubCat && !cats.includes(qaPreselectSubCat)) {
     qaSubCat = cats[0] || '';
   }
   _renderQaPills(cats);
@@ -4103,38 +3784,18 @@ function qaNumpress(key) {
   document.getElementById('qa-amount-display').value = qaAmountStr || '0';
 }
 
-function qaToggleRefund() {
-  const btn = document.getElementById('qa-refund-toggle');
-  btn.classList.toggle('active');
-  btn.textContent = btn.classList.contains('active') ? '↩️ Refund (ON)' : '↩️ Mark as Refund';
-}
-
-function qaToggleRecurring() {
-  const checked = document.getElementById('qa-recurring-check')?.checked;
-  const opts = document.getElementById('qa-recurring-options');
-  if (opts) opts.style.display = checked ? 'block' : 'none';
-}
-
 function qaSave() {
   const amount = parseFloat(qaAmountStr);
   if(!amount || amount <= 0) { showToast('Enter an amount ❌'); return; }
-  const date    = document.getElementById('qa-date-input').value || localDateStr();
+  const date    = document.getElementById('qa-date-input').value || new Date().toISOString().split('T')[0];
   const note    = document.getElementById('qa-note-input').value.trim();
   const monthKey = getMonthKey(date) || getCurrentMonthKey();
   ensureMonth(monthKey);
 
-  // Check refund toggle — negative amount reduces category spend
-  const isRefund = document.getElementById('qa-refund-toggle').classList.contains('active');
-  const finalAmt = isRefund ? -Math.abs(amount) : amount;
-
-  // Tag who added this entry — used for family attribution filter
-  const _currentUser = firebase.auth().currentUser;
-  const _addedBy = _currentUser ? (_currentUser.displayName || _currentUser.email || 'You') : 'You';
-  const entry = { date: normalizeDate(date), category: qaSubCat||'Other', amount: finalAmt, description: note, currency: currentCurrency.code, _addedBy };
+  const entry = { date: normalizeDate(date), category: qaSubCat||'Other', amount, description: note, currency: currentCurrency.code };
 
   // If this is a metal purchase, attach grams so the transaction carries full context
   const isMetal = qaType === 'investment' && _METAL_CATS.some(m => (qaSubCat||'').toLowerCase().includes(m));
-  let _metalEntryAdded = false;
   if (isMetal) {
     const gramsEl = document.getElementById('qa-metal-grams');
     const unitEl  = document.getElementById('qa-metal-unit');
@@ -4145,90 +3806,18 @@ function qaSave() {
     if (grams > 0) {
       entry.metalGrams = parseFloat(grams.toFixed(4));
       entry.metalType  = typeEl?.value || 'gold';
-      // Auto-create a matching Metals page entry so it appears in Metal holdings
-      if (!data._metals) data._metals = [];
-      const mType  = entry.metalType;
-      const mk     = getMonthKey(date) || getCurrentMonthKey();
-      const shortMonthTag = new Date((date||localDateStr())+'T00:00:00').toLocaleDateString('en-US',{month:'short',year:'2-digit'});
-      // Price per gram in the transaction's own currency (not converted)
-      const pricePerGram = finalAmt > 0 ? finalAmt / grams : (METAL_CONFIG[mType]||{}).pricePerGram || 0;
-      // Shared link ID so deleting either side can remove the other
-      const _linkId = 'inv_metal_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-      entry._metalLinkId = _linkId;   // written to the investment transaction too
-      data._metals.push({
-        metalType: mType,
-        name: note || (qaSubCat || mType),
-        grams: parseFloat(grams.toFixed(4)),
-        price: parseFloat(pricePerGram.toFixed(4)),       // purchase price per gram in _purchaseCurrency
-        _purchaseCurrency: currentCurrency.code,          // so display can show correct symbol
-        date: normalizeDate(date),
-        form: 'ETF / Digital',
-        notes: '',
-        purity: '',
-        occasion: '',
-        _fromInvesting: true,       // marks this as auto-created from investing
-        _invMonth: shortMonthTag,   // e.g. "Feb '26" — shown as tag like Imported
-        _invMonthKey: mk,
-        _linkId,                    // used for two-way delete propagation
-      });
-      _metalEntryAdded = true;
     }
   }
 
   const typeMap = {expense:'expenses',income:'income',investment:'investments',debt:'debts',given:'givenToOthers',additional:'additional'};
-
-  if (qaEditMode && qaEditMonthKey && qaEditType !== null && qaEditIdx !== null) {
-    // Edit mode — replace existing entry
-    const oldMonthKey = qaEditMonthKey;
-    const oldType = typeMap[qaEditType];
-    // Remove old entry
-    data[oldMonthKey][oldType].splice(qaEditIdx, 1);
-    // Add updated entry (in new month if date changed)
-    ensureMonth(monthKey);
-    data[monthKey][typeMap[qaType]].push(entry);
-    qaEditMode = false; qaEditMonthKey = null; qaEditType = null; qaEditIdx = null;
-  } else {
-    data[monthKey][typeMap[qaType]].push(entry);
-  }
+  data[monthKey][typeMap[qaType]].push(entry);
   save();
 
   // Build toast message
   let toastMsg = '✅ Saved!';
   if (isMetal && entry.metalGrams) {
     const mc = METAL_CONFIG[entry.metalType] || METAL_CONFIG['gold'];
-    const metalNote = _metalEntryAdded ? ' + added to Metals page' : '';
-    toastMsg = `${mc.emoji} ${entry.metalGrams.toFixed(2)}g ${entry.metalType} · ${fmt(amount)} recorded${metalNote}`;
-  }
-
-  // Handle recurring rule creation
-  const recCheck = document.getElementById('qa-recurring-check');
-  if (qaEditMode === false || (recCheck && recCheck.checked)) {
-    // Only process recurring if in edit mode and checkbox is checked
-  }
-  if (recCheck && recCheck.checked) {
-    const freq = document.getElementById('qa-rec-frequency')?.value || 'monthly';
-    const dayRaw = parseInt(document.getElementById('qa-rec-day')?.value) || new Date(date+'T00:00:00').getDate();
-    if (!data._recurring) data._recurring = [];
-    // Remove any existing rule for this source transaction
-    data._recurring = data._recurring.filter(r => !(r._sourceMonth === (qaEditMonthKey||monthKey) && r._sourceIdx === qaEditIdx));
-    // Add new rule
-    const ruleId = 'rec_' + Date.now();
-    data._recurring.push({
-      id: ruleId,
-      type: qaType,
-      category: qaSubCat || 'Other',
-      amount: Math.abs(finalAmt),
-      currency: currentCurrency.code,
-      description: note,
-      frequency: freq,
-      dayOfMonth: dayRaw,
-      startMonth: monthKey,
-      startDate: monthKey + '-' + String(dayRaw).padStart(2,'0'),
-      active: true,
-      _sourceMonth: qaEditMonthKey || monthKey,
-      _sourceIdx: qaEditIdx,
-    });
-    toastMsg = `✅ Saved + 🔁 Recurring rule created!`;
+    toastMsg = `${mc.emoji} ${entry.metalGrams.toFixed(2)}g ${entry.metalType} · ${fmt(amount)} recorded`;
   }
 
   qaAmountStr = '';
@@ -4236,15 +3825,8 @@ function qaSave() {
   document.getElementById('qa-note-input').value = '';
   const _mg2 = document.getElementById('qa-metal-grams'); if (_mg2) _mg2.value = '';
   const _mf2 = document.getElementById('qa-metal-fields'); if (_mf2) _mf2.style.display = 'none';
-  // Reset recurring UI
-  const _rc = document.getElementById('qa-recurring-check'); if (_rc) _rc.checked = false;
-  const _ro = document.getElementById('qa-recurring-options'); if (_ro) _ro.style.display = 'none';
-  const _rrw = document.getElementById('qa-recurring-wrap'); if (_rrw) _rrw.style.display = 'none';
   showToast(toastMsg);
   if(monthKey === viewMonth) renderHome();
-  renderTransactions();
-  // If a metal entry was added, refresh the metals page
-  if (_metalEntryAdded) { try { renderMetals(); } catch(e){} }
 }
 
 // ══════════════════════════════════════════════════════
@@ -4300,7 +3882,7 @@ let invFieldCurrency = {...currentCurrency};
 function openInvModal(type) {
   invModalType = type || 'Stocks';
   invFieldCurrency = {...currentCurrency};
-  document.getElementById('inv-modal-date').value = localDateStr();
+  document.getElementById('inv-modal-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('inv-modal-note').value = '';
   document.getElementById('inv-computed-total').textContent = sym()+'0';
   updateInvCurrBtn();
@@ -4379,7 +3961,7 @@ function calcInvTotal() {
 }
 
 function saveInvEntry() {
-  const date = document.getElementById('inv-modal-date').value||localDateStr();
+  const date = document.getElementById('inv-modal-date').value||new Date().toISOString().split('T')[0];
   const note = document.getElementById('inv-modal-note').value.trim();
   const g = id => parseFloat(document.getElementById(id)?.value||'0')||0;
   const s = id => (document.getElementById(id)?.value||'').trim();
@@ -4545,13 +4127,9 @@ function getActiveCurrencies() {
     });
     (mo.realEstate || []).forEach(e => { if (e.currency) found.add(e.currency.toUpperCase()); });
   });
-  // Always remove display currency from transaction-currency list
+  // Always remove display currency — no conversion needed for that
   found.delete(currentCurrency.code.toUpperCase());
-  // But if display is not USD, ADD it back so user can set the USD→DisplayCurrency rate
-  // This is needed for correct NW conversion when accounts are in USD and display is INR etc.
-  if (currentCurrency.code.toUpperCase() !== 'USD') {
-    found.add(currentCurrency.code.toUpperCase());
-  }
+  // Add display currency's own rate entry only if it's not USD (so user can see it)
   return [...found].sort();
 }
 
@@ -4562,14 +4140,11 @@ function renderFXRatesPanel() {
   const displayCode = currentCurrency.code.toUpperCase();
   const activeCurrencies = getActiveCurrencies();
 
-  // Update base label and badge — show "1 USD = X {display}" context
+  // Update base label and badge
   const baseLabel = document.getElementById('fx-base-label');
-  if (baseLabel) baseLabel.textContent = displayCode === 'USD' ? 'USD' : `USD → ${displayCode}`;
+  if (baseLabel) baseLabel.textContent = displayCode;
   const badge = document.getElementById('fx-override-badge');
-  const clearAllBtn = document.getElementById('fx-clear-all-btn');
-  const hasAnyOverride = Object.keys(overrides).length > 0;
-  if (badge) badge.style.display = hasAnyOverride ? '' : 'none';
-  if (clearAllBtn) clearAllBtn.style.display = hasAnyOverride ? '' : 'none';
+  if (badge) badge.style.display = Object.keys(overrides).length > 0 ? '' : 'none';
 
   if (activeCurrencies.length === 0) {
     el.innerHTML = `<div style="font-size:0.82em;color:var(--text-light);font-weight:600;text-align:center;padding:16px;">
@@ -4696,16 +4271,6 @@ function resetFXOverride(code) {
   renderNetWorth();
   renderHome();
   showToast(`${code} rate reset to built-in default`);
-}
-
-function clearAllFXOverrides() {
-  if (!confirm('Clear ALL custom FX rate overrides? Built-in rates will be used.')) return;
-  data._fxOverrides = {};
-  save();
-  renderFXRatesPanel();
-  renderNetWorth();
-  renderHome();
-  showToast('✅ All FX overrides cleared — using built-in rates');
 }
 
 // ══════════════════════════════════════════════════════
@@ -4847,10 +4412,6 @@ function addHomeCard() {
 // NAVIGATION
 // ══════════════════════════════════════════════════════
 function switchScreen(name, btn) {
-  // Clear transaction search when navigating away from tx screen
-  if (name !== 'tx' && _txSearchActive) {
-    clearTxSearch();
-  }
   // Always close goals overlay when navigating away
   const goalsOverlay = document.getElementById('blist-goals');
   if (goalsOverlay) goalsOverlay.style.display = 'none';
@@ -4874,17 +4435,12 @@ function switchScreen(name, btn) {
   if(name==='metals') renderMetals();
   if(name==='invest') renderInvestments();
   if(name==='data') { populateDataMonthSelect(); renderDataScreen(); }
-  if(name==='settings') { renderRecurringRules(); }
-  if(name==='budget') { document.getElementById('budget-month-label').textContent = getDisplayMonth(viewMonth); renderBudgetModule(); }
+  if(name==='budget') { budgetViewMonth = viewMonth; document.getElementById('budget-month-label').textContent = getDisplayMonth(budgetViewMonth); renderBudgetModule(); }
   if(name==='networth') renderNetWorth();
   if(name==='import') { setImportTab('transactions', document.querySelector('.import-tab')); renderGivenLedger(); renderResetSummary(); renderMonthsList(); }
 }
 
 function goToScreen(name) {
-  // Clear transaction search when navigating away from tx screen
-  if (name !== 'tx' && _txSearchActive) {
-    clearTxSearch();
-  }
   const goalsOverlay = document.getElementById('blist-goals');
   if (goalsOverlay) goalsOverlay.style.display = 'none';
   closeGoalSheet();
@@ -4931,12 +4487,10 @@ function renderCalListView(container) {
   const mk = viewMonth;
   if (!data[mk]) { container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-light);font-weight:700;">No data for this month</div>'; return; }
   const toDisp = t => convertAmt(t.amount, t.currency);
-  // Apply author filter for list view too
-  const _listFilter = t => _authorFilter === 'all' || t._addedBy === _authorFilter;
-  const exp  = (data[mk].expenses    || []).map(t => ({...t, date: normalizeDate(t.date), _type:'expense'})).filter(_listFilter);
-  const inc  = (data[mk].income      || []).map(t => ({...t, date: normalizeDate(t.date), _type:'income'})).filter(_listFilter);
-  const inv  = (data[mk].investments || []).map(t => ({...t, date: normalizeDate(t.date), _type:'investment'})).filter(_listFilter);
-  const add  = (data[mk].additional  || []).map(t => ({...t, date: normalizeDate(t.date), _type:'additional'})).filter(_listFilter);
+  const exp  = (data[mk].expenses    || []).map(t => ({...t, _type:'expense'}));
+  const inc  = (data[mk].income      || []).map(t => ({...t, _type:'income'}));
+  const inv  = (data[mk].investments || []).map(t => ({...t, _type:'investment'}));
+  const add  = (data[mk].additional  || []).map(t => ({...t, _type:'additional'}));
   const all  = [...inc, ...exp, ...inv, ...add].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
   const typeColors = { expense:'#EF4444', income:'#10B981', investment:'#7C3AED', additional:'#F59E0B' };
@@ -4997,23 +4551,6 @@ function renderCalListView(container) {
   container.innerHTML = html;
 }
 
-// ── Calendar swipe gesture ──────────────────────────────────────
-let _calSwipeX = null;
-
-function calSwipeStart(e) {
-  _calSwipeX = e.touches ? e.touches[0].clientX : null;
-}
-
-function calSwipeEnd(e) {
-  if (_calSwipeX === null) return;
-  const endX = e.changedTouches ? e.changedTouches[0].clientX : null;
-  if (endX === null) return;
-  const delta = endX - _calSwipeX;
-  _calSwipeX = null;
-  if (Math.abs(delta) < 50) return; // too short — ignore
-  calChangeMonth(delta < 0 ? 1 : -1); // swipe left = next, right = prev
-}
-
 function calChangeMonth(dir) {
   const [y,m] = viewMonth.split('-').map(Number);
   const d = new Date(y, m-1+dir, 1);
@@ -5032,69 +4569,14 @@ function fmtShort(n) {
   return n.toFixed(0);
 }
 
-function renderAuthorChips() {
-  const strip = document.getElementById('author-filter-strip');
-  const row   = document.getElementById('author-chips-row');
-  if (!strip || !row) return;
-
-  // Gather all authors across ALL months so family chips always appear regardless of current month
-  const allEntries = [];
-  Object.keys(data).filter(mk => /^\d{4}-\d{2}$/.test(mk)).forEach(mk => {
-    const m = data[mk] || {};
-    allEntries.push(
-      ...(m.expenses||[]), ...(m.income||[]), ...(m.investments||[]),
-      ...(m.debts||[]), ...(m.givenToOthers||[]), ...(m.additional||[])
-    );
-  });
-  const authors = [...new Set(allEntries.map(e => e._addedBy).filter(Boolean))];
-
-  // Show family icon if there are ANY family members (firebase users sharing)
-  // even if no transactions from others this month
-  const isFamily = firebase.auth().currentUser !== null && 
-    (data._familyMembers || []).length > 0 || authors.length > 1;
-  
-  if (authors.length <= 1 && !isFamily) {
-    strip.style.display = 'none';
-    _authorFilter = 'all';
-    return;
-  }
-  
-  if (authors.length <= 1) {
-    // Family group but no multi-author transactions this month
-    // Show icon only, no chips needed
-    strip.style.display = '';
-    row.innerHTML = '';
-    const btn = document.getElementById('author-toggle-btn');
-    if (btn) { btn.classList.remove('active'); }
-    const slide = document.getElementById('author-chips-slide');
-    if (slide) { slide.classList.remove('open'); _authorChipsOpen = false; }
-    return;
-  }
-
-  strip.style.display = '';
-  const chips = ['all', ...authors].map(a =>
-    `<div class="author-chip ${_authorFilter===a?'active':''}"
-      onclick="setAuthorFilter('${a}')">${a==='all'?'All':a}</div>`
-  ).join('');
-  row.innerHTML = chips;
-  // Highlight 👥 button when a member filter is active
-  const btn = document.getElementById('author-toggle-btn');
-  if (btn) btn.classList.toggle('active', _authorFilter !== 'all');
-}
-
 function renderTransactions() {
-  renderAuthorChips();
   ensureMonth(viewMonth);
   const m = data[viewMonth];
-  const today = localDateStr();
+  const today = new Date().toISOString().split('T')[0];
   const [y, mo] = viewMonth.split('-').map(Number);
 
   const titleEl = document.getElementById('cal-month-title');
-  if(titleEl) {
-    const filterLabel = _authorFilter !== 'all' ? ` · ${_authorFilter}` : '';
-    titleEl.textContent = getDisplayMonth(viewMonth) + filterLabel;
-    titleEl.style.color = _authorFilter !== 'all' ? 'var(--primary)' : '';
-  }
+  if(titleEl) titleEl.textContent = getDisplayMonth(viewMonth);
 
   // Gather all transactions — normalize dates so YYYY-M-D matches YYYY-MM-DD
   let allTx = [];
@@ -5109,13 +4591,12 @@ function renderTransactions() {
   pushTx(m.givenToOthers, 'given');
   pushTx(m.additional,    'additional');
 
-  // Summary — apply author filter then convert to display currency
+  // Summary — convert each entry to display currency before summing
   const toDisp = t => convertAmt(t.amount, t.currency);
-  const summaryTx = _authorFilter === 'all' ? allTx : allTx.filter(t => t._addedBy === _authorFilter);
-  const totalInc  = summaryTx.filter(t=>t._type==='income').reduce((s,t)=>s+toDisp(t),0);
-  const totalExp  = summaryTx.filter(t=>t._type==='expense'||t._type==='additional').reduce((s,t)=>s+toDisp(t),0);
-  const totalInv  = summaryTx.filter(t=>t._type==='investment').reduce((s,t)=>s+toDisp(t),0);
-  const totalOther= summaryTx.filter(t=>t._type==='debt'||t._type==='given').reduce((s,t)=>s+toDisp(t),0);
+  const totalInc  = allTx.filter(t=>t._type==='income').reduce((s,t)=>s+toDisp(t),0);
+  const totalExp  = allTx.filter(t=>t._type==='expense'||t._type==='additional').reduce((s,t)=>s+toDisp(t),0);
+  const totalInv  = allTx.filter(t=>t._type==='investment').reduce((s,t)=>s+toDisp(t),0);
+  const totalOther= allTx.filter(t=>t._type==='debt'||t._type==='given').reduce((s,t)=>s+toDisp(t),0);
   const savings   = totalInv;  // "Investing" tile shows investments amount
   const net       = totalInc - totalExp - totalInv - totalOther;
 
@@ -5131,19 +4612,12 @@ function renderTransactions() {
     el_net.style.color = net>=0 ? 'var(--income)' : 'var(--expenses)';
   }
 
-  // Apply author filter — if a member is selected, only show their transactions on calendar
-  const visibleTx = _authorFilter === 'all'
-    ? allTx
-    : allTx.filter(t => t._addedBy === _authorFilter);
-
-  // Group by normalized date — sort each day's txns desc by date then idx
+  // Group by normalized date
   const byDate = {};
-  visibleTx.forEach(t => {
+  allTx.forEach(t => {
     const d = t.date||'';
     if(d) { if(!byDate[d]) byDate[d]=[]; byDate[d].push(t); }
   });
-  // Sort within each day: most recently added (highest idx) first
-  Object.values(byDate).forEach(arr => arr.sort((a,b) => (b._idx||0) - (a._idx||0)));
 
   // Build calendar grid
   const firstDow = new Date(y, mo-1, 1).getDay();
@@ -5182,507 +4656,7 @@ function renderTransactions() {
 
   const calGrid = document.getElementById('cal-grid');
   if(calGrid) calGrid.innerHTML = cells;
-  renderCalDayDetail(visibleTx);
-}
-
-// ── Settings Accordion ──────────────────────────────────────────
-function toggleAccordion(id) {
-  const acc = document.getElementById(id);
-  if (!acc) return;
-  const body = acc.querySelector('.acc-body');
-  const chev = acc.querySelector('.acc-chev');
-  const isOpen = !acc.classList.contains('collapsed');
-  if (isOpen) {
-    acc.classList.add('collapsed');
-    body.style.display = 'none';
-    chev.textContent = '▸';
-  } else {
-    acc.classList.remove('collapsed');
-    body.style.display = '';
-    chev.textContent = '▾';
-  }
-}
-
-// ── Long Press for Recurring ─────────────────────────────────────
-let _longPressTimer = null;
-
-function startLongPress(monthKey, type, idx) {
-  clearLongPress();
-  _longPressTimer = setTimeout(() => {
-    openRecurringPopup(monthKey, type, idx);
-  }, 600);
-}
-
-function clearLongPress() {
-  if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
-}
-
-// ── Recurring Popup ──────────────────────────────────────────────
-let _recPopupMonth = null, _recPopupType = null, _recPopupIdx = null;
-
-function openRecurringPopup(monthKey, type, idx) {
-  clearLongPress();
-  const typeMap = {expense:'expenses',income:'income',investment:'investments',debt:'debts',given:'givenToOthers',additional:'additional'};
-  const tx = (data[monthKey]||{})[typeMap[type]]?.[idx];
-  if (!tx) return;
-
-  _recPopupMonth = monthKey; _recPopupType = type; _recPopupIdx = idx;
-
-  // Check if rule already exists
-  const existing = (data._recurring||[]).find(r => r._sourceMonth === monthKey && r._sourceIdx === idx);
-  const typeIcon = { expense:'💸', income:'💵', investment:'📈', debt:'📉', given:'🤝', additional:'🎁' };
-  const dayOfMonth = tx.date ? new Date(tx.date+'T00:00:00').getDate() : 1;
-
-  document.getElementById('recurring-popup-body').innerHTML = `
-    <div style="background:#F8F8F8;border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:1.4em;">${typeIcon[type]||'💰'}</span>
-      <div>
-        <div style="font-weight:900;font-size:0.9em;color:var(--text-dark);">${tx.category||'Other'}</div>
-        <div style="font-size:0.75em;color:var(--text-light);font-weight:600;">${tx.description||''} · ${fmt(convertAmt(tx.amount,tx.currency))}</div>
-      </div>
-    </div>
-    ${existing ? `<div style="background:#FFF0F0;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:0.82em;font-weight:700;color:#EF4444;">
-      ⚠️ Already recurring — ${existing.frequency} on day ${existing.dayOfMonth}. Save below to update or delete rule.
-    </div>` : ''}
-    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
-      <select id="rec-popup-freq" style="flex:1;background:var(--white);border:1.5px solid #DDD;border-radius:8px;padding:8px 10px;font-family:Nunito,sans-serif;font-weight:800;font-size:0.85em;">
-        <option value="monthly" ${(!existing||existing.frequency==='monthly')?'selected':''}>Monthly</option>
-        <option value="biweekly" ${existing?.frequency==='biweekly'?'selected':''}>Bi-weekly (every 2 weeks)</option>
-        <option value="weekly" ${existing?.frequency==='weekly'?'selected':''}>Weekly</option>
-        <option value="yearly" ${existing?.frequency==='yearly'?'selected':''}>Yearly</option>
-      </select>
-      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-        <span style="font-size:0.78em;font-weight:800;color:var(--text-med);">Day</span>
-        <input type="number" id="rec-popup-day" min="1" max="31"
-          value="${existing?.dayOfMonth||dayOfMonth}"
-          style="width:55px;background:var(--white);border:1.5px solid #DDD;border-radius:8px;padding:8px;font-family:Nunito,sans-serif;font-weight:800;font-size:0.85em;text-align:center;">
-      </div>
-    </div>
-    <div style="font-size:0.72em;color:var(--text-light);font-weight:600;margin-bottom:14px;">
-      Auto-posts every month on this day starting next month
-    </div>
-    <div style="display:flex;gap:8px;">
-      ${existing ? `<button onclick="deleteRecurringFromPopup()" style="flex:1;background:#FFF0F0;border:1.5px solid #FFCDD2;border-radius:10px;padding:10px;font-family:Nunito,sans-serif;font-weight:800;font-size:0.85em;color:#EF4444;cursor:pointer;">🗑 Remove Rule</button>` : ''}
-      <button onclick="saveRecurringFromPopup()" style="flex:${existing?1:2};background:var(--primary);border:none;border-radius:10px;padding:10px;font-family:Nunito,sans-serif;font-weight:800;font-size:0.85em;color:white;cursor:pointer;">
-        🔁 ${existing?'Update':'Create'} Rule
-      </button>
-    </div>`;
-
-  const modal = document.getElementById('recurring-popup-modal');
-  if (modal) { modal.style.display = 'flex'; modal.classList.add('open'); }
-}
-
-function closeRecurringPopup() {
-  const modal = document.getElementById('recurring-popup-modal');
-  if (modal) { modal.style.display = 'none'; modal.classList.remove('open'); }
-  _recPopupMonth = null; _recPopupType = null; _recPopupIdx = null;
-}
-
-function saveRecurringFromPopup() {
-  const freq = document.getElementById('rec-popup-freq')?.value || 'monthly';
-  const day  = parseInt(document.getElementById('rec-popup-day')?.value) || 1;
-  const typeMap = {expense:'expenses',income:'income',investment:'investments',debt:'debts',given:'givenToOthers',additional:'additional'};
-  const tx = (data[_recPopupMonth]||{})[typeMap[_recPopupType]]?.[_recPopupIdx];
-  if (!tx) return;
-
-  if (!data._recurring) data._recurring = [];
-  // Remove existing rule for this tx if any
-  data._recurring = data._recurring.filter(r => !(r._sourceMonth === _recPopupMonth && r._sourceIdx === _recPopupIdx));
-  // Add new rule
-  data._recurring.push({
-    id: 'rec_' + Date.now(),
-    type: _recPopupType,
-    category: tx.category || 'Other',
-    amount: Math.abs(tx.amount || 0),
-    currency: tx.currency || currentCurrency.code,
-    description: tx.description || '',
-    frequency: freq,
-    dayOfMonth: day,
-    startMonth: _recPopupMonth,
-    startDate: tx.date || `${_recPopupMonth}-${String(day).padStart(2,'0')}`,
-    active: true,
-    _sourceMonth: _recPopupMonth,
-    _sourceIdx: _recPopupIdx,
-  });
-
-  save();
-  closeRecurringPopup();
-  showToast(`🔁 Recurring rule created — posts on day ${day} every month!`);
-  renderRecurringRules();
-}
-
-function deleteRecurringFromPopup() {
-  const rule = (data._recurring||[]).find(r => r._sourceMonth === _recPopupMonth && r._sourceIdx === _recPopupIdx);
-  if (!rule) return;
-  closeRecurringPopup();
-  showRecDeleteModal(
-    rule,
-    () => {
-      data._recurring = (data._recurring||[]).filter(r =>
-        !(r._sourceMonth === _recPopupMonth && r._sourceIdx === _recPopupIdx));
-      save(); renderRecurringRules(); renderTransactions(); renderHome();
-      showToast('⏹ Rule stopped — past entries kept');
-    },
-    () => {
-      const typeMap = { expense:'expenses', income:'income', investment:'investments', debt:'debts', given:'givenToOthers', additional:'additional' };
-      const listKey = typeMap[rule.type] || 'expenses';
-      Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k)).forEach(mk => {
-        if (data[mk]?.[listKey])
-          data[mk][listKey] = data[mk][listKey].filter(e => !e._recurringId?.startsWith(rule.id));
-      });
-      data._recurring = (data._recurring||[]).filter(r =>
-        !(r._sourceMonth === _recPopupMonth && r._sourceIdx === _recPopupIdx));
-      save(); renderRecurringRules(); renderTransactions(); renderHome();
-      showToast('🗑 Rule + all auto-posted entries removed');
-    }
-  );
-}
-
-// ── Recurring Transactions Scheduler ────────────────────────────
-function runRecurringScheduler() {
-  if (!data._recurring || !data._recurring.length) return;
-  const now = new Date();
-  const today = now.toISOString().split('T')[0];
-  const todayDay = now.getDate();
-  const currentMk = getCurrentMonthKey();
-  let posted = 0;
-  const typeMap = { expense:'expenses', income:'income', investment:'investments', debt:'debts', given:'givenToOthers', additional:'additional' };
-
-  data._recurring.filter(r => r.active).forEach(rule => {
-    if (currentMk < rule.startMonth) return;
-    const listKey = typeMap[rule.type] || 'expenses';
-
-    if (rule.frequency === 'biweekly' || rule.frequency === 'weekly') {
-      const intervalDays = rule.frequency === 'biweekly' ? 14 : 7;
-      const startDate = rule.startDate || (rule.startMonth + '-' + String(rule.dayOfMonth||1).padStart(2,'0'));
-      let cursor = new Date(startDate + 'T00:00:00');
-      const todayDate = new Date(today + 'T00:00:00');
-      while (cursor <= todayDate) {
-        const dueMk = cursor.getFullYear() + '-' + String(cursor.getMonth()+1).padStart(2,'0');
-        const dueDateStr = localDateStr(cursor);
-        const occurrenceId = rule.id + '_' + dueDateStr;
-        ensureMonth(dueMk);
-        const alreadyPosted = (data[dueMk][listKey]||[]).some(e => e._recurringId === occurrenceId);
-        if (!alreadyPosted && dueMk > rule.startMonth) {
-          data[dueMk][listKey].push({ date: dueDateStr, category: rule.category, amount: rule.amount,
-            currency: rule.currency || currentCurrency.code, description: rule.description || '',
-            _recurringId: occurrenceId, _autoPosted: true });
-          posted++;
-        }
-        cursor.setDate(cursor.getDate() + intervalDays);
-      }
-    } else if (rule.frequency === 'yearly') {
-      const sm = parseInt((rule.startMonth||'').split('-')[1]||1);
-      const cy = parseInt((currentMk||'').split('-')[0]);
-      const dueMk = cy + '-' + String(sm).padStart(2,'0');
-      if (dueMk !== currentMk) return;
-      if (currentMk <= rule.startMonth) return;
-      ensureMonth(currentMk);
-      const alreadyPosted = (data[currentMk][listKey]||[]).some(e => e._recurringId === rule.id);
-      if (alreadyPosted || todayDay < (rule.dayOfMonth||1)) return;
-      const dateStr = currentMk + '-' + String(rule.dayOfMonth||1).padStart(2,'0');
-      data[currentMk][listKey].push({ date: dateStr, category: rule.category, amount: rule.amount,
-        currency: rule.currency || currentCurrency.code, description: rule.description || '',
-        _recurringId: rule.id, _autoPosted: true });
-      posted++;
-    } else {
-      // Monthly (default) — skip the month the rule was created in
-      if (currentMk <= rule.startMonth) return;
-      ensureMonth(currentMk);
-      const alreadyPosted = (data[currentMk][listKey]||[]).some(e => e._recurringId === rule.id);
-      if (alreadyPosted || todayDay < (rule.dayOfMonth||1)) return;
-      const dateStr = currentMk + '-' + String(rule.dayOfMonth||1).padStart(2,'0');
-      data[currentMk][listKey].push({ date: dateStr, category: rule.category, amount: rule.amount,
-        currency: rule.currency || currentCurrency.code, description: rule.description || '',
-        _recurringId: rule.id, _autoPosted: true });
-      posted++;
-    }
-  });
-
-  if (posted > 0) {
-    save();
-    showToast('🔁 ' + posted + ' recurring entr' + (posted === 1 ? 'y' : 'ies') + ' auto-posted!');
-    renderHome();
-    renderTransactions();
-  }
-}
-// ── Recurring Rules Management ───────────────────────────────────
-function renderRecurringRules() {
-  const el = document.getElementById('recurring-rules-list');
-  if (!el) return;
-  const rules = data._recurring || [];
-  if (rules.length === 0) {
-    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-light);font-weight:700;font-size:0.85em;">No recurring rules yet.<br>Edit any transaction and toggle 🔁 Make Recurring.</div>`;
-    return;
-  }
-  const typeIcon = { expense:'💸', income:'💵', investment:'📈', debt:'📉', given:'🤝', additional:'🎁' };
-  el.innerHTML = rules.map((r, i) => `
-    <div style="background:var(--white);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-      <div style="font-size:1.4em;flex-shrink:0;">${typeIcon[r.type]||'🔁'}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:900;font-size:0.88em;color:var(--text-dark);">${r.category}</div>
-        <div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-top:2px;">
-          ${r.description ? r.description + ' · ' : ''}${r.frequency} · day ${r.dayOfMonth}
-        </div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        <div style="font-weight:900;font-size:0.92em;color:${r.type==='income'?'var(--income)':'var(--expenses)'};">${fmt(r.amount)}</div>
-        <div style="font-size:0.68em;font-weight:700;margin-top:2px;">
-          <span style="cursor:pointer;color:${r.active?'#10B981':'#EF4444'};" onclick="toggleRecurringRule(${i})">
-            ${r.active ? '● Active' : '○ Paused'}
-          </span>
-        </div>
-      </div>
-      <button onclick="deleteRecurringRule(${i})"
-        style="flex-shrink:0;background:#FFF0F0;border:none;border-radius:8px;width:28px;height:28px;color:#EF4444;font-size:0.85em;cursor:pointer;font-weight:900;">✕</button>
-    </div>`).join('');
-}
-
-function toggleRecurringRule(idx) {
-  if (!data._recurring || !data._recurring[idx]) return;
-  data._recurring[idx].active = !data._recurring[idx].active;
-  save(); renderRecurringRules();
-  showToast(data._recurring[idx].active ? '▶️ Rule activated' : '⏸ Rule paused');
-}
-
-function deleteRecurringRule(idx) {
-  const rule = data._recurring[idx];
-  if (!rule) return;
-  showRecDeleteModal(
-    rule,
-    () => {
-      // Stop future only — remove rule, keep history
-      data._recurring.splice(idx, 1);
-      save(); renderRecurringRules(); renderTransactions(); renderHome();
-      showToast('⏹ Rule stopped — past entries kept');
-    },
-    () => {
-      // Remove everything — rule + all auto-posts
-      const typeMap = { expense:'expenses', income:'income', investment:'investments', debt:'debts', given:'givenToOthers', additional:'additional' };
-      const listKey = typeMap[rule.type] || 'expenses';
-      Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k)).forEach(mk => {
-        if (data[mk]?.[listKey])
-          data[mk][listKey] = data[mk][listKey].filter(e => !e._recurringId?.startsWith(rule.id));
-      });
-      data._recurring.splice(idx, 1);
-      save(); renderRecurringRules(); renderTransactions(); renderHome();
-      showToast('🗑 Rule + all auto-posted entries removed');
-    }
-  );
-}
-
-// ── Recurring Delete Choice Modal ───────────────────────────────
-let _recDeleteOnStop = null, _recDeleteOnAll = null;
-
-function showRecDeleteModal(rule, onStop, onAll) {
-  _recDeleteOnStop = onStop;
-  _recDeleteOnAll  = onAll;
-  const typeIcon = { expense:'💸', income:'💵', investment:'📈', debt:'📉', given:'🤝', additional:'🎁' };
-  const freq = rule.frequency === 'biweekly' ? 'Bi-weekly' :
-               rule.frequency === 'weekly'   ? 'Weekly'    :
-               rule.frequency === 'yearly'   ? 'Yearly'    : 'Monthly';
-  document.getElementById('rec-delete-body').innerHTML = `
-    <div style="background:#F8F8F8;border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:1.4em;">${typeIcon[rule.type]||'🔁'}</span>
-      <div>
-        <div style="font-weight:900;font-size:0.9em;color:var(--text-dark);">${rule.category}</div>
-        <div style="font-size:0.75em;color:var(--text-light);font-weight:600;">${freq} · ${fmt(rule.amount)}</div>
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <button onclick="recDeleteChoice('stop')"
-        style="background:#F0FBF3;border:1.5px solid #10B98130;border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;font-family:Nunito,sans-serif;">
-        <div style="font-weight:900;font-size:0.88em;color:#10B981;">⏹ Stop future posts</div>
-        <div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-top:3px;">
-          Keep all previously auto-posted entries intact
-        </div>
-      </button>
-      <button onclick="recDeleteChoice('all')"
-        style="background:#FFF0F0;border:1.5px solid #EF444430;border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;font-family:Nunito,sans-serif;">
-        <div style="font-weight:900;font-size:0.88em;color:#EF4444;">🗑 Remove everything</div>
-        <div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-top:3px;">
-          Delete rule and all auto-posted entries from all months
-        </div>
-      </button>
-    </div>`;
-  const modal = document.getElementById('rec-delete-modal');
-  if (modal) { modal.style.display = 'flex'; modal.classList.add('open'); }
-}
-
-function recDeleteChoice(choice) {
-  closeRecDeleteModal();
-  if (choice === 'stop' && _recDeleteOnStop) _recDeleteOnStop();
-  if (choice === 'all'  && _recDeleteOnAll)  _recDeleteOnAll();
-  _recDeleteOnStop = null; _recDeleteOnAll = null;
-}
-
-function closeRecDeleteModal() {
-  const modal = document.getElementById('rec-delete-modal');
-  if (modal) { modal.style.display = 'none'; modal.classList.remove('open'); }
-}
-
-// ── Author Filter ───────────────────────────────────────────────
-let _authorChipsOpen = false;
-
-function toggleAuthorChips() {
-  _authorChipsOpen = !_authorChipsOpen;
-  const slide  = document.getElementById('author-chips-slide');
-  const btn    = document.getElementById('author-toggle-btn');
-  if (slide) slide.classList.toggle('open', _authorChipsOpen);
-  if (btn)   btn.classList.toggle('active', _authorChipsOpen);
-  // Reset filter when closing
-  if (!_authorChipsOpen && _authorFilter !== 'all') {
-    _authorFilter = 'all';
-    renderTransactions();
-  }
-}
-
-function setAuthorFilter(author) {
-  _authorFilter = author;
-  renderTransactions(); // re-renders chips + day detail
-}
-
-// ── Transaction Search ──────────────────────────────────────────
-let _txSearchActive = false;
-let _authorFilter = 'all'; // 'all' or specific author name
-
-function onTxSearch(q) {
-  const clearBtn = document.getElementById('tx-search-clear');
-  const resultsEl = document.getElementById('tx-search-results');
-  const calWrap = document.getElementById('cal-grid-wrap');
-  const listView = document.getElementById('cal-list-view');
-  const dayWrap = document.getElementById('cal-day-detail-wrap');
-  const header = document.getElementById('cal-month-title')?.closest('.cal-header');
-
-  q = (q || '').trim().toLowerCase();
-  _txSearchActive = !!q;
-
-  if (clearBtn) clearBtn.style.display = q ? '' : 'none';
-
-  if (!q) {
-    // Restore calendar
-    if (calWrap) calWrap.style.display = '';
-    if (listView) listView.style.display = 'none';
-    if (dayWrap) dayWrap.style.display = '';
-    if (resultsEl) resultsEl.style.display = 'none';
-    return;
-  }
-
-  // Hide calendar, show results
-  if (calWrap) calWrap.style.display = 'none';
-  if (listView) listView.style.display = 'none';
-  if (dayWrap) dayWrap.style.display = 'none';
-  if (resultsEl) resultsEl.style.display = '';
-
-  // Search ALL months
-  const typeMap = { expenses:'expense', income:'income', investments:'investment', debts:'debt', givenToOthers:'given', additional:'additional' };
-  const iconMap = { expense:'💸', income:'💵', investment:'📈', debt:'📉', given:'🤝', additional:'🎁' };
-  const colorMap = { expense:'#EF4444', income:'#10B981', investment:'#7C3AED', debt:'#8B5CF6', given:'#FF6B9D', additional:'#F59E0B' };
-  const bgMap = { expense:'#EF444415', income:'#10B98115', investment:'#7C3AED15', debt:'#8B5CF615', given:'#FF6B9D15', additional:'#F59E0B15' };
-
-  let results = [];
-  Object.keys(data).filter(mk => /^\d{4}-\d{2}$/.test(mk)).sort().reverse().forEach(mk => {
-    const m = data[mk];
-    ['expenses','income','investments','debts','givenToOthers','additional'].forEach(listKey => {
-      (m[listKey] || []).forEach((e, idx) => {
-        const cat  = (e.category    || '').toLowerCase();
-        const desc = (e.description || '').toLowerCase();
-        const amt  = String(e.amount || '');
-        if (cat.includes(q) || desc.includes(q) || amt.includes(q)) {
-          results.push({ ...e, _month: mk, _type: typeMap[listKey], _idx: idx });
-        }
-      });
-    });
-  });
-  // Apply family author filter on top of search if active
-  if (_authorFilter !== 'all') {
-    results = results.filter(r => r._addedBy === _authorFilter);
-  }
-
-  if (results.length === 0) {
-    resultsEl.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-light);font-weight:700;font-size:0.9em;">
-      No transactions found for "<strong>${q}</strong>"</div>`;
-    return;
-  }
-
-  // Group by month for context
-  const byMonth = {};
-  results.forEach(r => {
-    if (!byMonth[r._month]) byMonth[r._month] = [];
-    byMonth[r._month].push(r);
-  });
-
-  const authorTag = _authorFilter !== 'all' ? ` · 👤 ${_authorFilter}` : '';
-  resultsEl.innerHTML = `
-    <div style="font-size:0.78em;font-weight:800;color:var(--text-light);margin-bottom:10px;padding:0 2px;">
-      ${results.length} result${results.length !== 1 ? 's' : ''} across ${Object.keys(byMonth).length} month${Object.keys(byMonth).length !== 1 ? 's' : ''}${authorTag}
-    </div>` +
-    Object.keys(byMonth).sort().reverse().map(mk => `
-      <div style="margin-bottom:14px;">
-        <div style="font-weight:900;font-size:0.82em;color:var(--text-med);margin-bottom:6px;padding:0 2px;">
-          📅 ${getDisplayMonth(mk)}
-        </div>
-        ${byMonth[mk].map(t => {
-          const d = t.date ? new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-          const amt = convertAmt(t.amount, t.currency);
-          return `<div style="background:var(--white);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);
-                              padding:11px 14px;margin-bottom:6px;">
-            <div style="display:flex;align-items:center;gap:11px;">
-              <div style="width:38px;height:38px;border-radius:11px;background:${bgMap[t._type]||'#eee'};
-                          display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">
-                ${iconMap[t._type]||'💰'}
-              </div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-weight:900;font-size:0.88em;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                  ${t.category || 'Other'}
-                </div>
-                <div style="font-size:0.73em;color:var(--text-light);font-weight:600;margin-top:2px;">
-                  ${d}${t.description ? ' · ' + t.description : ''}
-                </div>
-              </div>
-              <div style="font-weight:900;font-size:0.92em;color:${t._type==='income'?'var(--income)':'var(--expenses)'};flex-shrink:0;">
-                ${t._type==='income'?'+':'-'}${fmt(amt)}
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;">
-              <button onclick="searchEditTx('${t._month}','${t._type}',${t._idx})"
-                style="background:#F0F4FF;border:none;border-radius:8px;padding:5px 12px;font-size:0.72em;font-weight:800;color:var(--primary);cursor:pointer;">✏️ Edit</button>
-              <button onclick="searchDeleteTx('${t._month}','${t._type}',${t._idx})"
-                style="background:#FFF0F0;border:none;border-radius:8px;padding:5px 12px;font-size:0.72em;font-weight:800;color:var(--expenses);cursor:pointer;">✕ Delete</button>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>`
-    ).join('');
-}
-
-function searchEditTx(monthKey, type, idx) {
-  // Navigate to the transaction screen and open edit modal directly
-  clearTxSearch();
-  viewMonth = monthKey;
-  calSelectedDay = null;
-  renderTransactions();
-  setTimeout(() => openEditTx(monthKey, type, idx), 150);
-}
-
-function searchDeleteTx(monthKey, type, idx) {
-  const typeMap = {expense:'expenses',income:'income',investment:'investments',debt:'debts',given:'givenToOthers',additional:'additional'};
-  const listKey = typeMap[type];
-  if (!listKey || !data[monthKey] || !data[monthKey][listKey]) return;
-  const tx = data[monthKey][listKey][idx];
-  if (!tx) return;
-  if (!confirm(`Delete "${tx.category}" · ${fmt(Math.abs(tx.amount))}?`)) return;
-  data[monthKey][listKey].splice(idx, 1);
-  save();
-  showToast('🗑 Deleted');
-  // Re-run the current search to refresh results
-  const input = document.getElementById('tx-search-input');
-  if (input && input.value) onTxSearch(input.value);
-}
-
-function clearTxSearch() {
-  const input = document.getElementById('tx-search-input');
-  if (input) { input.value = ''; onTxSearch(''); input.focus(); }
+  renderCalDayDetail(allTx);
 }
 
 function calSelectDay(dateStr) {
@@ -5744,15 +4718,10 @@ function renderCalDayDetail(allTx) {
 
     <!-- Transaction rows — view only, ✕ to delete -->
     <div style="display:flex;flex-direction:column;gap:8px;">
-      ${dayTx.filter(t => _authorFilter === 'all' || t._addedBy === _authorFilter).map(t=>`
+      ${dayTx.map(t=>`
         <div style="background:var(--white);border-radius:var(--radius-sm);box-shadow:0 2px 10px rgba(0,0,0,0.06);padding:12px 14px;display:flex;align-items:center;gap:12px;">
-          <!-- Icon — long press for recurring -->
-          <div
-            ontouchstart="startLongPress('${viewMonth}','${t._type}',${t._idx})"
-            ontouchend="clearLongPress()" ontouchmove="clearLongPress()"
-            oncontextmenu="event.preventDefault();openRecurringPopup('${viewMonth}','${t._type}',${t._idx})"
-            title="Hold for recurring"
-            style="width:42px;height:42px;border-radius:13px;background:${bgMap[t._type]||'#eee'};border:1.5px solid ${colorMap[t._type]||'#ccc'}22;display:flex;align-items:center;justify-content:center;font-size:1.2em;flex-shrink:0;cursor:pointer;user-select:none;">${iconMap[t._type]||'💰'}</div>
+          <!-- Icon -->
+          <div style="width:42px;height:42px;border-radius:13px;background:${bgMap[t._type]||'#eee'};border:1.5px solid ${colorMap[t._type]||'#ccc'}22;display:flex;align-items:center;justify-content:center;font-size:1.2em;flex-shrink:0;">${iconMap[t._type]||'💰'}</div>
           <!-- Info -->
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
@@ -5760,21 +4729,15 @@ function renderCalDayDetail(allTx) {
               <span style="font-size:0.65em;font-weight:800;color:${colorMap[t._type]};background:${bgMap[t._type]};border-radius:20px;padding:2px 7px;flex-shrink:0;">${typeLabel[t._type]||t._type}</span>
             </div>
             <div style="font-size:0.78em;color:var(--text-light);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.description||'—'}</div>
-            ${t._addedBy && t._addedBy !== 'You' ? `<div style="font-size:0.65em;color:#A0A8C0;font-weight:700;margin-top:1px;">👤 ${t._addedBy}</div>` : ''}
           </div>
           <!-- Amount -->
           <div style="text-align:right;flex-shrink:0;">
             <div style="font-size:1em;font-weight:900;color:${amtColor(t)};">${fmtConvertedFull(t.amount,t.currency)}</div>
             ${t.currency&&t.currency!==currentCurrency.code?`<div style="font-size:0.65em;color:var(--text-light);font-weight:700;">${t.currency} ${Number(t.amount||0).toFixed(2)}</div>`:''}
           </div>
-          <!-- Edit + Delete -->
-          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
-            <button
-              onclick="openEditTx('${viewMonth}','${t._type}',${t._idx})"
-              style="background:#FFF8DC;border:none;border-radius:8px;width:28px;height:28px;color:#D4A000;font-size:0.8em;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">✏️</button>
-            <button onclick="calDeleteTx('${viewMonth}','${t._type}',${t._idx})"
-              style="background:#FFF0F0;border:none;border-radius:8px;width:28px;height:28px;color:#EF4444;font-size:0.8em;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">✕</button>
-          </div>
+          <!-- Delete -->
+          <button onclick="calDeleteTx('${viewMonth}','${t._type}',${t._idx})" 
+            style="flex-shrink:0;background:#FFF0F0;border:none;border-radius:8px;width:28px;height:28px;color:#EF4444;font-size:0.8em;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">✕</button>
         </div>`).join('')}
     </div>
   `;
@@ -5800,7 +4763,7 @@ function deleteTx(monthKey, type, idx) {
 // ADD SCREEN (full screen add)
 // ══════════════════════════════════════════════════════
 function renderAddScreen() {
-  document.getElementById('add-date').value = localDateStr();
+  document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
   renderNumpad(); renderSubCats();
 }
 
@@ -5836,7 +4799,7 @@ function updateAmountDisplay() { document.getElementById('add-amount-display').t
 function saveTransaction() {
   const amount=parseFloat(currentAmountStr);
   if(!amount||amount<=0){showToast('Enter an amount',2000);return;}
-  const date=document.getElementById('add-date').value||localDateStr();
+  const date=document.getElementById('add-date').value||new Date().toISOString().split('T')[0];
   const note=document.getElementById('add-note').value.trim();
   const monthKey=getMonthKey(date)||getCurrentMonthKey();
   ensureMonth(monthKey);
@@ -6234,7 +5197,6 @@ function toggleNWType(type) {
 
 function renderSettings() {
   const months=Object.keys(data).filter(k=>!k.startsWith('_')).sort((a,b)=>b.localeCompare(a));
-  renderRecurringRules();
 
   // Theme badge
   document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active-theme'));
@@ -6403,9 +5365,7 @@ function applyMetalPriceOverride() {
   const price = parseFloat(document.getElementById('metal-price-override-input').value);
   if (!price || price <= 0) { showToast('Enter a valid price ❌'); return; }
   updateMetalPriceOverride(currentMetal, price); // no purity = sets base price
-  // Close the panel after saving
-  const panel = document.getElementById('metal-price-override-panel');
-  if (panel) panel.style.display = 'none';
+  renderPurityPrices(currentMetal);
 }
 
 function renderPurityPrices(metalType) {
@@ -6481,10 +5441,7 @@ function switchMetal(type) {
   document.getElementById('metal-detail-usd').className='metal-detail-usd '+type;
   const basePrice = getMetalBasePrice(type);
   const hasOverride = (data._metalPriceOverrides||{})[type] !== undefined;
-  document.getElementById('metal-live-price').textContent='$'+basePrice.toFixed(2);
-  // Show a small indicator badge next to price if a custom override is set (avoid double ✏️ with Edit button)
-  const _priceEl = document.getElementById('metal-live-price');
-  if (_priceEl) _priceEl.style.color = hasOverride ? '#10B981' : 'var(--text-dark)';
+  document.getElementById('metal-live-price').textContent='$'+basePrice.toFixed(2)+(hasOverride?' ✏️':'');
   const baseLabel = type === 'gold' ? '$/gram (24K pure)' : type === 'silver' ? '$/gram (999 Fine)' : '$/gram (Pt999)';
   const baseLabelEl = document.getElementById('metal-price-base-label');
   if (baseLabelEl) baseLabelEl.textContent = baseLabel;
@@ -6525,16 +5482,11 @@ function renderMetals() {
     totals[t]={entries,grams:grams+nwGrams,usd:usd+nwUsd,avgCost:(grams+nwGrams)>0?(usd+nwUsd)/(grams+nwGrams):0};
   });
   const grandTotal=Object.values(totals).reduce((s,t)=>s+t.usd,0);
-  // Convert USD totals to display currency for rendering
-  const grandTotalDisp = convertAmt(grandTotal, 'USD');
-  document.getElementById('metals-grand-total').textContent=fmt(grandTotalDisp);
-  Object.keys(cfg).forEach(t=>{
-    document.getElementById('mini-'+t+'-grams').textContent=totals[t].grams.toFixed(2)+' g';
-    document.getElementById('mini-'+t+'-usd').textContent=fmt(convertAmt(totals[t].usd,'USD'));
-  });
+  document.getElementById('metals-grand-total').textContent=fmt(grandTotal);
+  Object.keys(cfg).forEach(t=>{document.getElementById('mini-'+t+'-grams').textContent=totals[t].grams.toFixed(2)+' g';document.getElementById('mini-'+t+'-usd').textContent=fmt(totals[t].usd);});
   const active=totals[currentMetal], ac=cfg[currentMetal];
   document.getElementById('metal-detail-grams').textContent=active.grams.toFixed(3)+' g · '+(active.grams/31.1035).toFixed(3)+' oz';
-  document.getElementById('metal-detail-usd').textContent=fmt(convertAmt(active.usd,'USD'));
+  document.getElementById('metal-detail-usd').textContent=fmt(active.usd);
   document.getElementById('metal-stat-entries').textContent=active.entries.length;
   document.getElementById('metal-stat-oz').textContent=(active.grams/31.1035).toFixed(3);
   document.getElementById('metal-stat-avg').textContent=active.avgCost>0?'$'+active.avgCost.toFixed(2):'$0';
@@ -6561,24 +5513,11 @@ function renderMetals() {
     const usdVal=grams*price;
     const oz=(grams/31.1035).toFixed(3);
     const purityTag = purity ? `<span style="background:#F5F5F5;border-radius:5px;padding:1px 6px;font-size:0.75em;font-weight:700;color:#7C3AED;">${purity}</span>` : '';
-    // Show live price in display currency (always computed from live USD price converted to display)
-    const livePriceDisp = convertAmt(price, 'USD'); // price is always USD/g from getPriceForMetal
-    const priceTag = `<span style="color:var(--text-light);font-size:0.75em;">${fmt(livePriceDisp)}/g (live)</span>`;
-    // For investing-sourced entries, also show the purchase cost per gram
-    let purchaseCostTag = '';
-    if (m._fromInvesting && m.price > 0 && m._purchaseCurrency) {
-      // price stored in _purchaseCurrency per gram
-      const pCur = CURRENCIES.find(c=>c.code===m._purchaseCurrency)||{symbol:m._purchaseCurrency};
-      purchaseCostTag = ` · <span style="color:#7C3AED;font-size:0.75em;">paid ${pCur.symbol}${m.price.toFixed(0)}/g</span>`;
-    }
-    const sourceTag = m._source==='networth'
-      ? `<span style="font-size:0.7em;color:var(--text-light);"> · 📊 NW</span>`
-      : m._fromInvesting
-        ? `<span style="background:#7C3AED15;color:#7C3AED;font-size:0.68em;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:3px;">📈 ${m._invMonth||'Investing'}</span>`
-        : '';
+    const priceTag = `<span style="color:var(--text-light);font-size:0.75em;">$${price.toFixed(2)}/g</span>`;
+    const sourceTag = m._source==='networth' ? `<span style="font-size:0.7em;color:var(--text-light);"> · 📊 NW</span>` : '';
     const delBtn = m._source==='networth'
       ? `<button class="metal-holding-del" onclick="navigateTo('networth')" title="Edit in Net Worth">↗️</button>`
-      : `<button class="metal-holding-del" onclick="deleteMetalEntryByLink(${JSON.stringify(m._linkId||null)},${metals.indexOf(m)})">✕</button>`;
+      : `<button class="metal-holding-del" onclick="deleteMetalEntry(${metals.indexOf(m)})">✕</button>`;
     return `<div class="metal-holding-item">
       <div class="metal-holding-badge ${currentMetal}">${ac.emoji}</div>
       <div class="metal-holding-main">
@@ -6586,23 +5525,18 @@ function renderMetals() {
           <span class="metal-holding-name-text">${m.name||m.itemName||'Unnamed'}</span>
           ${purityTag}
         </div>
-        <div class="metal-holding-bottom">${grams.toFixed(2)}g · ${oz}oz ${priceTag}${purchaseCostTag}${m.occasion?' · '+m.occasion:''}${m.notes?' · '+m.notes:''}${sourceTag}</div>
+        <div class="metal-holding-bottom">${grams.toFixed(2)}g · ${oz}oz ${priceTag}${m.occasion?' · '+m.occasion:''}${m.notes?' · '+m.notes:''}${sourceTag}</div>
       </div>
       <div class="metal-holding-right">
-        <div class="metal-holding-value">${fmt(convertAmt(usdVal,'USD'))}</div>
-        ${m._fromInvesting && m.price > 0 && m._purchaseCurrency
-          ? `<div style="font-size:0.68em;color:#7C3AED;font-weight:700;margin-top:1px;">
-               paid ${(()=>{ const pc=CURRENCIES.find(c=>c.code===m._purchaseCurrency)||{symbol:m._purchaseCurrency}; return pc.symbol; })()}${(m.price*grams).toLocaleString(undefined,{maximumFractionDigits:0})}
-             </div>`
-          : `<div class="metal-holding-weight">${grams.toFixed(2)} g</div>`
-        }
+        <div class="metal-holding-value">${fmt(usdVal)}</div>
+        <div class="metal-holding-weight">${grams.toFixed(2)} g</div>
       </div>
       ${delBtn}
     </div>`;
   }).join('');
 }
 function addMetalEntry() {
-  const name=document.getElementById('metal-name').value.trim(), grams=parseFloat(document.getElementById('metal-grams').value), price=parseFloat(document.getElementById('metal-price').value)||0, date=document.getElementById('metal-date').value||localDateStr(), form=document.getElementById('metal-form').value, notes=document.getElementById('metal-notes').value.trim(), purity=document.getElementById('metal-purity').value.trim(), occasion=document.getElementById('metal-occasion').value.trim();
+  const name=document.getElementById('metal-name').value.trim(), grams=parseFloat(document.getElementById('metal-grams').value), price=parseFloat(document.getElementById('metal-price').value)||0, date=document.getElementById('metal-date').value||new Date().toISOString().split('T')[0], form=document.getElementById('metal-form').value, notes=document.getElementById('metal-notes').value.trim(), purity=document.getElementById('metal-purity').value.trim(), occasion=document.getElementById('metal-occasion').value.trim();
   if(!name){showToast('Enter a source/name ❌');return;} if(!grams||grams<=0){showToast('Enter a valid weight ❌');return;}
   getMetals().push({metalType:currentMetal,name,grams,price:price||METAL_CONFIG[currentMetal].pricePerGram,date,form,notes,purity,occasion});
   save(); renderMetals();
@@ -6610,89 +5544,7 @@ function addMetalEntry() {
   addPanelOpen=false; document.getElementById('metal-add-panel-body').classList.remove('open'); document.getElementById('add-panel-toggle').textContent='+';
   showToast(METAL_CONFIG[currentMetal].emoji+' '+METAL_CONFIG[currentMetal].label+' entry added!');
 }
-function deleteMetalEntry(idx) {
-  const entry = (data._metals||[])[idx];
-  if (!entry) return;
-  const isLinked = !!entry._linkId;
-  const confirmMsg = isLinked
-    ? 'Delete this metal entry and the linked investing transaction?'
-    : 'Delete this metal entry?';
-  if (!confirm(confirmMsg)) return;
-
-  // Remove the metals entry
-  data._metals.splice(idx, 1);
-
-  // If it was auto-created from an investing transaction, remove that too
-  if (isLinked) {
-    const linkId = entry._linkId;
-    const typeMap = { expense:'expenses', income:'income', investment:'investments',
-                      debt:'debts', given:'givenToOthers', additional:'additional' };
-    let txRemoved = false;
-    Object.keys(data).filter(mk => /^\d{4}-\d{2}$/.test(mk)).forEach(mk => {
-      const invList = (data[mk].investments || []);
-      const beforeLen = invList.length;
-      data[mk].investments = invList.filter(t => t._metalLinkId !== linkId);
-      if (data[mk].investments.length < beforeLen) txRemoved = true;
-    });
-    save();
-    renderMetals();
-    renderTransactions();
-    if (typeof renderHome === 'function') renderHome();
-    showToast(txRemoved ? '🗑 Metal entry + investing transaction deleted' : '🗑 Metal entry deleted');
-  } else {
-    save();
-    renderMetals();
-    showToast('Entry deleted');
-  }
-}
-
-function deleteMetalEntryByLink(linkId, fallbackIdx) {
-  // Find the index by _linkId first (most reliable), fall back to positional index
-  const idx = linkId
-    ? (data._metals||[]).findIndex(m => m._linkId === linkId)
-    : fallbackIdx;
-  deleteMetalEntry(idx >= 0 ? idx : fallbackIdx);
-}
-
-// Delete an imported metal entry directly from NW screen
-function deleteImportedMetal(idx) {
-  if (!confirm('Delete this metal entry?')) return;
-  if (!data._metals || !data._metals[idx]) return;
-  data._metals.splice(idx, 1);
-  save(); renderNetWorth(); renderMetals();
-  showToast('✅ Metal entry deleted');
-}
-
-// Open edit sheet for an imported metal entry from NW screen
-function openEditMetalSheet(idx) {
-  const m = (data._metals || [])[idx];
-  if (!m) return;
-  // Navigate to Data screen → Metals section and open edit inline
-  // Simplest approach: open a quick edit modal pre-filled
-  const newType  = prompt('Metal type (gold/silver/platinum):', m.metalType || 'gold');
-  if (newType === null) return;
-  const newPurity  = prompt('Purity (e.g. 22K, 18K):', m.purity || '');
-  if (newPurity === null) return;
-  const newOccasion = prompt('Occasion (e.g. Wedding, Gift):', m.occasion || '');
-  if (newOccasion === null) return;
-  const newItem  = prompt('Item name:', m.itemName || m.name || '');
-  if (newItem === null) return;
-  const newGrams = prompt('Weight in grams:', m.grams || m.weightGms || '');
-  if (newGrams === null) return;
-  const g = parseFloat(newGrams);
-  if (!g || g <= 0) { showToast('Invalid weight ❌'); return; }
-  data._metals[idx] = {
-    ...m,
-    metalType: newType.toLowerCase().trim() || 'gold',
-    purity: newPurity.trim(),
-    occasion: newOccasion.trim(),
-    itemName: newItem.trim(),
-    name: newItem.trim() || newType,
-    grams: g, weightGms: g,
-  };
-  save(); renderNetWorth(); renderMetals();
-  showToast('✅ Metal entry updated');
-}
+function deleteMetalEntry(idx) { if(!confirm('Delete this entry?')) return; data._metals.splice(idx,1); save(); renderMetals(); showToast('Entry deleted'); }
 
 // ══════════════════════════════════════════════════════
 // INVESTMENTS
@@ -6715,7 +5567,7 @@ function renderInvestments() {
   hl.innerHTML=filtered.map(inv=>{const realIdx=investments.indexOf(inv);const cost=Number(inv.shares||0)*Number(inv.cost||0);const val=Number(inv.shares||0)*Number(inv.price||inv.cost||0);const gain=val-cost;const pct=cost>0?gain/cost*100:0;const color=catColors[inv.category]||'#9AA0B2';return`<div class="invest-holding-row"><div class="invest-ticker-badge" style="background:${color}18;color:${color};">${(inv.ticker||'?').toUpperCase()}</div><div class="invest-info"><div class="invest-name">${inv.ticker||'Investment'}</div><div class="invest-detail">${inv.shares} shares · ${inv.broker||''} · ${inv.category||''}</div></div><div class="invest-values"><div class="invest-value">${fmt(val)}</div><div class="invest-gain ${gain>=0?'up':'down'}">${gain>=0?'+':'-'}${fmtFull(Math.abs(gain))} (${pct.toFixed(1)}%)</div></div><button onclick="deleteInvestEntry(${realIdx})" style="background:#FFF0F0;border:none;border-radius:8px;padding:6px 8px;font-size:0.75em;color:var(--expenses);cursor:pointer;margin-left:8px;">✕</button></div>`;}).join('');
 }
 function addInvestEntry() {
-  const ticker=document.getElementById('inv-ticker').value.trim().toUpperCase(), category=document.getElementById('inv-cat').value, shares=parseFloat(document.getElementById('inv-shares').value), cost=parseFloat(document.getElementById('inv-cost').value), price=parseFloat(document.getElementById('inv-price').value)||cost, date=document.getElementById('inv-date').value||localDateStr(), broker=document.getElementById('inv-broker').value.trim();
+  const ticker=document.getElementById('inv-ticker').value.trim().toUpperCase(), category=document.getElementById('inv-cat').value, shares=parseFloat(document.getElementById('inv-shares').value), cost=parseFloat(document.getElementById('inv-cost').value), price=parseFloat(document.getElementById('inv-price').value)||cost, date=document.getElementById('inv-date').value||new Date().toISOString().split('T')[0], broker=document.getElementById('inv-broker').value.trim();
   if(!ticker||!shares||!cost){showToast('Fill in ticker, shares & cost ❌');return;}
   const investments=getInvestments();
   const existing=investments.find(inv=>inv.ticker===ticker&&inv.category===category);
@@ -6770,7 +5622,7 @@ function updateSettingsPinUI(){ ... }
 // ══════════════════════════════════════════════════════
 // BUDGET MODULE
 // ══════════════════════════════════════════════════════
-// viewMonth removed — viewMonth is the single source of truth
+let budgetViewMonth = getCurrentMonthKey();
 let currentBudgetTab = 'overview';
 let currentBudgetCatDetail = null; // {type:'expense'|'savings', goalKey}
 let editingBudgetKey = null; // null = new, string = existing key
@@ -6779,9 +5631,34 @@ let pickedBudgetEmoji = '💸';
 
 const BUDGET_EMOJIS = ['💸','🛒','🚗','🏠','💊','🎭','🍔','☕','🎓','🐾','✈️','👗','🎮','🏋️','🎁','📱','⚡','🚌','💈','🎪','🏥','🏦','🔧','🌮','📚','🐟','🌿','💡','🎯','🏡','🥇','💰','📈','🏛️','🎉','🍕','🌺','🌊','🎶','🧘'];
 
-// Default budgets — empty for new users, they set up their own
-const DEFAULT_EXPENSE_BUDGETS = [];
-const DEFAULT_SAVINGS_BUDGETS = [];
+// Default expense budgets matching the excel snapshot
+const DEFAULT_EXPENSE_BUDGETS = [
+  {key:'FastFood',   name:'Fast Food',    icon:'🍔', amount:100, linkedCats:['FastFood']},
+  {key:'Groceries',  name:'Groceries',    icon:'🛒', amount:400, linkedCats:['Groceries']},
+  {key:'Utility',    name:'Utility',      icon:'⚡', amount:500, linkedCats:['Utility','Bills']},
+  {key:'Auto',       name:'Auto',         icon:'🚗', amount:900, linkedCats:['Auto','Gas','Transport']},
+  {key:'Mortgage',   name:'Mortgage',     icon:'🏠', amount:2310, linkedCats:['Mortgage','Rent','Housing']},
+  {key:'Shopping',   name:'Shopping',     icon:'👗', amount:50,  linkedCats:['Shopping']},
+  {key:'Gas',        name:'Gas',          icon:'⛽', amount:100, linkedCats:['Gas','Fuel']},
+  {key:'Insurance',  name:'Insurance',    icon:'🛡️', amount:66.62, linkedCats:['Insurance']},
+  {key:'Toll',       name:'Toll',         icon:'🚌', amount:40,  linkedCats:['Toll']},
+  {key:'Skanda',     name:'Skanda',       icon:'🎓', amount:200, linkedCats:['Skanda','Education','Kids']},
+  {key:'Parents',    name:'Parents',      icon:'👨‍👩‍👦', amount:230, linkedCats:['Parents','Family']},
+  {key:'HealthCare', name:'Health Care',  icon:'💊', amount:100, linkedCats:['HealthCare','Health','Medical']},
+  {key:'Entertainment', name:'Entertainment', icon:'🎭', amount:200, linkedCats:['Entertainment']},
+];
+
+const DEFAULT_SAVINGS_BUDGETS = [
+  {key:'FID',         name:'FID',              icon:'🏦', amount:620, linkedCats:['FID']},
+  {key:'OneGold',     name:'One Gold',          icon:'🥇', amount:400, linkedCats:['OneGold','Gold','Metals']},
+  {key:'OneSilver',   name:'One Silver',        icon:'🥈', amount:500, linkedCats:['OneSilver','Silver']},
+  {key:'OnePlatinum', name:'One Platinum',      icon:'💎', amount:200, linkedCats:['OnePlatinum','Platinum']},
+  {key:'MF',          name:'Mutual Funds',      icon:'📈', amount:600, linkedCats:['MF','ETF/MF','Mutual Fund']},
+  {key:'Stocks',      name:'Stocks',            icon:'📊', amount:700, linkedCats:['Stocks','ETF']},
+  {key:'IND_STOCKS',  name:'IND Stocks',        icon:'🌐', amount:200, linkedCats:['IND STOCKS','IND_STOCKS']},
+  {key:'SAVINGS',     name:'Savings',           icon:'💰', amount:400, linkedCats:['SAVINGS','Savings']},
+  {key:'Crypto',      name:'Crypto',            icon:'🪙', amount:100, linkedCats:['Crypto']},
+];
 
 function getBudgetGoals(type) {
   const key = type === 'savings' ? '_savingsGoals' : '_expenseGoals';
@@ -7189,7 +6066,7 @@ function saveGoal() {
     goalType: document.getElementById('gs-goaltype')?.value || 'grow',
     startBalance: parseFloat(document.getElementById('gs-startbal')?.value) || 0,
     mappedAccounts,
-    createdAt: editId ? (goals.find(g=>g.id===editId)||{}).createdAt : localDateStr(),
+    createdAt: editId ? (goals.find(g=>g.id===editId)||{}).createdAt : new Date().toISOString().split('T')[0],
   };
 
   if (editId) {
@@ -7370,134 +6247,11 @@ function renderGoalsPanel() {
   }).join('');
 }
 
-// ── Home card long press → Budget detail ────────────────────────
-let _homeLongPressTimer  = null;
-let _homeLongPressKey    = null;
-let _homeLongPressStartX = null;
-let _homeLongPressStartY = null;
-let _homeLongPressSubcat = null;
-let _homeLongPressType   = null;
-let _didLongPress        = false;
-
-// Touch handlers — most reliable on mobile PWA
-function homeCardTouchStart(e, cardKey, type, subcat) {
-  _didLongPress   = false;
-  _homeLongPressKey = cardKey;
-  _homeLongPressStartX = e.touches[0].clientX;
-  _homeLongPressStartY = e.touches[0].clientY;
-  _homeLongPressSubcat = subcat;
-  _homeLongPressType   = type;
-  _homeLongPressTimer  = setTimeout(() => {
-    _didLongPress       = true;
-    _homeLongPressTimer = null;
-    if (navigator.vibrate) navigator.vibrate(50);
-    goToBudgetDetail(cardKey);
-  }, 600);
-}
-
-function homeCardTouchMove(e) {
-  if (!_homeLongPressTimer) return;
-  const dx = Math.abs(e.touches[0].clientX - _homeLongPressStartX);
-  const dy = Math.abs(e.touches[0].clientY - _homeLongPressStartY);
-  if (dx > 10 || dy > 10) {
-    // User scrolling — cancel long press
-    clearTimeout(_homeLongPressTimer);
-    _homeLongPressTimer = null;
-  }
-}
-
-function homeCardTouchEnd(e) {
-  if (_homeLongPressTimer) {
-    // Timer still pending = short tap → Quick Add
-    clearTimeout(_homeLongPressTimer);
-    _homeLongPressTimer = null;
-    if (!_didLongPress) openQuickAdd(_homeLongPressType, _homeLongPressSubcat);
-  }
-  // If _didLongPress = true, long press already handled — do nothing
-}
-
-function clearHomeLongPress(e) {
-  if (_homeLongPressTimer) { clearTimeout(_homeLongPressTimer); _homeLongPressTimer = null; }
-}
-
-function handleHomeCardClick(e, type, subcat) {
-  // Kept for desktop fallback — touch devices use homeCardTouchEnd
-  if (_didLongPress) { _didLongPress = false; return; }
-  openQuickAdd(type, subcat);
-}
-
-function goToInvestDetail(cardKey) {
-  // Long press on invest card → go to transactions filtered by that investment type
-  goToScreen('tx');
-  setTimeout(() => {
-    const searchInput = document.getElementById('tx-search-input');
-    if (searchInput) {
-      searchInput.value = cardKey;
-      onTxSearch(cardKey);
-    }
-  }, 80);
-}
-
-function goToBudgetDetail(cardKey) {
-  // Find the home card to get its subcategories
-  const cards = getHomeSpendCards();
-  const card  = cards.find(c => (c.key||c.label) === cardKey);
-  const subcats = card ? (card.subcats || [card.label]) : [cardKey];
-  const cardLabel = card ? card.label : cardKey;
-
-  // Try to find matching budget goal
-  const expGoals = getBudgetGoals('expense');
-  const savGoals = getBudgetGoals('savings');
-  let goal = expGoals.find(g => g.key === cardKey);
-  let type = 'expense';
-  if (!goal) { goal = savGoals.find(g => g.key === cardKey); type = 'savings'; }
-  if (!goal) {
-    goal = expGoals.find(g =>
-      (g.linkedCats||[g.key]).some(c => subcats.map(s=>s.toLowerCase()).includes(c.toLowerCase())) ||
-      (g.name||g.key).toLowerCase() === cardLabel.toLowerCase()
-    );
-    type = 'expense';
-  }
-
-  // Always go to transactions with category search — no flash, no intermediate screen
-  // If a budget goal exists, show a banner but stay in transactions
-  goToScreen('tx');
-  setTimeout(() => {
-    const searchInput = document.getElementById('tx-search-input');
-    if (searchInput) {
-      const searchTerm = subcats[0] || cardLabel;
-      searchInput.value = searchTerm;
-      onTxSearch(searchTerm);
-      if (goal) showToast(`📊 ${goal.name || goal.key} · ${fmt((goal.amount||0))} budget`);
-    }
-  }, 80);
-}
-
-// ── Budget swipe gesture ────────────────────────────────────────
-let _budgetSwipeX = null;
-
-function budgetSwipeStart(e) {
-  _budgetSwipeX = e.touches ? e.touches[0].clientX : null;
-}
-
-function budgetSwipeEnd(e) {
-  if (_budgetSwipeX === null) return;
-  const endX = e.changedTouches ? e.changedTouches[0].clientX : null;
-  if (endX === null) { _budgetSwipeX = null; return; }
-  const delta = endX - _budgetSwipeX;
-  _budgetSwipeX = null;
-  if (Math.abs(delta) < 50) return;
-  budgetChangeMonth(delta < 0 ? 1 : -1);
-}
-
 function budgetChangeMonth(dir) {
-  const [y, m] = viewMonth.split('-').map(Number);
+  const [y, m] = budgetViewMonth.split('-').map(Number);
   const d = new Date(y, m - 1 + dir, 1);
-  viewMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  document.getElementById('budget-month-label').textContent = getDisplayMonth(viewMonth);
-  // Update topbar month if visible
-  const topbarMonth = document.getElementById('topbar-month');
-  if (topbarMonth) topbarMonth.textContent = getDisplayMonth(viewMonth);
+  budgetViewMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('budget-month-label').textContent = getDisplayMonth(budgetViewMonth);
   renderBudgetModule();
   // If detail pane is open, re-render it for the new month
   if (currentBudgetCatDetail) {
@@ -7542,8 +6296,8 @@ function getBudgetActual(goal, monthKey) {
   ['expenses', 'investments', 'additional'].forEach(listKey => {
     (m[listKey] || []).forEach(e => {
       const ec = (e.category || '').toLowerCase().trim();
-      // Exact match only — prevents 'parent' matching 'parents', 'gold' matching 'onegold' etc.
-      if (cats.some(c => ec === c)) {
+      const ed = (e.description || '').toLowerCase().trim();
+      if (cats.some(c => ec.includes(c) || (listKey === 'investments' && (ed.includes(c) || ec.includes(c))))) {
         total += convertAmt(e.amount, e.currency);
       }
     });
@@ -7563,7 +6317,7 @@ function getLast12Months(fromMonthKey) {
 }
 
 function renderBudgetModule() {
-  document.getElementById('budget-month-label').textContent = getDisplayMonth(viewMonth);
+  document.getElementById('budget-month-label').textContent = getDisplayMonth(budgetViewMonth);
   if (currentBudgetTab === 'overview') renderBudgetOverview();
   else if (currentBudgetTab === 'expenses') renderBudgetGoalsList('expense');
   else if (currentBudgetTab === 'savings') renderBudgetGoalsList('savings');
@@ -7591,7 +6345,7 @@ function renderBudgetOverview() {
   const expGoals = getBudgetGoals('expense');
   const savGoals = getBudgetGoals('savings');
   const isYear = budgetViewMode === 'year';
-  const year = viewMonth.split('-')[0];
+  const year = budgetViewMonth.split('-')[0];
 
   // ── Compute totals depending on mode ──
   let totalExpBudget, totalSavBudget, totalExpActual, totalSavActual;
@@ -7604,15 +6358,15 @@ function renderBudgetOverview() {
     totalSavBudget = monthlySavBudget * 12;
     // YTD actuals — sum only months in this year UP TO the selected/current month
     const todayMk = new Date().toISOString().slice(0,7);
-    const capMk = viewMonth < todayMk ? viewMonth : todayMk;
-    const yearMonths = getYearMonthKeys(viewMonth).filter(mk => mk <= capMk);
+    const capMk = budgetViewMonth < todayMk ? budgetViewMonth : todayMk;
+    const yearMonths = getYearMonthKeys(budgetViewMonth).filter(mk => mk <= capMk);
     totalExpActual = yearMonths.reduce((s, mk) => s + expGoals.reduce((ss, g) => ss + getBudgetActual(g, mk), 0), 0);
     totalSavActual = yearMonths.reduce((s, mk) => s + savGoals.reduce((ss, g) => ss + getBudgetActual(g, mk), 0), 0);
   } else {
     totalExpBudget = monthlyExpBudget;
     totalSavBudget = monthlySavBudget;
-    totalExpActual = expGoals.reduce((s, g) => s + getBudgetActual(g, viewMonth), 0);
-    totalSavActual = savGoals.reduce((s, g) => s + getBudgetActual(g, viewMonth), 0);
+    totalExpActual = expGoals.reduce((s, g) => s + getBudgetActual(g, budgetViewMonth), 0);
+    totalSavActual = savGoals.reduce((s, g) => s + getBudgetActual(g, budgetViewMonth), 0);
   }
 
   const totalBudget = totalExpBudget + totalSavBudget;
@@ -7645,11 +6399,11 @@ function renderBudgetOverview() {
   if (ctx) {
     if (isYear) {
       // Year view: grouped bar chart Jan–Dec with expense + savings bars per month
-      const yearMonths = getYearMonthKeys(viewMonth);
+      const yearMonths = getYearMonthKeys(budgetViewMonth);
       const labels = yearMonths.map(mk => { const [,mo] = mk.split('-'); return ['J','F','M','A','M','J','J','A','S','O','N','D'][parseInt(mo)-1]; });
       const expData = yearMonths.map(mk => expGoals.reduce((s, g) => s + getBudgetActual(g, mk), 0));
       const savData = yearMonths.map(mk => savGoals.reduce((s, g) => s + getBudgetActual(g, mk), 0));
-      const curIdx = yearMonths.indexOf(viewMonth);
+      const curIdx = yearMonths.indexOf(budgetViewMonth);
       charts[canvasId] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -7670,7 +6424,7 @@ function renderBudgetOverview() {
       });
     } else {
       // Month view: dual line chart — last 12 months
-      const months12 = getLast12Months(viewMonth);
+      const months12 = getLast12Months(budgetViewMonth);
       const expActuals12 = months12.map(mk => expGoals.reduce((s, g) => s + getBudgetActual(g, mk), 0));
       const savActuals12 = months12.map(mk => savGoals.reduce((s, g) => s + getBudgetActual(g, mk), 0));
       const labels12 = months12.map(mk => { const [,mo] = mk.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo)-1]; });
@@ -7695,12 +6449,12 @@ function renderBudgetOverview() {
     let actual, budget;
     if (isYear) {
       const todayMk2 = new Date().toISOString().slice(0,7);
-      const capMk2 = viewMonth < todayMk2 ? viewMonth : todayMk2;
-      const ytdMonths = getYearMonthKeys(viewMonth).filter(mk => mk <= capMk2);
+      const capMk2 = budgetViewMonth < todayMk2 ? budgetViewMonth : todayMk2;
+      const ytdMonths = getYearMonthKeys(budgetViewMonth).filter(mk => mk <= capMk2);
       actual = ytdMonths.reduce((s, mk) => s + getBudgetActual(goal, mk), 0);
       budget = Number(goal.amount || 0) * 12;
     } else {
-      actual = getBudgetActual(goal, viewMonth);
+      actual = getBudgetActual(goal, budgetViewMonth);
       budget = Number(goal.amount || 0);
     }
     const pct = budget > 0 ? Math.min(actual / budget, 1) : 0;
@@ -7762,7 +6516,7 @@ function renderBudgetGoalsList(type) {
   }
 
   el.innerHTML = goals.map(goal => {
-    const actual = getBudgetActual(goal, viewMonth);
+    const actual = getBudgetActual(goal, budgetViewMonth);
     const budget = Number(goal.amount || 0);
     const pct = budget > 0 ? Math.min(actual / budget * 100, 100) : 0;
     const isOver = actual > budget && budget > 0;
@@ -7778,7 +6532,7 @@ function renderBudgetGoalsList(type) {
         <div class="bgr-icon" style="background:${iconBg};">${goal.icon || '💸'}</div>
         <div class="bgr-info">
           <div class="bgr-name">${goal.name}</div>
-          <div class="bgr-type">${isSav ? '💰 Savings Goal' : '💸 Expense Budget'} · ${getDisplayMonth(viewMonth)}</div>
+          <div class="bgr-type">${isSav ? '💰 Savings Goal' : '💸 Expense Budget'} · ${getDisplayMonth(budgetViewMonth)}</div>
         </div>
         <div class="bgr-right">
           <div class="bgr-spent" style="color:${amtColor};">${fmt(actual)}</div>
@@ -7796,7 +6550,7 @@ function renderBudgetGoalsList(type) {
 
 // Shared function to (re)build the detail view for a given goal
 function _renderBudgetDetail(prefix, goal, type) {
-  const actual  = getBudgetActual(goal, viewMonth);
+  const actual  = getBudgetActual(goal, budgetViewMonth);
   const budget  = Number(goal.amount || 0);
   const leftAmt = budget - actual;
   const isOver  = actual > budget && budget > 0;
@@ -7817,10 +6571,10 @@ function _renderBudgetDetail(prefix, goal, type) {
   if (chipInput) chipInput.value = budget;
 
   // ── Chart ──
-  const months12  = getLast12Months(viewMonth);
+  const months12  = getLast12Months(budgetViewMonth);
   const actuals12 = months12.map(mk => getBudgetActual(goal, mk));
   const labels12  = months12.map(mk => { const [,mo] = mk.split('-'); return ['J','F','M','A','M','J','J','A','S','O','N','D'][parseInt(mo)-1]; });
-  const curIdx    = months12.indexOf(viewMonth);
+  const curIdx    = months12.indexOf(budgetViewMonth);
 
   const lineColor = isSav ? '#10B981' : '#1E2A6E';
   const barColors = actuals12.map((a, i) => {
@@ -7886,7 +6640,7 @@ function _renderBudgetDetail(prefix, goal, type) {
   });
 
   // ── Metrics ──
-  const yearStart  = viewMonth.split('-')[0];
+  const yearStart  = budgetViewMonth.split('-')[0];
   const yearMonths = Object.keys(data).filter(k => k.startsWith(yearStart + '-') && !k.startsWith('_'));
   const yearTotal  = yearMonths.reduce((s, mk) => s + getBudgetActual(goal, mk), 0);
   const avgPerMonth = yearMonths.length > 0 ? yearTotal / yearMonths.length : 0;
@@ -7899,21 +6653,20 @@ function _renderBudgetDetail(prefix, goal, type) {
   `;
 
   // ── Transactions ──
-  ensureMonth(viewMonth);
-  const m    = data[viewMonth];
+  ensureMonth(budgetViewMonth);
+  const m    = data[budgetViewMonth];
   const cats = (goal.linkedCats || [goal.key]).map(c => c.toLowerCase().trim());
   let txns   = [];
   ['expenses', 'investments', 'additional'].forEach(listKey => {
     (m[listKey] || []).forEach(e => {
       const ec = (e.category || '').toLowerCase().trim();
-      // Exact match — keep in sync with getBudgetActual
-      if (cats.some(c => ec === c)) txns.push({ ...e, _type: listKey });
+      if (cats.some(c => ec.includes(c))) txns.push({ ...e, _type: listKey });
     });
   });
   txns.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   const txnMonthLabel = document.getElementById(`bcd-${prefix}-txn-month`);
-  if (txnMonthLabel) txnMonthLabel.textContent = `${getDisplayMonth(viewMonth)} Transactions (${txns.length})`;
+  if (txnMonthLabel) txnMonthLabel.textContent = `${getDisplayMonth(budgetViewMonth)} Transactions (${txns.length})`;
 
   const txnsEl = document.getElementById(`bcd-${prefix}-txns`);
   if (txnsEl) {
@@ -8035,14 +6788,14 @@ function openEditBudgetPopup(goalKey, forceType) {
       pickedBudgetEmoji = goal.icon || '💸';
       document.getElementById('ebp-name').value = goal.name || goal.key;
       document.getElementById('ebp-amount').value = goal.amount || '';
-      initLinkedCatPicker(goal.linkedCats || [], editingBudgetType);
+      document.getElementById('ebp-linked-cats').value = (goal.linkedCats || []).join(', ');
       delBtn.style.display = '';
     }
   } else {
     pickedBudgetEmoji = '💸';
     document.getElementById('ebp-name').value = '';
     document.getElementById('ebp-amount').value = '';
-    initLinkedCatPicker([], editingBudgetType);
+    document.getElementById('ebp-linked-cats').value = '';
     delBtn.style.display = 'none';
   }
 
@@ -8175,21 +6928,15 @@ function getRealEstateAssets() {
   return data._realEstate;
 }
 
-// INR_TO_USD removed — all currency conversion goes through convertAmt() which respects user overrides
+const INR_TO_USD = 0.012;
 
 // ── Convert account balance to display currency ──
 function nwConvert(balance, currency) {
   const b = Number(balance || 0);
   const c = (currency || currentCurrency.code).toUpperCase();
-  const dispCode = currentCurrency.code.toUpperCase();
-  if (c === dispCode) return b;
-  // Convert: amount in currency C → display currency
-  // All rates are stored as "1 USD = N units of currency"
-  const overrides = data._fxOverrides || {};
-  const fromRate = overrides[c]        ?? FX_USD_BASE[c]        ?? 1; // 1 USD = fromRate C
-  const toRate   = overrides[dispCode] ?? FX_USD_BASE[dispCode] ?? 1; // 1 USD = toRate display
-  // b / fromRate = USD value → * toRate = display value
-  return (b / fromRate) * toRate;
+  if (c === currentCurrency.code) return b;
+  // Use existing convertAmt helper via a fake entry
+  return convertAmt(b, c);
 }
 
 // ── Compute net worth from accounts ──
@@ -8235,14 +6982,14 @@ function computeNetWorth() {
   const reFromImport = (data._realEstate || []).map((p, idx) => {
     const cv = Number(p.currentValue || p.purchaseValue || 0);
     const curr = (p.currency || 'USD').toUpperCase();
-    // Store raw value + real currency — let nwConvert handle conversion once, consistently
+    const val = curr === 'INR' ? cv * (INR_TO_USD||0.012) : nwConvert(cv, curr);
     const nameParts = ['🏡', p.description || 'Property'];
     if (p.country && p.country !== 'US') nameParts.push(p.country);
     return {
       id: 'import_re_' + idx,
       name: nameParts.join(' '),
-      balance: cv,      // raw value in original currency
-      currency: curr,   // nwConvert will convert correctly
+      balance: val,
+      currency: curr,
       lastUpdated: p.date || '',
       _imported: true,
       type: 'realestate',
@@ -8267,13 +7014,11 @@ function computeNetWorth() {
     if (t === 'metals' && acc.meta && acc.meta.grams) {
       const metalType = acc.meta.metalType || 'gold';
       const purity    = acc.meta.purity || '';
-      const calcPrice = getPriceForMetal(metalType, purity); // always USD/gram
-      const calcValUSD = Number(acc.meta.grams) * calcPrice; // always USD
-      // Convert calcVal from USD to display currency
-      const calcVal = nwConvert(calcValUSD, 'USD');
+      const calcPrice = getPriceForMetal(metalType, purity);
+      const calcVal   = Number(acc.meta.grams) * calcPrice;
       // Use calculated value if no explicit balance, or if explicit balance is 0
       if (!Number(acc.balance) || acc._imported) val = calcVal;
-      else val = Math.max(nwConvert(Number(acc.balance), acc.currency || 'USD'), calcVal);
+      else val = Math.max(Number(acc.balance) || 0, calcVal); // take the stored balance if explicitly set and > 0
     }
     byType[t].total += val;
     byType[t].accounts.push({ ...acc, _val: val });
@@ -8358,18 +7103,12 @@ function buildNWMetalsBody(accounts, cfg, addBtnLabel) {
           ? (originalName && originalName.toLowerCase() !== mt ? occasion + ' · ' + originalName : occasion)
           : (originalName && originalName.toLowerCase() !== mt ? originalName : acc.name);
         const dateStr = acc.lastUpdated ? new Date(acc.lastUpdated+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}) : '';
-        // For imported metals — use _metals array index for edit/delete
-        const metalIdx = acc.id.replace('import_metal_','');
-        const editBtn = acc._imported
-          ? `<button class="nw-account-btn" onclick="openEditMetalSheet(${metalIdx})" title="Edit">✏️</button>
-             <button class="nw-account-btn del" onclick="deleteImportedMetal(${metalIdx})" title="Delete">✕</button>`
-          : `<button class="nw-account-btn" onclick="openNWSheet('metals','${acc.id}')">✏️</button>
-             <button class="nw-account-btn del" onclick="deleteNWAccount('${acc.id}')">✕</button>`;
+        const editBtn = acc._imported ? '' : `<button class="nw-account-btn" onclick="openNWSheet('metals','${acc.id}')">✏️</button><button class="nw-account-btn del" onclick="deleteNWAccount('${acc.id}')">✕</button>`;
 
         html += `<div class="nw-account-row" style="padding-left:24px;">
           <div class="nw-account-left">
             <div class="nw-account-name" style="font-size:0.87em;">${displayName || '—'}</div>
-            <div class="nw-account-meta">${g.toFixed(2)}g · ${oz} oz${dateStr?' · '+dateStr:''}</div>
+            <div class="nw-account-meta">${g.toFixed(2)}g · ${oz} oz${dateStr?' · '+dateStr:''}${acc._imported?' · 📥':''}</div>
           </div>
           <div class="nw-account-right">
             <div>
@@ -8846,7 +7585,7 @@ function toggleNWSection(name) {
 function saveNWSnapshot() {
   const nw = computeNetWorth();
   const snaps = getNWSnapshots();
-  const today = localDateStr();
+  const today = new Date().toISOString().split('T')[0];
   // Don't duplicate same-day snapshot, update it
   const existing = snaps.find(s => s.date === today);
   if (existing) { existing.value = nw.netWorth; }
@@ -8961,7 +7700,7 @@ function _nwsBuildForm(type, existing, m) {
   document.getElementById('nw-sheet-body').innerHTML = `
     <div class="nw-sheet-field">
       <div class="nws-section-label">Last Updated</div>
-      <input class="nw-sheet-input" id="nws-date" type="date" value="${existing ? existing.lastUpdated : localDateStr()}">
+      <input class="nw-sheet-input" id="nws-date" type="date" value="${existing ? existing.lastUpdated : new Date().toISOString().split('T')[0]}">
     </div>
     <div class="nw-sheet-field">
       <div class="nws-section-label">Name</div>
@@ -8979,7 +7718,7 @@ function _nwsBuildForm(type, existing, m) {
     </div>
     <div class="nw-sheet-row">
       <div class="nw-sheet-field"><div class="nws-section-label">Area (sq ft / sq m)</div><input class="nw-sheet-input" id="nws-re-area" type="text" placeholder="e.g. 1200 sqft" value="${m.area||''}"></div>
-      <div class="nw-sheet-field"><div class="nws-section-label">Purchase Date</div><input class="nw-sheet-input" id="nws-date" type="date" value="${existing ? existing.lastUpdated : localDateStr()}"></div>
+      <div class="nw-sheet-field"><div class="nws-section-label">Purchase Date</div><input class="nw-sheet-input" id="nws-date" type="date" value="${existing ? existing.lastUpdated : new Date().toISOString().split('T')[0]}"></div>
     </div>
     <div class="nw-sheet-field"><div class="nws-section-label">Description / Address</div><input class="nw-sheet-input" id="nws-re-desc" type="text" placeholder="e.g. 3BR Apartment, Main St" value="${m.description||''}"></div>
     ` : `${showBalance ? `
@@ -9084,7 +7823,7 @@ function saveNWAccount() {
   const notesEl = document.getElementById('nws-notes');
   if (notesEl && notesEl.value) meta.notes = notesEl.value.trim();
   const dateEl = document.getElementById('nws-date');
-  const lastUpdated = dateEl ? dateEl.value : localDateStr();
+  const lastUpdated = dateEl ? dateEl.value : new Date().toISOString().split('T')[0];
 
   if (!data._nwAccounts) data._nwAccounts = [];
   if (nwSheetEditId) {
@@ -9303,7 +8042,7 @@ function buildTxRecords() {
     if (rawDate) {
       // Handle Excel date formats
       const d = new Date(rawDate);
-      if (!isNaN(d)) dateStr = localDateStr(d);
+      if (!isNaN(d)) dateStr = d.toISOString().split('T')[0];
       else dateStr = rawDate.substring(0,10);
     }
     if (!dateStr || dateStr === 'NaN-aN-aN') return;
@@ -9367,7 +8106,7 @@ function processGivenImport(rows, headers) {
     const rawDate = String(row[dateCol]||'').trim();
     const d = new Date(rawDate);
     if (isNaN(d)) return;
-    const dateStr = localDateStr(d);
+    const dateStr = d.toISOString().split('T')[0];
     const monthKey = dateStr.substring(0,7);
     ensureMonth(monthKey);
     const amount = Math.abs(parseFloat(String(row[amtCol]||'0').replace(/[$,]/g,''))||0);
@@ -9507,7 +8246,7 @@ function processMetalsImport(rows, headers) {
       name: itemCol >= 0 ? String(row[itemCol]||'').trim() : metalType,
       grams,
       price: METAL_CONFIG[metalType]?.pricePerGram || 0,
-      date: localDateStr(),
+      date: new Date().toISOString().split('T')[0],
       form: 'Jewelry',
       purity: purityCol >= 0 ? String(row[purityCol]||'').trim() : '',
       occasion: occasionCol >= 0 ? String(row[occasionCol]||'').trim() : '',
@@ -9531,8 +8270,9 @@ function processREImport(rows, headers) {
     const desc = descCol >= 0 ? String(row[descCol]||'').trim() : '';
     const pv = parseFloat(String(row[pvCol>=0?pvCol:0]||'0').replace(/[^\d.]/g,''))||0;
     if (!pv && !desc) return;
-    const rawDate = dateCol >= 0 ? String(row[dateCol]||'').trim() : '';
-    const dateStr = parseDateSafe(rawDate);
+    const rawDate = dateCol >= 0 ? String(row[dateCol]||'') : '';
+    const d = new Date(rawDate);
+    const dateStr = !isNaN(d) ? d.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     reAssets.push({
       date: dateStr,
       country: countryCol >= 0 ? String(row[countryCol]||'').trim() : 'US',
@@ -9541,7 +8281,6 @@ function processREImport(rows, headers) {
       currentValue: cvCol >= 0 ? parseFloat(String(row[cvCol]||'0').replace(/[^\d.]/g,''))||pv : pv,
       description: desc,
       area: areaCol >= 0 ? String(row[areaCol]||'').trim() : '',
-      areaCents: areaCol >= 0 ? parseFloat(String(row[areaCol]||'0').replace(/[^\d.]/g,''))||0 : 0,
     });
     imported++;
   });
@@ -9576,7 +8315,7 @@ function renderResetSummary() {
   const givenEl = document.getElementById('reset-given-count');
   if (givenEl) givenEl.textContent = (data._given||[]).length + ' records';
   const reEl = document.getElementById('reset-re-count');
-  if (reEl) reEl.textContent = (data._realEstate||[]).length + ' properties';
+  if (reEl) reEl.textContent = ((data._realEstate||{}).assets||[]).length + ' properties';
   const nwEl = document.getElementById('reset-nw-count');
   if (nwEl) nwEl.textContent = (data._nwAccounts||[]).length + ' accounts';
 }
@@ -9639,7 +8378,7 @@ function clearDataset(type) {
   if (!confirm(`Clear all ${labels[type]||type} data? Your transactions will NOT be affected.`)) return;
   if (type === 'metals')     { data._metals = []; }
   if (type === 'given')      { data._given = []; }
-  if (type === 'realestate') { data._realEstate = []; }
+  if (type === 'realestate') { if (data._realEstate) data._realEstate.assets = []; }
   if (type === 'networth')   { data._nwAccounts = []; }
   save();
   renderResetSummary();
@@ -10038,14 +8777,14 @@ function endCoachTour() {
 
 // ══════════════════════════════════════════════════════
 document.getElementById('topbar-month').textContent = getDisplayMonth(viewMonth);
-document.getElementById('metal-date').value = localDateStr();
-document.getElementById('inv-date').value = localDateStr();
+document.getElementById('metal-date').value = new Date().toISOString().split('T')[0];
+document.getElementById('inv-date').value = new Date().toISOString().split('T')[0];
 
 // Apply stored theme
 applyStoredTheme();
 
 // Init period
-selectedDay = localDateStr();
+selectedDay = new Date().toISOString().split('T')[0];
 updatePeriodLabel();
 
 // Render home
@@ -10093,25 +8832,6 @@ function showSyncStatus(msg, color='#10B981', duration=2500) {
   }
 }
 
-// ── Family vs Personal data routing ──────────────────────────────────────
-const FAMILY_EMAILS = [
-  'pnraghukishore@gmail.com',
-  'swathikishore12@gmail.com',
-  'skanda.penujuri@gmail.com'
-];
-const FAMILY_DOC_ID = 'kishore-family';
-
-function getDataRef(db, uid, email) {
-  const isFamily = FAMILY_EMAILS.includes((email || '').toLowerCase());
-  if (isFamily) {
-    // Family members share one document
-    return db.collection('families').doc(FAMILY_DOC_ID);
-  } else {
-    // Everyone else gets their own private document
-    return db.collection('users').doc(uid);
-  }
-}
-
 // ── Firebase Save: chunked to stay under 1MB Firestore limit ──────────────
 let _saveTimer = null;
 function firebaseSave() {
@@ -10123,8 +8843,7 @@ function firebaseSave() {
 
 function _doFirebaseSave() {
   if (!window._fbUser) return;
-  const uid   = window._fbUser.uid;
-  const email = window._fbUser.email;
+  const uid = window._fbUser.uid;
   showSyncStatus('☁️ Saving...', '#3B9EFF', 0);
 
   // Split data into chunks to stay well under Firestore 1MB doc limit
@@ -10139,11 +8858,11 @@ function _doFirebaseSave() {
     else chunk1[k] = data[k];
   });
 
-  const baseRef = getDataRef(_db, uid, email);
+  const userRef = _db.collection('users').doc(uid);
   const batch = _db.batch();
-  batch.set(baseRef.collection('appData').doc('main'),
+  batch.set(userRef.collection('appData').doc('main'),
     { ...chunk1, _savedAt: firebase.firestore.FieldValue.serverTimestamp() });
-  batch.set(baseRef.collection('appData').doc('assets'),
+  batch.set(userRef.collection('appData').doc('assets'),
     { ...chunk2, _savedAt: firebase.firestore.FieldValue.serverTimestamp() });
 
   batch.commit()
@@ -10157,12 +8876,11 @@ function _doFirebaseSave() {
 // ── Firebase Load: merge chunks back into data ────────────────────────────
 async function firebaseLoad(uid) {
   showSyncStatus('☁️ Loading your data...', '#3B9EFF', 0);
-  const email = window._fbUser ? window._fbUser.email : '';
   try {
-    const baseRef = getDataRef(_db, uid, email);
+    const userRef = _db.collection('users').doc(uid);
     const [mainSnap, assetsSnap] = await Promise.all([
-      baseRef.collection('appData').doc('main').get(),
-      baseRef.collection('appData').doc('assets').get()
+      userRef.collection('appData').doc('main').get(),
+      userRef.collection('appData').doc('assets').get()
     ]);
 
     const mainData   = mainSnap.exists   ? mainSnap.data()   : {};
@@ -10177,10 +8895,8 @@ async function firebaseLoad(uid) {
     if (Object.keys(merged).length > 0) {
       // Cloud data exists — merge with local (cloud wins for conflicts)
       data = { ...data, ...merged };
-      // Migration note: stale INR override cleanup removed — user overrides are intentional
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       showSyncStatus('✅ Data loaded from cloud', '#10B981', 2500);
-      setTimeout(runRecurringScheduler, 500);
     } else {
       // No cloud data yet — push local data to cloud
       showSyncStatus('☁️ First sync — uploading local data...', '#3B9EFF', 0);
@@ -10207,9 +8923,7 @@ async function firebaseLoad(uid) {
 let _unsubscribeListener = null;
 function startRealtimeSync(uid) {
   if (_unsubscribeListener) _unsubscribeListener();
-  const email = window._fbUser ? window._fbUser.email : '';
-  const baseRef = getDataRef(_db, uid, email);
-  const mainRef = baseRef.collection('appData').doc('main');
+  const mainRef = _db.collection('users').doc(uid).collection('appData').doc('main');
   _unsubscribeListener = mainRef.onSnapshot(snap => {
     if (!snap.exists || snap.metadata.hasPendingWrites) return;
     // Another device updated data — reload silently
@@ -10253,13 +8967,7 @@ _auth.onAuthStateChanged(async user => {
     const ALLOWED_EMAILS = [
       'pnraghukishore@gmail.com',
       'swathikishore12@gmail.com',
-      'skanda.penujuri@gmail.com',
-      'suja81@gmail.com',
-      'charlesakl@gmail.com',
-      'narasimha.neo@gmail.com',
-      'ping2rupesh@gmail.com',
-      'ebooksofpnr@gmail.com',
-      'pnrkiran@gmail.com'
+      'skanda.penujuri@gmail.com'
     ];
 
     if (!ALLOWED_EMAILS.includes(user.email.toLowerCase())) {
@@ -10309,273 +9017,6 @@ _auth.onAuthStateChanged(async user => {
     if (_unsubscribeListener) _unsubscribeListener();
   }
 });
-
-// ── Smart Linked Category Picker ─────────────────────────────────────────
-let _linkedCatsSelected = [];
-
-function initLinkedCatPicker(existingCats, budgetType) {
-  // existingCats: array of strings already linked
-  _linkedCatsSelected = existingCats ? [...existingCats] : [];
-  renderLinkedChips();
-  const search = document.getElementById('ebp-linked-search');
-  if (search) search.value = '';
-  syncLinkedCatsHidden();
-
-  // Show context-aware hint
-  const hint = document.getElementById('ebp-linked-cats-hint');
-  if (hint) {
-    if (budgetType === 'savings') {
-      hint.innerHTML = '💡 Maps to <strong>Investing tab</strong> transactions — type a category like Stocks, Gold, Crypto';
-    } else {
-      hint.innerHTML = '💡 Maps to <strong>expense</strong> transactions — type a category like Groceries, FastFood';
-    }
-  }
-}
-
-function getAllAvailableCats(budgetType) {
-  // For savings goals — prioritise investment + savings categories
-  // For expense goals — prioritise expense categories
-  const isSavings = budgetType === 'savings';
-  const all = new Set();
-
-  if (isSavings) {
-    // Investment types first for savings goals
-    ['investment','additional','income','expense'].forEach(t =>
-      getCatsForType(t).forEach(c => all.add(c))
-    );
-    // Pull actual investment transactions used
-    const mk = viewMonth || getCurrentMonthKey();
-    const monthData = data[mk] || {};
-    (monthData.investments || []).forEach(tx => {
-      if (tx.category)    all.add(tx.category);
-      if (tx.investType)  all.add(tx.investType);
-    });
-  } else {
-    // Expense types first for expense goals
-    ['expense','additional','given','income'].forEach(t =>
-      getCatsForType(t).forEach(c => all.add(c))
-    );
-  }
-
-  // Also pull from all transactions ever used
-  Object.keys(data).forEach(mk => {
-    if (!mk.match(/^\d{4}-\d{2}$/)) return;
-    const m = data[mk];
-    ['expenses','investments','additional','income'].forEach(list => {
-      (m[list] || []).forEach(tx => {
-        if (tx.category) all.add(tx.category);
-        if (tx.subCategory) all.add(tx.subCategory);
-        if (tx.investType) all.add(tx.investType);
-      });
-    });
-  });
-
-  return [...all].sort((a,b) => a.localeCompare(b));
-}
-
-function filterLinkedCatSuggestions(query) {
-  const dropdown = document.getElementById('ebp-linked-suggestions');
-  if (!dropdown) return;
-
-  // Pass current budget type so savings shows investment categories
-  const budgetType = (typeof editingBudgetType !== 'undefined') ? editingBudgetType : 'expense';
-  const all = getAllAvailableCats(budgetType);
-  const q = query.trim().toLowerCase();
-  const filtered = all.filter(c =>
-    c.toLowerCase().includes(q) && !_linkedCatsSelected.includes(c)
-  );
-
-  const trimmed = query.trim();
-
-  // Build suggestion rows
-  const rows = filtered.map(c => `
-    <div onclick="addLinkedCat('${c.replace(/'/g, "\'")}')"
-      style="padding:10px 14px;font-size:0.85em;font-weight:700;cursor:pointer;
-             color:var(--text-dark);border-bottom:1px solid #F5F5F5;transition:background 0.1s;"
-      onmouseover="this.style.background='#FFF8E8'"
-      onmouseout="this.style.background='white'">
-      ${c}
-    </div>
-  `).join('');
-
-  // If no match AND user typed something — show inline create option
-  const alreadyExists = trimmed && getAllAvailableCats(budgetType).some(c => c.toLowerCase() === trimmed.toLowerCase());
-  const createRow = trimmed && !alreadyExists ? `
-    <div onclick="createAndAddLinkedCat('${trimmed.replace(/'/g, "\'")}')"
-      style="padding:10px 14px;font-size:0.85em;font-weight:800;cursor:pointer;
-             color:#10B981;border-top:${filtered.length>0?'1.5px solid #F0F0F0':'none'};
-             display:flex;align-items:center;gap:8px;transition:background 0.1s;"
-      onmouseover="this.style.background='#F0FBF3'"
-      onmouseout="this.style.background='white'">
-      <span style="background:#10B981;color:white;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:0.9em;flex-shrink:0;">+</span>
-      Create <strong style="margin-left:3px;">"${trimmed}"</strong> as new category
-    </div>
-  ` : '';
-
-  if (!rows && !createRow) {
-    dropdown.style.display = 'none';
-    return;
-  }
-
-  dropdown.innerHTML = rows + createRow;
-  dropdown.style.display = 'block';
-}
-
-// ── Create new category inline and add to picker + app ────────────────────
-function createAndAddLinkedCat(catName) {
-  const budgetType = (typeof editingBudgetType !== 'undefined') ? editingBudgetType : 'expense';
-  const trimmed = catName.trim();
-  if (!trimmed) return;
-
-  if (budgetType === 'savings') {
-    // Add to investment custom categories
-    const cc = getCustomCats();
-    if (!cc.investment) cc.investment = [...getCatsForType('investment')];
-    if (!cc.investment.includes(trimmed)) {
-      cc.investment.push(trimmed);
-      data._customCats = cc;
-    }
-
-    // Add to Home Investing cards so it appears instantly
-    const cards = getHomeInvCards();
-    const alreadyCard = cards.find(c => c.key === trimmed);
-    if (!alreadyCard) {
-      // Pick a color from a palette based on name hash
-      const palette = [
-        {color:'#6366F1',bg:'#EEF2FF'},{color:'#EC4899',bg:'#FDF2F8'},
-        {color:'#14B8A6',bg:'#F0FDFA'},{color:'#F97316',bg:'#FFF7ED'},
-        {color:'#8B5CF6',bg:'#F5F3FF'},{color:'#0EA5E9',bg:'#F0F9FF'},
-        {color:'#10B981',bg:'#ECFDF5'},{color:'#D97706',bg:'#FFFBEB'},
-      ];
-      const pick = palette[trimmed.charCodeAt(0) % palette.length];
-      cards.push({
-        key: trimmed,
-        label: trimmed,
-        icon: '💼',
-        color: pick.color,
-        bg: pick.bg,
-        fieldTemplate: 'General',
-        visible: true
-      });
-      saveHomeInvCards(cards);
-    } else if (!alreadyCard.visible) {
-      // Card exists but was hidden — make it visible
-      alreadyCard.visible = true;
-      saveHomeInvCards(cards);
-    }
-
-    // Re-render home investing tab instantly
-    if (typeof renderHome === 'function') renderHome();
-
-    showToast(`✅ "${trimmed}" added to Investing tab`);
-
-  } else {
-    // Expense — add to expense custom categories
-    const cc = getCustomCats();
-    if (!cc.expense) cc.expense = [...getCatsForType('expense')];
-    if (!cc.expense.includes(trimmed)) {
-      cc.expense.push(trimmed);
-      data._customCats = cc;
-    }
-
-    // Add to Home Spending cards
-    const spendCards = getHomeSpendCards();
-
-    // Check if it already exists as a subcat of any existing card
-    const existingCard = spendCards.find(c =>
-      (c.subcats || []).some(s => s.toLowerCase() === trimmed.toLowerCase()) ||
-      (c.label || '').toLowerCase() === trimmed.toLowerCase()
-    );
-
-    if (!existingCard) {
-      // Create a new spending card for this category
-      const palette = [
-        {color:'#FF6B35',cls:'food'},  {color:'#4A9EFF',cls:'transport'},
-        {color:'#FF4757',cls:'shopping'},{color:'#4ECDC4',cls:'health'},
-        {color:'#FF6B9D',cls:'giving'},{color:'#7C3AED',cls:'other-cat'},
-        {color:'#F59E0B',cls:'other-cat'},{color:'#64B5F6',cls:'other-cat'},
-      ];
-      const pick = palette[trimmed.charCodeAt(0) % palette.length];
-      spendCards.push({
-        key: trimmed.toLowerCase().replace(/\s+/g,'_'),
-        label: trimmed,
-        icon: '🏷️',
-        color: pick.color,
-        cls: pick.cls,
-        subcats: [trimmed],
-        visible: true
-      });
-      saveHomeSpendCards(spendCards);
-      showToast(`✅ "${trimmed}" added to Spending tab`);
-    } else {
-      // Already mapped to a card — just confirm
-      showToast(`✅ "${trimmed}" linked to "${existingCard.label}" on Spending tab`);
-    }
-
-    // Re-render home spending tab instantly
-    if (typeof renderHome === 'function') renderHome();
-  }
-
-  save();
-
-  // Now add to the picker chips
-  addLinkedCat(trimmed);
-}
-
-function addLinkedCat(cat) {
-  if (!_linkedCatsSelected.includes(cat)) {
-    _linkedCatsSelected.push(cat);
-    renderLinkedChips();
-    syncLinkedCatsHidden();
-  }
-  const search = document.getElementById('ebp-linked-search');
-  if (search) search.value = '';
-  const dropdown = document.getElementById('ebp-linked-suggestions');
-  if (dropdown) dropdown.style.display = 'none';
-}
-
-function removeLinkedCat(cat) {
-  _linkedCatsSelected = _linkedCatsSelected.filter(c => c !== cat);
-  renderLinkedChips();
-  syncLinkedCatsHidden();
-}
-
-function renderLinkedChips() {
-  const wrap = document.getElementById('ebp-linked-chips');
-  if (!wrap) return;
-  if (_linkedCatsSelected.length === 0) {
-    wrap.innerHTML = '';
-    wrap.style.marginBottom = '0';
-    return;
-  }
-  wrap.style.marginBottom = '8px';
-  wrap.innerHTML = _linkedCatsSelected.map(c => `
-    <span style="display:inline-flex;align-items:center;gap:5px;
-      background:var(--yellow-light,#FFF8DC);border:1.5px solid var(--yellow,#F5C842);
-      border-radius:20px;padding:4px 10px 4px 12px;font-size:0.78em;font-weight:800;color:var(--text-dark);">
-      ${c}
-      <span onclick="removeLinkedCat('${c.replace(/'/g, "\'")}')"
-        style="cursor:pointer;font-size:1em;color:#999;line-height:1;margin-left:2px;"
-        onmouseover="this.style.color='#EF4444'" onmouseout="this.style.color='#999'">✕</span>
-    </span>
-  `).join('');
-}
-
-function syncLinkedCatsHidden() {
-  const hidden = document.getElementById('ebp-linked-cats');
-  if (hidden) hidden.value = _linkedCatsSelected.join(', ');
-}
-
-// Close suggestions when clicking outside
-document.addEventListener('click', e => {
-  const dropdown = document.getElementById('ebp-linked-suggestions');
-  const search = document.getElementById('ebp-linked-search');
-  if (dropdown && search && !search.contains(e.target) && !dropdown.contains(e.target)) {
-    dropdown.style.display = 'none';
-  }
-});
-// ── End Smart Linked Category Picker ──────────────────────────────────────
-
 // ══════════════════════════════════════════════════════
 // END FIREBASE SYNC ENGINE
 // ══════════════════════════════════════════════════════
