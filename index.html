@@ -11951,11 +11951,23 @@ function signInWithGoogle() {
   if (statusEl) statusEl.textContent = 'Signing in...';
 
   const provider = new firebase.auth.GoogleAuthProvider();
+  provider.addScope('email');
+  provider.addScope('profile');
+
   _auth.signInWithPopup(provider)
     .catch(err => {
-      console.error('Sign in error:', err);
-      if (btn) btn.disabled = false;
-      if (statusEl) statusEl.textContent = 'Sign in failed — please try again';
+      console.warn('Popup sign-in failed, trying redirect...', err.code);
+      // Popup was blocked or closed — fall back to redirect flow
+      if (err.code === 'auth/popup-blocked' ||
+          err.code === 'auth/popup-closed-by-user' ||
+          err.code === 'auth/cancelled-popup-request') {
+        if (statusEl) statusEl.textContent = 'Redirecting to Google...';
+        _auth.signInWithRedirect(provider);
+      } else {
+        console.error('Sign in error:', err);
+        if (btn) btn.disabled = false;
+        if (statusEl) statusEl.textContent = `Sign in failed (${err.code}) — please try again`;
+      }
     });
 }
 
@@ -11967,6 +11979,17 @@ function signOut() {
     showToast('👋 Signed out');
   });
 }
+
+// Handle redirect result (fires when Google redirects back after signInWithRedirect)
+_auth.getRedirectResult().catch(err => {
+  if (err && err.code) {
+    console.error('Redirect sign-in error:', err);
+    const statusEl = document.getElementById('login-status');
+    const btn = document.getElementById('google-signin-btn');
+    if (statusEl) statusEl.textContent = `Sign in failed (${err.code}) — please try again`;
+    if (btn) btn.disabled = false;
+  }
+});
 
 // ── Auth state change ─────────────────────────────────────────────────────
 _auth.onAuthStateChanged(async user => {
