@@ -1353,7 +1353,7 @@
     <div class="topbar-badge" id="topbar-month" style="cursor:default;">Feb 2026</div>
     <div class="topbar-icons">
       <button class="topbar-icon-btn" onclick="goToScreen('metals')" title="Metals">🥇</button>
-      <button class="topbar-icon-btn" onclick="goToScreen('networth')" title="Net Worth">💎</button>
+      <button class="topbar-icon-btn" onclick="goToScreen('import')" title="Import">📥</button>
       <button class="topbar-icon-btn" onclick="goToScreen('settings')" title="Settings">⚙️</button>
     </div>
   </div>
@@ -2040,7 +2040,7 @@
   <button class="nav-item" onclick="switchScreen('tx',this)"><div class="nav-icon">📋</div><span>Txns</span></button>
   <button class="nav-item" onclick="switchScreen('budget',this)"><div class="nav-icon">🎯</div><span>Budget</span></button>
   <button class="nav-item" onclick="switchScreen('networth',this)"><div class="nav-icon">💎</div><span>Net Worth</span></button>
-  <button class="nav-item" onclick="switchScreen('import',this)"><div class="nav-icon">📥</div><span>Import</span></button>
+  <button class="nav-item" id="nav-fhs" onclick="switchScreen('fhs',this)"><div class="nav-icon">🎯</div><span>FHS</span></button>
 </div>
 
 <!-- ══════════════ BUDGET MODULE ══════════════ -->
@@ -2641,6 +2641,13 @@
 </div>
 
 </div><!-- /screen-networth -->
+
+<!-- ══════════════ FHS SCREEN ══════════════ -->
+<div class="screen" id="screen-fhs">
+  <div id="fhs-screen-root" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
+    <div style="text-align:center;color:var(--text-light);font-size:0.9em;">Loading FHS…</div>
+  </div>
+</div>
 
 <!-- ══════════════ IMPORT HUB ══════════════ -->
 <div class="screen" id="screen-import">
@@ -3928,8 +3935,6 @@ function renderHome() {
   }
   renderHomeInsights(expenses, income, investments);
   renderSettings();
-  // ── FHS Score Card (Satellite) ──────────────────────────────────────
-  if (typeof window.FHS?.mount === 'function') window.FHS.mount();
 }
 
 // ══════════════════════════════════════════════════════
@@ -5159,6 +5164,7 @@ function switchScreen(name, btn) {
   if(name==='settings') { renderRecurringRules(); }
   if(name==='budget') { budgetViewMonth = viewMonth; document.getElementById('budget-month-label').textContent = getDisplayMonth(budgetViewMonth); renderBudgetModule(); }
   if(name==='networth') renderNetWorth();
+  if(name==='fhs') { if(typeof FHS?.renderScreen==='function') FHS.renderScreen(); }
   if(name==='import') { setImportTab('transactions', document.querySelector('.import-tab')); renderGivenLedger(); renderResetSummary(); renderMonthsList(); }
 }
 
@@ -5177,6 +5183,7 @@ function goToScreen(name) {
   if(name==='metals') renderMetals();
   if(name==='invest') renderInvestments();
   if(name==='networth') renderNetWorth();
+  if(name==='fhs') { if(typeof FHS?.renderScreen==='function') FHS.renderScreen(); }
 }
 
 // ══════════════════════════════════════════════════════
