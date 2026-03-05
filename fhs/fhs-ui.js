@@ -350,30 +350,39 @@
   // ══════════════════════════════════════════════════════════════════════
 
   function mountCard() {
-    // Find the insights card as anchor
-    const insightsCard = document.getElementById('home-insights-card');
-    if (!insightsCard) return;
+    // Anchor: hsec-invest — FHS card lives at screen-home level, AFTER both
+    // hsec-spending and hsec-invest, so it's always visible regardless of tab.
+    // Inserting inside hsec-spending would hide the card when user switches to Investing tab.
+    const investSection = document.getElementById('hsec-invest');
+    if (!investSection) return;
 
     // Create or reuse the card container
     let card = document.getElementById(CARD_ID);
     if (!card) {
       card = document.createElement('div');
       card.id = CARD_ID;
-      // Insert after the insights card
-      insightsCard.parentNode.insertBefore(card, insightsCard.nextSibling);
+      // Insert after hsec-invest, still inside #screen-home
+      investSection.parentNode.insertBefore(card, investSection.nextSibling);
     }
 
-    // Show loading state immediately
-    card.innerHTML = `<div class="fhs-skeleton">⏳ Calculating FHS score…</div>`;
-
-    // Compute asynchronously to avoid blocking renderHome()
-    if (typeof window.FHS?.computeScore === 'function') {
-      window.FHS.computeScore().then(result => {
-        renderCard(result);
-      }).catch(() => {
-        card.innerHTML = `<div class="fhs-skeleton" style="color:#EF4444;">⚠️ FHS score unavailable</div>`;
-      });
+    // Only show loading skeleton on first render (card is empty).
+    // renderHome() fires on every tab switch — skip expensive recompute if card already has content.
+    const isEmpty = !card.querySelector('.fhs-card-header');
+    if (isEmpty) {
+      card.innerHTML = `<div class="fhs-skeleton">⏳ Calculating FHS score…</div>`;
     }
+
+    // Debounce: clear any pending compute, schedule fresh one
+    if (window._fhsMountTimer) clearTimeout(window._fhsMountTimer);
+    window._fhsMountTimer = setTimeout(() => {
+      if (typeof window.FHS?.computeScore === 'function') {
+        window.FHS.computeScore().then(result => {
+          renderCard(result);
+        }).catch(() => {
+          card.innerHTML = `<div class="fhs-skeleton" style="color:#EF4444;">⚠️ FHS score unavailable</div>`;
+        });
+      }
+    }, 120); // 120ms debounce — lets rapid tab switches settle before computing
   }
 
   // ══════════════════════════════════════════════════════════════════════
