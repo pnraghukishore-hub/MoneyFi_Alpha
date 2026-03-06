@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.10.1
+  Version  : 3.10.2
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -12107,6 +12107,7 @@ function _doFirebaseSave() {
     { ...chunk2, _savedAt: firebase.firestore.FieldValue.serverTimestamp() });
 
   window._ownSaveInFlight = true;
+  window._ownSaveTs = Date.now(); // timestamp guard — suppress snapshots for 4s after own save
   batch.commit()
     .then(() => {
       showSyncStatus('✅ Synced', '#10B981', 2000);
@@ -12182,11 +12183,8 @@ function startRealtimeSync(uid) {
   const mainRef = baseRef.collection('appData').doc('main');
   _unsubscribeListener = mainRef.onSnapshot(snap => {
     if (!snap.exists || snap.metadata.hasPendingWrites) return;
-    // Suppress re-fetch for our own writes — _doFirebaseSave handles re-render
-    if (window._ownSaveInFlight) {
-      window._ownSaveInFlight = false;
-      return;
-    }
+    // Suppress re-fetch for our own writes for 4 seconds after last save
+    if (window._ownSaveTs && (Date.now() - window._ownSaveTs) < 4000) return;
     // Another device updated — reload and re-render all screens
     firebaseLoad(uid).then(() => {
       showSyncStatus('🔄 Updated from another device', '#8B5CF6', 2500);
