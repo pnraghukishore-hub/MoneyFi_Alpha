@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.5.0
+  Version  : 3.6.0
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -1869,70 +1869,9 @@
 <!-- ══════════════ SETTINGS ══════════════ -->
 <div class="screen" id="screen-settings">
 
-  <!-- ═══ App version badge ═══ -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-    <div style="font-size:0.75em;font-weight:800;color:var(--text-light);">MoneyFi</div>
-    <div style="background:linear-gradient(135deg,#1E2A6E,#4338CA);color:white;border-radius:20px;padding:3px 12px;font-size:0.68em;font-weight:900;">v3.5.0</div>
-  </div>
 
-  <!-- ═══ Changelog accordion ═══ -->
-  <div class="settings-accordion collapsed" id="acc-changelog">
-    <div class="acc-header" onclick="toggleAccordion('acc-changelog')">
-      <span>📋 Changelog</span>
-      <span class="acc-chev">▸</span>
-    </div>
-    <div class="acc-body" style="display:none;padding:0;">
-      <div style="max-height:420px;overflow-y:auto;padding:0 4px 4px;">
-      ${[
-        { v:'3.5.0', d:'2026-03-06', color:'#4338CA', items:[
-          'Hero card: score left, Apple Fitness rings right, grade badge, score delta',
-          'CLS fix: fixed-height scrollable account picker — no page jump on click',
-          'Picker UX: search bar + All/None bulk actions + 600ms debounced recalc',
-          'Metals now selectable in FIRE/Retirement pickers',
-          'Married/spouse income in onboarding → used in household DTI calc',
-          'Foundation P7: Debt Service Health (DTI, CFPB thresholds)',
-          'Mastery P12: Tax Optimization (contribution utilization, tax-loss harvesting)',
-          'Mastery P13: Estate & Legacy (will, nominees, POA)',
-          'Mastery onboarding expanded to 13 questions',
-          'Month-over-month score delta tracking',
-          'Retirement: monthly contribution projection — "hit target at age X"',
-        ]},
-        { v:'3.3.1', d:'2026-03-05', color:'#059669', items:[
-          'Topbar collapsible icon tray (✦ button, auto-closes in 4s)',
-          'Risk Architecture nudge: fixed self-contradicting 0-penalty warning',
-          'Metals account picker: import_metal_N IDs now appear in groups',
-        ]},
-        { v:'3.3.0', d:'2026-03-05', color:'#7C3AED', items:[
-          'Grouped/collapsible account picker with Select All per group',
-          'Mastery Band: Risk Architecture, Behavioural Finance, Income Architecture',
-          '8-question psychometric Mastery onboarding',
-        ]},
-        { v:'3.2.1', d:'2026-03-04', color:'#F59E0B', items:[
-          'Auth bug fix, nav bar cleanup, 100% ring SVG fix',
-          'accountOverrides — manual account selection per pillar',
-          'Education benchmark hints and targeted SIP recommendations',
-        ]},
-        { v:'3.2.0', d:'2026-03-04', color:'#E17055', items:[
-          'FHS Engine v1 — 6 Foundation pillars, region-aware IN/US',
-          'Pillar rings, nudge cards, account picker',
-        ]},
-        { v:'3.1.x', d:'2026-03-02/04', color:'#6B7280', items:[
-          '3.1.2: Recurring scheduler UTC→local fix',
-          '3.1.1: Currency symbol fix, calendar dual-highlight, NW edit render',
-          '3.1.0: getMonthKey UTC fix, NW reflow fixes, onSnapshot dedup',
-        ]},
-      ].map(rel => `
-        <div style="padding:12px 14px;border-bottom:1px solid #F0F0F8;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <div style="background:${rel.color};color:white;border-radius:8px;padding:2px 8px;font-size:0.65em;font-weight:900;">v${rel.v}</div>
-            <div style="font-size:0.65em;font-weight:700;color:var(--text-light);">${rel.d}</div>
-          </div>
-          ${rel.items.map(i => `<div style="font-size:0.72em;font-weight:600;color:var(--text-dark);padding:2px 0 2px 12px;border-left:2px solid ${rel.color}20;margin-bottom:3px;">${i}</div>`).join('')}
-        </div>`).join('')}
-      </div>
-    </div>
-  </div>
-  <div style="background:white;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 6px rgba(0,0,0,0.06);">
+  <!-- ═══ Cloud Sync — Always visible ═══ -->
+    <div style="background:white;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 6px rgba(0,0,0,0.06);">
     <div style="font-size:0.7em;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">☁️ Cloud Sync Account</div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
       <img id="firebase-user-avatar" src="" style="display:none;width:40px;height:40px;border-radius:50%;border:2px solid #E8E8E8;">
@@ -13256,152 +13195,218 @@ function saveFHSProfile() {
   showToast('✅ Financial Health Score updated!', 2500);
 }
 
-function toggleFHSAccountPicker(key) {
-  const el = document.getElementById(`fhs-acct-picker-${key}`);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
+// ── FHS ACCOUNT PICKER — BOTTOM SHEET ──────────────
+// Single source of truth: window._fhsPickerState
+// No DOM picker inside pillar cards — zero CLS
 
-// Toggle group expand/collapse without any page-level re-render
-function fhsToggleGroupExpand(groupId) {
-  const el = document.getElementById(groupId);
-  const arrow = document.getElementById(`fhs-grp-arrow-${groupId}`);
-  if (!el) return;
-  const isOpen = el.style.display !== 'none';
-  el.style.display = isOpen ? 'none' : 'block';
-  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
-}
+let _fhsPickerKey = null;   // active pillar key
+let _fhsPickerData = null;  // { allAccounts, groups, overrides, pillarName }
 
-// Search within a picker — hides non-matching items, no re-render
-function fhsPickerSearch(key, query) {
-  const container = document.getElementById(`fhs-picker-scroll-${key}`);
-  if (!container) return;
-  const q = query.toLowerCase().trim();
-  container.querySelectorAll('.fhs-picker-group').forEach(grp => {
-    let groupVisible = false;
-    grp.querySelectorAll('.fhs-picker-item').forEach(item => {
-      const name = item.dataset.name || '';
-      const match = !q || name.includes(q);
-      item.style.display = match ? '' : 'none';
-      if (match) groupVisible = true;
-    });
-    grp.style.display = groupVisible || !q ? '' : 'none';
-    // Auto-expand groups with matches
-    if (q && groupVisible) {
-      const body = grp.querySelector('[id^="fhs-grp-"]');
-      if (body) body.style.display = 'block';
-    }
+function openFHSPickerSheet(key) {
+  _fhsPickerKey = key;
+
+  // Build account list (same logic as computeFHSScore)
+  const profile = getFHSProfile() || {};
+  const overrides = (profile.accountOverrides || {})[key] || null;
+
+  const baseAccounts = (data._nwAccounts || []).filter(a => !NW_TYPES[a.type]?.isLiab);
+  const metalsAccounts = (data._metals || []).map((m, idx) => ({
+    id: 'import_metal_' + idx,
+    name: [m.metalType, m.karat, m.name].filter(Boolean).join(' · '),
+    type: 'metals',
+    balance: (m.weight || 0) * (m.pricePerGram || 0),
+    currency: 'USD',
+  }));
+  const allAccounts = [...baseAccounts, ...metalsAccounts];
+
+  // Group by type
+  const groups = {};
+  allAccounts.forEach(a => {
+    const t = a.type || 'other';
+    if (!groups[t]) groups[t] = [];
+    groups[t].push(a);
+  });
+
+  _fhsPickerData = { allAccounts, groups, overrides, key };
+
+  const pillar = computeFHSScore().pillarResults[key];
+  const pillarName = pillar ? `${pillar.emoji} ${pillar.name}` : key;
+  const selCount = overrides ? overrides.length : allAccounts.length;
+
+  document.getElementById('fhs-sheet-title').textContent = pillarName;
+  document.getElementById('fhs-sheet-count').textContent = selCount + ' of ' + allAccounts.length + ' accounts selected';
+  document.getElementById('fhs-sheet-search').value = '';
+
+  fhsSheetRender('');
+
+  // Show sheet
+  const overlay = document.getElementById('fhs-picker-overlay');
+  const sheet   = document.getElementById('fhs-picker-sheet');
+  overlay.style.display = 'block';
+  sheet.style.display   = 'flex';
+  requestAnimationFrame(() => {
+    sheet.style.transform = 'translateY(0)';
+    sheet.style.transition = 'transform 0.3s cubic-bezier(0.32,0.72,0,1)';
   });
 }
 
-// Select all / none — batch update without page re-render
-function fhsPickerSelectAll(key, checked) {
-  const container = document.getElementById(`fhs-picker-scroll-${key}`);
-  if (!container) return;
+function closeFHSPickerSheet() {
+  const sheet = document.getElementById('fhs-picker-sheet');
+  sheet.style.transform = 'translateY(100%)';
+  setTimeout(() => {
+    document.getElementById('fhs-picker-overlay').style.display = 'none';
+    sheet.style.display = 'none';
+    sheet.style.transform = '';
+    // Recalculate score once after sheet closes
+    renderFHS();
+    _fhsPickerKey = null;
+  }, 280);
+}
+
+function fhsSheetRender(query) {
+  if (!_fhsPickerData) return;
+  const { groups, overrides, allAccounts } = _fhsPickerData;
+  const key = _fhsPickerKey;
+  const q = (query || '').toLowerCase().trim();
+  const body = document.getElementById('fhs-sheet-body');
+
+  const profile = getFHSProfile() || {};
+  const currentOverrides = (profile.accountOverrides || {})[key] || null;
+
+  let html = '';
+  Object.entries(groups).forEach(([type, accts]) => {
+    const typeInfo = NW_TYPES[type] || { emoji: '💰', label: type };
+    const groupTotal = accts.reduce((s, a) => s + nwConvert(a.balance || 0, a.currency || 'USD'), 0);
+
+    const filtered = q ? accts.filter(a => (a.name || '').toLowerCase().includes(q)) : accts;
+    if (filtered.length === 0) return;
+
+    const allChk = filtered.every(a => currentOverrides ? currentOverrides.includes(a.id) : true);
+    const someChk = filtered.some(a => currentOverrides ? currentOverrides.includes(a.id) : true);
+
+    // Group header — always visible, no expand/collapse (avoids scroll-to-top)
+    html += `<div style="position:sticky;top:0;z-index:10;background:#F4F6FF;display:flex;align-items:center;gap:10px;padding:11px 18px;border-bottom:1px solid #E8E8F0;">
+      <input type="checkbox" ${allChk ? 'checked' : ''} data-group="${type}"
+        onchange="fhsSheetGroupToggle('${type}',this.checked)"
+        style="width:20px;height:20px;accent-color:#4338CA;flex-shrink:0;cursor:pointer;">
+      <span style="font-size:0.85em;font-weight:900;color:#1E2A6E;flex:1;">${typeInfo.emoji} ${typeInfo.label}</span>
+      <span style="font-size:0.7em;font-weight:700;color:#999;">${filtered.length} acct${filtered.length > 1 ? 's' : ''} · ${fmt(groupTotal)}</span>
+    </div>`;
+
+    // Account rows — always expanded
+    filtered.forEach(a => {
+      const chk = currentOverrides ? currentOverrides.includes(a.id) : true;
+      const val = nwConvert(a.balance || 0, a.currency || 'USD');
+      html += `<label style="display:flex;align-items:center;gap:12px;padding:12px 18px 12px 52px;border-bottom:1px solid #F4F4F8;cursor:pointer;background:white;">
+        <input type="checkbox" ${chk ? 'checked' : ''} data-id="${a.id}"
+          onchange="fhsSheetItemToggle('${a.id}',this.checked)"
+          style="width:20px;height:20px;accent-color:#4338CA;flex-shrink:0;cursor:pointer;">
+        <span style="font-size:0.84em;font-weight:700;color:#1a1a2e;flex:1;line-height:1.3;">${a.name || '—'}</span>
+        <span style="font-size:0.78em;font-weight:800;color:#4338CA;white-space:nowrap;">${fmt(val)}</span>
+      </label>`;
+    });
+  });
+
+  if (!html) html = '<div style="padding:40px 20px;text-align:center;color:#999;font-size:0.85em;font-weight:700;">No accounts match your search</div>';
+  body.innerHTML = html;
+
+  // Update count
+  const profile2 = getFHSProfile() || {};
+  const ov2 = (profile2.accountOverrides || {})[key] || null;
+  const selCount = ov2 ? ov2.length : allAccounts.length;
+  document.getElementById('fhs-sheet-count').textContent = selCount + ' of ' + allAccounts.length + ' accounts selected';
+}
+
+function fhsSheetFilter(query) {
+  fhsSheetRender(query);
+}
+
+function fhsSheetItemToggle(accountId, checked) {
+  if (!_fhsPickerKey) return;
+  const key = _fhsPickerKey;
   const profile = getFHSProfile() || {};
   const overrides = profile.accountOverrides || {};
+  let current = overrides[key] ? [...overrides[key]] : _fhsPickerData.allAccounts.map(a => a.id);
+
   if (checked) {
-    // Select all visible items
-    const ids = [];
-    container.querySelectorAll('.fhs-picker-item input[type=checkbox]').forEach(cb => {
-      cb.checked = true;
-      const onchange = cb.getAttribute('onchange') || '';
-      const m = onchange.match(/'([^']+)','([^']+)',/);
-      if (m) ids.push(m[2]);
-    });
-    saveFHSProfileData({ ...profile, accountOverrides: { ...overrides, [key]: ids } });
+    if (!current.includes(accountId)) current.push(accountId);
   } else {
-    // Deselect all — revert to auto
-    container.querySelectorAll('.fhs-picker-item input[type=checkbox]').forEach(cb => cb.checked = false);
+    current = current.filter(id => id !== accountId);
+  }
+
+  saveFHSProfileData({ ...profile, accountOverrides: { ...overrides, [key]: current } });
+
+  // Update count live without re-rendering list
+  const selCount = current.length;
+  const total = _fhsPickerData.allAccounts.length;
+  document.getElementById('fhs-sheet-count').textContent = selCount + ' of ' + total + ' accounts selected';
+
+  // Update group checkbox state
+  const { groups } = _fhsPickerData;
+  Object.entries(groups).forEach(([type, accts]) => {
+    const grpChk = document.querySelector(`input[data-group="${type}"]`);
+    if (!grpChk) return;
+    const allChk = accts.every(a => current.includes(a.id));
+    grpChk.checked = allChk;
+    grpChk.indeterminate = !allChk && accts.some(a => current.includes(a.id));
+  });
+}
+
+function fhsSheetGroupToggle(type, checked) {
+  if (!_fhsPickerKey || !_fhsPickerData) return;
+  const key = _fhsPickerKey;
+  const profile = getFHSProfile() || {};
+  const overrides = profile.accountOverrides || {};
+  let current = overrides[key] ? [...overrides[key]] : _fhsPickerData.allAccounts.map(a => a.id);
+
+  const groupAccounts = (_fhsPickerData.groups[type] || []).map(a => a.id);
+
+  if (checked) {
+    groupAccounts.forEach(id => { if (!current.includes(id)) current.push(id); });
+  } else {
+    current = current.filter(id => !groupAccounts.includes(id));
+  }
+
+  saveFHSProfileData({ ...profile, accountOverrides: { ...overrides, [key]: current } });
+
+  // Update all item checkboxes in this group
+  document.querySelectorAll(`input[data-id]`).forEach(cb => {
+    if (groupAccounts.includes(cb.dataset.id)) cb.checked = checked;
+  });
+
+  // Update count
+  document.getElementById('fhs-sheet-count').textContent = current.length + ' of ' + _fhsPickerData.allAccounts.length + ' accounts selected';
+}
+
+function fhsSheetBulk(checked) {
+  if (!_fhsPickerKey || !_fhsPickerData) return;
+  const key = _fhsPickerKey;
+  const profile = getFHSProfile() || {};
+  const overrides = profile.accountOverrides || {};
+  const allIds = _fhsPickerData.allAccounts.map(a => a.id);
+
+  if (checked) {
+    saveFHSProfileData({ ...profile, accountOverrides: { ...overrides, [key]: allIds } });
+  } else {
     const newOv = { ...overrides };
     delete newOv[key];
     saveFHSProfileData({ ...profile, accountOverrides: newOv });
   }
-  // Debounced re-render — only recalculate score after user stops clicking
-  clearTimeout(window._fhsPickerTimer);
-  window._fhsPickerTimer = setTimeout(() => {
-    const pickerEl = document.getElementById(`fhs-acct-picker-${key}`);
-    const openGroups = pickerEl ? [...pickerEl.querySelectorAll('[id^="fhs-grp-"]')].filter(g=>g.style.display!=='none').map(g=>g.id) : [];
-    const scrollTop = pickerEl ? document.getElementById(`fhs-picker-scroll-${key}`)?.scrollTop || 0 : 0;
-    renderFHS();
-    setTimeout(() => {
-      toggleFHSPillar(key); toggleFHSPillar(key);
-      setTimeout(() => {
-        const p = document.getElementById(`fhs-acct-picker-${key}`);
-        if (p) { p.style.display='block'; openGroups.forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='block';}); }
-        const sc = document.getElementById(`fhs-picker-scroll-${key}`);
-        if (sc) requestAnimationFrame(()=>{ sc.scrollTop=scrollTop; });
-      }, 50);
-    }, 10);
-  }, 600); // 600ms debounce — user finishes clicking before expensive recalc
-}
 
-function fhsToggleGroup(pillarKey, type, checked) {
-  // Build same account list as picker — includes metals
-  const baseAccounts = (data._nwAccounts || []).filter(a => a.type === type && !NW_TYPES[a.type]?.isLiab);
-  const metalAccounts = type === 'metals'
-    ? (data._metals || []).map((_,idx) => ({ id: 'import_metal_' + idx }))
-    : [];
-  const allInGroup = [...baseAccounts, ...metalAccounts];
-  allInGroup.forEach(a => toggleFHSAccountOverride(pillarKey, a.id, checked, true));
-  // Capture scroll position of the picker container before re-render
-  const pickerEl = document.getElementById(`fhs-acct-picker-${pillarKey}`);
-  const scrollTop = pickerEl ? pickerEl.scrollTop : 0;
-  renderFHS();
-  setTimeout(() => {
-    // Re-open picker and restore scroll position
-    toggleFHSPillar(pillarKey); toggleFHSPillar(pillarKey);
-    setTimeout(() => {
-      const picker = document.getElementById(`fhs-acct-picker-${pillarKey}`);
-      if (picker) { picker.style.display = 'block'; picker.scrollTop = scrollTop; }
-      const grp = document.getElementById(`fhs-grp-${pillarKey}-${type}`);
-      if (grp) grp.style.display = 'block';
-    }, 50);
-  }, 10);
+  // Re-render list with updated state
+  fhsSheetRender(document.getElementById('fhs-sheet-search').value);
 }
 
 function toggleFHSAccountOverride(key, accountId, checked, silent = false) {
+  // Kept for any legacy callers — sheet now handles overrides directly
   const profile = getFHSProfile() || {};
   const overrides = profile.accountOverrides || {};
-  const current = overrides[key] || [];
-
-  // Build new list
-  let updated;
-  if (checked) {
-    updated = current.includes(accountId) ? current : [...current, accountId];
-  } else {
-    updated = current.filter(id => id !== accountId);
-  }
-
-  // If empty after uncheck → remove override key (revert to auto)
+  let current = overrides[key] ? [...overrides[key]] : [];
+  if (checked) { if (!current.includes(accountId)) current.push(accountId); }
+  else { current = current.filter(id => id !== accountId); }
   const newOverrides = { ...overrides };
-  if (updated.length === 0) {
-    delete newOverrides[key];
-  } else {
-    newOverrides[key] = updated;
-  }
-
+  if (current.length === 0) { delete newOverrides[key]; } else { newOverrides[key] = current; }
   saveFHSProfileData({ ...profile, accountOverrides: newOverrides });
-  if (silent) return; // batch mode — caller handles re-render
-  // OPTIMISTIC UI: checkbox already shows new state. Debounce the expensive recalculation.
-  clearTimeout(window._fhsPickerTimer);
-  window._fhsPickerTimer = setTimeout(() => {
-    const pickerEl = document.getElementById(`fhs-acct-picker-${key}`);
-    const savedScroll = pickerEl ? document.getElementById(`fhs-picker-scroll-${key}`)?.scrollTop || 0 : 0;
-    const openGroups = pickerEl ? [...pickerEl.querySelectorAll('[id^="fhs-grp-"]')].filter(g=>g.style.display!=='none').map(g=>g.id) : [];
-    renderFHS();
-    setTimeout(() => {
-      toggleFHSPillar(key); toggleFHSPillar(key);
-      setTimeout(() => {
-        const picker = document.getElementById(`fhs-acct-picker-${key}`);
-        if (picker) {
-          picker.style.display = 'block';
-          openGroups.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'block'; });
-          const sc = document.getElementById(`fhs-picker-scroll-${key}`);
-          if (sc) requestAnimationFrame(() => { sc.scrollTop = savedScroll; });
-        }
-      }, 50);
-    }, 10);
-  }, 600);
 }
 
 // ── FHS UI STATE ──────────────────────────────────────
@@ -13579,68 +13584,12 @@ function renderFHS() {
                 groups[t].push(a);
               });
 
-              const pickerHtml = hasAccountPicker ? (() => {
-                if (availableAccounts.length === 0) return `<div style="color:var(--text-light);font-size:0.75em;padding:8px;">No accounts in Net Worth yet.</div>`;
-                const totalSelected = overrides ? overrides.length : countedAccounts.length;
-                return `
-                  <!-- Search + bulk actions toolbar -->
-                  <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
-                    <input type="text" placeholder="🔍 Search accounts…" oninput="fhsPickerSearch('${key}',this.value)"
-                      style="flex:1;border:1.5px solid #E0E7FF;border-radius:10px;padding:7px 10px;font-size:0.78em;font-weight:700;font-family:Nunito,sans-serif;outline:none;background:white;">
-                    <button onclick="fhsPickerSelectAll('${key}',true)" style="font-size:0.65em;font-weight:800;background:#E0E7FF;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;color:#4338CA;font-family:Nunito,sans-serif;white-space:nowrap;">All</button>
-                    <button onclick="fhsPickerSelectAll('${key}',false)" style="font-size:0.65em;font-weight:800;background:#FEE2E2;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;color:#991B1B;font-family:Nunito,sans-serif;white-space:nowrap;">None</button>
-                  </div>
-                  <div style="font-size:0.65em;font-weight:700;color:var(--text-light);margin-bottom:6px;">${totalSelected} selected · ${availableAccounts.length} total</div>
-                  <!-- Fixed-height scroll container — NO CLS, no page height change -->
-                  <div id="fhs-picker-scroll-${key}" style="max-height:320px;overflow-y:auto;border:1.5px solid #E8E8F0;border-radius:12px;">
-                  ${Object.entries(groups).map(([type, accts]) => {
-                    const typeInfo = NW_TYPES[type] || { emoji:'💰', label: type };
-                    const allChk = accts.every(a => overrides ? overrides.includes(a.id) : countedAccounts.some(ca => ca.name === a.name));
-                    const someChk = accts.some(a => overrides ? overrides.includes(a.id) : countedAccounts.some(ca => ca.name === a.name));
-                    const groupTotal = accts.reduce((s,a) => s + nwConvert(a.balance, a.currency), 0);
-                    const groupId = `fhs-grp-${key}-${type}`;
-                    return `
-                    <div class="fhs-picker-group" data-type="${type}" style="border-bottom:1.5px solid #F0F0F8;">
-                      <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#F4F6FF;cursor:pointer;position:sticky;top:0;z-index:2;"
-                           onclick="fhsToggleGroupExpand('${groupId}')">
-                        <input type="checkbox" ${allChk?'checked':''} id="fhs-grp-chk-${key}-${type}"
-                          onclick="event.stopPropagation();fhsToggleGroup('${key}','${type}',this.checked)"
-                          style="width:16px;height:16px;accent-color:#4338CA;flex-shrink:0;">
-                        <span style="font-size:0.8em;font-weight:900;color:#1E2A6E;flex:1;">${typeInfo.emoji} ${typeInfo.label}</span>
-                        <span style="font-size:0.68em;font-weight:700;color:var(--text-med);">${accts.length} · ${fmt(groupTotal)}</span>
-                        <span id="fhs-grp-arrow-${groupId}" style="font-size:0.7em;color:var(--text-light);transition:transform 0.2s;">▾</span>
-                      </div>
-                      <div id="${groupId}" style="display:none;">
-                        ${accts.map(a => {
-                          const chk = overrides ? overrides.includes(a.id) : countedAccounts.some(ca => ca.name === a.name);
-                          return `<label class="fhs-picker-item" data-name="${(a.name||'').toLowerCase()}"
-                            style="display:flex;align-items:center;gap:8px;padding:8px 14px 8px 36px;cursor:pointer;border-top:1px solid #F4F4F8;background:white;">
-                            <input type="checkbox" ${chk?'checked':''} 
-                              onchange="toggleFHSAccountOverride('${key}','${a.id}',this.checked)"
-                              style="width:15px;height:15px;accent-color:#4338CA;flex-shrink:0;">
-                            <span style="font-size:0.78em;font-weight:700;color:var(--text-dark);flex:1;">${a.name}</span>
-                            <span style="font-size:0.72em;font-weight:700;color:var(--text-med);">${fmt(nwConvert(a.balance, a.currency))}</span>
-                          </label>`;
-                        }).join('')}
-                      </div>
-                    </div>`;
-                  }).join('')}
-                  </div>
-                  <div style="font-size:0.63em;color:var(--text-light);margin-top:5px;">Tap group header to expand · Uncheck all to reset to auto-detection.</div>`;
-              })() : '';
-
               return `
               <div class="fhs-source-accounts">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                   <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;">🏦 Accounts counted</div>
-                  ${hasAccountPicker ? `<button onclick="toggleFHSAccountPicker('${key}')" style="font-size:0.65em;font-weight:800;background:#F0F4FF;border:1px solid #C7D2FE;border-radius:8px;padding:3px 10px;cursor:pointer;color:#4338CA;font-family:Nunito,sans-serif;">✏️ Edit</button>` : ''}
+                  ${hasAccountPicker ? `<button onclick="openFHSPickerSheet('${key}')" style="font-size:0.68em;font-weight:800;background:#F0F4FF;border:1.5px solid #C7D2FE;border-radius:10px;padding:6px 14px;cursor:pointer;color:#4338CA;font-family:Nunito,sans-serif;display:flex;align-items:center;gap:4px;">✏️ Edit accounts</button>` : ''}
                 </div>
-
-                <!-- Grouped account picker (hidden by default, FIXED height — no CLS) -->
-                ${hasAccountPicker ? `
-                <div id="fhs-acct-picker-${key}" style="display:none;margin-bottom:10px;">
-                  ${pickerHtml}
-                </div>` : ''}
 
                 ${countedAccounts.length > 0
                   ? countedAccounts.map(a => `
@@ -14005,6 +13954,41 @@ function renderFHSInsights(fhs) {
       });
     }
   </script>
+
+<!-- ═══ FHS ACCOUNT PICKER BOTTOM SHEET ═══ -->
+<div id="fhs-picker-overlay" onclick="closeFHSPickerSheet()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;"></div>
+<div id="fhs-picker-sheet" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:2001;background:#fff;border-radius:20px 20px 0 0;max-height:90vh;flex-direction:column;">
+  <!-- Drag handle -->
+  <div style="display:flex;justify-content:center;padding:10px 0 4px;">
+    <div style="width:40px;height:4px;background:#E0E0E0;border-radius:4px;"></div>
+  </div>
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px 12px;border-bottom:1px solid #F0F0F0;">
+    <div>
+      <div id="fhs-sheet-title" style="font-size:1em;font-weight:900;color:#1E2A6E;"></div>
+      <div id="fhs-sheet-sub" style="font-size:0.68em;font-weight:700;color:#999;margin-top:2px;"></div>
+    </div>
+    <button onclick="closeFHSPickerSheet()" style="background:#F4F4F4;border:none;border-radius:50%;width:32px;height:32px;font-size:1.1em;cursor:pointer;line-height:1;">✕</button>
+  </div>
+  <!-- Search bar -->
+  <div style="padding:10px 16px;border-bottom:1px solid #F4F4F8;display:flex;gap:8px;align-items:center;">
+    <div style="flex:1;background:#F4F6FF;border-radius:12px;display:flex;align-items:center;gap:8px;padding:9px 13px;">
+      <span style="font-size:0.9em;opacity:0.5;">🔍</span>
+      <input id="fhs-sheet-search" type="text" placeholder="Search accounts…" oninput="fhsSheetFilter(this.value)"
+        style="border:none;background:none;outline:none;flex:1;font-size:0.84em;font-weight:700;font-family:Nunito,sans-serif;color:#1E2A6E;">
+    </div>
+    <button onclick="fhsSheetBulk(true)"  style="background:#E0E7FF;border:none;border-radius:10px;padding:9px 14px;font-size:0.75em;font-weight:900;color:#4338CA;cursor:pointer;font-family:Nunito,sans-serif;">All</button>
+    <button onclick="fhsSheetBulk(false)" style="background:#FEE2E2;border:none;border-radius:10px;padding:9px 14px;font-size:0.75em;font-weight:900;color:#991B1B;cursor:pointer;font-family:Nunito,sans-serif;">None</button>
+  </div>
+  <!-- Count bar -->
+  <div id="fhs-sheet-count" style="padding:6px 18px;font-size:0.68em;font-weight:700;color:#999;border-bottom:1px solid #F4F4F8;background:#FAFAFA;"></div>
+  <!-- Scrollable list -->
+  <div id="fhs-sheet-body" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;"></div>
+  <!-- Done -->
+  <div style="padding:12px 16px 28px;border-top:1px solid #F0F0F0;">
+    <button onclick="closeFHSPickerSheet()" style="width:100%;background:linear-gradient(135deg,#1E2A6E,#4338CA);color:white;border:none;border-radius:14px;padding:15px;font-size:0.95em;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;">Done</button>
+  </div>
+</div>
 </body>
 </html>
 <!-- ═══════════════════════════════ LOGIN SCREEN ═══════════════════════════════ -->
