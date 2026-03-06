@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.9.2
+  Version  : 3.10.0
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -190,6 +190,44 @@
     .wi-sheet { position:fixed; bottom:0; left:0; right:0; background:var(--white); border-radius:24px 24px 0 0; z-index:1100; transform:translateY(100%); transition:transform 0.32s cubic-bezier(0.32,0,0.15,1); max-height:92vh; overflow-y:auto; }
     .wi-sheet.open { transform:translateY(0); }
     .wi-sheet-inner { padding:0 18px 100px; }
+
+    /* Stress Test cards */
+    .wi-stress-card { background:var(--bg); border-radius:14px; padding:14px 16px; margin-bottom:10px; border:1.5px solid transparent; transition:border-color 0.2s; }
+    .wi-stress-card.active { border-color:#E17055; background:#FFF5F3; }
+    .wi-stress-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .wi-stress-title { font-size:0.82em; font-weight:800; color:var(--text-dark); display:flex; align-items:center; gap:6px; }
+    .wi-stress-toggle { display:flex; gap:6px; }
+    .wi-stress-toggle-btn { padding:4px 10px; border-radius:8px; border:1.5px solid #E8E8E8; font-size:0.72em; font-weight:800; font-family:Nunito,sans-serif; cursor:pointer; background:white; color:var(--text-med); transition:all 0.15s; }
+    .wi-stress-toggle-btn.active { background:#E17055; color:white; border-color:#E17055; }
+    .wi-stress-desc { font-size:0.72em; color:var(--text-light); font-weight:600; line-height:1.4; }
+    .wi-stress-result { margin-top:10px; padding:10px 12px; background:rgba(225,112,85,0.08); border-radius:10px; border-left:3px solid #E17055; display:none; }
+    .wi-stress-result.show { display:block; }
+    .wi-stress-result-score { font-size:0.78em; font-weight:900; color:#E17055; margin-bottom:4px; }
+    .wi-stress-result-recovery { font-size:0.72em; font-weight:700; color:var(--text-med); line-height:1.5; }
+    .wi-stress-result-recovery b { color:#00B894; }
+
+    /* Level 3 Goal Reverse */
+    .wi-l3-target-row { display:flex; align-items:center; gap:12px; margin:12px 0; }
+    .wi-l3-target-score { font-size:2.8em; font-weight:900; color:#7C3AED; min-width:56px; text-align:center; }
+    .wi-l3-target-label { font-size:0.72em; font-weight:700; color:var(--text-light); }
+    .wi-l3-path-card { background:var(--bg); border-radius:16px; padding:16px; margin-bottom:12px; border:2px solid transparent; cursor:pointer; transition:all 0.18s; }
+    .wi-l3-path-card:hover { border-color:#DDD6FE; }
+    .wi-l3-path-card.selected { border-color:#7C3AED; background:#F5F3FF; }
+    .wi-l3-path-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .wi-l3-path-title { font-size:0.85em; font-weight:900; color:var(--text-dark); }
+    .wi-l3-path-effort { font-size:0.65em; font-weight:800; padding:3px 9px; border-radius:20px; }
+    .wi-l3-path-effort.easy { background:#D1FAE5; color:#059669; }
+    .wi-l3-path-effort.moderate { background:#FEF3C7; color:#D97706; }
+    .wi-l3-path-effort.hard { background:#FEE2E2; color:#DC2626; }
+    .wi-l3-lever-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+    .wi-l3-lever-icon { font-size:1em; width:22px; text-align:center; }
+    .wi-l3-lever-text { font-size:0.78em; font-weight:700; color:var(--text-dark); flex:1; }
+    .wi-l3-lever-val { font-size:0.78em; font-weight:900; color:#7C3AED; background:#EDE9FE; border-radius:8px; padding:2px 8px; }
+    .wi-l3-score-delta { display:flex; align-items:center; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid rgba(0,0,0,0.06); }
+    .wi-l3-apply-btn { width:100%; background:linear-gradient(135deg,#7C3AED,#9F67FA); color:white; border:none; border-radius:12px; padding:10px; font-size:0.82em; font-weight:900; font-family:Nunito,sans-serif; cursor:pointer; margin-top:8px; }
+    .wi-l3-no-gap { text-align:center; padding:30px 20px; }
+    .wi-l3-no-gap-emoji { font-size:2.5em; margin-bottom:8px; }
+    .wi-l3-no-gap-text { font-size:0.85em; font-weight:700; color:var(--text-med); }
     .wi-handle { width:38px; height:4px; background:var(--text-light); border-radius:2px; margin:12px auto 16px; opacity:0.4; }
     .wi-title { font-size:1.05em; font-weight:900; color:var(--text-dark); margin-bottom:4px; }
     .wi-subtitle { font-size:0.75em; font-weight:700; color:var(--text-med); margin-bottom:18px; }
@@ -3321,7 +3359,33 @@
           <option value="GENERIC">🌍 Other</option>
         </select>
       </div>
-      <button class="fhs-onboard-btn" onclick="saveFHSProfile()">✅ Save &amp; See My Score</button>
+
+      <!-- ── DATA COMPLETENESS: NEW FIELDS v3.10.0 ── -->
+      <div class="fhs-onboard-field">
+        <div class="fhs-onboard-label">Equity allocation % <span style="font-weight:600;color:var(--text-light);text-transform:none;letter-spacing:0;">(% of investments in stocks/equity funds)</span></div>
+        <input class="fhs-onboard-input" type="number" id="fhsob-equity-pct" placeholder="e.g. 70" min="0" max="100">
+      </div>
+      <div class="fhs-onboard-field">
+        <div class="fhs-onboard-label">Passive / other income <span style="font-weight:600;color:var(--text-light);text-transform:none;letter-spacing:0;">(annual: rent, dividends, business)</span></div>
+        <input class="fhs-onboard-input" type="number" id="fhsob-passive-income" placeholder="0 if none">
+      </div>
+      <div class="fhs-onboard-field">
+        <div class="fhs-onboard-label">Pension / Social Security start age <span style="font-weight:600;color:var(--text-light);text-transform:none;letter-spacing:0;">(bridge fund gap calculation)</span></div>
+        <input class="fhs-onboard-input" type="number" id="fhsob-pension-age" placeholder="e.g. 58 for EPF / 67 for SS" min="40" max="75">
+      </div>
+      <div class="fhs-onboard-field">
+        <div class="fhs-onboard-label">Recurring dependent liability <span style="font-weight:600;color:var(--text-light);text-transform:none;letter-spacing:0;">(parents, siblings, others outside household)</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <div style="font-size:0.68em;font-weight:800;color:var(--text-light);margin-bottom:4px;">MONTHLY AMOUNT</div>
+            <input class="fhs-onboard-input" type="number" id="fhsob-dep-amount" placeholder="e.g. 15000" style="margin:0;">
+          </div>
+          <div>
+            <div style="font-size:0.68em;font-weight:800;color:var(--text-light);margin-bottom:4px;">FOR HOW MANY YEARS</div>
+            <input class="fhs-onboard-input" type="number" id="fhsob-dep-years" placeholder="e.g. 10" min="0" max="50" style="margin:0;">
+          </div>
+        </div>
+      </div>
       <button class="fhs-onboard-btn" onclick="closeFHSOnboard();openMasteryOnboard()" style="background:linear-gradient(135deg,#7C3AED,#9F67FA);margin-top:8px;">🧠 Also set up Mastery band →</button>
     </div>
   </div>
@@ -13497,6 +13561,12 @@ function openFHSOnboard() {
     document.getElementById('fhsob-spouse-income').value = p.spouseIncome || '';
     document.getElementById('fhsob-kids').value = p.kidsCount || 0;
     document.getElementById('fhsob-region').value = p.region || 'IN';
+    // v3.10.0 new fields
+    if (document.getElementById('fhsob-equity-pct')) document.getElementById('fhsob-equity-pct').value = p.equityPct ?? '';
+    if (document.getElementById('fhsob-passive-income')) document.getElementById('fhsob-passive-income').value = p.passiveIncome || '';
+    if (document.getElementById('fhsob-pension-age')) document.getElementById('fhsob-pension-age').value = p.pensionAge || '';
+    if (document.getElementById('fhsob-dep-amount')) document.getElementById('fhsob-dep-amount').value = p.dependentMonthly || '';
+    if (document.getElementById('fhsob-dep-years')) document.getElementById('fhsob-dep-years').value = p.dependentYears || '';
   } else {
     document.getElementById('fhsob-retire').value = 60;
     document.getElementById('fhsob-kids').value = 0;
@@ -13855,6 +13925,12 @@ function saveFHSProfile() {
     householdIncome: compensation + spouseIncome,
     kidsCount: kids, kidsAges, educationTargets: eduTargets, region,
     targetSWR, disabilityCoverPct, employerMatchPct,
+    // v3.10.0 data completeness fields
+    equityPct: parseFloat(document.getElementById('fhsob-equity-pct')?.value) || null,
+    passiveIncome: parseFloat(document.getElementById('fhsob-passive-income')?.value) || 0,
+    pensionAge: parseInt(document.getElementById('fhsob-pension-age')?.value) || null,
+    dependentMonthly: parseFloat(document.getElementById('fhsob-dep-amount')?.value) || 0,
+    dependentYears: parseInt(document.getElementById('fhsob-dep-years')?.value) || 0,
     accountOverrides: existing?.accountOverrides || {},
     riskProfile: existing?.riskProfile, behaviourProfile: existing?.behaviourProfile,
     taxProfile: existing?.taxProfile,
@@ -13913,6 +13989,13 @@ const WI_SCENARIOS = [
     fields: [
       { id:'age', label:'New Retirement Age', type:'number', defaultIN:50, defaultUS:55, hintFn: () => 'Current target: from profile' },
     ]},
+  { id:'healthcrisis', emoji:'🏥', name:'Family Health Crisis', desc:'Medical emergency drains savings',
+    delta: { negative: true },
+    fields: [
+      { id:'lump',    label:'Emergency Lump Sum',     type:'number', defaultIN:2500000, defaultUS:150000, hintFn: sym => `e.g. ${sym === '₹' ? '₹25L surgery' : '$150K hospital bill'}` },
+      { id:'monthly', label:'Ongoing Monthly Care',   type:'number', defaultIN:15000,   defaultUS:1200,   hintFn: sym => `recurring care/medicine costs` },
+      { id:'months',  label:'Duration (months)',       type:'number', defaultIN:24,      defaultUS:24,     hintFn: () => 'How long care support lasts' },
+    ]},
 ];
 
 function openWhatIf() {
@@ -13968,14 +14051,31 @@ function wiUpdateSliderLocale() {
 
 function wiSetTab(tab) {
   _wiTab = tab;
-  const isSliders = tab === 'sliders';
-  document.getElementById('wi-panel-sliders').style.display  = isSliders ? '' : 'none';
-  document.getElementById('wi-panel-scenarios').style.display = isSliders ? 'none' : '';
-  // Tab buttons
-  const btnS = document.getElementById('wi-tab-sliders');
-  const btnC = document.getElementById('wi-tab-scenarios');
-  if (btnS) { btnS.style.background = isSliders ? '#7C3AED' : 'white'; btnS.style.color = isSliders ? 'white' : '#7C3AED'; btnS.style.border = isSliders ? 'none' : '1.5px solid #DDD6FE'; }
-  if (btnC) { btnC.style.background = !isSliders ? '#7C3AED' : 'white'; btnC.style.color = !isSliders ? 'white' : '#7C3AED'; btnC.style.border = !isSliders ? 'none' : '1.5px solid #DDD6FE'; }
+  const tabs = ['sliders','scenarios','stress','l3'];
+  tabs.forEach(t => {
+    const panel = document.getElementById('wi-panel-' + t);
+    const btn   = document.getElementById('wi-tab-' + t);
+    if (!panel || !btn) return;
+    const isActive = t === tab;
+    panel.style.display = isActive ? '' : 'none';
+    const isStress = t === 'stress';
+    const activeColor = isStress ? '#E17055' : '#7C3AED';
+    const activeBorder = isStress ? '#FECACA' : '#DDD6FE';
+    btn.style.background   = isActive ? activeColor : 'white';
+    btn.style.color        = isActive ? 'white' : activeColor;
+    btn.style.border       = isActive ? 'none' : `1.5px solid ${activeBorder}`;
+  });
+  // Trigger default computations when switching tabs
+  if (tab === 'stress') wiRunAllStressTests();
+  if (tab === 'l3') {
+    const fhs = computeFHSScore();
+    const cur = fhs.overallScore;
+    document.getElementById('wi-l3-current-score').textContent = cur;
+    const targetEl = document.getElementById('wi-l3-target');
+    const target = Math.max(cur + 5, parseInt(targetEl?.value || 80));
+    if (targetEl) { targetEl.min = Math.min(cur + 1, 99); targetEl.value = target; }
+    wiL3UpdateTarget(target);
+  }
 }
 
 function wiUpdateSliderUI(key, val) {
@@ -14417,6 +14517,35 @@ function wiRunScenario() {
     }
   }
 
+  else if (_wiScenario === 'healthcrisis') {
+    const lump    = params.lump || 0;
+    const monthly = params.monthly || 0;
+    const months  = params.months || 24;
+    // Emergency fund drained
+    const emgCorpus = (pr.emergency?.result?.monthsCovered || 0) * expMo;
+    const remaining = Math.max(0, emgCorpus - lump);
+    const newEmgMos = expMo > 0 ? remaining / expMo : 0;
+    const newEmgScore = Math.round(newEmgMos >= 6 ? 90 : newEmgMos >= 3 ? 60 : newEmgMos >= 1 ? 30 : 5);
+    impacts.push({ key:'emergency', emoji:'🛡️', name:'Emergency Fund', before:pr.emergency?.result?.score||0, after:newEmgScore });
+    // Savings rate compressed by ongoing monthly care
+    const newSavMo = Math.max(0, incMo - expMo - monthly);
+    const newSavRate = incMo > 0 ? newSavMo / incMo : 0;
+    const newSavScore = Math.min(100, Math.round(newSavRate >= 0.20 ? 65 : newSavRate >= 0.10 ? 40 : newSavRate > 0 ? 20 : 5));
+    if (Math.abs(newSavScore - (pr.savings?.result?.score||0)) > 2)
+      impacts.push({ key:'savings', emoji:'💰', name:'Savings Rate', before:pr.savings?.result?.score||0, after:newSavScore });
+    // FIRE corpus hit by lump withdrawal
+    const fireCorpus = pr.fire?.result?.corpus || 0;
+    const fireTarget = pr.fire?.result?.target || 1;
+    const newFireRatio = Math.max(0, (fireCorpus - lump) / fireTarget);
+    const newFireScore = Math.round(newFireRatio >= 1 ? 100 : newFireRatio * 100);
+    if (Math.abs(newFireScore - (pr.fire?.result?.score||0)) > 2)
+      impacts.push({ key:'fire', emoji:'🔥', name:'FIRE Readiness', before:pr.fire?.result?.score||0, after:newFireScore });
+    // Income Architecture — dependency ratio worsens
+    const newIncScore = Math.max(15, (pr.income?.result?.score||50) - Math.round(monthly / Math.max(incMo, 1) * 50));
+    if (Math.abs(newIncScore - (pr.income?.result?.score||50)) > 3)
+      impacts.push({ key:'income', emoji:'💼', name:'Income Architecture', before:pr.income?.result?.score||50, after:newIncScore });
+  }
+
   // Blend to new overall
   const updatedPillars = { ...Object.fromEntries(Object.entries(pr).map(([k,v]) => [k, { ...v, result: { ...v.result } }])) };
   impacts.forEach(i => { if (updatedPillars[i.key]) updatedPillars[i.key].result.score = i.after; });
@@ -14434,6 +14563,511 @@ function wiRunScenario() {
 }
 
 // ── SAVE AS GOAL ──────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+// STRESS TEST ENGINE  (v3.10.0)
+// ══════════════════════════════════════════════════════════════════════
+
+let _wiStressState = {
+  lifestyle: 3,      // % annual lifestyle inflation
+  market: 40,        // % drop (0 = off)
+  crisis: true,      // family health crisis on/off
+  sandwich: true,    // sandwich gen on/off
+  healthcare: true,  // healthcare gap on/off
+  homeInFire: false, // include home in FIRE
+};
+
+function wiStressUpdate(key, val) {
+  const p = getFHSProfile();
+  const isIN = (p?.region || 'IN') !== 'US';
+  const sym = isIN ? '₹' : '$';
+  if (key === 'lifestyle') {
+    _wiStressState.lifestyle = parseFloat(val) || 0;
+    const el = document.getElementById('wi-stress-lifestyle-val');
+    if (el) el.textContent = `${val}%/yr`;
+    const card = document.getElementById('wi-stress-lifestyle');
+    if (card) card.classList.toggle('active', _wiStressState.lifestyle > 0);
+  }
+  wiRunStressTest(key);
+  wiRenderCombinedStress();
+}
+
+function wiStressMarket(pct) {
+  _wiStressState.market = pct;
+  ['0','20','40'].forEach(v => {
+    const btn = document.getElementById('wi-stress-mkt-' + v);
+    if (btn) btn.classList.toggle('active', parseInt(v) === pct);
+  });
+  const card = document.getElementById('wi-stress-market');
+  if (card) card.classList.toggle('active', pct > 0);
+  wiRunStressTest('market');
+  wiRenderCombinedStress();
+}
+
+function wiStressHealthcare(on) {
+  _wiStressState.healthcare = on;
+  document.getElementById('wi-stress-hc-off')?.classList.toggle('active', !on);
+  document.getElementById('wi-stress-hc-on')?.classList.toggle('active', on);
+  const card = document.getElementById('wi-stress-health');
+  if (card) card.classList.toggle('active', on);
+  wiRunStressTest('healthcare');
+  wiRenderCombinedStress();
+}
+
+function wiStressHome(on) {
+  _wiStressState.homeInFire = on;
+  document.getElementById('wi-stress-home-off')?.classList.toggle('active', !on);
+  document.getElementById('wi-stress-home-on')?.classList.toggle('active', on);
+  const card = document.getElementById('wi-stress-home');
+  if (card) card.classList.toggle('active', on);
+  wiRunStressTest('home');
+  wiRenderCombinedStress();
+}
+
+function wiRunAllStressTests() {
+  ['lifestyle','market','crisis','sandwich','healthcare','home'].forEach(k => wiRunStressTest(k));
+  wiRenderCombinedStress();
+}
+
+function wiRunStressTest(key) {
+  const p = getFHSProfile();
+  if (!p) return;
+  const fhsNow = computeFHSScore();
+  const base = fhsNow.overallScore;
+  const pr = fhsNow.pillarResults;
+  const isIN = (p?.region || 'IN') !== 'US';
+  const sym = isIN ? '₹' : '$';
+  const incMo = (p.annualCompensation || 0) / 12;
+  const totalInc = incMo + (p.passiveIncome || 0) / 12;
+  const expMo = getMonthlyExpenses();
+  const cagr = isIN ? 0.12 : 0.10;
+  const years = Math.max(1, (p.retirementAge || 60) - (p.age || 35));
+  const fireCorpus = pr.fire?.result?.corpus || 0;
+  const fireTarget = pr.fire?.result?.target || 1;
+
+  const resultEl   = document.getElementById(`wi-stress-${key}-result`);
+  const scoreEl    = document.getElementById(`wi-stress-${key}-score`);
+  const recoveryEl = document.getElementById(`wi-stress-${key}-recovery`);
+  if (!resultEl || !scoreEl || !recoveryEl) return;
+
+  let newFireScore  = pr.fire?.result?.score || 0;
+  let newSavScore   = pr.savings?.result?.score || 0;
+  let newEmgScore   = pr.emergency?.result?.score || 0;
+  let newRiskScore  = pr.risk?.result?.score || 50;
+  let newIncScore   = pr.income?.result?.score || 50;
+  let scoreImpact   = 0;
+  let recoveryHtml  = '';
+  let label         = '';
+
+  if (key === 'lifestyle') {
+    const lc = _wiStressState.lifestyle / 100;
+    if (lc === 0) { resultEl.classList.remove('show'); return; }
+    // Future expenses after lifestyle creep over retirement horizon
+    const futureExpMo = expMo * Math.pow(1 + lc, years);
+    const futureSavRate = totalInc > 0 ? Math.max(0, (incMo - futureExpMo)) / incMo : 0;
+    newSavScore = Math.min(100, Math.round(futureSavRate >= 0.30 ? 85 : futureSavRate >= 0.20 ? 65 : futureSavRate >= 0.10 ? 40 : futureSavRate / 0.10 * 30));
+    // FIRE corpus target grows with lifestyle inflation
+    const inflatedTarget = fireTarget * Math.pow(1 + lc, years);
+    const newFireRatio = Math.min(1, fireCorpus / inflatedTarget);
+    newFireScore = Math.round(newFireRatio >= 1 ? 100 : newFireRatio >= 0.75 ? 75 + newFireRatio * 25 : newFireRatio * 100);
+    const avgDrop = Math.round(((pr.savings?.result?.score||0) - newSavScore + (pr.fire?.result?.score||0) - newFireScore) / 2);
+    scoreImpact = -avgDrop;
+    const sipNeeded = Math.round(futureExpMo * lc);
+    label = `At ${_wiStressState.lifestyle}% lifestyle inflation, FIRE target grows ${Math.round(lc*years*100/2)}% — FHS drops ~${avgDrop} pts`;
+    recoveryHtml = `<b>Recovery path:</b> Commit <b>${sym}${sipNeeded >= 1000 ? (sipNeeded/1000).toFixed(0)+'K' : sipNeeded}/mo</b> additional SIP now to offset future lifestyle growth. Automate annual SIP step-ups of ${_wiStressState.lifestyle}% to stay on track.`;
+
+  } else if (key === 'market') {
+    const drop = _wiStressState.market / 100;
+    if (drop === 0) { resultEl.classList.remove('show'); return; }
+    const shockedCorpus = fireCorpus * (1 - drop);
+    const newRatio = Math.min(1, shockedCorpus / fireTarget);
+    newFireScore = Math.round(newRatio >= 1 ? 100 : newRatio * 100);
+    // Bridge fund check: money needed between retirement and pension age
+    const pensionAge = p.pensionAge || (isIN ? 58 : 67);
+    const bridgeYears = Math.max(0, pensionAge - (p.retirementAge || 60));
+    const bridgeFund = expMo * 12 * bridgeYears;
+    const bridgeWiped = shockedCorpus < bridgeFund;
+    newRiskScore = bridgeWiped ? Math.max(10, (pr.risk?.result?.score || 50) - 35) : Math.max(20, (pr.risk?.result?.score || 50) - 15);
+    scoreImpact = newFireScore - (pr.fire?.result?.score || 0);
+    label = `−${_wiStressState.market}% crash → FIRE corpus ${sym}${Math.round(fireCorpus*(drop)/100000)}L wiped. ${bridgeWiped ? '🚨 Bridge fund depleted!' : 'Bridge fund intact.'}`;
+    const rebalPct = Math.round((1 - drop) * 30);
+    recoveryHtml = bridgeWiped
+      ? `<b>🚨 Bridge fund wiped.</b> To recover: <b>Shift ${rebalPct}% to debt/bonds</b> immediately + build <b>${sym}${Math.round(bridgeFund/100000)}L liquid buffer</b> before retirement. Consider delaying retirement by <b>${Math.ceil(bridgeYears * 0.5)} years</b>.`
+      : `<b>Recovery path:</b> Rebalance <b>${rebalPct}% to debt funds</b> now. Resume SIP — rupee-cost averaging recovers most losses within <b>3–5 years</b>. Avoid panic redemptions.`;
+
+  } else if (key === 'crisis') {
+    const lump = parseFloat(document.getElementById('wi-stress-crisis-lump')?.value) || 0;
+    const monthly = parseFloat(document.getElementById('wi-stress-crisis-monthly')?.value) || 0;
+    if (lump === 0 && monthly === 0) { resultEl.classList.remove('show'); return; }
+    const activeEl = document.getElementById('wi-stress-crisis-active');
+    if (activeEl) activeEl.textContent = 'ON';
+    // Emergency fund drained by lump sum
+    const emgCorpus = (pr.emergency?.result?.monthsCovered || 0) * expMo;
+    const remaining = Math.max(0, emgCorpus - lump);
+    const newEmgMos = expMo > 0 ? remaining / expMo : 0;
+    newEmgScore = Math.round(newEmgMos >= 6 ? 90 : newEmgMos >= 3 ? 60 : newEmgMos >= 1 ? 30 : 5);
+    // Savings rate drops due to ongoing monthly
+    const newSavMo = Math.max(0, incMo - expMo - monthly);
+    const newSavRate = incMo > 0 ? newSavMo / incMo : 0;
+    newSavScore = Math.round(newSavRate >= 0.20 ? 65 : newSavRate >= 0.10 ? 40 : newSavRate > 0 ? 20 : 5);
+    // FIRE corpus hit by lump sum withdrawal
+    const newFireRatio = Math.max(0, (fireCorpus - lump) / fireTarget);
+    newFireScore = Math.round(newFireRatio >= 1 ? 100 : newFireRatio * 100);
+    scoreImpact = newFireScore - (pr.fire?.result?.score || 0);
+    label = `${sym}${lump >= 100000 ? (lump/100000).toFixed(1)+'L' : (lump/1000).toFixed(0)+'K'} crisis + ${sym}${monthly >= 1000 ? (monthly/1000).toFixed(0)+'K' : monthly}/mo drain — Emergency fund ${newEmgMos < 1 ? 'wiped' : newEmgMos.toFixed(1) + 'mo left'}`;
+    const rebuildMonths = lump > 0 && incMo > 0 ? Math.ceil(lump / (incMo * 0.15)) : 0;
+    recoveryHtml = `<b>Recovery path:</b> Emergency fund rebuilds in <b>~${rebuildMonths} months</b> at 15% savings rate. <b>Get a ${sym}${Math.round(lump/2 / 100000)}L critical illness policy</b> — costs ${isIN ? '₹5K–₹15K/yr' : '$200–$600/yr'} and covers exactly this scenario. <b>Ring-fence ${sym}${Math.round(monthly * 24 / 1000)}K</b> as a 2-year care buffer.`;
+
+  } else if (key === 'sandwich') {
+    const monthly = parseFloat(document.getElementById('wi-stress-sandwich-mo')?.value) || 0;
+    const sandYears = parseFloat(document.getElementById('wi-stress-sandwich-yrs')?.value) || 5;
+    if (monthly === 0) { resultEl.classList.remove('show'); return; }
+    const activeEl = document.getElementById('wi-stress-sandwich-active');
+    if (activeEl) activeEl.textContent = 'ON';
+    const totalBurden = monthly * 12 * sandYears;
+    const newSavMo = Math.max(0, incMo - expMo - monthly);
+    const newSavRate = incMo > 0 ? newSavMo / incMo : 0;
+    newSavScore = Math.round(newSavRate >= 0.30 ? 85 : newSavRate >= 0.20 ? 65 : newSavRate >= 0.10 ? 40 : newSavRate > 0 ? 20 : 5);
+    // Income Architecture: dependency ratio worsens
+    newIncScore = Math.max(20, (pr.income?.result?.score || 50) - Math.round(monthly / incMo * 60));
+    const lostCorpus = monthly * 12 * ((Math.pow(1 + cagr, sandYears) - 1) / cagr);
+    const newFireRatio = Math.max(0, (fireCorpus - lostCorpus) / fireTarget);
+    newFireScore = Math.round(newFireRatio >= 1 ? 100 : newFireRatio * 100);
+    scoreImpact = newFireScore - (pr.fire?.result?.score || 0);
+    label = `${sym}${monthly >= 1000 ? (monthly/1000).toFixed(0)+'K' : monthly}/mo × ${sandYears}yr = ${sym}${Math.round(totalBurden/100000).toFixed(1)}L total burden. FIRE corpus opportunity cost: ${sym}${Math.round(lostCorpus/100000).toFixed(1)}L`;
+    const incNeeded = Math.round(monthly * 1.5);
+    recoveryHtml = `<b>Recovery path:</b> <b>Passive income of ${sym}${incNeeded >= 1000 ? (incNeeded/1000).toFixed(0)+'K' : incNeeded}/mo</b> (rental/dividends) absorbs care costs without touching savings. Consider <b>a parent floater health plan</b> to cap medical surprises. <b>Have a direct family conversation</b> about shared care responsibilities.`;
+
+  } else if (key === 'healthcare') {
+    if (!_wiStressState.healthcare) { resultEl.classList.remove('show'); return; }
+    const retAge = p.retirementAge || (isIN ? 60 : 65);
+    const pensionAge = p.pensionAge || (isIN ? 58 : 67);
+    // Employer cover gap years
+    const coverGap = Math.max(0, retAge - (p.age || 35));
+    const annualPremium = isIN ? (p.kidsCount > 0 ? 80000 : 45000) : (p.kidsCount > 0 ? 28000 : 18000);
+    const gapYears = Math.max(0, (isIN ? 60 : 65) - retAge);
+    if (gapYears <= 0) {
+      scoreEl.textContent = 'No gap — you retire at standard age ✅';
+      recoveryEl.innerHTML = 'Employer cover runs to retirement. No stealth healthcare cost.';
+      resultEl.classList.add('show');
+      return;
+    }
+    const healthCorpus = annualPremium * gapYears * 1.3; // 30% buffer for claims
+    const newFireRatio = Math.max(0, (fireCorpus - healthCorpus) / fireTarget);
+    newFireScore = Math.round(newFireRatio >= 1 ? 100 : newFireRatio * 100);
+    scoreImpact = newFireScore - (pr.fire?.result?.score || 0);
+    label = `${gapYears}-year healthcare gap: ${sym}${Math.round(annualPremium/1000)}K/yr premium = ${sym}${Math.round(healthCorpus/100000).toFixed(1)}L stealth FIRE cost`;
+    recoveryHtml = `<b>Recovery path:</b> Add <b>${sym}${Math.round(healthCorpus/100000).toFixed(1)}L to FIRE target</b> as healthcare reserve. Consider <b>buying a ${isIN ? '₹1Cr super top-up' : '$1M umbrella'} policy now</b> while young and premiums are low.`;
+
+  } else if (key === 'home') {
+    const on = _wiStressState.homeInFire;
+    if (!on) { resultEl.classList.remove('show'); return; }
+    // Find home value from net worth accounts
+    let homeValue = 0;
+    try {
+      const accs = Object.values(data._accounts || {});
+      const homeAcc = accs.find(a => (a.name||'').toLowerCase().includes('home') || (a.name||'').toLowerCase().includes('house') || (a.name||'').toLowerCase().includes('property') || (a.category||'').toLowerCase().includes('real estate'));
+      homeValue = homeAcc ? (homeAcc.balance || 0) : (p.annualCompensation || 0) * 5;
+    } catch(e) { homeValue = (p.annualCompensation || 0) * 5; }
+    const newRatio = Math.min(1, (fireCorpus + homeValue) / fireTarget);
+    newFireScore = Math.round(newRatio >= 1 ? 100 : newRatio >= 0.75 ? 75 + newRatio * 25 : newRatio * 100);
+    scoreImpact = newFireScore - (pr.fire?.result?.score || 0);
+    label = `Home (est. ${sym}${Math.round(homeValue/100000)}L) boosts FIRE score by ${scoreImpact} pts. ⚠️ Liquidity Warning active.`;
+    recoveryHtml = `<b>⚠️ Liquidity Warning:</b> Your home is an <b>illiquid asset</b> — you can't pay grocery bills with your kitchen. If counted, ensure you have <b>a separate liquid corpus</b> for withdrawals. Consider <b>reverse mortgage or downsizing plan</b> as a genuine exit strategy.`;
+  }
+
+  // Render result
+  const direction = scoreImpact >= 0 ? '↑' : '↓';
+  const color = scoreImpact >= 0 ? '#00B894' : '#E17055';
+  scoreEl.innerHTML = `<span style="color:${color};">${direction} ${Math.abs(scoreImpact)} pts impact</span> ${label}`;
+  recoveryEl.innerHTML = recoveryHtml;
+  resultEl.classList.add('show');
+}
+
+function wiRenderCombinedStress() {
+  const p = getFHSProfile();
+  if (!p) return;
+  const fhsNow = computeFHSScore();
+  const base = fhsNow.overallScore;
+  // Simple combined: take worst case across active tests
+  let maxDrop = 0;
+  const activeTests = [];
+  if (_wiStressState.lifestyle > 0) { activeTests.push('Lifestyle Creep'); maxDrop += _wiStressState.lifestyle * 1.5; }
+  if (_wiStressState.market > 0)    { activeTests.push('Market Shock');   maxDrop += _wiStressState.market * 0.4; }
+  if (_wiStressState.healthcare)    { activeTests.push('Healthcare Gap');  maxDrop += 5; }
+  const crisisLump = parseFloat(document.getElementById('wi-stress-crisis-lump')?.value) || 0;
+  if (crisisLump > 0)               { activeTests.push('Health Crisis');   maxDrop += 12; }
+  const sandMo = parseFloat(document.getElementById('wi-stress-sandwich-mo')?.value) || 0;
+  if (sandMo > 0)                   { activeTests.push('Sandwich Gen');    maxDrop += 8; }
+  const combined = document.getElementById('wi-stress-combined');
+  const label = document.getElementById('wi-stress-combined-label');
+  if (!combined || !label) return;
+  if (activeTests.length < 2) { label.style.display = 'none'; combined.innerHTML = ''; return; }
+  label.style.display = '';
+  const worstScore = Math.max(0, base - Math.round(maxDrop));
+  const isIN = (p?.region || 'IN') !== 'US';
+  const sym = isIN ? '₹' : '$';
+  const color = worstScore < 40 ? '#E17055' : worstScore < 60 ? '#F9A825' : '#00B894';
+  combined.innerHTML = `
+    <div style="background:linear-gradient(135deg,#FFF5F3,#FEF3C7);border-radius:16px;padding:16px;border:2px solid #FECACA;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:0.82em;font-weight:900;color:#92400E;">🧨 Simultaneous Stress Score</div>
+        <div style="font-size:1.6em;font-weight:900;color:${color};">${worstScore}</div>
+      </div>
+      <div style="font-size:0.72em;font-weight:700;color:#92400E;margin-bottom:6px;">If all active tests hit at once: ${activeTests.join(' + ')}</div>
+      <div style="height:5px;background:rgba(0,0,0,0.1);border-radius:3px;overflow:hidden;margin-bottom:8px;">
+        <div style="height:100%;width:${worstScore}%;background:${color};border-radius:3px;"></div>
+      </div>
+      <div style="font-size:0.72em;font-weight:700;color:#92400E;line-height:1.5;">
+        <b>Resilience verdict:</b> ${worstScore >= 70 ? '✅ Strong — you can absorb multiple shocks.' : worstScore >= 50 ? '⚠️ Moderate — 1–2 shocks manageable, combined is dangerous.' : '🚨 Fragile — simultaneous shocks could be financially devastating.'}
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// LEVEL 3 — GOAL REVERSE SOLVER  (v3.10.0)
+// ══════════════════════════════════════════════════════════════════════
+
+let _wiL3SelectedPath = null;
+
+function wiL3UpdateTarget(val) {
+  const p = getFHSProfile();
+  if (!p) return;
+  const fhsNow = computeFHSScore();
+  const cur = fhsNow.overallScore;
+  const target = parseInt(val);
+  document.getElementById('wi-l3-target-num').textContent = target;
+  const gapEl = document.getElementById('wi-l3-gap');
+  const gap = target - cur;
+  if (gapEl) {
+    gapEl.textContent = gap <= 0 ? '0 — already there!' : '+' + gap;
+    gapEl.style.color = gap <= 0 ? '#00B894' : '#E17055';
+  }
+  if (gap <= 0) {
+    document.getElementById('wi-l3-paths').innerHTML = `
+      <div class="wi-l3-no-gap">
+        <div class="wi-l3-no-gap-emoji">🎉</div>
+        <div class="wi-l3-no-gap-text">You've already hit your target score! Set a higher goal.</div>
+      </div>`;
+    return;
+  }
+  const paths = wiL3SolvePaths(cur, target, fhsNow, p);
+  wiL3RenderPaths(paths, cur, target);
+}
+
+function wiL3SolvePaths(cur, target, fhsNow, p) {
+  const isIN = (p?.region || 'IN') !== 'US';
+  const sym = isIN ? '₹' : '$';
+  const gap = target - cur;
+  const pr = fhsNow.pillarResults;
+  const incMo = (p.annualCompensation || 0) / 12;
+  const expMo = getMonthlyExpenses();
+  const cagr = isIN ? 0.12 : 0.10;
+  const years = Math.max(1, (p.retirementAge || 60) - (p.age || 35));
+
+  // Helper: how much SIP change = X pillar score points
+  function sipForScoreGain(gainNeeded) {
+    const fireTarget = pr.fire?.result?.target || 1;
+    const curCorpus = pr.fire?.result?.corpus || 0;
+    const neededRatio = Math.min(1, (curCorpus / fireTarget) + gainNeeded / 100);
+    const neededCorpus = neededRatio * fireTarget;
+    const extraCorpus = Math.max(0, neededCorpus - curCorpus);
+    return extraCorpus > 0 ? Math.round(extraCorpus / (12 * ((Math.pow(1 + cagr, years) - 1) / cagr))) : 0;
+  }
+
+  function expCutForSavingsGain(gainNeeded) {
+    const curRate = pr.savings?.result?.rate || 0;
+    const targetRate = Math.min(0.50, curRate + gainNeeded * 0.003);
+    const targetSavMo = incMo * targetRate;
+    const curSavMo = incMo * curRate;
+    const expReduction = Math.max(0, curSavMo < targetSavMo ? (targetSavMo - curSavMo) : 0);
+    return expMo > 0 ? Math.round(expReduction / expMo * 100) : 0;
+  }
+
+  function insuranceForGain(gainNeeded) {
+    const curScore = pr.insurance?.result?.score || 0;
+    const targetScore = Math.min(100, curScore + gainNeeded);
+    const incomeAnn = p.annualCompensation || 0;
+    const benchMultiple = isIN ? 20 : 10;
+    const target = incomeAnn * benchMultiple;
+    const curCover = p.insuranceCover || 0;
+    const neededCover = target * (targetScore / 100);
+    return Math.max(0, Math.round((neededCover - curCover) / incomeAnn));
+  }
+
+  // ── PATH 1: Minimum effort — single best lever ──
+  const path1Levers = [];
+  const savingsGap = Math.max(0, 70 - (pr.savings?.result?.score || 0));
+  const fireGap = Math.max(0, 75 - (pr.fire?.result?.score || 0));
+  const insGap = Math.max(0, 80 - (pr.insurance?.result?.score || 0));
+  const emgGap = Math.max(0, 90 - (pr.emergency?.result?.monthsCovered || 0) >= 6 ? 0 : 20);
+
+  const sipNeeded = sipForScoreGain(Math.round(gap * 1.5));
+  if (sipNeeded > 0) path1Levers.push({
+    icon: '💰', label: 'Increase Monthly SIP',
+    val: `+${sym}${sipNeeded >= 1000 ? (sipNeeded/1000).toFixed(1)+'K' : sipNeeded}/mo`,
+    pillars: ['FIRE Readiness', 'Savings Rate'],
+    sliderKey: 'sip', sliderVal: sipNeeded
+  });
+
+  // ── PATH 2: Balanced — 2 complementary levers ──
+  const path2Levers = [];
+  const halfSip = Math.round(sipNeeded * 0.5);
+  const cutPct = expCutForSavingsGain(Math.round(gap * 0.8));
+  if (halfSip > 0) path2Levers.push({
+    icon: '💰', label: 'Increase Monthly SIP',
+    val: `+${sym}${halfSip >= 1000 ? (halfSip/1000).toFixed(1)+'K' : halfSip}/mo`,
+    pillars: ['FIRE Readiness'], sliderKey: 'sip', sliderVal: halfSip
+  });
+  if (cutPct > 0) path2Levers.push({
+    icon: '✂️', label: 'Reduce Monthly Expenses',
+    val: `-${Math.min(cutPct, 25)}%`,
+    pillars: ['Savings Rate', 'FIRE Readiness'], sliderKey: 'cut', sliderVal: Math.min(cutPct, 25)
+  });
+  if (insGap > 10) {
+    const insNeeded = insuranceForGain(Math.round(insGap * 0.7));
+    if (insNeeded > 0) path2Levers.push({
+      icon: '🧬', label: 'Add Insurance Cover',
+      val: `+${insNeeded}× income`,
+      pillars: ['Life Insurance'], sliderKey: 'ins', sliderVal: insNeeded
+    });
+  }
+
+  // ── PATH 3: Comprehensive — all levers, holistic ──
+  const path3Levers = [];
+  const quartSip = Math.round(sipNeeded * 0.35);
+  const quartCut = Math.round(cutPct * 0.6);
+  const emgMonths = Math.min(3, Math.max(0, 6 - (pr.emergency?.result?.monthsCovered || 0)));
+  const insAdd = insuranceForGain(Math.round(insGap * 0.5));
+  if (quartSip > 0) path3Levers.push({
+    icon: '💰', label: 'Increase Monthly SIP',
+    val: `+${sym}${quartSip >= 1000 ? (quartSip/1000).toFixed(1)+'K' : quartSip}/mo`,
+    pillars: ['FIRE Readiness'], sliderKey: 'sip', sliderVal: quartSip
+  });
+  if (quartCut > 0) path3Levers.push({
+    icon: '✂️', label: 'Reduce Monthly Expenses',
+    val: `-${quartCut}%`,
+    pillars: ['Savings Rate'], sliderKey: 'cut', sliderVal: quartCut
+  });
+  if (emgMonths > 0) path3Levers.push({
+    icon: '🛡️', label: 'Top Up Emergency Fund',
+    val: `+${emgMonths} month${emgMonths > 1 ? 's' : ''}`,
+    pillars: ['Emergency Fund'], sliderKey: 'emg', sliderVal: emgMonths
+  });
+  if (insAdd > 0 && insGap > 5) path3Levers.push({
+    icon: '🧬', label: 'Add Insurance Cover',
+    val: `+${insAdd}× income`,
+    pillars: ['Life Insurance'], sliderKey: 'ins', sliderVal: insAdd
+  });
+  // Add equity rebalance if equity data available
+  if (p.equityPct !== null && p.equityPct !== undefined) {
+    const idealEquity = Math.max(20, 110 - (p.age || 35));
+    const equityDiff = idealEquity - (p.equityPct || 0);
+    if (Math.abs(equityDiff) > 10) path3Levers.push({
+      icon: '⚖️', label: equityDiff > 0 ? 'Increase Equity Allocation' : 'Reduce Equity (de-risk)',
+      val: `${equityDiff > 0 ? '+' : ''}${Math.round(equityDiff)}% equity`,
+      pillars: ['Portfolio Health', 'FIRE Readiness'], sliderKey: null, sliderVal: null
+    });
+  }
+
+  // Estimate score gains per path (simplified)
+  const path1GainEst = Math.min(gap, Math.round(gap * 0.75));
+  const path2GainEst = Math.min(gap, Math.round(gap * 0.85));
+  const path3GainEst = Math.min(gap, Math.round(gap * 0.95));
+
+  return [
+    { title: 'Path 1 — Minimum Effort', effort: 'easy', effortLabel: 'Easy',
+      desc: 'Single lever. Highest-impact change only.', levers: path1Levers, gain: path1GainEst },
+    { title: 'Path 2 — Balanced', effort: 'moderate', effortLabel: 'Moderate',
+      desc: '2–3 levers. Spreads the effort across savings + coverage.', levers: path2Levers, gain: path2GainEst },
+    { title: 'Path 3 — Comprehensive', effort: 'hard', effortLabel: 'Holistic',
+      desc: 'All levers. Covers every weak pillar simultaneously.', levers: path3Levers, gain: path3GainEst },
+  ];
+}
+
+function wiL3RenderPaths(paths, cur, target) {
+  const p = getFHSProfile();
+  const isIN = (p?.region || 'IN') !== 'US';
+  const container = document.getElementById('wi-l3-paths');
+  if (!container) return;
+  container.innerHTML = paths.map((path, idx) => {
+    const projScore = Math.min(100, cur + path.gain);
+    const leversHtml = path.levers.length > 0
+      ? path.levers.map(l => `
+        <div class="wi-l3-lever-row">
+          <div class="wi-l3-lever-icon">${l.icon}</div>
+          <div class="wi-l3-lever-text">${l.label}<br><span style="font-size:0.85em;color:var(--text-light);">${l.pillars.join(' · ')}</span></div>
+          <div class="wi-l3-lever-val">${l.val}</div>
+        </div>`).join('')
+      : '<div style="font-size:0.78em;color:var(--text-light);padding:8px 0;">No changes needed for this lever combination.</div>';
+    const selected = _wiL3SelectedPath === idx;
+    return `
+      <div class="wi-l3-path-card ${selected ? 'selected' : ''}" onclick="wiL3SelectPath(${idx})">
+        <div class="wi-l3-path-header">
+          <div class="wi-l3-path-title">${path.title}</div>
+          <div class="wi-l3-path-effort ${path.effort}">${path.effortLabel}</div>
+        </div>
+        <div style="font-size:0.72em;font-weight:600;color:var(--text-light);margin-bottom:10px;">${path.desc}</div>
+        ${leversHtml}
+        <div class="wi-l3-score-delta">
+          <div style="flex:1;">
+            <div style="font-size:0.68em;color:var(--text-light);font-weight:700;">Projected FHS</div>
+            <div style="font-size:1.1em;font-weight:900;color:#7C3AED;">${cur} → <span style="color:#00B894;">${projScore}</span></div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.68em;color:var(--text-light);font-weight:700;">${selected ? '✅ Selected' : 'Tap to select'}</div>
+          </div>
+        </div>
+        ${selected ? `<button class="wi-l3-apply-btn" onclick="wiL3ApplyPath(${idx},event)">🎚️ Apply to Variables tab</button>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function wiL3SelectPath(idx) {
+  _wiL3SelectedPath = _wiL3SelectedPath === idx ? null : idx;
+  const targetVal = parseInt(document.getElementById('wi-l3-target')?.value || 80);
+  const fhsNow = computeFHSScore();
+  const p = getFHSProfile();
+  const paths = wiL3SolvePaths(fhsNow.overallScore, targetVal, fhsNow, p);
+  wiL3RenderPaths(paths, fhsNow.overallScore, targetVal);
+}
+
+function wiL3ApplyPath(idx, event) {
+  event.stopPropagation();
+  const p = getFHSProfile();
+  const fhsNow = computeFHSScore();
+  const targetVal = parseInt(document.getElementById('wi-l3-target')?.value || 80);
+  const paths = wiL3SolvePaths(fhsNow.overallScore, targetVal, fhsNow, p);
+  const path = paths[idx];
+  if (!path) return;
+  // Reset sliders first
+  _wiSliders = { sip:0, cut:0, emg:0, ins:0 };
+  // Apply each lever that maps to a slider
+  path.levers.forEach(lever => {
+    if (lever.sliderKey && lever.sliderVal !== null) {
+      _wiSliders[lever.sliderKey] = lever.sliderVal;
+      const el = document.getElementById('wi-' + lever.sliderKey);
+      if (el) { el.value = lever.sliderVal; wiUpdateSliderUI(lever.sliderKey, lever.sliderVal); }
+    }
+  });
+  // Switch to sliders tab and recompute
+  wiSetTab('sliders');
+  // Update labels
+  const isIN = (p?.region || 'IN') !== 'US';
+  const sym = isIN ? '₹' : '$';
+  ['sip','cut','emg','ins'].forEach(k => {
+    const labels = {
+      sip: v => v === 0 ? `+${sym}0` : `+${sym}${v >= 1000 ? (v/1000).toFixed(0)+'K' : v}/mo`,
+      cut: v => v === 0 ? '0%' : `-${v}% expenses`,
+      emg: v => v === 0 ? '+0 mo' : `+${v} month${v>1?'s':''}`,
+      ins: v => v === 0 ? '+0×' : `+${v}× cover`,
+    };
+    const lbl = document.getElementById(`wi-lbl-${k}`);
+    if (lbl) lbl.textContent = labels[k](_wiSliders[k]);
+  });
+  wiRecompute();
+  showToast(`✅ Path ${idx+1} applied to Variables tab!`, 2000);
+}
+
 function wiSaveAsGoal() {
   if (!_wiLastResult) return;
   const p = getFHSProfile();
@@ -15783,9 +16417,11 @@ function scoreNWTrajectory(nw, profile) {
     </div>
 
     <!-- TAB ROW -->
-    <div style="display:flex;gap:8px;margin-bottom:4px;" id="wi-tabs">
-      <button class="wi-tab-btn active" id="wi-tab-sliders" onclick="wiSetTab('sliders')" style="flex:1;padding:9px 6px;border-radius:12px;border:none;font-size:0.78em;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;background:#7C3AED;color:white;">🎚️ Variables</button>
-      <button class="wi-tab-btn" id="wi-tab-scenarios" onclick="wiSetTab('scenarios')" style="flex:1;padding:9px 6px;border-radius:12px;border:1.5px solid #DDD6FE;font-size:0.78em;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;background:white;color:#7C3AED;">🎬 Scenarios</button>
+    <div style="display:flex;gap:6px;margin-bottom:4px;" id="wi-tabs">
+      <button class="wi-tab-btn active" id="wi-tab-sliders" onclick="wiSetTab('sliders')" style="flex:1;padding:9px 4px;border-radius:12px;border:none;font-size:0.72em;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;background:#7C3AED;color:white;">🎚️ Variables</button>
+      <button class="wi-tab-btn" id="wi-tab-scenarios" onclick="wiSetTab('scenarios')" style="flex:1;padding:9px 4px;border-radius:12px;border:1.5px solid #DDD6FE;font-size:0.72em;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;background:white;color:#7C3AED;">🎬 Scenarios</button>
+      <button class="wi-tab-btn" id="wi-tab-stress" onclick="wiSetTab('stress')" style="flex:1;padding:9px 4px;border-radius:12px;border:1.5px solid #FECACA;font-size:0.72em;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;background:white;color:#E17055;">⚡ Stress</button>
+      <button class="wi-tab-btn" id="wi-tab-l3" onclick="wiSetTab('l3')" style="flex:1;padding:9px 4px;border-radius:12px;border:1.5px solid #DDD6FE;font-size:0.72em;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;background:white;color:#7C3AED;">🎯 Goals</button>
     </div>
 
     <!-- SLIDERS PANEL -->
@@ -15843,7 +16479,152 @@ function scoreNWTrajectory(nw, profile) {
       <div class="wi-impact-list" id="wi-scenario-impact-list"></div>
     </div>
 
-    <!-- ACTIONS -->
+    <!-- STRESS TEST PANEL -->
+    <div id="wi-panel-stress" style="display:none;">
+      <div class="wi-section-label">⚡ Stress Test — What breaks first?</div>
+      <div style="font-size:0.72em;font-weight:600;color:var(--text-light);margin-bottom:14px;line-height:1.5;">Test your financial resilience. Each test shows score impact AND a recovery path.</div>
+
+      <!-- 1. Lifestyle Creep -->
+      <div class="wi-stress-card" id="wi-stress-lifestyle">
+        <div class="wi-stress-header">
+          <div class="wi-stress-title">💸 Lifestyle Creep</div>
+          <div style="font-size:0.78em;font-weight:900;color:#7C3AED;" id="wi-stress-lifestyle-val">3%/yr</div>
+        </div>
+        <div class="wi-stress-desc">Annual expense growth on top of inflation — most people underestimate this.</div>
+        <input type="range" class="wi-slider" id="wi-stress-lc" min="0" max="8" step="1" value="3" oninput="wiStressUpdate('lifestyle',this.value)" style="--pct:37.5%;margin:10px 0 4px;">
+        <div class="wi-slider-ticks"><span>0%</span><span>2%</span><span>4%</span><span>6%</span><span>8%</span></div>
+        <div class="wi-stress-result" id="wi-stress-lifestyle-result">
+          <div class="wi-stress-result-score" id="wi-stress-lifestyle-score"></div>
+          <div class="wi-stress-result-recovery" id="wi-stress-lifestyle-recovery"></div>
+        </div>
+      </div>
+
+      <!-- 2. Market Shock -->
+      <div class="wi-stress-card" id="wi-stress-market">
+        <div class="wi-stress-header">
+          <div class="wi-stress-title">📉 Market Shock</div>
+          <div class="wi-stress-toggle">
+            <button class="wi-stress-toggle-btn" id="wi-stress-mkt-0" onclick="wiStressMarket(0)">Off</button>
+            <button class="wi-stress-toggle-btn" id="wi-stress-mkt-20" onclick="wiStressMarket(20)">−20%</button>
+            <button class="wi-stress-toggle-btn active" id="wi-stress-mkt-40" onclick="wiStressMarket(40)">−40%</button>
+          </div>
+        </div>
+        <div class="wi-stress-desc">Crash wipes your portfolio. Tests Bridge Fund gap (money needed before pension/EPF age).</div>
+        <div class="wi-stress-result" id="wi-stress-market-result">
+          <div class="wi-stress-result-score" id="wi-stress-market-score"></div>
+          <div class="wi-stress-result-recovery" id="wi-stress-market-recovery"></div>
+        </div>
+      </div>
+
+      <!-- 3. Family Health Crisis (Kishore's ₹25L story) -->
+      <div class="wi-stress-card" id="wi-stress-crisis">
+        <div class="wi-stress-header">
+          <div class="wi-stress-title">🏥 Family Health Crisis</div>
+          <div style="font-size:0.72em;font-weight:800;color:var(--text-light);" id="wi-stress-crisis-active">OFF</div>
+        </div>
+        <div class="wi-stress-desc">A sudden medical emergency drains your savings + adds recurring care costs.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;">
+          <div>
+            <div style="font-size:0.65em;font-weight:800;color:var(--text-light);margin-bottom:4px;">LUMP SUM COST</div>
+            <input type="number" class="wi-config-input" id="wi-stress-crisis-lump" placeholder="e.g. 2500000" oninput="wiStressUpdate('crisis')" value="2500000">
+          </div>
+          <div>
+            <div style="font-size:0.65em;font-weight:800;color:var(--text-light);margin-bottom:4px;">MONTHLY ONGOING</div>
+            <input type="number" class="wi-config-input" id="wi-stress-crisis-monthly" placeholder="e.g. 15000" oninput="wiStressUpdate('crisis')" value="15000">
+          </div>
+        </div>
+        <div class="wi-stress-result" id="wi-stress-crisis-result">
+          <div class="wi-stress-result-score" id="wi-stress-crisis-score"></div>
+          <div class="wi-stress-result-recovery" id="wi-stress-crisis-recovery"></div>
+        </div>
+      </div>
+
+      <!-- 4. Sandwich Generation -->
+      <div class="wi-stress-card" id="wi-stress-sandwich">
+        <div class="wi-stress-header">
+          <div class="wi-stress-title">🧓 Sandwich Generation</div>
+          <div style="font-size:0.72em;font-weight:800;color:var(--text-light);" id="wi-stress-sandwich-active">OFF</div>
+        </div>
+        <div class="wi-stress-desc">Supporting elderly parents + your own kids simultaneously. The silent budget crusher.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;">
+          <div>
+            <div style="font-size:0.65em;font-weight:800;color:var(--text-light);margin-bottom:4px;">MONTHLY SUPPORT</div>
+            <input type="number" class="wi-config-input" id="wi-stress-sandwich-mo" placeholder="e.g. 20000" oninput="wiStressUpdate('sandwich')" value="20000">
+          </div>
+          <div>
+            <div style="font-size:0.65em;font-weight:800;color:var(--text-light);margin-bottom:4px;">FOR HOW MANY YEARS</div>
+            <input type="number" class="wi-config-input" id="wi-stress-sandwich-yrs" placeholder="e.g. 10" oninput="wiStressUpdate('sandwich')" value="10">
+          </div>
+        </div>
+        <div class="wi-stress-result" id="wi-stress-sandwich-result">
+          <div class="wi-stress-result-score" id="wi-stress-sandwich-score"></div>
+          <div class="wi-stress-result-recovery" id="wi-stress-sandwich-recovery"></div>
+        </div>
+      </div>
+
+      <!-- 5. Healthcare Gap -->
+      <div class="wi-stress-card" id="wi-stress-health">
+        <div class="wi-stress-header">
+          <div class="wi-stress-title">💊 Healthcare Gap</div>
+          <div class="wi-stress-toggle">
+            <button class="wi-stress-toggle-btn" id="wi-stress-hc-off" onclick="wiStressHealthcare(false)">Off</button>
+            <button class="wi-stress-toggle-btn active" id="wi-stress-hc-on" onclick="wiStressHealthcare(true)">On</button>
+          </div>
+        </div>
+        <div class="wi-stress-desc" id="wi-stress-hc-desc">If you retire before employer health cover ends, private insurance adds a stealth FIRE cost.</div>
+        <div class="wi-stress-result" id="wi-stress-health-result">
+          <div class="wi-stress-result-score" id="wi-stress-health-score"></div>
+          <div class="wi-stress-result-recovery" id="wi-stress-health-recovery"></div>
+        </div>
+      </div>
+
+      <!-- 6. Primary Residence in FIRE -->
+      <div class="wi-stress-card" id="wi-stress-home">
+        <div class="wi-stress-header">
+          <div class="wi-stress-title">🏠 Include Home in FIRE?</div>
+          <div class="wi-stress-toggle">
+            <button class="wi-stress-toggle-btn active" id="wi-stress-home-off" onclick="wiStressHome(false)">Exclude</button>
+            <button class="wi-stress-toggle-btn" id="wi-stress-home-on" onclick="wiStressHome(true)">Include</button>
+          </div>
+        </div>
+        <div class="wi-stress-desc">Counting your primary home boosts FIRE score — but you can't liquidate it easily.</div>
+        <div class="wi-stress-result" id="wi-stress-home-result">
+          <div class="wi-stress-result-score" id="wi-stress-home-score"></div>
+          <div class="wi-stress-result-recovery" id="wi-stress-home-recovery"></div>
+        </div>
+      </div>
+
+      <div class="wi-section-label" id="wi-stress-combined-label" style="display:none;">🧨 Combined Stress Score</div>
+      <div id="wi-stress-combined"></div>
+    </div>
+
+    <!-- LEVEL 3 GOAL REVERSE PANEL -->
+    <div id="wi-panel-l3" style="display:none;">
+      <div class="wi-section-label">🎯 Level 3 · Goal Reverse Engine</div>
+      <div style="font-size:0.72em;font-weight:600;color:var(--text-light);margin-bottom:10px;line-height:1.5;">Set your target score. Get 3 ranked paths to get there — you choose the one that fits your life.</div>
+
+      <div style="background:var(--bg);border-radius:14px;padding:14px 16px;margin-bottom:14px;">
+        <div style="font-size:0.75em;font-weight:800;color:var(--text-med);margin-bottom:8px;">TARGET FHS SCORE</div>
+        <div class="wi-l3-target-row">
+          <div style="flex:1;">
+            <input type="range" class="wi-slider" id="wi-l3-target" min="50" max="100" step="1" value="80" oninput="wiL3UpdateTarget(this.value)" style="--pct:60%;">
+            <div class="wi-slider-ticks"><span>50</span><span>65</span><span>80</span><span>90</span><span>100</span></div>
+          </div>
+          <div style="text-align:center;min-width:56px;">
+            <div class="wi-l3-target-score" id="wi-l3-target-num">80</div>
+            <div class="wi-l3-target-label">Target</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.72em;font-weight:700;margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.06);">
+          <span style="color:var(--text-light);">Current score: <span id="wi-l3-current-score" style="color:#7C3AED;font-weight:900;">—</span></span>
+          <span style="color:var(--text-light);">Gap: <span id="wi-l3-gap" style="color:#E17055;font-weight:900;">—</span> points</span>
+        </div>
+      </div>
+
+      <div id="wi-l3-paths">
+        <div style="text-align:center;padding:20px;color:var(--text-light);font-size:0.82em;">Move the slider to see ranked paths →</div>
+      </div>
+    </div>
     <div class="wi-actions">
       <button class="wi-btn-primary" onclick="wiReset()">↺ Reset</button>
       <button class="wi-btn-goal" id="wi-goal-btn" onclick="wiSaveAsGoal()" disabled>➕ Save as Goal</button>
