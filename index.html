@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.10.9
+  Version  : 3.11.0
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -13118,11 +13118,14 @@ function scoreTaxOptimization(agg, profile, cfg) {
   // ── COMPONENT 1: Shelter Utilization (0–50 pts) ──────────────────────
   // Actual annual contributions vs legal maximums
   const annualContrib = retAccounts.reduce((s,a) => s + (a.meta?.monthlyContribution||0)*12, 0);
-  // US: 401K $23K + IRA $7K + HSA $4,150 = $34,150
-  // IN: 80C ₹1.5L + NPS ₹50K = ₹2,00,000
-  const shelterMax = isUS ? 34150 : 200000;
-  // HSA / NPS Tier-2 bonus capacity
-  const hsaMax     = isUS ? 4150  : 50000;
+  // Married with working spouse doubles eligible shelter limits
+  const isMarried = (profile?.spouseIncome || 0) > 0;
+  const earners = isMarried ? 2 : 1;
+  // US: 401K $23K + IRA $7K + HSA $4,150 = $34,150 per earner
+  // IN: 80C ₹1.5L + NPS ₹50K = ₹2,00,000 per earner
+  const shelterMax = (isUS ? 34150 : 200000) * earners;
+  // HSA / NPS Tier-2 bonus capacity (per earner)
+  const hsaMax     = (isUS ? 4150  : 50000) * earners;
   const hsaUsed    = taxProfile.hsa ? hsaMax : 0;
   const effectiveContrib = annualContrib + hsaUsed;
   const shelterUtil = Math.min(effectiveContrib / shelterMax, 1);
@@ -13186,6 +13189,11 @@ function scoreTaxOptimization(agg, profile, cfg) {
   else if (stratScore < 14) { stratSignals.push(isUS ? 'Consider Roth IRA / backdoor Roth' : 'Consider ELSS / tax-free instruments'); }
 
   const totalScore = fhsClamp(shelterScore + assetLocScore + stratScore, 0, 100);
+  // Zero contribution nudge — user has retirement accounts but no monthly contribution captured
+  if (annualContrib === 0 && retAccounts.length > 0 && !taxProfile.hsa) {
+    shelterSignals.unshift(`⚠️ Monthly contribution is ₹0 on all ${retAccounts.length} retirement account${retAccounts.length>1?'s':''} — open Net Worth → edit each account → set Monthly Contribution to track shelter utilization`);
+  }
+
   const allSignals = [...shelterSignals, ...locSignals, ...stratSignals];
 
   return {
@@ -13197,7 +13205,7 @@ function scoreTaxOptimization(agg, profile, cfg) {
     shelterCapacityLeft, taxSavingsFromFilling, marginalRate,
     hasBonds, bondTotal, hasRetSpace, retTotal,
     calc: `Shelter ${shelterScore}/50 + Location ${assetLocScore}/30 + Strategy ${stratScore}/20 = ${totalScore}/100`,
-    benchmarkIN: isUS ? '401K $23K + IRA $7K + HSA $4,150 = $34,150 total shelter' : '80C ₹1.5L + NPS ₹50K = ₹2L total shelter',
+    benchmarkIN: isUS ? `401K ${earners>1?'$46K (×2)':'$23K'} + IRA ${earners>1?'$14K (×2)':'$7K'} + HSA ${earners>1?'$8,300 (×2)':'$4,150'} = ${earners>1?'$68,300 (married)':'$34,150'} total shelter` : `80C ${earners>1?'₹3L (×2)':'₹1.5L'} + NPS ${earners>1?'₹1L (×2)':'₹50K'} = ${earners>1?'₹4L (married)':'₹2L'} total shelter`,
     benchmarkSource: isUS ? 'IRS Publication 590 · CFP Board · AICPA' : 'IT Act 80C/80CCD · SEBI · PFRDA',
   };
 }
@@ -13816,7 +13824,7 @@ function openMasteryOnboard() {
       ['no','No — I held or bought more'],
       ['yes_some','Yes — sold a portion'],
       ['yes_all','Yes — exited fully'],
-    ], bhv.soldDuringCrash ? 'yes_some' : 'no', 'Historical behaviour predicts future behaviour')}
+    ], bhv.q4Raw || (bhv.soldDuringCrash ? 'yes_some' : 'no'), 'Historical behaviour predicts future behaviour')}
 
     ${q('q5', 'Q4 · If a peer outperformed you by 30% in a bull year…', [
       ['fine',"I'd be fine — I stick to my plan"],
@@ -13838,7 +13846,7 @@ function openMasteryOnboard() {
       ['mostly','Mostly — I consult them'],
       ['solo','No — I decide independently'],
       ['na','Not applicable / single'],
-    ], bhv.jointDecisions === false ? 'solo' : bhv.jointDecisions === true ? 'joint' : '', 'Decision governance quality')}
+    ], bhv.q8Raw || (bhv.jointDecisions === false ? 'solo' : bhv.jointDecisions === true ? 'joint' : ''), 'Decision governance quality')}
 
     <div style="font-size:0.7em;font-weight:900;color:#059669;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 10px;">💼 Income Architecture</div>
 
@@ -13868,19 +13876,19 @@ function openMasteryOnboard() {
     ${q('taxloss', 'Q10 · Do you practice tax-loss harvesting?', [
       ['yes','Yes — I actively harvest losses'],
       ['no','No / Not applicable'],
-    ], p?.taxProfile?.taxLossHarvesting ? 'yes' : '', 'Selling losing positions to offset capital gains tax')}
+    ], p?.taxProfile?.taxLossRaw || (p?.taxProfile?.taxLossHarvesting ? 'yes' : ''), 'Selling losing positions to offset capital gains tax')}
 
     ${q('hsa', 'Q11 · Do you utilize HSA / NPS Tier-2 / additional tax-advantaged accounts?', [
       ['yes','Yes — actively contributing'],
       ['no','No'],
-    ], p?.taxProfile?.hsa ? 'yes' : '', isUS ? 'HSA: triple tax-free (contribute, grow, withdraw tax-free for medical)' : 'NPS Tier-2: flexible tax-advantaged savings above 80C')}
+    ], p?.taxProfile?.hsaRaw || (p?.taxProfile?.hsa ? 'yes' : ''), isUS ? 'HSA: triple tax-free (contribute, grow, withdraw tax-free for medical)' : 'NPS Tier-2: flexible tax-advantaged savings above 80C')}
 
     <div style="font-size:0.7em;font-weight:900;color:#D97706;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 10px;">🏰 Estate & Legacy</div>
 
     ${q('will', 'Q12 · Do you have a valid will or trust?', [
       ['yes','Yes — will or trust drafted'],
       ['no','No'],
-    ], p?.taxProfile?.hasWill ? 'yes' : '', 'Essential for assets >$50k / ₹50L')}
+    ], p?.taxProfile?.willRaw || (p?.taxProfile?.hasWill ? 'yes' : ''), 'Essential for assets >$50k / ₹50L')}
 
     ${q('nominees', 'Q13 · Are nominees assigned on all financial accounts?', [
       ['yes','Yes — all accounts have nominees'],
@@ -13891,7 +13899,7 @@ function openMasteryOnboard() {
     ${q('poa', 'Q14 · Do you have a Power of Attorney or healthcare directive?', [
       ['yes','Yes'],
       ['no','No'],
-    ], p?.taxProfile?.hasPOA ? 'yes' : '', 'Critical for incapacity planning')}
+    ], p?.taxProfile?.poaRaw || (p?.taxProfile?.hasPOA ? 'yes' : ''), 'Critical for incapacity planning')}
 
     <button class="fhs-onboard-btn" onclick="saveMasteryProfile()" style="background:linear-gradient(135deg,#7C3AED,#9F67FA);margin-top:6px;">🧠 Save Mastery Profile</button>
     <button class="fhs-onboard-btn" onclick="closeMasteryOnboard()" style="background:var(--bg);color:var(--text-med);margin-top:8px;">Skip for now</button>
@@ -13931,13 +13939,17 @@ function saveMasteryProfile() {
   tolerance = Math.min(100, Math.max(0, tolerance));
 
   const regretAversion = q5 === 'fomo' ? 'high' : q5 === 'change' ? 'medium' : 'low';
-  const soldDuringCrash = q4 === 'yes_some' || q4 === 'yes_all';
+  // Store raw string values to preserve exact answer on reopen.
+  // Boolean coercion (e.g. soldDuringCrash, jointDecisions) was causing Q3/Q6/Q10-Q14
+  // to show incorrect or blank values when the modal re-opened.
+  const soldDuringCrash = q4 === 'yes_some' || q4 === 'yes_all'; // kept for scoring logic
   const jointDecisions = q8 === 'joint' || q8 === 'mostly' ? true : q8 === 'solo' ? false : null;
   const passivePct = passive === '0' ? 0 : passive === '5' ? 5 : passive === '20' ? 20 : passive === '35' ? 35 : 60;
 
   const riskProfile = { toleranceScore: tolerance, requiredReturn: q3val, q1, q5, q6, savedAt: Date.now() };
   const behaviourProfile = {
-    soldDuringCrash, regretAversion, jointDecisions,
+    soldDuringCrash, q4Raw: q4,       // q4Raw preserves 'yes_all' vs 'yes_some'
+    regretAversion, jointDecisions, q8Raw: q8, // q8Raw preserves 'na'
     passiveIncomePct: passivePct, incomeSources: sources,
     weeklyLogins: profile.behaviourProfile?.weeklyLogins || 0,
     abandonedGoals: profile.behaviourProfile?.abandonedGoals || 0,
@@ -13948,11 +13960,12 @@ function saveMasteryProfile() {
     ...profile, riskProfile, behaviourProfile,
     taxProfile: {
       marginalRate: parseFloat(parseFloat(g('marginal_rate') || (profile?.region === 'IN' ? '0.20' : '0.22')).toFixed(2)),
-      taxLossHarvesting: g('taxloss') === 'yes',
-      hsa: g('hsa') === 'yes',
-      hasWill: g('will') === 'yes',
-      hasNominees: g('nominees'),   // 'yes' | 'partial' | 'no'
-      hasPOA: g('poa') === 'yes',
+      // Store raw strings for yes/no fields — booleans show blank for 'no' on reopen
+      taxLossHarvesting: g('taxloss') === 'yes',  taxLossRaw: g('taxloss'),
+      hsa: g('hsa') === 'yes',                    hsaRaw: g('hsa'),
+      hasWill: g('will') === 'yes',               willRaw: g('will'),
+      hasNominees: g('nominees'),
+      hasPOA: g('poa') === 'yes',                 poaRaw: g('poa'),
       hasLifeInsurance: profile.insuranceCover > 0,
       savedAt: Date.now(),
     },
@@ -15453,10 +15466,14 @@ function fhsSheetItemToggle(accountId, checked) {
 
   saveFHSProfileData({ ...profile, accountOverrides: { ...overrides, [key]: current } });
 
-  // Update count live without re-rendering list
+  // Update count AND total value live without re-rendering the full list
   const selCount = current.length;
   const total = _fhsPickerData.allAccounts.length;
-  document.getElementById('fhs-sheet-count').textContent = selCount + ' of ' + total + ' accounts selected';
+  const selectedVal = _fhsPickerData.allAccounts
+    .filter(a => current.includes(a.id))
+    .reduce((s, a) => s + nwConvert(a.balance || 0, a.currency || 'USD'), 0);
+  const valStr = selectedVal > 0 ? ` · ${fmt(selectedVal)}` : '';
+  document.getElementById('fhs-sheet-count').textContent = selCount + ' of ' + total + ' accounts selected' + valStr;
 
   // Update group checkbox state
   const { groups } = _fhsPickerData;
@@ -15498,8 +15515,12 @@ function fhsSheetGroupToggle(type, checked) {
     if (groupAccounts.includes(cb.dataset.id)) cb.checked = checked;
   });
 
-  // Update count
-  document.getElementById('fhs-sheet-count').textContent = current.length + ' of ' + _fhsPickerData.allAccounts.length + ' accounts selected';
+  // Update count + total value
+  const _grpSelVal = _fhsPickerData.allAccounts
+    .filter(a => current.includes(a.id))
+    .reduce((s, a) => s + nwConvert(a.balance || 0, a.currency || 'USD'), 0);
+  const _grpValStr = _grpSelVal > 0 ? ` · ${fmt(_grpSelVal)}` : '';
+  document.getElementById('fhs-sheet-count').textContent = current.length + ' of ' + _fhsPickerData.allAccounts.length + ' accounts selected' + _grpValStr;
 }
 
 function fhsSheetBulk(checked) {
@@ -15874,7 +15895,8 @@ function renderFHS() {
               const pillarLabels = { fire:'retirement corpus', retirement:'retirement corpus', emergency:'liquid funds', education:'education funds' };
               const hasAccountPicker = ['fire','retirement','emergency','education'].includes(key);
               // Question-based pillars don't use accounts at all — hide section entirely
-              const isQuestionBased = ['risk','behaviour','tax','estate'].includes(key);
+              // Exclude question-based pillars AND growth pillars that use whole NW (no picker)
+              const isQuestionBased = ['risk','behaviour','tax','estate','portfolio','sequence','trajectory'].includes(key);
               if (isQuestionBased) return '';
 
               // Accounts currently counted
