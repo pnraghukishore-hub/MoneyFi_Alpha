@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.6.1
+  Version  : 3.7.0
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -12792,38 +12792,95 @@ function scoreTaxOptimization(agg, profile, cfg) {
   const taxProfile = profile?.taxProfile;
   if (!taxProfile) return { score: 0, status: 'inactive', label: 'Complete Tax profile in Mastery onboarding' };
 
-  let score = 40; // Base — everyone has some tax awareness
-  const signals = [];
-
-  // Tax-advantaged account utilization
-  const retAccounts = (data._nwAccounts||[]).filter(a => a.type === 'retirement');
-  const hasRetAccounts = retAccounts.length > 0;
-  if (hasRetAccounts) { score += 20; signals.push('Tax-advantaged retirement accounts ✓'); }
-
-  // Max contribution utilization
-  const totalMonthlyContrib = retAccounts.reduce((s,a) => s + (a.meta?.monthlyContribution||0), 0);
-  const annualContrib = totalMonthlyContrib * 12;
   const isUS = (profile?.region || 'IN') === 'US';
-  const maxContrib = isUS ? 23000 : 150000; // 401K $23k / NPS ₹1.5L 80C
-  if (annualContrib > 0) {
-    const utilization = Math.min(annualContrib / maxContrib, 1);
-    const contribScore = Math.round(utilization * 20);
-    score += contribScore;
-    signals.push(`${(utilization*100).toFixed(0)}% of ${isUS?'401K':'80C/NPS'} limit utilized`);
+  const retAccounts  = (data._nwAccounts||[]).filter(a => a.type === 'retirement');
+  const brokerAccts  = (data._nwAccounts||[]).filter(a => a.type === 'brokerage');
+  const bondAccts    = (data._nwAccounts||[]).filter(a => a.type === 'bonds_fd');
+
+  // ── COMPONENT 1: Shelter Utilization (0–50 pts) ──────────────────────
+  // Actual annual contributions vs legal maximums
+  const annualContrib = retAccounts.reduce((s,a) => s + (a.meta?.monthlyContribution||0)*12, 0);
+  // US: 401K $23K + IRA $7K + HSA $4,150 = $34,150
+  // IN: 80C ₹1.5L + NPS ₹50K = ₹2,00,000
+  const shelterMax = isUS ? 34150 : 200000;
+  // HSA / NPS Tier-2 bonus capacity
+  const hsaMax     = isUS ? 4150  : 50000;
+  const hsaUsed    = taxProfile.hsa ? hsaMax : 0;
+  const effectiveContrib = annualContrib + hsaUsed;
+  const shelterUtil = Math.min(effectiveContrib / shelterMax, 1);
+  const shelterScore = Math.round(shelterUtil * 50);
+  const shelterCapacityLeft = Math.max(0, shelterMax - effectiveContrib);
+  const marginalRate = taxProfile.marginalRate || 0.22; // default 22% US, 20% IN
+  const taxSavingsFromFilling = Math.round(shelterCapacityLeft * marginalRate);
+
+  const shelterSignals = [];
+  if (shelterUtil >= 0.90) shelterSignals.push(`${(shelterUtil*100).toFixed(0)}% of ${isUS?'401K+IRA+HSA':'80C+NPS'} limit utilized ✓`);
+  else if (shelterUtil >= 0.50) shelterSignals.push(`${(shelterUtil*100).toFixed(0)}% utilized — ${fmt(shelterCapacityLeft)}/yr capacity remaining`);
+  else shelterSignals.push(`Only ${(shelterUtil*100).toFixed(0)}% of ${isUS?'$34,150':'₹2L'} shelter limit used`);
+
+  // ── COMPONENT 2: Asset Location Efficiency (0–30 pts) ─────────────────
+  // Strict version: penalizes bonds/FD in taxable accounts when retirement has room
+  const retTotal   = retAccounts.reduce((s,a) => s + nwConvert(a.balance||0, a.currency||'USD'), 0);
+  const bondTotal  = bondAccts.reduce((s,a)   => s + nwConvert(a.balance||0, a.currency||'USD'), 0);
+  const hasBonds   = bondTotal > 0;
+  const hasRetSpace = shelterUtil < 0.95; // retirement still has meaningful capacity
+
+  // Bonds/FD held in retirement accounts (tax-efficient placement)
+  // We infer this by checking if retirement balance includes bond-type sub-accounts
+  // Proxy: if user has both bonds AND retirement fully funded → good location
+  // If bonds in brokerage AND retirement has room → bad location (tax drag)
+  let assetLocScore = 0;
+  const locSignals = [];
+
+  if (!hasBonds) {
+    // No fixed income in taxable → no location problem, full 30 pts
+    assetLocScore = 30;
+    locSignals.push('No taxable fixed-income exposure ✓');
+  } else if (retTotal <= 0) {
+    // Has bonds but no retirement accounts at all — bonds have nowhere better to go
+    assetLocScore = 15;
+    locSignals.push('No retirement account to shelter bonds/FD');
+  } else if (!hasRetSpace) {
+    // Retirement fully funded AND has bonds — acceptable, bonds displaced correctly
+    assetLocScore = 28;
+    locSignals.push('Retirement maximized — bond placement acceptable ✓');
+  } else {
+    // Has bonds in taxable AND retirement has room → strict Tax Leak formula
+    // Score = 15_base + 15 × (1 − min(taxableBonds, unusedRoom) / totalBonds)
+    // This penalizes exactly the misplaced portion and rewards partial improvement
+    const taxLeak = Math.min(bondTotal, shelterCapacityLeft);
+    const leakRatio = taxLeak / bondTotal;
+    assetLocScore = Math.round(15 + 15 * (1 - leakRatio));
+    locSignals.push(`Tax drag: ${fmt(bondTotal)} taxable bonds, ${fmt(shelterCapacityLeft)}/yr shelter unused — move bonds to retirement to reclaim ${Math.round(leakRatio*15)} pts`);
   }
 
-  // Self-reported tax efficiency from profile
-  if (taxProfile.hasWillOrTrust) { score += 10; signals.push('Estate documents in place ✓'); }
-  if (taxProfile.taxLossHarvesting) { score += 10; signals.push('Tax-loss harvesting active ✓'); }
-  if (taxProfile.hsa || taxProfile.nps) { score += 5; signals.push(`${isUS?'HSA':'NPS Tier-2'} utilization ✓`); }
+  // ── COMPONENT 3: Strategy Bonus (0–20 pts) ───────────────────────────
+  let stratScore = 0;
+  const stratSignals = [];
+  if (taxProfile.taxLossHarvesting) { stratScore += 8; stratSignals.push('Tax-loss harvesting active ✓'); }
+  if (taxProfile.hsa) {
+    stratScore += 6;
+    stratSignals.push(isUS ? 'HSA triple-tax advantage ✓' : 'NPS Tier-2 utilized ✓');
+  }
+  // Roth / tax-exempt bucket — check for Roth IRA account name
+  const hasRoth = retAccounts.some(a => (a.name||'').toLowerCase().includes('roth') || (a.meta?.subtype||'').toLowerCase().includes('roth'));
+  if (hasRoth) { stratScore += 6; stratSignals.push('Roth / tax-exempt bucket ✓'); }
+  else if (stratScore < 14) { stratSignals.push(isUS ? 'Consider Roth IRA / backdoor Roth' : 'Consider ELSS / tax-free instruments'); }
 
-  score = fhsClamp(score, 0, 100);
+  const totalScore = fhsClamp(shelterScore + assetLocScore + stratScore, 0, 100);
+  const allSignals = [...shelterSignals, ...locSignals, ...stratSignals];
+
   return {
-    score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
-    signals, annualContrib, maxContrib,
-    calc: `Base 40 + retirement utilization + tax strategy signals`,
-    benchmarkIN: `${isUS ? '401K max $23k, HSA $4,150, Roth backdoor' : '80C ₹1.5L, NPS ₹50k add-on, LTCG harvesting'}`,
-    benchmarkSource: isUS ? 'IRS limits · CFP Board' : 'IT Act 80C/80CCD · SEBI',
+    score: totalScore,
+    status: totalScore >= 70 ? 'good' : totalScore >= 40 ? 'fair' : 'poor',
+    signals: allSignals,
+    shelterScore, assetLocScore, stratScore,
+    annualContrib: effectiveContrib, maxContrib: shelterMax,
+    shelterCapacityLeft, taxSavingsFromFilling, marginalRate,
+    hasBonds, bondTotal, hasRetSpace, retTotal,
+    calc: `Shelter ${shelterScore}/50 + Location ${assetLocScore}/30 + Strategy ${stratScore}/20 = ${totalScore}/100`,
+    benchmarkIN: isUS ? '401K $23K + IRA $7K + HSA $4,150 = $34,150 total shelter' : '80C ₹1.5L + NPS ₹50K = ₹2L total shelter',
+    benchmarkSource: isUS ? 'IRS Publication 590 · CFP Board · AICPA' : 'IT Act 80C/80CCD · SEBI · PFRDA',
   };
 }
 
@@ -12850,6 +12907,237 @@ function scoreEstateLegacy(profile) {
   };
 }
 
+
+// ── GROWTH BAND SCORERS ────────────────────────────────────────────────────
+
+// G1: Portfolio Health — diversification + concentration
+function scorePortfolioHealth(nw, profile) {
+  const isUS = (profile?.region || 'IN') === 'US';
+  const total = nw.totalAssets;
+  if (total <= 0) return { score: 0, status: 'inactive', label: 'No Net Worth accounts found' };
+
+  const byT = nw.byType;
+  const get = t => (byT[t]?.total || 0);
+
+  const equity   = get('brokerage') + get('retirement');
+  const debt     = get('bonds_fd');
+  const gold     = get('metals');
+  const realestate = get('realestate');
+  const cash     = get('checking') + get('savings_acc') + get('cash');
+  const liab     = nw.liabTotal;
+
+  const eqPct  = equity / total;
+  const dbPct  = debt   / total;
+  const auPct  = gold   / total;
+  const rePct  = realestate / total;
+  const caPct  = cash   / total;
+
+  // Age-adjusted target ranges (younger = more equity ok)
+  const age = profile?.age || 35;
+  const targetEq = Math.max(0.30, 0.80 - age * 0.01);  // 80% at 20, 45% at 65
+  const signals = [];
+  let score = 0;
+
+  // ── Diversification (60 pts) ──────────────────────────
+  // Reward having all 4 asset classes present with meaningful allocation
+  let diversScore = 0;
+  const classes = [
+    { name: 'Equity', pct: eqPct,   min: 0.10, ideal: targetEq,     pts: 20 },
+    { name: 'Debt',   pct: dbPct,   min: 0.05, ideal: 0.20,          pts: 15 },
+    { name: 'Gold',   pct: auPct,   min: 0.02, ideal: 0.10,          pts: 10 },
+    { name: 'Real Estate', pct: rePct, min: 0.0, ideal: 0.15,        pts: 10 },
+    { name: 'Cash',   pct: caPct,   min: 0.02, ideal: 0.05,          pts:  5 },
+  ];
+  classes.forEach(c => {
+    if (c.pct >= c.min) {
+      // Lerp: 0 pts at 0%, full pts at ideal, taper off after 2× ideal
+      const raw = c.pct <= c.ideal
+        ? (c.pct / c.ideal) * c.pts
+        : c.pts * Math.max(0, 1 - (c.pct - c.ideal) / c.ideal);
+      diversScore += raw;
+      if (c.pct >= c.min) signals.push(`${c.name} ${(c.pct*100).toFixed(0)}% ✓`);
+    } else {
+      signals.push(`${c.name} underweight (${(c.pct*100).toFixed(0)}%)`);
+    }
+  });
+  diversScore = Math.min(diversScore, 60);
+
+  // ── Concentration Penalty (up to −20) ────────────────
+  let concPenalty = 0;
+  const allAccts = [
+    ...(byT.brokerage?.accounts||[]),
+    ...(byT.retirement?.accounts||[]),
+    ...(byT.bonds_fd?.accounts||[]),
+    ...(byT.savings_acc?.accounts||[]),
+  ];
+  const maxSingle = allAccts.reduce((mx, a) => Math.max(mx, a._val || 0), 0);
+  const concRatio = total > 0 ? maxSingle / total : 0;
+  if (concRatio > 0.6)      { concPenalty = 20; signals.push(`⚠ Single account is ${(concRatio*100).toFixed(0)}% of NW`); }
+  else if (concRatio > 0.4) { concPenalty = 10; signals.push(`Single account is ${(concRatio*100).toFixed(0)}% of NW — consider rebalancing`); }
+  else if (concRatio <= 0.25) signals.push('No single-account concentration ✓');
+
+  // ── Equity allocation vs age target (20 pts) ─────────
+  const eqGap = Math.abs(eqPct - targetEq);
+  const eqAlignScore = Math.round(Math.max(0, 20 - eqGap * 100));
+  if (eqGap <= 0.10) signals.push(`Equity allocation age-appropriate (${(eqPct*100).toFixed(0)}% vs ${(targetEq*100).toFixed(0)}% target) ✓`);
+  else signals.push(`Equity ${(eqPct*100).toFixed(0)}% — age-target is ~${(targetEq*100).toFixed(0)}%`);
+
+  score = fhsClamp(Math.round(diversScore + eqAlignScore - concPenalty), 0, 100);
+  return {
+    score, status: score >= 70 ? 'good' : score >= 45 ? 'fair' : 'poor',
+    signals,
+    eqPct, dbPct, auPct, rePct, caPct, concRatio, targetEq,
+    calc: `Diversification ${diversScore.toFixed(0)}/60 + Equity Alignment ${eqAlignScore}/20 − Concentration ${concPenalty} = ${score}/100`,
+    benchmarkIN: `Age-adjusted equity target ~${(targetEq*100).toFixed(0)}% · Gold 5–15% · Debt 15–25%`,
+    benchmarkSource: 'Vanguard Target Allocation · SEBI AMFI · CFP Board guidelines',
+  };
+}
+
+// G2: Goal Sequencing — are higher-priority goals funded before lower ones?
+function scoreGoalSequencing(pillarResults, profile) {
+  // Needs at least Foundation pillars active
+  const get = key => pillarResults[key]?.result;
+  const emergency = get('emergency');
+  const insurance = get('insurance');
+  const retirement = get('retirement');
+  const fire = get('fire');
+  const education = get('education');
+  const debt = get('debt');
+
+  const activePillars = [emergency, insurance, retirement].filter(p => p && p.status !== 'inactive');
+  if (activePillars.length === 0) return { score: 0, status: 'inactive', label: 'Complete Foundation onboarding to unlock Goal Sequencing' };
+
+  // Priority ladder scoring — each tier worth points
+  // Tier 1: Emergency (must be ≥60 before anything else)
+  // Tier 2: Insurance (must be ≥60 before retirement)
+  // Tier 3: Debt health (DTI must be < 'poor' before aggressive investing)
+  // Tier 4: Retirement (must be ≥40 before FIRE)
+  // Tier 5: Education (funded after retirement)
+  const signals = [];
+  let score = 0;
+  let sequencePenalty = 0;
+
+  const emS  = emergency?.score  || 0;
+  const insS = insurance?.score  || 0;
+  const retS = retirement?.score || 0;
+  const fireS = fire?.score      || 0;
+  const eduS = education?.score  || 0;
+  const debtS = debt?.score      || 0;
+
+  // Tier 1: Emergency Fund (25 pts)
+  const emScore = Math.round(fhsLerp(emS, 0, 100, 0, 25));
+  score += emScore;
+  if (emS >= 60) signals.push('Emergency fund secured before investing ✓');
+  else signals.push('Build emergency fund before aggressive investing');
+
+  // Tier 2: Insurance before wealth accumulation (20 pts)
+  const insScore = Math.round(fhsLerp(insS, 0, 100, 0, 20));
+  score += insScore;
+  if (insS >= 60) signals.push('Life insurance in place ✓');
+  else signals.push('Secure insurance coverage — financial dependants at risk');
+
+  // Tier 3: Debt health — being high debt while investing is sequence risk (20 pts)
+  const debtSeqScore = Math.round(fhsLerp(debtS, 0, 100, 0, 20));
+  score += debtSeqScore;
+  if (debtS >= 60) signals.push('Debt-to-income healthy — investing makes sense ✓');
+  else signals.push('High DTI — pay down debt before maximizing investments');
+
+  // Tier 4: Retirement funded before FIRE (20 pts)
+  const retSeqScore = Math.round(fhsLerp(retS, 0, 100, 0, 20));
+  score += retSeqScore;
+  if (retS >= 40) signals.push('Retirement track established ✓');
+  else signals.push('Retirement underfunded — prioritize before FIRE/education');
+
+  // Sequencing penalty: if lower-priority goals score much higher than higher ones
+  if (fireS > retS + 20 && retS < 50) {
+    sequencePenalty += 10;
+    signals.push('⚠ FIRE corpus ahead of retirement benchmark — sequence risk');
+  }
+  if (eduS > emS + 20 && emS < 60) {
+    sequencePenalty += 5;
+    signals.push('⚠ Education funded before emergency fund secured');
+  }
+
+  // Tier 5: Bonus for education well-sequenced (15 pts)
+  if (education && education.status !== 'inactive') {
+    const eduSeqBonus = emS >= 60 && retS >= 40 ? Math.round(fhsLerp(eduS, 0, 100, 0, 15)) : Math.round(fhsLerp(eduS, 0, 100, 0, 7));
+    score += eduSeqBonus;
+    if (eduSeqBonus > 8) signals.push('Education goal funded in correct sequence ✓');
+  } else {
+    score += 15; // no kids — no sequencing issue, award full bonus
+  }
+
+  score = fhsClamp(score - sequencePenalty, 0, 100);
+  return {
+    score, status: score >= 70 ? 'good' : score >= 45 ? 'fair' : 'poor',
+    signals,
+    emS, insS, retS, fireS, eduS, debtS, sequencePenalty,
+    calc: `Emergency ${emScore}/25 + Insurance ${insScore}/20 + Debt ${debtSeqScore}/20 + Retirement ${retSeqScore}/20 + Education bonus − Sequence penalty ${sequencePenalty}`,
+    benchmarkIN: 'Priority order: Emergency → Insurance → Debt → Retirement → FIRE → Education → Wealth',
+    benchmarkSource: 'CFP Board Financial Planning Process · SEBI Investor Guidelines',
+  };
+}
+
+// G3: Net Worth Trajectory — real NW growth vs inflation
+function scoreNWTrajectory(nw, profile) {
+  const snaps = getNWSnapshots().slice().sort((a,b) => (a.month||'') < (b.month||'') ? -1 : 1);
+  if (snaps.length < 2) return { score: 0, status: 'inactive', label: 'Need ≥2 monthly NW snapshots — tap 📸 in Net Worth' };
+
+  const isUS = (profile?.region || 'IN') === 'US';
+  const inflationRate = isUS ? 0.035 : 0.06; // 3.5% US, 6% IN (annual)
+  const monthlyInflation = Math.pow(1 + inflationRate, 1/12) - 1;
+
+  // Use last 12 snapshots max, or all available
+  const recent = snaps.slice(-12);
+  const first = recent[0];
+  const last  = recent[recent.length - 1];
+  const months = recent.length - 1;
+
+  const firstVal = snapValue(first);
+  const lastVal  = snapValue(last);
+  if (firstVal <= 0) return { score: 30, status: 'fair', label: 'Cannot compute — first snapshot has zero NW' };
+
+  // Actual monthly CAGR
+  const actualMonthlyGrowth = Math.pow(lastVal / firstVal, 1 / months) - 1;
+  const actualAnnual = (Math.pow(1 + actualMonthlyGrowth, 12) - 1) * 100;
+  const inflationAnnual = inflationRate * 100;
+
+  // Real return = actual - inflation
+  const realReturn = actualAnnual - inflationAnnual;
+
+  const signals = [];
+  let score;
+
+  if (realReturn >= 15)      { score = 100; signals.push(`Real NW growth ${realReturn.toFixed(1)}%/yr — exceptional compounding ✓`); }
+  else if (realReturn >= 8)  { score = 85;  signals.push(`Real NW growth ${realReturn.toFixed(1)}%/yr — strong wealth building ✓`); }
+  else if (realReturn >= 3)  { score = 70;  signals.push(`Real NW growth ${realReturn.toFixed(1)}%/yr — ahead of inflation ✓`); }
+  else if (realReturn >= 0)  { score = 50;  signals.push(`Real NW growth ${realReturn.toFixed(1)}%/yr — just matching inflation`); }
+  else if (realReturn >= -5) { score = 30;  signals.push(`NW growing ${actualAnnual.toFixed(1)}%/yr but below ${inflationAnnual.toFixed(0)}% inflation — losing real value`); }
+  else                        { score = 10;  signals.push(`NW shrinking in real terms (${realReturn.toFixed(1)}%/yr real return)`); }
+
+  // Trend bonus: accelerating in last 3 months vs previous
+  if (recent.length >= 5) {
+    const mid = recent[Math.floor(recent.length / 2)];
+    const midVal = snapValue(mid);
+    const recentMonths = recent.length - Math.floor(recent.length / 2);
+    const recentGrowth = midVal > 0 ? Math.pow(lastVal / midVal, 12 / recentMonths) - 1 : 0;
+    const earlyGrowth  = firstVal > 0 ? Math.pow(midVal / firstVal, 12 / Math.floor(recent.length / 2)) - 1 : 0;
+    if (recentGrowth > earlyGrowth + 0.02) { score = Math.min(score + 5, 100); signals.push('Accelerating wealth build ✓'); }
+    else if (recentGrowth < earlyGrowth - 0.05) signals.push('Growth pace decelerating — review spending/savings');
+  }
+
+  score = fhsClamp(score, 0, 100);
+  return {
+    score, status: score >= 70 ? 'good' : score >= 45 ? 'fair' : 'poor',
+    signals,
+    actualAnnual, inflationAnnual, realReturn, months,
+    firstVal, lastVal,
+    calc: `Actual ${actualAnnual.toFixed(1)}%/yr − Inflation ${inflationAnnual.toFixed(0)}%/yr = Real ${realReturn.toFixed(1)}%/yr`,
+    benchmarkIN: `Beat ${inflationAnnual.toFixed(0)}% inflation → real growth · 8%+ real = wealth compounding`,
+    benchmarkSource: isUS ? 'Federal Reserve inflation target · Vanguard returns data' : 'RBI inflation target 4–6% · SEBI long-term equity data',
+  };
+}
+
 function computeFHSScore() {
   const t0 = performance.now();
   const profile = getFHSProfile();
@@ -12858,7 +13146,8 @@ function computeFHSScore() {
   const nw = computeNetWorth();
   const agg = getFHSMonthlyAggregates(6, profile);
 
-  const pillarResults = {
+  // Growth pillar results computed after Foundation+Mastery (Goal Sequencing needs pillarResults)
+  const foundMasteryResults = {
     fire:        { weight: 10, emoji: '🔥', name: 'FIRE Readiness',         band: 'Foundation', color: '#E17055', result: scoreFIRE(nw, agg, profile, cfg) },
     retirement:  { weight: 8,  emoji: '🏛️', name: 'Retirement Track',       band: 'Foundation', color: '#4FC3F7', result: scoreRetirementTrack(nw, agg, profile, cfg) },
     savings:     { weight: 8,  emoji: '💰', name: 'Savings Rate',           band: 'Foundation', color: '#00B894', result: scoreSavingsRate(agg, cfg) },
@@ -12873,9 +13162,18 @@ function computeFHSScore() {
     estate:      { weight: 6,  emoji: '🏰', name: 'Estate & Legacy',        band: 'Mastery',    color: '#D97706', result: scoreEstateLegacy(profile) },
   };
 
+  // Growth pillars — G2 Goal Sequencing uses foundMasteryResults
+  const pillarResults = {
+    ...foundMasteryResults,
+    portfolio:   { weight: 8,  emoji: '📊', name: 'Portfolio Health',       band: 'Growth',     color: '#6366F1', result: scorePortfolioHealth(nw, profile) },
+    sequence:    { weight: 6,  emoji: '🎯', name: 'Goal Sequencing',        band: 'Growth',     color: '#10B981', result: scoreGoalSequencing(foundMasteryResults, profile) },
+    trajectory:  { weight: 6,  emoji: '📈', name: 'NW Trajectory',          band: 'Growth',     color: '#F59E0B', result: scoreNWTrajectory(nw, profile) },
+  };
+
   // Band scores
   const foundKeys   = ['fire','retirement','savings','emergency','insurance','education','debt'];
   const masteryKeys = ['risk','behaviour','income','tax','estate'];
+  const growthKeys  = ['portfolio','sequence','trajectory'];
 
   function bandScore(keys) {
     const active = keys.map(k => pillarResults[k]).filter(p => p.result.status !== 'inactive');
@@ -12883,14 +13181,24 @@ function computeFHSScore() {
     return w > 0 ? Math.round(active.reduce((s,p) => s + p.result.score * p.weight, 0) / w) : 0;
   }
 
-  const foundScore = bandScore(foundKeys);
+  const foundScore   = bandScore(foundKeys);
   const masteryScore = bandScore(masteryKeys);
-  const hasMastery = masteryKeys.some(k => pillarResults[k].result.status !== 'inactive');
+  const growthScore  = bandScore(growthKeys);
+  const hasMastery   = masteryKeys.some(k => pillarResults[k].result.status !== 'inactive');
+  const hasGrowth    = growthKeys.some(k => pillarResults[k].result.status !== 'inactive');
 
-  // Overall: Foundation 40% + Mastery 30% (Growth 30% placeholder)
-  const overallScore = hasMastery
-    ? Math.round(foundScore * 0.571 + masteryScore * 0.429)  // proportional until Growth added
-    : foundScore;
+  // Overall: Foundation 40% + Mastery 30% + Growth 30%
+  // Proportional blend when bands are missing
+  let overallScore;
+  if (hasMastery && hasGrowth) {
+    overallScore = Math.round(foundScore * 0.40 + masteryScore * 0.30 + growthScore * 0.30);
+  } else if (hasMastery) {
+    overallScore = Math.round(foundScore * 0.571 + masteryScore * 0.429);
+  } else if (hasGrowth) {
+    overallScore = Math.round(foundScore * 0.571 + growthScore * 0.429);
+  } else {
+    overallScore = foundScore;
+  }
 
   const activePillars = Object.values(pillarResults).filter(p => p.result.status !== 'inactive').length;
   const totalPillars = Object.keys(pillarResults).length;
@@ -12909,12 +13217,14 @@ function computeFHSScore() {
     emergency: 'Well-protected', insurance: 'Insured', education: 'Education-funded',
     debt: 'Debt-light', risk: 'Risk-aware', behaviour: 'Behaviourally disciplined',
     income: 'Income-diversified', tax: 'Tax-efficient', estate: 'Legacy-prepared',
+    portfolio: 'Well-diversified', sequence: 'Goal-sequenced', trajectory: 'NW-growing',
   };
   const concernLabels = {
     fire: 'FIRE corpus gap', retirement: 'Retirement track', savings: 'Savings rate',
     emergency: 'Emergency fund', insurance: 'Insurance coverage', education: 'Education funding',
     debt: 'Debt service ratio', risk: 'Risk alignment', behaviour: 'Behavioural bias',
     income: 'Income architecture', tax: 'Tax optimization', estate: 'Estate planning',
+    portfolio: 'Portfolio diversification', sequence: 'Goal priority order', trajectory: 'NW momentum',
   };
 
   let summaryLine = '';
@@ -12935,7 +13245,7 @@ function computeFHSScore() {
   if (profile && profile._lastScoreMonth !== monthKey) {
     saveFHSProfileData({ ...profile, lastMonthScore: overallScore, _lastScoreMonth: monthKey });
   }
-  return { overallScore, foundScore, masteryScore, hasMastery, grade, gradeLabel, scoreDelta, pillarResults, activePillars, totalPillars, summaryLine, computeMs, cfg, region, profile };
+  return { overallScore, foundScore, masteryScore, growthScore, hasMastery, hasGrowth, grade, gradeLabel, scoreDelta, pillarResults, activePillars, totalPillars, summaryLine, computeMs, cfg, region, profile };
 }
 
 // ── FHS ONBOARDING ────────────────────────────────────
@@ -13055,30 +13365,36 @@ function openMasteryOnboard() {
 
     <div style="font-size:0.7em;font-weight:900;color:#0EA5E9;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 10px;">🧾 Tax Optimization</div>
 
-    ${q('taxloss', 'Q9 · Do you practice tax-loss harvesting?', [
+    ${q('marginal_rate', 'Q9 · Your marginal (top) income tax bracket?', p?.region === 'IN'
+      ? [['0.05','Up to 5%'],['0.20','20%'],['0.30','30%']]
+      : [['0.12','10–12%'],['0.22','22%'],['0.24','24%'],['0.32','32%'],['0.37','37%+']],
+      p?.taxProfile?.marginalRate ? String(p.taxProfile.marginalRate) : '',
+      'Used to compute your exact tax savings from shelter utilization')}
+
+    ${q('taxloss', 'Q10 · Do you practice tax-loss harvesting?', [
       ['yes','Yes — I actively harvest losses'],
       ['no','No / Not applicable'],
-    ], p?.taxProfile?.taxLossHarvesting ? 'yes' : '', 'Reduces capital gains tax liability')}
+    ], p?.taxProfile?.taxLossHarvesting ? 'yes' : '', 'Selling losing positions to offset capital gains tax')}
 
-    ${q('hsa', 'Q10 · Do you utilize HSA / NPS Tier-2 / additional tax-advantaged accounts?', [
-      ['yes','Yes'],
+    ${q('hsa', 'Q11 · Do you utilize HSA / NPS Tier-2 / additional tax-advantaged accounts?', [
+      ['yes','Yes — actively contributing'],
       ['no','No'],
-    ], p?.taxProfile?.hsa ? 'yes' : '', 'HSA (US), NPS Tier-2 (IN), or equivalent')}
+    ], p?.taxProfile?.hsa ? 'yes' : '', isUS ? 'HSA: triple tax-free (contribute, grow, withdraw tax-free for medical)' : 'NPS Tier-2: flexible tax-advantaged savings above 80C')}
 
     <div style="font-size:0.7em;font-weight:900;color:#D97706;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 10px;">🏰 Estate & Legacy</div>
 
-    ${q('will', 'Q11 · Do you have a valid will or trust?', [
+    ${q('will', 'Q12 · Do you have a valid will or trust?', [
       ['yes','Yes — will or trust drafted'],
       ['no','No'],
     ], p?.taxProfile?.hasWill ? 'yes' : '', 'Essential for assets >$50k / ₹50L')}
 
-    ${q('nominees', 'Q12 · Are nominees assigned on all financial accounts?', [
+    ${q('nominees', 'Q13 · Are nominees assigned on all financial accounts?', [
       ['yes','Yes — all accounts have nominees'],
       ['partial','Partial — some are missing'],
       ['no','No'],
     ], p?.taxProfile?.hasNominees === 'yes' ? 'yes' : p?.taxProfile?.hasNominees === 'partial' ? 'partial' : '', 'Banks, mutual funds, insurance, 401K')}
 
-    ${q('poa', 'Q13 · Do you have a Power of Attorney or healthcare directive?', [
+    ${q('poa', 'Q14 · Do you have a Power of Attorney or healthcare directive?', [
       ['yes','Yes'],
       ['no','No'],
     ], p?.taxProfile?.hasPOA ? 'yes' : '', 'Critical for incapacity planning')}
@@ -13137,6 +13453,7 @@ function saveMasteryProfile() {
   saveFHSProfileData({
     ...profile, riskProfile, behaviourProfile,
     taxProfile: {
+      marginalRate: parseFloat(g('marginal_rate')) || (profile?.region === 'IN' ? 0.20 : 0.22),
       taxLossHarvesting: g('taxloss') === 'yes',
       hsa: g('hsa') === 'yes',
       hasWill: g('will') === 'yes',
@@ -13157,7 +13474,7 @@ function renderFHSKidsFields() {
   const region = document.getElementById('fhsob-region')?.value || p?.region || 'IN';
   const benchmarks = {
     IN: { low: 1500000, high: 5000000, label: '₹15L–₹50L', detail: 'Private engineering/medicine in India (2024, inflation-adjusted)' },
-    US: { low: 100000, high: 300000, label: '$1L–$3L', detail: '4-year US college total cost (2024, public vs private)' },
+    US: { low: 100000, high: 300000, label: '$100K–$300K', detail: '4-year US college total cost (2024, public vs private)' },
     GENERIC: { low: 2000000, high: 6000000, label: '₹20L–₹60L', detail: 'Estimated higher education cost' },
   };
   const bm = benchmarks[region] || benchmarks.GENERIC;
@@ -13803,11 +14120,17 @@ function renderFHS() {
         return `DTI of ${(r.dti*100).toFixed(1)}% — above the 36% healthy threshold. Reduce monthly debt payments by ${fmt(Math.max(0,excessDebt))} to get back on track. Consider refinancing or snowball method.`;
       })(),
       tax: (() => {
-        if (r.status === 'inactive') return 'Complete Mastery onboarding (Q9–Q10) to unlock Tax Optimization.';
-        if (r.score >= 80) return `🎉 Strong tax efficiency! You're utilizing ${(r.annualContrib/r.maxContrib*100).toFixed(0)}% of your tax-advantaged contribution limit.`;
-        const unused = r.maxContrib - (r.annualContrib || 0);
-        if (unused > 0) return `You're leaving ${fmt(unused)}/yr of tax-advantaged space unused (${isUS?'401K/IRA':'80C/NPS'}). Contributing this amount could save ${fmt(Math.round(unused*0.30))}/yr in taxes at 30% bracket.`;
-        return `Tax score ${r.score}/100. Top improvements: ${r.signals?.slice(0,2).join(' · ') || 'enable tax-loss harvesting and maximize retirement account contributions'}.`;
+        if (r.status === 'inactive') return 'Complete Mastery onboarding (Q9–Q11) to unlock Tax Optimization.';
+        if (r.score >= 85) return `🎉 Tax-efficient: ${r.calc}. Shelter ${r.shelterScore}/50, Location ${r.assetLocScore}/30, Strategy ${r.stratScore}/20.`;
+        // Most impactful nudge: shelter room with real dollar savings
+        if (r.shelterCapacityLeft > 0 && r.taxSavingsFromFilling > 0) {
+          return `You have ${fmt(r.shelterCapacityLeft)}/yr of ${isUS?'401K+IRA+HSA':'80C+NPS'} capacity unused. At your ${(r.marginalRate*100).toFixed(0)}% tax bracket, filling this saves ~${fmt(r.taxSavingsFromFilling)}/yr in taxes.`;
+        }
+        // Asset location issue
+        if (r.assetLocScore < 25 && r.hasBonds && r.hasRetSpace) {
+          return `Tax drag detected: ${fmt(r.bondTotal)} in taxable bonds while ${fmt(r.shelterCapacityLeft)}/yr retirement room sits empty. Moving bonds to your retirement account eliminates ordinary income tax on interest.`;
+        }
+        return `Tax score ${r.score}/100 (Shelter ${r.shelterScore}/50 · Location ${r.assetLocScore}/30 · Strategy ${r.stratScore}/20). ${r.signals?.[0] || ''}`;
       })(),
       estate: (() => {
         if (r.status === 'inactive') return 'Complete Mastery onboarding (Q11–Q13) to unlock Estate & Legacy.';
@@ -13817,6 +14140,28 @@ function renderFHS() {
         if (profile?.taxProfile?.hasNominees !== 'yes') missing.push('nominees on all accounts');
         if (!profile?.taxProfile?.hasPOA) missing.push('Power of Attorney');
         return `Estate score ${r.score}/100. Missing: ${missing.join(', ')}. Without a will, your assets are distributed by default succession law — often not your intent.`;
+      })(),
+      portfolio: (() => {
+        if (r.status === 'inactive') return 'Add Net Worth accounts to unlock Portfolio Health.';
+        if (r.score >= 85) return `🎉 Excellent diversification across ${r.assetClassCount} asset classes. Concentration: ${r.concentrationPct}% in largest position.`;
+        if (r.concentrationPenalty > 0) return `⚠️ Concentration risk: ${r.concentrationPct}% of your net worth is in a single asset. A 30% drop in that asset would reduce your NW by ${(r.concentrationPct*0.30).toFixed(0)}%. Target max 40% in any one position.`;
+        const gap = r.equityTarget - r.equityPct;
+        if (Math.abs(gap) > 10) return `Your equity allocation is ${r.equityPct}% vs age-adjusted target of ${r.equityTarget}%. ${gap > 0 ? `Adding ${gap.toFixed(0)}% more equity could improve long-term returns.` : `Consider reducing equity by ${Math.abs(gap).toFixed(0)}% to match your risk horizon at age ${r.age}.`}`;
+        return `Portfolio spread: Equity ${r.equityPct}% · Fixed ${r.fixedPct}% · Gold ${r.goldPct}% · RE ${r.rePct}% · Cash ${r.cashPct}%. Target ${r.equityTarget}% equity at age ${r.age}.`;
+      })(),
+      sequence: (() => {
+        if (r.status === 'inactive') return 'Complete Foundation pillars to unlock Goal Sequencing.';
+        if (r.score >= 85) return `🎉 Goals funded in optimal order. ${r.signals?.join(' · ')}.`;
+        if (r.sequenceBreak) return `⚠️ Sequence gap detected: you are funding lower-priority goals before ${r.sequenceBreak} is fully established. Fix ${r.sequenceBreak} first — it provides the safety net that makes all other goals viable.`;
+        const incomplete = r.warnings?.[0];
+        return incomplete ? `Priority check: ${incomplete}. The goal ladder works because each level protects the one above it.` : `Goal sequencing score ${r.score}/100. Keep funding in priority order.`;
+      })(),
+      trajectory: (() => {
+        if (r.status === 'inactive') return `Take 2+ monthly NW snapshots (📸 Snapshot Month in Net Worth) to track your wealth trajectory.`;
+        if (r.score >= 80) return `🎉 NW growing at ${r.annualGR}% p.a. — ${r.realReturn > 0 ? `+${r.realReturn}% above` : `${r.realReturn}% below`} ${r.inflation}% inflation. Compounding is working.`;
+        if (r.annualGR < 0) return `⚠️ Net worth declined over the last ${r.months} months. Review major expense categories and asset drawdowns.`;
+        if (r.realReturn < 0) return `NW growing at ${r.annualGR}% p.a. but inflation is ${r.inflation}%. You are losing ${Math.abs(r.realReturn)}% purchasing power annually. Shift more to growth assets.`;
+        return `NW grew ${r.growthRate}% over ${r.months} months (${r.annualGR}% p.a.). Target: beat ${r.inflation}% inflation for real wealth growth.`;
       })(),
     };
     const text = nudges[key];
@@ -13853,16 +14198,22 @@ function renderFHS() {
             </div>` : ''}
           </div>
           <div style="font-size:0.78em;font-weight:700;color:rgba(255,255,255,0.75);margin-top:10px;line-height:1.4;">${fhs.summaryLine}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+            <div style="background:rgba(79,195,247,0.2);border:1px solid rgba(79,195,247,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#4FC3F7;">🏗️ ${fhs.foundScore}</div>
+            ${fhs.hasMastery ? `<div style="background:rgba(167,139,250,0.2);border:1px solid rgba(167,139,250,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#A78BFA;">🧠 ${fhs.masteryScore}</div>` : ''}
+            ${fhs.hasGrowth  ? `<div style="background:rgba(110,231,183,0.2);border:1px solid rgba(110,231,183,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#6EE7B7;">🌱 ${fhs.growthScore}</div>` : ''}
+          </div>
         </div>
 
         <!-- Right: concentric rings with BANDS label -->
         <div style="flex-shrink:0;position:relative;">
           ${(() => {
-            const cx = 72, cy = 72, sw = 10;
+            const cx = 72, cy = 72, sw = 9;
             const rings = [
-              { r: 60, pct: fhs.foundScore/100,  color: '#4FC3F7' },
-              { r: 46, pct: fhs.hasMastery ? fhs.masteryScore/100 : 0, color: '#A78BFA', dim: !fhs.hasMastery },
-              { r: 32, pct: fhs.overallScore/100, color: fhs.overallScore>=70?'#F9A825':fhs.overallScore>=50?'#F9A825':'#E17055' },
+              { r: 61, pct: fhs.foundScore/100,  color: '#4FC3F7' },
+              { r: 48, pct: fhs.hasMastery ? fhs.masteryScore/100 : 0, color: '#A78BFA', dim: !fhs.hasMastery },
+              { r: 35, pct: fhs.hasGrowth  ? fhs.growthScore/100  : 0, color: '#6EE7B7', dim: !fhs.hasGrowth  },
+              { r: 20, pct: fhs.overallScore/100, color: fhs.overallScore>=70?'#F9A825':fhs.overallScore>=50?'#F9A825':'#E17055' },
             ];
             function rArc(cx,cy,r,s,e) {
               const rad = d => (d-90)*Math.PI/180;
@@ -13921,13 +14272,30 @@ function renderFHS() {
         </div>`
     }
 
+    <!-- Growth Band -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px;">
+      <div class="fhs-section-title" style="margin:0;">🌱 Growth Pillars</div>
+      ${fhs.hasGrowth
+        ? `<div style="font-size:0.65em;font-weight:700;color:#6366F1;background:#EEF2FF;border-radius:8px;padding:3px 10px;">${fhs.growthScore}/100</div>`
+        : ''
+      }
+    </div>
+    ${fhs.hasGrowth
+      ? `<div class="fhs-rings-wrap">${['portfolio','sequence','trajectory'].map(k => renderPillarCard(k)).join('')}</div>`
+      : `<div style="background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-radius:16px;padding:18px;text-align:center;border:1.5px dashed #86EFAC;">
+          <div style="font-size:1.5em;margin-bottom:6px;">🌱</div>
+          <div style="font-size:0.85em;font-weight:900;color:#166534;margin-bottom:4px;">Growth Band — Auto-activating</div>
+          <div style="font-size:0.72em;font-weight:600;color:#15803D;line-height:1.5;margin-bottom:10px;">
+            Portfolio Health · Goal Sequencing · NW Trajectory<br>
+            Activates automatically from your Net Worth data · No setup needed
+          </div>
+          <div style="font-size:0.68em;font-weight:700;color:#166534;opacity:0.7;">Add Net Worth accounts + 2 snapshots to unlock</div>
+        </div>`
+    }
+
     <!-- Key insights -->
     <div class="fhs-section-title" style="margin-top:20px;">🔍 Key Insights</div>
     ${renderFHSInsights(fhs)}
-
-    <div style="margin-top:20px;text-align:center;font-size:0.7em;color:var(--text-light);line-height:1.6;">
-      Growth Band (Portfolio Health, Goal Sequencing) coming in v2.0
-    </div>
   `;
 }
 
@@ -13971,6 +14339,201 @@ function renderFHSInsights(fhs) {
 }
 
 // ══════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════
+// GROWTH BAND — 3 pillars, 30% of overall FHS score
+// ══════════════════════════════════════════════════════════════
+
+// G1: Portfolio Health Score (0-100)
+// Measures diversification quality across asset classes, concentration risk
+function scorePortfolioHealth(nw, profile) {
+  const byType = nw.byType || {};
+  const total  = nw.totalAssets || 0;
+  if (total <= 0) return { score: 0, status: 'inactive', label: 'No Net Worth data yet' };
+
+  const age   = profile?.age || 35;
+  const isUS  = (profile?.region || 'IN') === 'US';
+
+  // Asset class values (display currency)
+  const equity  = (byType.brokerage?.total || 0) + (byType.retirement?.total || 0);
+  const fixed   = (byType.bonds_fd?.total || 0);
+  const gold    = (byType.metals?.total || 0);
+  const re      = (byType.realestate?.total || 0);
+  const cash    = (byType.savings_acc?.total || 0) + (byType.checking?.total || 0) + (byType.cash?.total || 0);
+
+  // Age-adjusted target allocation
+  // Rule of 110: equity % = 110 - age; rest in fixed/gold/RE/cash
+  const equityTarget = Math.max(0.30, Math.min(0.80, (110 - age) / 100));
+  const fixedTarget  = 0.15;
+  const goldTarget   = 0.10;
+  const reTarget     = 0.15;
+  const cashTarget   = Math.max(0.05, 1 - equityTarget - fixedTarget - goldTarget - reTarget);
+
+  const equityPct = equity / total;
+  const fixedPct  = fixed  / total;
+  const goldPct   = gold   / total;
+  const rePct     = re     / total;
+  const cashPct   = cash   / total;
+
+  // Diversification score: penalize deviation from target using mean absolute error
+  const deviations = [
+    Math.abs(equityPct - equityTarget),
+    Math.abs(fixedPct  - fixedTarget),
+    Math.abs(goldPct   - goldTarget),
+    Math.abs(cashPct   - cashTarget),
+  ];
+  const mae = deviations.reduce((s,d) => s+d, 0) / deviations.length;
+  // mae=0 → score 80, mae=0.5+ → score 0
+  const diversScore = Math.round(Math.max(0, 80 - mae * 160));
+
+  // Concentration penalty: any single NW account > 40% of total assets = risky
+  const allAccs = Object.values(byType).flatMap(g => g.accounts || []);
+  const maxAcct = allAccs.reduce((mx,a) => Math.max(mx, a._val||0), 0);
+  const concentrationPct = maxAcct / total;
+  let concentrationPenalty = 0;
+  const concSignals = [];
+  if (concentrationPct > 0.60) { concentrationPenalty = 20; concSignals.push(`Concentration risk: one asset is ${(concentrationPct*100).toFixed(0)}% of NW`); }
+  else if (concentrationPct > 0.40) { concentrationPenalty = 10; concSignals.push(`Mild concentration: one asset is ${(concentrationPct*100).toFixed(0)}% of NW`); }
+
+  // Asset class count bonus (up to +20)
+  const assetClassCount = [equity>0, fixed>0, gold>0, re>0, cash>0].filter(Boolean).length;
+  const diversityBonus = Math.min(20, assetClassCount * 4);
+
+  const score = fhsClamp(diversScore + diversityBonus - concentrationPenalty, 0, 100);
+
+  return {
+    score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
+    equityPct: +(equityPct*100).toFixed(1), fixedPct: +(fixedPct*100).toFixed(1),
+    goldPct: +(goldPct*100).toFixed(1), rePct: +(rePct*100).toFixed(1), cashPct: +(cashPct*100).toFixed(1),
+    equityTarget: +(equityTarget*100).toFixed(0),
+    assetClassCount, concentrationPct: +(concentrationPct*100).toFixed(1),
+    concentrationPenalty, diversityBonus, diversScore,
+    concSignals, age,
+    calc: `Diversification ${diversScore} + Variety bonus ${diversityBonus} − Concentration ${concentrationPenalty} = ${score}`,
+    benchmarkIN: `Age-adjusted targets: Equity ${(equityTarget*100).toFixed(0)}% · Fixed 15% · Gold 10% · RE 15% · Cash ${(cashTarget*100).toFixed(0)}%`,
+    benchmarkSource: 'Rule of 110 · Vanguard Target Date · SEBI Asset Allocation Guidelines',
+    label: score >= 70 ? `Well-diversified across ${assetClassCount} asset classes` : `${assetClassCount} asset classes — target ${equityTarget*100|0}% equity at age ${age}`,
+  };
+}
+
+// G2: Goal Sequencing Score (0-100)
+// Measures whether goals are funded in the right priority order
+function scoreGoalSequencing(pillarResults, profile) {
+  if (!pillarResults) return { score: 0, status: 'inactive', label: 'Compute other pillars first' };
+
+  // Priority ladder — must be funded in this order
+  const ladder = [
+    { key: 'emergency', label: 'Emergency Fund',   threshold: 60, weight: 30 },
+    { key: 'insurance', label: 'Life Insurance',   threshold: 50, weight: 25 },
+    { key: 'retirement',label: 'Retirement Track', threshold: 50, weight: 25 },
+    { key: 'fire',      label: 'FIRE Readiness',   threshold: 40, weight: 10 },
+    { key: 'education', label: 'Education Goal',   threshold: 40, weight: 10 },
+  ];
+
+  let score = 0;
+  const signals = [];
+  const warnings = [];
+  let sequenceBreak = null; // first priority that's underfunded while lower priorities are funded
+
+  for (let i = 0; i < ladder.length; i++) {
+    const step     = ladder[i];
+    const pillar   = pillarResults[step.key];
+    const pScore   = pillar?.result?.score || 0;
+    const pStatus  = pillar?.result?.status || 'inactive';
+    const isMet    = pStatus === 'na' || pScore >= step.threshold; // 'na' = not applicable (no kids etc)
+
+    if (isMet) {
+      score += step.weight;
+      signals.push(`${step.label} ✓ (${pScore >= step.threshold ? pScore + '/100' : 'N/A'})`);
+    } else {
+      // Check if any lower-priority goals have meaningful funding
+      const lowerFunded = ladder.slice(i+1).some(s => (pillarResults[s.key]?.result?.score||0) >= s.threshold);
+      if (!sequenceBreak && lowerFunded) {
+        sequenceBreak = step.label;
+        warnings.push(`Sequence gap: funding ${ladder.slice(i+1).find(s=>(pillarResults[s.key]?.result?.score||0)>=s.threshold)?.label} before ${step.label}`);
+      } else {
+        warnings.push(`${step.label} incomplete (${pScore}/100, need ${step.threshold}+)`);
+      }
+    }
+  }
+
+  // Sequence break penalty: reduce by 15 if order is wrong
+  if (sequenceBreak) score = Math.max(0, score - 15);
+  score = fhsClamp(score, 0, 100);
+
+  return {
+    score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
+    signals, warnings, sequenceBreak,
+    calc: `Priority ladder: ${ladder.map(s => (pillarResults[s.key]?.result?.score||0) >= s.threshold ? '✓' : '✗').join(' ')}`,
+    benchmarkIN: 'Emergency → Insurance → Retirement → FIRE → Education (Ramsey/Benz priority ladder)',
+    benchmarkSource: 'CFP Board Financial Planning Process · Morningstar Bucket Strategy',
+    label: sequenceBreak
+      ? `Fix ${sequenceBreak} before lower priorities`
+      : score >= 80 ? 'Funding goals in optimal order ✓' : 'Goal sequence partially correct',
+  };
+}
+
+// G3: Net Worth Trajectory Score (0-100)
+// Measures whether NW is growing faster than inflation
+function scoreNWTrajectory(nw, profile) {
+  const snaps = (data._nwSnapshots || []).slice().sort((a,b) => (a.month||'').localeCompare(b.month||''));
+  if (snaps.length < 2) return { score: 0, status: 'inactive', label: 'Need 2+ NW snapshots to track trajectory' };
+
+  const isUS       = (profile?.region || 'IN') === 'US';
+  const inflation  = isUS ? 0.035 : 0.06; // 3.5% US, 6% IN annual
+  const monthlyInf = inflation / 12;
+
+  // Use last 6 snapshots max for trend
+  const recent = snaps.slice(-6);
+  const oldest = recent[0];
+  const newest = recent[recent.length - 1];
+
+  const oldVal = snapValue(oldest);
+  const newVal = snapValue(newest);
+
+  if (oldVal <= 0) return { score: 30, status: 'fair', label: 'NW was zero/negative — trajectory starting', oldVal, newVal };
+
+  // Number of months between snapshots
+  const oldMk = oldest.month || (oldest.date||'').slice(0,7);
+  const newMk = newest.month || (newest.date||'').slice(0,7);
+  const [oy,om] = oldMk.split('-').map(Number);
+  const [ny,nm] = newMk.split('-').map(Number);
+  const months  = Math.max(1, (ny-oy)*12 + (nm-om));
+
+  const growthRate  = (newVal - oldVal) / oldVal;          // total growth over period
+  const monthlyGR   = Math.pow(1 + growthRate, 1/months) - 1; // per-month
+  const annualGR    = Math.pow(1 + monthlyGR, 12) - 1;        // annualized
+
+  // vs inflation benchmark
+  const realReturn  = annualGR - inflation;  // >0 = beating inflation
+
+  // Scoring
+  let score;
+  const signals = [];
+  if (realReturn >= 0.12)      { score = 100; signals.push(`Exceptional: +${(realReturn*100).toFixed(1)}% above inflation`); }
+  else if (realReturn >= 0.08) { score = 90;  signals.push(`Excellent: +${(realReturn*100).toFixed(1)}% real return`); }
+  else if (realReturn >= 0.05) { score = 80;  signals.push(`Strong: +${(realReturn*100).toFixed(1)}% above inflation`); }
+  else if (realReturn >= 0.02) { score = 70;  signals.push(`Good: +${(realReturn*100).toFixed(1)}% real growth`); }
+  else if (realReturn >= 0)    { score = 55;  signals.push(`Marginal: just keeping pace with ${(inflation*100).toFixed(1)}% inflation`); }
+  else if (realReturn >= -0.03){ score = 35;  signals.push(`Lagging inflation by ${(Math.abs(realReturn)*100).toFixed(1)}%`); }
+  else                         { score = 10;  signals.push(`NW shrinking in real terms — ${(annualGR*100).toFixed(1)}% growth vs ${(inflation*100).toFixed(1)}% inflation`); }
+
+  // Consistency bonus: reward for having many snapshots (habit)
+  const consistencyBonus = Math.min(5, snaps.length - 2);
+  score = fhsClamp(score + consistencyBonus, 0, 100);
+
+  return {
+    score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
+    signals, annualGR: +(annualGR*100).toFixed(1), inflation: +(inflation*100).toFixed(1),
+    realReturn: +(realReturn*100).toFixed(1), months, snapshotCount: snaps.length,
+    oldVal, newVal, growthRate: +(growthRate*100).toFixed(1),
+    calc: `${months}mo: ${fmt(oldVal)} → ${fmt(newVal)} = ${(annualGR*100).toFixed(1)}% p.a. vs ${(inflation*100).toFixed(1)}% inflation`,
+    benchmarkIN: `Beat ${(inflation*100).toFixed(1)}% inflation (${isUS?'US CPI':'India CPI'}) to preserve wealth`,
+    benchmarkSource: isUS ? 'BLS CPI · Vanguard NW targets' : 'RBI Inflation Target · MOSPI CPI',
+    label: `${(annualGR>=0?'+':'') + (annualGR*100).toFixed(1)}% p.a. vs ${(inflation*100).toFixed(1)}% inflation`,
+  };
+}
+
 // END FHS ENGINE
 // ══════════════════════════════════════════════════════
 
