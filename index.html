@@ -6691,9 +6691,9 @@ function saveAccount() {
   if(!name){showToast('Enter account name');return;}
   if(!data._accounts) data._accounts=[];
   data._accounts.push({id:Date.now().toString(),name,type,balance});
-  save(); closeModal('add-account-modal'); renderAccount(); showToast('Account added!');
+  save(); closeModal('add-account-modal'); renderAccount(); try { renderNetWorth(); renderHome(); } catch(e){} showToast('Account added!');
 }
-function editAccount(id) { const acc=getAccountsList().find(a=>a.id===id); if(!acc) return; const nb=prompt(`Balance for ${acc.name}:`,acc.balance); if(nb===null) return; acc.balance=parseFloat(nb)||0; save(); renderAccount(); }
+function editAccount(id) { const acc=getAccountsList().find(a=>a.id===id); if(!acc) return; const nb=prompt(`Balance for ${acc.name}:`,acc.balance); if(nb===null) return; acc.balance=parseFloat(nb)||0; save(); renderAccount(); try { renderNetWorth(); renderHome(); } catch(e){} }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 // ══════════════════════════════════════════════════════
