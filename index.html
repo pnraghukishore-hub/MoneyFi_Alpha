@@ -151,9 +151,9 @@
     .fhs-hero-demo { background: linear-gradient(145deg, #064E3B 0%, #065F46 50%, #047857 100%); border-radius: 24px; padding: 24px 20px 20px; position: relative; overflow: hidden; }
     .fhs-hero-demo::before { content:''; position:absolute; top:-40px; right:-40px; width:160px; height:160px; background:rgba(110,231,183,0.15); border-radius:50%; }
     .fhs-hero-demo::after { content:''; position:absolute; bottom:-30px; left:-20px; width:120px; height:120px; background:rgba(255,255,255,0.05); border-radius:50%; }
-    .fhs-hero-scroll { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; gap:12px; margin-bottom:8px; }
+    .fhs-hero-scroll { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; gap:0; margin-bottom:8px; }
     .fhs-hero-scroll::-webkit-scrollbar { display:none; }
-    .fhs-hero-slide { flex:0 0 100%; scroll-snap-align:start; }
+    .fhs-hero-slide { flex:0 0 100%; min-width:100%; scroll-snap-align:start; box-sizing:border-box; }
     .fhs-hero-dots { display:flex; justify-content:center; gap:6px; margin-bottom:16px; }
     .fhs-hero-dot { width:6px; height:6px; border-radius:50%; background:var(--text-light); transition:all 0.2s; cursor:pointer; }
     .fhs-hero-dot.active { width:18px; border-radius:3px; background:#1E2A6E; }
@@ -13535,7 +13535,7 @@ function renderFHSPillars() {
   // Save hero scroll position, re-render FHS, restore scroll position
   const scrollEl = document.getElementById('fhs-hero-scroll');
   const scrollLeft = scrollEl ? scrollEl.scrollLeft : 0;
-  renderFHS();
+  renderFHS(true);  // keep demo state when toggling via scroll
   // Restore scroll position after DOM rebuild
   requestAnimationFrame(() => {
     const el = document.getElementById('fhs-hero-scroll');
@@ -14042,6 +14042,21 @@ function toggleFHSPillar(key) {
 
 // ── FHS RENDER ────────────────────────────────────────
 
+// ── Hero rings SVG builder — module scope (used by renderFHS + updateDemoHeroCard) ──
+function buildHeroRings(scores, hasM, hasG) {
+  const cx=72,cy=72,sw=9;
+  const rings=[
+    {r:61,pct:scores.found/100,color:'#4FC3F7'},
+    {r:48,pct:hasM?scores.mastery/100:0,color:'#A78BFA',dim:!hasM},
+    {r:35,pct:hasG?scores.growth/100:0,color:'#6EE7B7',dim:!hasG},
+    {r:20,pct:scores.overall/100,color:scores.overall>=70?'#F9A825':scores.overall>=50?'#F9A825':'#E17055'},
+  ];
+  function rArc(cx,cy,r,s,e){const rad=d=>(d-90)*Math.PI/180;const sx=cx+r*Math.cos(rad(s)),sy=cy+r*Math.sin(rad(s));const ex=cx+r*Math.cos(rad(e)),ey=cy+r*Math.sin(rad(e));return `M${sx.toFixed(2)} ${sy.toFixed(2)} A${r} ${r} 0 ${(e-s)>180?1:0} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;}
+  const start=-210,sweep=300;
+  const svgRings=rings.map(ring=>{const bg=rArc(cx,cy,ring.r,start,start+sweep);const fill=ring.pct>0.005?rArc(cx,cy,ring.r,start,Math.min(start+sweep*ring.pct,start+sweep-0.3)):'';return `<path d="${bg}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${sw}" stroke-linecap="round"/>${fill?`<path d="${fill}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.dim?0.3:1}"/>`:''}`;}).join('');
+  return `<svg width="144" height="144" viewBox="0 0 144 144">${svgRings}<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="10" font-weight="900" fill="rgba(255,255,255,0.5)" font-family="Nunito" letter-spacing="0.5">SCORE</text><text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,0.3)" font-family="Nunito">F·M·G</text></svg>`;
+}
+
 // ── DEMO MODE: Skanda — region-aware synthetic FHS ────────────────────────
 // Returns a complete fhs object matching computeFHSScore() structure exactly
 let _fhsDemoActive = false;
@@ -14199,9 +14214,11 @@ function computeDemoFHS(region) {
   };
 }
 
-function renderFHS() {
+function renderFHS(_keepDemo) {
   const root = document.getElementById('fhs-root');
   if (!root) return;
+  // Reset demo mode on fresh full renders unless explicitly told to keep it
+  if (!_keepDemo) _fhsDemoActive = false;
   const profile = getFHSProfile();
 
   if (!profile) {
@@ -14231,7 +14248,8 @@ function renderFHS() {
     return;
   }
 
-  // Demo mode: use Skanda's synthetic data when demo card is showing
+  // Demo mode: reset to real score on every fresh render (tab switch etc.)
+  // Only stays active during the same scroll session
   const region = getFHSProfile()?.region || 'IN';
   const fhs = _fhsDemoActive ? computeDemoFHS(region) : computeFHSScore();
   const isDemo = fhs._isDemo || false;
@@ -14599,21 +14617,6 @@ function renderFHS() {
     const text = nudges[key];
     if (!text) return '';
     return `<div class="fhs-nudge" style="margin-top:10px;">💡 ${text}</div>`;
-  }
-
-  // Demo hero SVG rings builder (reusable)
-  function buildHeroRings(scores, hasM, hasG) {
-    const cx=72,cy=72,sw=9;
-    const rings=[
-      {r:61,pct:scores.found/100,color:'#4FC3F7'},
-      {r:48,pct:hasM?scores.mastery/100:0,color:'#A78BFA',dim:!hasM},
-      {r:35,pct:hasG?scores.growth/100:0,color:'#6EE7B7',dim:!hasG},
-      {r:20,pct:scores.overall/100,color:scores.overall>=70?'#F9A825':scores.overall>=50?'#F9A825':'#E17055'},
-    ];
-    function rArc(cx,cy,r,s,e){const rad=d=>(d-90)*Math.PI/180;const sx=cx+r*Math.cos(rad(s)),sy=cy+r*Math.sin(rad(s));const ex=cx+r*Math.cos(rad(e)),ey=cy+r*Math.sin(rad(e));return `M${sx.toFixed(2)} ${sy.toFixed(2)} A${r} ${r} 0 ${(e-s)>180?1:0} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;}
-    const start=-210,sweep=300;
-    const svgRings=rings.map(ring=>{const bg=rArc(cx,cy,ring.r,start,start+sweep);const fill=ring.pct>0.005?rArc(cx,cy,ring.r,start,Math.min(start+sweep*ring.pct,start+sweep-0.3)):'';return `<path d="${bg}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${sw}" stroke-linecap="round"/>${fill?`<path d="${fill}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.dim?0.3:1}"/>`:''}`;}).join('');
-    return `<svg width="144" height="144" viewBox="0 0 144 144">${svgRings}<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="10" font-weight="900" fill="rgba(255,255,255,0.5)" font-family="Nunito" letter-spacing="0.5">SCORE</text><text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,0.3)" font-family="Nunito">F·M·G</text></svg>`;
   }
 
   root.innerHTML = `
