@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.10.3
+  Version  : 3.10.4
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -3387,7 +3387,9 @@
           </div>
         </div>
       </div>
-      <button class="fhs-onboard-btn" onclick="closeFHSOnboard();openMasteryOnboard()" style="background:linear-gradient(135deg,#7C3AED,#9F67FA);margin-top:8px;">🧠 Also set up Mastery band →</button>
+      <button class="fhs-onboard-btn" onclick="saveFHSProfile()" style="background:linear-gradient(135deg,#1E2A6E,#2D3A8C);margin-top:16px;">💾 Save My Profile</button>
+      <button class="fhs-onboard-btn" onclick="saveFHSProfileThenMastery()" style="background:linear-gradient(135deg,#7C3AED,#9F67FA);margin-top:8px;">🧠 Save &amp; Set Up Mastery band →</button>
+      <button onclick="closeFHSOnboard()" style="width:100%;background:none;border:none;color:var(--text-light);font-size:0.8em;font-weight:700;font-family:Nunito,sans-serif;cursor:pointer;padding:10px;margin-top:2px;">Cancel</button>
     </div>
   </div>
 </div>
@@ -12107,7 +12109,7 @@ function _doFirebaseSave() {
     { ...chunk2, _savedAt: firebase.firestore.FieldValue.serverTimestamp() });
 
   window._ownSaveInFlight = true;
-  window._ownSaveTs = Date.now(); // timestamp guard — suppress snapshots for 4s after own save
+  window._ownSaveTs = Date.now(); // timestamp guard — suppress snapshots for 10s after own save
   batch.commit()
     .then(() => {
       showSyncStatus('✅ Synced', '#10B981', 2000);
@@ -13954,7 +13956,14 @@ function saveFHSProfile() {
     setupAt: existing?.setupAt || Date.now(), updatedAt: Date.now()
   });
   closeFHSOnboard();
-  showToast('✅ Financial Health Score updated!', 2500);
+  showToast('✅ Profile saved! Score updating…', 2500);
+}
+
+function saveFHSProfileThenMastery() {
+  const age = parseInt(document.getElementById('fhsob-age').value);
+  if (!age || age < 18 || age > 80) { showToast('⚠️ Please enter a valid age (18–80)', 2500); return; }
+  saveFHSProfile();
+  setTimeout(() => openMasteryOnboard(), 350);
 }
 
 
