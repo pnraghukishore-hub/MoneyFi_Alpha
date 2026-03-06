@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.10.5
+  Version  : 3.10.6
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -8704,7 +8704,9 @@ function renderGoalsPanel() {
     // Target date tag
     let dateTag = '';
     if (g.targetDate) {
-      const diffMs   = new Date(g.targetDate + '-01') - new Date();
+      // Handle both YYYY-MM and YYYY-MM-DD formats
+      const _tdStr = /^\d{4}-\d{2}$/.test(g.targetDate) ? g.targetDate + '-01' : g.targetDate;
+      const diffMs   = new Date(_tdStr) - new Date();
       const diffDays = Math.ceil(diffMs / 86400000);
       dateTag = diffDays > 0
         ? `<span style="font-size:0.7em;font-weight:700;color:${diffDays<90?'#EF4444':'var(--text-light)'};margin-left:6px;">⏳ ${diffDays>60?Math.ceil(diffDays/30)+'mo':diffDays+'d'}</span>`
@@ -14149,6 +14151,7 @@ function wiRecompute() {
   const fhsNow = computeFHSScore();
   const baseScore = fhsNow.overallScore;
   const isIN = (p?.region || 'IN') !== 'US';
+  const expMo = getMonthlyExpenses(); // must be declared here
 
   // ── Build a modified profile snapshot ──
   const incMo  = Math.max(
@@ -14250,10 +14253,20 @@ function wiRecompute() {
   _wiLastResult = impacts.length > 0 ? { impacts, newOverall, baseScore, sliders: { ..._wiSliders } } : null;
 
   // ── Update UI ──
+  const anySliderMoved = sipAdd > 0 || cutPct > 0 || emgAdd > 0 || insAdd > 0;
   wiUpdateScoreDisplay(baseScore, newOverall);
   wiRenderImpactList(impacts, 'wi-impact-list');
   const hasChanges = impacts.length > 0;
-  document.getElementById('wi-impact-label').style.display = hasChanges ? '' : 'none';
+  const impactLabel = document.getElementById('wi-impact-label');
+  if (hasChanges) {
+    impactLabel.style.display = '';
+    impactLabel.textContent = '📊 Pillar Impact';
+  } else if (anySliderMoved) {
+    impactLabel.style.display = '';
+    impactLabel.textContent = '✅ Pillars already strong at these levels';
+  } else {
+    impactLabel.style.display = 'none';
+  }
   const goalBtn = document.getElementById('wi-goal-btn');
   if (goalBtn) goalBtn.disabled = !hasChanges || newOverall <= baseScore;
 }
@@ -15184,6 +15197,13 @@ function wiSaveAsGoal() {
     goalDesc = `Simulated scenario impact: ${baseScore} → ${newOverall}`;
   }
 
+  // Ensure target is never 0
+  if (!goalTarget || goalTarget <= 0) goalTarget = (p?.annualCompensation || 0) * 0.10 || 10000;
+
+  // targetDate as YYYY-MM (month format used by goal date picker)
+  const _td = new Date(Date.now() + 5 * 365 * 24 * 60 * 60 * 1000);
+  const targetDateStr = _td.getFullYear() + '-' + String(_td.getMonth() + 1).padStart(2, '0');
+
   // Create the goal
   const goals = getGoals();
   const newGoal = {
@@ -15193,7 +15213,7 @@ function wiSaveAsGoal() {
     target: goalTarget,
     unit: isIN ? 'INR' : 'USD',
     currency: sym,
-    targetDate: new Date(Date.now() + 5 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    targetDate: targetDateStr,
     desc: goalDesc,
     goalType,
     startBalance: 0,
@@ -15204,14 +15224,16 @@ function wiSaveAsGoal() {
   };
   goals.push(newGoal);
   saveGoals(goals);
-  showToast(`✅ Goal saved: "${goalName}"`);
+  showToast(`✅ Goal added! Opening Budget → Goals...`);
   closeWhatIf();
-  // Navigate to Goals panel
+  // Navigate to Budget tab where Goals live, then open Goals section
   setTimeout(() => {
-    if (typeof openGoalSheet === 'function') renderGoalsPanel?.();
-    // Navigate to Net Worth tab where Goals live
-    const nwTab = document.querySelector('[onclick*="networth"]') || document.querySelector('[data-tab="networth"]');
-    if (nwTab) nwTab.click();
+    const budgetBtn = document.querySelector('.nav-item[onclick*="budget"]');
+    if (budgetBtn) switchScreen('budget', budgetBtn);
+    setTimeout(() => {
+      const goalsTabBtn = document.getElementById('btab-goals');
+      if (goalsTabBtn) goalsTabBtn.click();
+    }, 200);
   }, 400);
 }
 
