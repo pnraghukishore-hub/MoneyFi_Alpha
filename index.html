@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.9.0
+  Version  : 3.9.1
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -14909,6 +14909,20 @@ function computeDemoFHS(region) {
   };
 }
 
+function buildHeroRings(scores, hasM, hasG) {
+  const cx=72,cy=72,sw=9;
+  const rings=[
+    {r:61,pct:scores.found/100,color:'#4FC3F7'},
+    {r:48,pct:hasM?scores.mastery/100:0,color:'#A78BFA',dim:!hasM},
+    {r:35,pct:hasG?scores.growth/100:0,color:'#6EE7B7',dim:!hasG},
+    {r:20,pct:scores.overall/100,color:scores.overall>=70?'#F9A825':scores.overall>=50?'#F9A825':'#E17055'},
+  ];
+  function rArc(cx,cy,r,s,e){const rad=d=>(d-90)*Math.PI/180;const sx=cx+r*Math.cos(rad(s)),sy=cy+r*Math.sin(rad(s));const ex=cx+r*Math.cos(rad(e)),ey=cy+r*Math.sin(rad(e));return `M${sx.toFixed(2)} ${sy.toFixed(2)} A${r} ${r} 0 ${(e-s)>180?1:0} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;}
+  const start=-210,sweep=300;
+  const svgRings=rings.map(ring=>{const bg=rArc(cx,cy,ring.r,start,start+sweep);const fill=ring.pct>0.005?rArc(cx,cy,ring.r,start,Math.min(start+sweep*ring.pct,start+sweep-0.3)):'';return `<path d="${bg}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${sw}" stroke-linecap="round"/>${fill?`<path d="${fill}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.dim?0.3:1}"/>`:''}`;}).join('');
+  return `<svg width="144" height="144" viewBox="0 0 144 144">${svgRings}<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="10" font-weight="900" fill="rgba(255,255,255,0.5)" font-family="Nunito" letter-spacing="0.5">SCORE</text><text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,0.3)" font-family="Nunito">F·M·G</text></svg>`;
+}
+
 function renderFHS() {
   const root = document.getElementById('fhs-root');
   if (!root) return;
@@ -15312,20 +15326,6 @@ function renderFHS() {
   }
 
   // Demo hero SVG rings builder (reusable)
-  function buildHeroRings(scores, hasM, hasG) {
-    const cx=72,cy=72,sw=9;
-    const rings=[
-      {r:61,pct:scores.found/100,color:'#4FC3F7'},
-      {r:48,pct:hasM?scores.mastery/100:0,color:'#A78BFA',dim:!hasM},
-      {r:35,pct:hasG?scores.growth/100:0,color:'#6EE7B7',dim:!hasG},
-      {r:20,pct:scores.overall/100,color:scores.overall>=70?'#F9A825':scores.overall>=50?'#F9A825':'#E17055'},
-    ];
-    function rArc(cx,cy,r,s,e){const rad=d=>(d-90)*Math.PI/180;const sx=cx+r*Math.cos(rad(s)),sy=cy+r*Math.sin(rad(s));const ex=cx+r*Math.cos(rad(e)),ey=cy+r*Math.sin(rad(e));return `M${sx.toFixed(2)} ${sy.toFixed(2)} A${r} ${r} 0 ${(e-s)>180?1:0} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;}
-    const start=-210,sweep=300;
-    const svgRings=rings.map(ring=>{const bg=rArc(cx,cy,ring.r,start,start+sweep);const fill=ring.pct>0.005?rArc(cx,cy,ring.r,start,Math.min(start+sweep*ring.pct,start+sweep-0.3)):'';return `<path d="${bg}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${sw}" stroke-linecap="round"/>${fill?`<path d="${fill}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.dim?0.3:1}"/>`:''}`;}).join('');
-    return `<svg width="144" height="144" viewBox="0 0 144 144">${svgRings}<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="10" font-weight="900" fill="rgba(255,255,255,0.5)" font-family="Nunito" letter-spacing="0.5">SCORE</text><text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,0.3)" font-family="Nunito">F·M·G</text></svg>`;
-  }
-
   root.innerHTML = `
     <!-- Hero swipe container: Card 1 = real score, Card 2 = demo -->
     <div class="fhs-hero-scroll" id="fhs-hero-scroll" onscroll="fhsHeroScrollDot()">
