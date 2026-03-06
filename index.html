@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.9.1
+  Version  : 3.9.2
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -13879,39 +13879,39 @@ const WI_SCENARIOS = [
   { id:'home',    emoji:'🏠', name:'Buy a Home',      desc:'Add EMI, reduce savings',
     delta: { negative: true },
     fields: [
-      { id:'emi',   label:'Monthly EMI',     type:'number', default:25000, hint:'₹25,000–₹80,000 typical' },
-      { id:'down',  label:'Down Payment',    type:'number', default:1500000, hint:'Lump sum from savings' },
-      { id:'years', label:'Loan Tenure (yrs)',type:'number', default:20, hint:'15–30 years' },
+      { id:'emi',   label:'Monthly EMI',      type:'number', defaultIN:25000,  defaultUS:1800,  hintFn: sym => `${sym}${sym==='₹'?'25,000–₹80,000':'1,500–$3,500'} typical` },
+      { id:'down',  label:'Down Payment',     type:'number', defaultIN:1500000,defaultUS:60000, hintFn: sym => `Lump sum from savings` },
+      { id:'years', label:'Loan Tenure (yrs)',type:'number', defaultIN:20,     defaultUS:30,    hintFn: sym => '15–30 years' },
     ]},
   { id:'baby',    emoji:'👶', name:'New Baby',        desc:'Extra monthly expenses',
     delta: { negative: true },
     fields: [
-      { id:'extra', label:'Extra Monthly Cost', type:'number', default:15000, hint:'₹10K–₹30K/mo typical' },
-      { id:'years', label:'For how many years', type:'number', default:5, hint:'Initial intensive years' },
+      { id:'extra', label:'Extra Monthly Cost', type:'number', defaultIN:15000, defaultUS:1000, hintFn: sym => `${sym}${sym==='₹'?'10,000–₹30,000':'800–$2,000'}/mo typical` },
+      { id:'years', label:'For how many years', type:'number', defaultIN:5,    defaultUS:5,    hintFn: () => 'Initial intensive years' },
     ]},
   { id:'break',   emoji:'🎓', name:'Career Break',    desc:'Income pause for N months',
     delta: { negative: true },
     fields: [
-      { id:'months', label:'Break Duration (months)', type:'number', default:12, hint:'6–24 months typical' },
-      { id:'pct',    label:'Income During Break (%)', type:'number', default:0, hint:'0% = full break, 50% = part-time' },
+      { id:'months', label:'Break Duration (months)', type:'number', defaultIN:12, defaultUS:12, hintFn: () => '6–24 months typical' },
+      { id:'pct',    label:'Income During Break (%)', type:'number', defaultIN:0,  defaultUS:0,  hintFn: () => '0% = full break, 50% = part-time' },
     ]},
   { id:'switch',  emoji:'💼', name:'Job Switch',      desc:'Income change + gap period',
     delta: { positive: true },
     fields: [
-      { id:'raise',  label:'Income Change (%)', type:'number', default:25, hint:'+25% typical switch premium' },
-      { id:'gap',    label:'Gap Period (months)', type:'number', default:2, hint:'1–3 months between jobs' },
+      { id:'raise', label:'Income Change (%)',  type:'number', defaultIN:25, defaultUS:20, hintFn: () => '+20–30% typical switch premium' },
+      { id:'gap',   label:'Gap Period (months)',type:'number', defaultIN:2,  defaultUS:2,  hintFn: () => '1–3 months between jobs' },
     ]},
   { id:'windfall',emoji:'💰', name:'Invest Windfall', desc:'Lump sum into investments',
     delta: { positive: true },
     fields: [
-      { id:'amount', label:'Windfall Amount',    type:'number', default:500000, hint:'Bonus, inheritance, etc.' },
-      { id:'target', label:'Put into',           type:'select', default:'fire',
+      { id:'amount', label:'Windfall Amount', type:'number', defaultIN:500000, defaultUS:30000, hintFn: () => 'Bonus, inheritance, sale proceeds' },
+      { id:'target', label:'Put into',        type:'select', defaultIN:'fire', defaultUS:'fire',
         options:[['fire','FIRE corpus'],['emergency','Emergency Fund'],['education','Education Goal'],['debt','Pay off Debt']] },
     ]},
   { id:'retire',  emoji:'⏰', name:'Retire Early',    desc:'Move retirement age earlier',
     delta: { mixed: true },
     fields: [
-      { id:'age', label:'New Retirement Age', type:'number', default:50, hint:'Current target: from profile' },
+      { id:'age', label:'New Retirement Age', type:'number', defaultIN:50, defaultUS:55, hintFn: () => 'Current target: from profile' },
     ]},
 ];
 
@@ -13954,13 +13954,16 @@ function wiUpdateSliderLocale() {
   const sym = isIN ? '₹' : '$';
   const max  = isIN ? 30000 : 2000;
   const step = isIN ? 500 : 100;
-  const k20  = isIN ? '₹10K' : '$1K';
-  const k40  = isIN ? '₹20K' : '$1.5K';
-  const k60  = isIN ? '₹30K' : '$2K';
+  const t1   = isIN ? '₹10K' : '$500';
+  const t2   = isIN ? '₹20K' : '$1K';
+  const t3   = isIN ? '₹30K' : '$2K';
   const sipEl = document.getElementById('wi-sip');
   if (sipEl) { sipEl.max = max; sipEl.step = step; }
   const ticks = document.querySelector('#wi-panel-sliders .wi-slider-ticks');
-  if (ticks) ticks.innerHTML = `<span>${sym}0</span><span>${k20}</span><span>${k40}</span><span>${k60}</span>`;
+  if (ticks) ticks.innerHTML = `<span>${sym}0</span><span>${t1}</span><span>${t2}</span><span>${t3}</span>`;
+  // Also reset the sip label to correct currency symbol
+  const sipLbl = document.getElementById('wi-lbl-sip');
+  if (sipLbl && sipLbl.textContent === '+0') sipLbl.textContent = `+${sym}0`;
 }
 
 function wiSetTab(tab) {
@@ -14183,7 +14186,8 @@ function wiReset() {
     const el = document.getElementById('wi-' + k);
     if (el) { el.value = 0; wiUpdateSliderUI(k, 0); }
   });
-  const lbls = { sip:'+₹0', cut:'0%', emg:'+0 mo', ins:'+0×' };
+  const _sym = (getFHSProfile()?.region || 'IN') === 'US' ? '$' : '₹';
+  const lbls = { sip:`+${_sym}0`, cut:'0%', emg:'+0 mo', ins:'+0×' };
   Object.entries(lbls).forEach(([k,v]) => {
     const el = document.getElementById('wi-lbl-' + k);
     if (el) el.textContent = v;
@@ -14233,29 +14237,27 @@ function wiSelectScenario(id) {
   const isIN = (p?.region || 'IN') !== 'US';
   const sym = isIN ? '₹' : '$';
 
-  // Pre-fill defaults with profile data where possible
-  const defaults = { ...Object.fromEntries(scenario.fields.map(f => [f.id, f.default])) };
-  if (id === 'retire') defaults.age = p?.retirementAge || 50;
-  if (id === 'home') defaults.emi = isIN ? 25000 : 1800;
-  if (id === 'home') defaults.down = isIN ? 1500000 : 100000;
-  if (id === 'baby') defaults.extra = isIN ? 15000 : 1000;
-  if (id === 'windfall') defaults.amount = isIN ? 500000 : 30000;
+  // Pre-fill defaults with region-aware values
+  const defaults = { ...Object.fromEntries(scenario.fields.map(f => [f.id, isIN ? (f.defaultIN ?? f.default ?? 0) : (f.defaultUS ?? f.default ?? 0)])) };
+  if (id === 'retire') defaults.age = p?.retirementAge || (isIN ? 50 : 55);
 
   _wiScenarioParams = { ...defaults };
 
   fields.innerHTML = scenario.fields.map(f => {
+    const defVal = isIN ? (f.defaultIN ?? f.default ?? 0) : (f.defaultUS ?? f.default ?? 0);
+    const hint = f.hintFn ? f.hintFn(sym) : '';
     if (f.type === 'select') {
       return `<div class="wi-config-field">
         <div class="wi-config-label">${f.label}</div>
         <select class="wi-config-input" id="wi-cfg-${f.id}" onchange="wiScenarioParam('${f.id}',this.value)">
-          ${(f.options||[]).map(([v,l]) => `<option value="${v}" ${v===defaults[f.id]?'selected':''}>${l}</option>`).join('')}
+          ${(f.options||[]).map(([v,l]) => `<option value="${v}" ${v===defVal?'selected':''}>${l}</option>`).join('')}
         </select>
       </div>`;
     }
     return `<div class="wi-config-field">
-      <div class="wi-config-label">${f.label} ${f.hint ? `<span style="font-weight:600;color:var(--text-light);text-transform:none;letter-spacing:0;">(${f.hint})</span>` : ''}</div>
+      <div class="wi-config-label">${f.label} ${hint ? `<span style="font-weight:600;color:var(--text-light);text-transform:none;letter-spacing:0;">(${hint})</span>` : ''}</div>
       <input type="number" class="wi-config-input" id="wi-cfg-${f.id}"
-        value="${defaults[f.id]}" oninput="wiScenarioParam('${f.id}',this.value)" inputmode="numeric">
+        value="${defVal}" oninput="wiScenarioParam('${f.id}',this.value)" inputmode="numeric">
     </div>`;
   }).join('');
 
@@ -15792,10 +15794,10 @@ function scoreNWTrajectory(nw, profile) {
       <div class="wi-slider-card">
         <div class="wi-slider-header">
           <div class="wi-slider-title">💰 Monthly Savings Increase</div>
-          <div class="wi-slider-value" id="wi-lbl-sip">+₹0</div>
+          <div class="wi-slider-value" id="wi-lbl-sip">+0</div>
         </div>
         <input type="range" class="wi-slider" id="wi-sip" min="0" max="30000" step="500" value="0" oninput="wiUpdateSlider('sip',this.value)" style="--pct:0%">
-        <div class="wi-slider-ticks"><span>₹0</span><span>₹10K</span><span>₹20K</span><span>₹30K</span></div>
+        <div class="wi-slider-ticks"><span>0</span><span>—</span><span>—</span><span>—</span></div>
       </div>
       <div class="wi-slider-card">
         <div class="wi-slider-header">
