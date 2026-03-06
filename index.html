@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.8.0
+  Version  : 3.8.1
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -13452,6 +13452,68 @@ function fhsScrollToHero(idx) {
   if (!scroll) return;
   scroll.scrollTo({ left: idx * scroll.offsetWidth, behavior: 'smooth' });
 }
+
+function updateDemoHeroCard() {
+  const card = document.getElementById('fhs-demo-hero-card');
+  if (!card) return;
+  const region = getFHSProfile()?.region || 'IN';
+  const demo = computeDemoFHS(region);
+  const isIN = region === 'IN';
+  const isUS = region === 'US';
+  const flag = isIN ? '🇮🇳' : isUS ? '🇺🇸' : '🌍';
+  const income = isIN ? '₹18L/yr' : '$120K/yr';
+  const insurance = isIN ? '20× insurance' : '10× insurance';
+  const locale = isIN ? 'IND' : isUS ? 'US' : 'INT';
+  const currency = isIN ? '₹' : '$';
+  const corpus = isIN ? '₹32L corpus' : '$210K corpus';
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative;z-index:1;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:0.68em;font-weight:900;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:1.2px;">Sample Score</span>
+        <span style="background:rgba(110,231,183,0.25);border:1px solid rgba(110,231,183,0.4);border-radius:8px;padding:2px 8px;font-size:0.6em;font-weight:900;color:#6EE7B7;">DEMO</span>
+      </div>
+      <button onclick="openFHSOnboard()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:5px 11px;font-size:0.68em;font-weight:800;color:rgba(255,255,255,0.8);cursor:pointer;font-family:Nunito,sans-serif;">⚙️ Set Up Mine</button>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:4.5em;font-weight:900;color:white;line-height:1;letter-spacing:-2px;">${demo.overallScore}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.12);border-radius:20px;padding:3px 10px;">
+            <span style="font-size:0.75em;">✅</span>
+            <span style="font-size:0.75em;font-weight:900;color:rgba(255,255,255,0.9);">Good</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:3px;">
+            <span style="font-size:0.8em;">▲</span>
+            <span style="font-size:0.72em;font-weight:800;color:#6EE7B7;">+6 from last month</span>
+          </div>
+        </div>
+        <div style="font-size:0.78em;font-weight:700;color:rgba(255,255,255,0.75);margin-top:10px;line-height:1.4;">${demo.summaryLine}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+          <div style="background:rgba(79,195,247,0.2);border:1px solid rgba(79,195,247,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#4FC3F7;">🏗️ ${demo.foundScore}</div>
+          <div style="background:rgba(167,139,250,0.2);border:1px solid rgba(167,139,250,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#A78BFA;">🧠 ${demo.masteryScore}</div>
+          <div style="background:rgba(110,231,183,0.2);border:1px solid rgba(110,231,183,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#6EE7B7;">🌱 ${demo.growthScore}</div>
+        </div>
+      </div>
+      <div style="flex-shrink:0;position:relative;">
+        ${buildHeroRings({found:demo.foundScore,mastery:demo.masteryScore,growth:demo.growthScore,overall:demo.overallScore},true,true)}
+      </div>
+    </div>
+    <div style="margin-top:14px;padding:10px 12px;background:rgba(255,255,255,0.07);border-radius:10px;position:relative;z-index:1;">
+      <div style="font-size:0.68em;font-weight:800;color:rgba(110,231,183,0.8);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">${flag} Sample Profile · All 15 pillars active</div>
+      <div style="font-size:0.75em;font-weight:700;color:rgba(255,255,255,0.85);line-height:1.5;">
+        Skanda, 34 · Software Engineer · ${income}<br>
+        6mo emergency fund · ${insurance} · 2 kids · ${locale}
+      </div>
+    </div>
+    <div style="height:5px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;margin-top:12px;position:relative;z-index:1;">
+      <div style="height:100%;width:${demo.overallScore}%;background:linear-gradient(90deg,#6EE7B7,#10B981);border-radius:4px;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:5px;position:relative;z-index:1;">
+      <div style="font-size:0.6em;font-weight:700;color:rgba(255,255,255,0.4);">15/15 pillars · ${locale} benchmarks</div>
+      <div style="font-size:0.6em;font-weight:700;color:rgba(255,255,255,0.55);font-style:italic;">← Swipe left for your score</div>
+    </div>
+  `;
+}
 function fhsHeroScrollDot() {
   const scroll = document.getElementById('fhs-hero-scroll');
   if (!scroll) return;
@@ -13459,6 +13521,25 @@ function fhsHeroScrollDot() {
   [0,1].forEach(i => {
     const d = document.getElementById('fhs-dot-' + i);
     if (d) d.classList.toggle('active', i === idx);
+  });
+  // Toggle demo mode when switching cards — re-render pillars below
+  const newDemo = idx === 1;
+  if (newDemo !== _fhsDemoActive) {
+    _fhsDemoActive = newDemo;
+    // Re-render only the pillar sections, not the hero (avoid scroll reset)
+    renderFHSPillars();
+  }
+}
+
+function renderFHSPillars() {
+  // Save hero scroll position, re-render FHS, restore scroll position
+  const scrollEl = document.getElementById('fhs-hero-scroll');
+  const scrollLeft = scrollEl ? scrollEl.scrollLeft : 0;
+  renderFHS();
+  // Restore scroll position after DOM rebuild
+  requestAnimationFrame(() => {
+    const el = document.getElementById('fhs-hero-scroll');
+    if (el) el.scrollLeft = scrollLeft;
   });
 }
 
@@ -13550,7 +13631,7 @@ function openMasteryOnboard() {
     ${q('marginal_rate', 'Q9 · Your marginal (top) income tax bracket?', p?.region === 'IN'
       ? [['0.05','Up to 5%'],['0.20','20%'],['0.30','30%']]
       : [['0.12','10–12%'],['0.22','22%'],['0.24','24%'],['0.32','32%'],['0.37','37%+']],
-      p?.taxProfile?.marginalRate ? String(p.taxProfile.marginalRate) : '',
+      p?.taxProfile?.marginalRate ? parseFloat(p.taxProfile.marginalRate).toFixed(2) : '',
       'Used to compute your exact tax savings from shelter utilization')}
 
     ${q('taxloss', 'Q10 · Do you practice tax-loss harvesting?', [
@@ -13635,7 +13716,7 @@ function saveMasteryProfile() {
   saveFHSProfileData({
     ...profile, riskProfile, behaviourProfile,
     taxProfile: {
-      marginalRate: parseFloat(g('marginal_rate')) || (profile?.region === 'IN' ? 0.20 : 0.22),
+      marginalRate: parseFloat(parseFloat(g('marginal_rate') || (profile?.region === 'IN' ? '0.20' : '0.22')).toFixed(2)),
       taxLossHarvesting: g('taxloss') === 'yes',
       hsa: g('hsa') === 'yes',
       hasWill: g('will') === 'yes',
@@ -13960,6 +14041,164 @@ function toggleFHSPillar(key) {
 }
 
 // ── FHS RENDER ────────────────────────────────────────
+
+// ── DEMO MODE: Skanda — region-aware synthetic FHS ────────────────────────
+// Returns a complete fhs object matching computeFHSScore() structure exactly
+let _fhsDemoActive = false;
+
+function computeDemoFHS(region) {
+  const isIN = (region || 'IN') === 'IN';
+  const isUS = region === 'US';
+  const fmt = v => {
+    if (isIN) return '₹' + (v >= 1e7 ? (v/1e7).toFixed(1)+'Cr' : v >= 1e5 ? (v/1e5).toFixed(1)+'L' : v.toLocaleString('en-IN'));
+    return '$' + (v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v.toString());
+  };
+
+  // Skanda's profile — adapts by region
+  const name       = 'Skanda';
+  const age        = 34;
+  const income     = isIN ? 1800000 : 120000;   // ₹18L / $120K
+  const incMo      = income / 12;
+  const expMo      = isIN ? 90000 : 4500;
+  const savings    = isIN ? 270000 : 18000;      // 15% savings rate
+  const corpus     = isIN ? 3200000 : 210000;    // retirement corpus
+  const nw         = isIN ? 8500000 : 560000;
+  const liquid     = isIN ? 550000 : 36000;      // ~6mo expenses
+  const insurance  = isIN ? 36000000 : 1200000;  // 20× income
+  const currency   = isIN ? '₹' : '$';
+  const flag       = isIN ? '🇮🇳' : '🇺🇸';
+
+  // ── Pillar scores (realistic, not perfect — shows aspirational gaps) ───
+  const pillarResults = {
+    fire:       { weight:9,  emoji:'🔥', name:'FIRE Readiness',      band:'Foundation', color:'#E17055',
+                  result:{ score:58, status:'fair', corpus, target:isIN?6750000:450000, ratio:0.58,
+                    annualExp:expMo*12, gap:isIN?3550000:240000, targetSWR:4, fireMultiple:25,
+                    calc:`${fmt(corpus)} ÷ (25× @ 4% SWR) = 58%`,
+                    benchmarkIN:`Target: 25× annual expenses = ${fmt(expMo*12*25)}`,
+                    accounts:[{name:isIN?'PPF':'401(k) Fidelity', val:corpus*0.7, type:'retirement'},{name:isIN?'ELSS MF':'Roth IRA', val:corpus*0.3, type:'retirement'}],
+                    label:'Corpus at 58% of FIRE target — on track, accelerate SIP' }},
+    retirement: { weight:9,  emoji:'🏛️', name:'Retirement Track',    band:'Foundation', color:'#4FC3F7',
+                  result:{ score:72, status:'good', corpus, target:income*3, ratio:corpus/(income*3),
+                    multiple:3, age:34, annualIncome:income,
+                    matchUtilization:0.80, matchBonus:8, matchGapMonthly:isIN?1500:150,
+                    projectedCorpus:isIN?28000000:1800000, projectedShortfall:0, yearsLeft:26,
+                    calc:`${fmt(corpus)} ÷ (3× × ${fmt(income)}/yr) = ${(corpus/(income*3)*100).toFixed(0)}%`,
+                    benchmarkIN:`Target at age 34: 3× annual salary`,
+                    label:'On track · 80% employer match captured' }},
+    savings:    { weight:10, emoji:'💰', name:'Savings Rate',         band:'Foundation', color:'#00B894',
+                  result:{ score:68, status:'good', rate:0.15, avgInc:incMo, avgExp:expMo, avgSav:savings/12,
+                    savingsVolatility:8.2, volatilityPenalty:0,
+                    calc:`(${fmt(incMo)} − ${fmt(expMo)}) ÷ ${fmt(incMo)} = 15.0%`,
+                    benchmarkIN:`Good: ≥20% · FIRE-track: ≥30%`,
+                    label:'15% savings rate — solid, push to 20% for FIRE track' }},
+    emergency:  { weight:8,  emoji:'🛡️', name:'Emergency Fund',       band:'Foundation', color:'#F9A825',
+                  result:{ score:96, status:'good', liquidVal:liquid, targetAmt:expMo*6, monthsCovered:6.1,
+                    monthlyExp:expMo, emergencyTarget:6, hasCashDrag:false, cashDragMonths:0,
+                    calc:`${fmt(liquid)} ÷ ${fmt(expMo)}/mo = 6.1 months`,
+                    benchmarkIN:`Target: 6 months expenses`,
+                    label:'6.1 months covered — emergency fund healthy ✓' }},
+    insurance:  { weight:8,  emoji:'🧬', name:'Life Insurance',        band:'Foundation', color:'#7C3AED',
+                  result:{ score:100, status:'good', cover:insurance, target:income*(isIN?20:10), ratio:2.0,
+                    annualInc:income, disabilityCoverPct:60, disabilityGap:40, disabilityPenalty:10,
+                    calc:`${fmt(insurance)} cover ÷ (20× × ${fmt(income)}/yr) = 100%`,
+                    benchmarkIN:`HLV: 20× income · Disability gap: 40% uncovered`,
+                    label:`${isIN?'20×':'10×'} HLV coverage ✓ · Disability gap: 40%` }},
+    education:  { weight:3,  emoji:'🎓', name:'Education Goal',        band:'Foundation', color:'#FFB74D',
+                  result:{ score:42, status:'fair', eduCorpus:isIN?350000:22000,
+                    totalTarget:isIN?2800000:185000, ratio:0.125,
+                    calc:`${fmt(isIN?350000:22000)} saved of ${fmt(isIN?2800000:185000)} target`,
+                    benchmarkIN:`${isIN?'₹28L':'$185K'} needed by age 18 (inflation-adjusted)`,
+                    label:'12% funded — 8 years to college, accelerate contributions' }},
+    debt:       { weight:6,  emoji:'🏦', name:'Debt Service Health',   band:'Foundation', color:'#F43F5E',
+                  result:{ score:82, status:'good', dti:0.18, monthlyDebt:isIN?16000:900,
+                    householdMonthly:incMo,
+                    calc:`${fmt(isIN?16000:900)} debt ÷ ${fmt(incMo)} income = 18% DTI`,
+                    benchmarkIN:`Excellent: <20% DTI`,
+                    label:'18% DTI — healthy debt load ✓' }},
+    risk:       { weight:10, emoji:'⚖️', name:'Risk Architecture',     band:'Mastery',   color:'#EF4444',
+                  result:{ score:65, status:'good', tolerance:70, capacity:75, requiredReturn:10, gap:5, alignmentPenalty:0,
+                    calc:`Tolerance 70 (40%) + Capacity 75 (40%) + Return fit 60 (20%) = 69 → capped 65`,
+                    _capped:true, _capReason:'Life Insurance is Poor — fix coverage to unlock full Risk score',
+                    label:'Tolerance and capacity well-aligned · Insurance cap applied' }},
+    behaviour:  { weight:10, emoji:'🧘', name:'Behavioural Finance',   band:'Mastery',   color:'#8B5CF6',
+                  result:{ score:74, status:'good', penalty:16, signals:['Held during 2020 crash ✓','No panic selling ✓'],
+                    calc:`100 − 16pts bias penalty = 84 → 74 with volatility`,
+                    label:'Strong discipline · Minor FOMO bias detected' }},
+    income:     { weight:10, emoji:'💼', name:'Income Architecture',   band:'Mastery',   color:'#059669',
+                  result:{ score:55, status:'fair', passivePct:8, sources:2,
+                    calc:`Passive 8% (40%) + Growth rate (30%) + Diversity 2-src (30%) = 55`,
+                    benchmarkIN:`Passive ≥30% = resilient · 3+ income sources`,
+                    label:'8% passive income — add one more stream to reach Good' }},
+    tax:        { weight:7,  emoji:'🧾', name:'Tax Optimization',      band:'Mastery',   color:'#0EA5E9',
+                  result:{ score:52, status:'fair',
+                    shelterScore:22, assetLocScore:20, stratScore:10,
+                    shelterRatio:0.44, shelterCapacityLeft:isIN?112000:14000,
+                    taxSavingsFromFilling:isIN?33600:3360, marginalRate:isIN?0.30:0.24,
+                    hasBonds:true, bondTotal:isIN?200000:12000, hasRetSpace:true,
+                    isUS, signals:['44% shelter utilized','Some bonds in taxable accounts'],
+                    calc:`Shelter 22/50 + Location 20/30 + Strategy 10/20 = 52`,
+                    benchmarkIN:isIN?'80C ₹1.5L + NPS ₹50K = ₹2L total':'401K $23K + IRA $7K + HSA $4,150',
+                    label:`${fmt(isIN?112000:14000)}/yr shelter unused — ${fmt(isIN?33600:3360)}/yr tax savings available` }},
+    estate:     { weight:6,  emoji:'🏰', name:'Estate & Legacy',       band:'Mastery',   color:'#D97706',
+                  result:{ score:50, status:'fair', signals:['Nominees assigned ✓'],
+                    calc:`Will: 0 + Nominees: 25 + Insurance: 15 + Digital: 10 = 50`,
+                    label:'No will yet · Nominees assigned · Draft will to reach Good' }},
+    portfolio:  { weight:8,  emoji:'📊', name:'Portfolio Health',      band:'Growth',    color:'#6366F1',
+                  result:{ score:76, status:'good', equityPct:52, fixedPct:14, goldPct:11, rePct:18, cashPct:5,
+                    equityTarget:76, assetClassCount:5, concentrationPct:28, concentrationPenalty:0, diversityBonus:20,
+                    age:34, calc:`Diversification 56 + Variety 20 − Concentration 0 = 76`,
+                    benchmarkIN:`Age-adjusted targets: Equity 76% · Fixed 15% · Gold 10%`,
+                    label:'5 asset classes · Good diversification at age 34' }},
+    sequence:   { weight:6,  emoji:'🎯', name:'Goal Sequencing',       band:'Growth',    color:'#10B981',
+                  result:{ score:80, status:'good', signals:['Emergency Fund ✓','Life Insurance ✓','Retirement Track ✓'],
+                    warnings:['Education Goal incomplete (42/100, need 40+)'],
+                    sequenceBreak:null,
+                    calc:`Priority ladder: ✓ ✓ ✓ ✓ ✗ (education gap)`,
+                    label:'Goals funded in correct priority order ✓' }},
+    trajectory: { weight:6,  emoji:'📈', name:'NW Trajectory',         band:'Growth',    color:'#F59E0B',
+                  result:{ score:78, status:'good', annualGR:14.2, inflation:isIN?6:3.5, realReturn:isIN?8.2:10.7,
+                    months:12, snapshotCount:13, oldVal:isIN?7400000:490000, newVal:isIN?8500000:560000,
+                    growthRate:14.9,
+                    calc:`12mo: ${fmt(isIN?7400000:490000)} → ${fmt(isIN?8500000:560000)} = 14.9% → 14.2% p.a. annualised`,
+                    benchmarkIN:`Beat ${isIN?6:3.5}% inflation`,
+                    label:`+${isIN?8.2:10.7}% real return · NW compounding healthily` }},
+  };
+
+  // Band scores
+  const foundKeys   = ['fire','retirement','savings','emergency','insurance','education','debt'];
+  const masteryKeys = ['risk','behaviour','income','tax','estate'];
+  const growthKeys  = ['portfolio','sequence','trajectory'];
+  function bandAvg(keys) {
+    const active = keys.map(k=>pillarResults[k]).filter(p=>p.result.status!=='inactive');
+    const w = active.reduce((s,p)=>s+p.weight,0);
+    return w>0 ? Math.round(active.reduce((s,p)=>s+p.result.score*p.weight,0)/w) : 0;
+  }
+  const foundScore   = bandAvg(foundKeys);
+  const masteryScore = bandAvg(masteryKeys);
+  const growthScore  = bandAvg(growthKeys);
+  const overallScore = Math.round(foundScore*0.40 + masteryScore*0.30 + growthScore*0.30);
+  const grade = overallScore>=85?'A':overallScore>=70?'B':overallScore>=55?'C':overallScore>=40?'D':'F';
+  const gradeLabel = {A:'🏆 Excellent',B:'✅ Good',C:'⚡ Fair',D:'⚠️ Needs Work',F:'🚨 At Risk'}[grade];
+
+  const cfg = {
+    fireMultiple:isIN?33:25, insuranceMultiple:isIN?20:10, emergencyMonths:6,
+    benchmarkSource: isIN?'SEBI / NPS Trust / AMFI India':'Fidelity / CFP Board',
+  };
+
+  return {
+    overallScore, foundScore, masteryScore, growthScore,
+    hasMastery:true, hasGrowth:true,
+    grade, gradeLabel, scoreDelta:6,
+    pillarResults, activePillars:15, totalPillars:15,
+    summaryLine:'Strong saver. Tax optimization is your biggest opportunity.',
+    computeMs:'demo', cfg, region: region||'IN',
+    profile:{ age:34, retirementAge:60, region:region||'IN',
+              annualCompensation:income, targetSWR:4,
+              name: flag + ' Skanda, 34 · ' + (isIN?'₹18L/yr · IND':'$120K/yr · US') },
+    _isDemo: true,
+  };
+}
+
 function renderFHS() {
   const root = document.getElementById('fhs-root');
   if (!root) return;
@@ -13992,7 +14231,12 @@ function renderFHS() {
     return;
   }
 
-  const fhs = computeFHSScore();
+  // Demo mode: use Skanda's synthetic data when demo card is showing
+  const region = getFHSProfile()?.region || 'IN';
+  const fhs = _fhsDemoActive ? computeDemoFHS(region) : computeFHSScore();
+  const isDemo = fhs._isDemo || false;
+  // Always populate demo card (region may have changed)
+  requestAnimationFrame(() => updateDemoHeroCard());
   const sym = currentCurrency?.symbol || '$';
 
   // Score dial SVG
@@ -14369,7 +14613,7 @@ function renderFHS() {
     function rArc(cx,cy,r,s,e){const rad=d=>(d-90)*Math.PI/180;const sx=cx+r*Math.cos(rad(s)),sy=cy+r*Math.sin(rad(s));const ex=cx+r*Math.cos(rad(e)),ey=cy+r*Math.sin(rad(e));return `M${sx.toFixed(2)} ${sy.toFixed(2)} A${r} ${r} 0 ${(e-s)>180?1:0} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;}
     const start=-210,sweep=300;
     const svgRings=rings.map(ring=>{const bg=rArc(cx,cy,ring.r,start,start+sweep);const fill=ring.pct>0.005?rArc(cx,cy,ring.r,start,Math.min(start+sweep*ring.pct,start+sweep-0.3)):'';return `<path d="${bg}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${sw}" stroke-linecap="round"/>${fill?`<path d="${fill}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.dim?0.3:1}"/>`:''}`;}).join('');
-    return `<svg width="144" height="144" viewBox="0 0 144 144">${svgRings}<text x="${cx}" y="${cy+2}" text-anchor="middle" font-size="11" font-weight="900" fill="rgba(255,255,255,0.5)" font-family="Nunito" letter-spacing="1">BANDS</text></svg>`;
+    return `<svg width="144" height="144" viewBox="0 0 144 144">${svgRings}<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="10" font-weight="900" fill="rgba(255,255,255,0.5)" font-family="Nunito" letter-spacing="0.5">SCORE</text><text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,0.3)" font-family="Nunito">F·M·G</text></svg>`;
   }
 
   root.innerHTML = `
@@ -14431,55 +14675,10 @@ function renderFHS() {
     </div>
     </div><!-- end slide 1 -->
 
-      <!-- SLIDE 2: Demo Score (Sample) -->
-      <div class="fhs-hero-slide">
-      <div class="fhs-hero-demo">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative;z-index:1;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:0.68em;font-weight:900;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:1.2px;">Sample Score</span>
-            <span style="background:rgba(110,231,183,0.25);border:1px solid rgba(110,231,183,0.4);border-radius:8px;padding:2px 8px;font-size:0.6em;font-weight:900;color:#6EE7B7;">DEMO</span>
-          </div>
-          <button onclick="openFHSOnboard()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:5px 11px;font-size:0.68em;font-weight:800;color:rgba(255,255,255,0.8);cursor:pointer;font-family:Nunito,sans-serif;">⚙️ Set Up Mine</button>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:4.5em;font-weight:900;color:white;line-height:1;letter-spacing:-2px;">74</div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
-              <div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.12);border-radius:20px;padding:3px 10px;">
-                <span style="font-size:0.75em;">✅</span>
-                <span style="font-size:0.75em;font-weight:900;color:rgba(255,255,255,0.9);">Good</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:3px;">
-                <span style="font-size:0.8em;">▲</span>
-                <span style="font-size:0.72em;font-weight:800;color:#6EE7B7;">+6 from last month</span>
-              </div>
-            </div>
-            <div style="font-size:0.78em;font-weight:700;color:rgba(255,255,255,0.75);margin-top:10px;line-height:1.4;">Strong saver. Tax optimization is your blind spot.</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
-              <div style="background:rgba(79,195,247,0.2);border:1px solid rgba(79,195,247,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#4FC3F7;">🏗️ 79</div>
-              <div style="background:rgba(167,139,250,0.2);border:1px solid rgba(167,139,250,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#A78BFA;">🧠 68</div>
-              <div style="background:rgba(110,231,183,0.2);border:1px solid rgba(110,231,183,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#6EE7B7;">🌱 72</div>
-            </div>
-          </div>
-          <div style="flex-shrink:0;position:relative;">
-            ${buildHeroRings({found:79,mastery:68,growth:72,overall:74},true,true)}
-          </div>
-        </div>
-        <!-- Demo profile caption -->
-        <div style="margin-top:14px;padding:10px 12px;background:rgba(255,255,255,0.07);border-radius:10px;position:relative;z-index:1;">
-          <div style="font-size:0.68em;font-weight:800;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Sample profile</div>
-          <div style="font-size:0.75em;font-weight:700;color:rgba(255,255,255,0.85);line-height:1.5;">
-            Arjun, 34 · Software Engineer · ₹18L/yr income<br>
-            6mo emergency fund · 15× insurance · 2 kids · IND
-          </div>
-        </div>
-        <div style="height:5px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;margin-top:12px;position:relative;z-index:1;">
-          <div style="height:100%;width:74%;background:linear-gradient(90deg,#6EE7B7,#10B981);border-radius:4px;"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-top:5px;position:relative;z-index:1;">
-          <div style="font-size:0.6em;font-weight:700;color:rgba(255,255,255,0.4);">15/15 pillars active</div>
-          <div style="font-size:0.6em;font-weight:700;color:rgba(255,255,255,0.55);font-style:italic;">← Swipe left for your score</div>
-        </div>
+      <!-- SLIDE 2: Demo Score — Skanda (region-aware, built dynamically) -->
+      <div class="fhs-hero-slide" id="fhs-demo-slide">
+      <div class="fhs-hero-demo" id="fhs-demo-hero-card">
+        <!-- Populated by updateDemoHeroCard() on load + region change -->
       </div>
       </div><!-- end slide 2 -->
 
@@ -14491,6 +14690,7 @@ function renderFHS() {
       <div class="fhs-hero-dot" id="fhs-dot-1" onclick="fhsScrollToHero(1)"></div>
     </div>
 
+    <div id="fhs-pillars-wrap">
     <!-- Foundation Pillars -->
     <div class="fhs-section-title">🏗️ Foundation Pillars — tap any ring to expand</div>
     <div class="fhs-rings-wrap" id="fhs-rings-grid">
@@ -14538,7 +14738,15 @@ function renderFHS() {
 
     <!-- Key insights -->
     <div class="fhs-section-title" style="margin-top:20px;">🔍 Key Insights</div>
+    ${isDemo ? `<div style="background:linear-gradient(135deg,#064E3B,#065F46);border-radius:12px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:1.2em;">👆</span>
+      <div>
+        <div style="font-size:0.72em;font-weight:900;color:#6EE7B7;">SAMPLE SCORE — ${fhs.profile?.name || 'Skanda, 34'}</div>
+        <div style="font-size:0.68em;color:rgba(255,255,255,0.7);font-weight:600;">${fhs.profile?.annualCompensation ? '' : ''}Swipe left to set up your real score ←</div>
+      </div>
+    </div>` : ''}
     ${renderFHSInsights(fhs)}
+    </div><!-- end fhs-pillars-wrap -->
   `;
 }
 
