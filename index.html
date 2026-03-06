@@ -158,11 +158,6 @@
     .fhs-nudge { font-size: 0.78em; font-weight: 700; color: #1E2A6E; background: rgba(30,42,110,0.06); border-radius: 10px; padding: 10px 12px; line-height: 1.4; }
     .fhs-source-accounts { margin-top: 10px; }
     .fhs-account-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: #F8F9FF; border-radius: 10px; margin-bottom: 5px; }
-    .fhs-picker-group { margin-bottom: 5px; border: 1.5px solid #E8E8F0; border-radius: 11px; overflow: hidden; }
-    .fhs-picker-group-hdr { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #F0F4FF; cursor: pointer; user-select: none; }
-    .fhs-picker-row { display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer; border-top: 1px solid #F0F0F0; background: white; }
-    .fhs-grp-chevron { font-size: 0.7em; color: var(--text-light); transition: transform 0.2s; }
-    .fhs-grp-chevron.open { transform: rotate(180deg); }
     .fhs-account-name { font-size: 0.73em; font-weight: 700; color: var(--text-dark); }
     .fhs-account-val { font-size: 0.73em; font-weight: 900; color: #1E2A6E; }
     .fhs-calc-box { background: #FFFBF0; border: 1.5px solid #F5A623; border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
@@ -3177,20 +3172,7 @@
       <div class="fhs-onboard-field">
         <div class="fhs-onboard-label">Annual gross compensation (salary + bonus)</div>
         <input class="fhs-onboard-input" type="number" id="fhsob-compensation" placeholder="e.g. 120000">
-        <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Used for retirement benchmark and contribution gap analysis.</div>
-      </div>
-      <div class="fhs-onboard-field">
-        <div class="fhs-onboard-label" style="display:flex;align-items:center;justify-content:space-between;">
-          Spouse / partner income
-          <label style="display:flex;align-items:center;gap:6px;font-size:0.85em;cursor:pointer;">
-            <input type="checkbox" id="fhsob-married" onchange="document.getElementById('fhsob-spouse-wrap').style.display=this.checked?'block':'none'" style="accent-color:#4338CA;">
-            Married / partnered
-          </label>
-        </div>
-        <div id="fhsob-spouse-wrap" style="display:none;margin-top:6px;">
-          <input class="fhs-onboard-input" type="number" id="fhsob-spouse-income" placeholder="e.g. 80000">
-          <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Combined household income improves Debt Service and Savings Rate accuracy.</div>
-        </div>
+        <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Used for retirement benchmark and targeted contribution gap analysis.</div>
       </div>
       <div class="fhs-onboard-field">
         <div class="fhs-onboard-label">Region</div>
@@ -12724,51 +12706,6 @@ function scoreIncomeArchitecture(agg, profile) {
   };
 }
 
-// P7: Debt Service Ratio — total monthly debt payments ÷ gross monthly income
-function scoreDebtService(nw, agg, profile) {
-  // Monthly debt payments from loan accounts
-  const loanAccounts = (data._nwAccounts || []).filter(a => a.type === 'loan' || a.type === 'credit_card');
-  const monthlyDebtPayments = loanAccounts.reduce((s, a) => {
-    const mp = a.meta?.monthlyPayment || 0;
-    return s + nwConvert(mp, a.currency || 'USD');
-  }, 0);
-
-  // Gross monthly income — use profile compensation if set, else infer from transactions
-  const annualComp = profile?.annualCompensation || 0;
-  const spouseIncome = profile?.spouseIncome || 0;
-  const totalAnnual = annualComp + spouseIncome;
-  const grossMonthly = totalAnnual > 0 ? totalAnnual / 12 : (agg?.avgInc || 0);
-
-  if (grossMonthly <= 0) return { score: 0, status: 'inactive', label: 'Add income or set compensation in profile', dsr: 0, monthlyDebt: 0 };
-  if (monthlyDebtPayments <= 0) return { score: 95, status: 'good', dsr: 0, monthlyDebt: 0,
-    calc: 'No loan payments detected — excellent debt position',
-    benchmarkIN: 'CFP Board: DSR < 36% = healthy · < 20% = excellent',
-    benchmarkSource: 'CFP Board · RBI guidelines' };
-
-  const dsr = monthlyDebtPayments / grossMonthly;
-  const dsrPct = Math.round(dsr * 100);
-
-  // Score: 0% = 100, ≤20% = 90, ≤36% = 70, ≤43% = 50, ≤50% = 25, >50% = 0
-  const score = dsr <= 0 ? 100 : dsr <= 0.20 ? fhsClamp(Math.round(100 - dsr*50), 0, 100)
-    : dsr <= 0.36 ? fhsClamp(Math.round(90 - (dsr-0.20)*125), 0, 100)
-    : dsr <= 0.43 ? fhsClamp(Math.round(70 - (dsr-0.36)*285), 0, 100)
-    : dsr <= 0.50 ? fhsClamp(Math.round(50 - (dsr-0.43)*357), 0, 100)
-    : 0;
-
-  const status = score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor';
-  const label = dsr > 0.50 ? `DSR ${dsrPct}% is critical — over half your income goes to debt. Prioritise payoff immediately.`
-    : dsr > 0.36 ? `DSR ${dsrPct}% is above the healthy threshold. Reduce debt payments to below 36% of income.`
-    : `DSR ${dsrPct}% — ${dsr <= 0.20 ? 'excellent' : 'manageable'} debt load.`;
-
-  return {
-    score, status, dsr, dsrPct, monthlyDebt: monthlyDebtPayments, grossMonthly,
-    calc: `${fmt(monthlyDebtPayments)}/mo debt ÷ ${fmt(grossMonthly)}/mo income = ${dsrPct}% DSR`,
-    benchmarkIN: 'CFP Board: ≤20% excellent · ≤36% healthy · >43% stressed · >50% critical',
-    benchmarkSource: 'CFP Board · RBI Household Debt guidelines',
-    label
-  };
-}
-
 function computeFHSScore() {
   const t0 = performance.now();
   const profile = getFHSProfile();
@@ -12784,14 +12721,13 @@ function computeFHSScore() {
     emergency:   { weight: 6,  emoji: '🛡️', name: 'Emergency Fund',       band: 'Foundation', color: '#F9A825', result: scoreEmergencyFund(nw, agg, cfg) },
     insurance:   { weight: 5,  emoji: '🧬', name: 'Life Insurance',       band: 'Foundation', color: '#7C3AED', result: scoreLifeInsurance(agg, profile, cfg) },
     education:   { weight: 3,  emoji: '🎓', name: 'Education Goal',       band: 'Foundation', color: '#FFB74D', result: scoreEducationGoal(nw, profile, cfg) },
-    debt:        { weight: 6,  emoji: '📊', name: 'Debt Service',         band: 'Foundation', color: '#06B6D4', result: scoreDebtService(nw, agg, profile) },
     risk:        { weight: 10, emoji: '⚖️', name: 'Risk Architecture',    band: 'Mastery',    color: '#EF4444', result: scoreRiskArchitecture(nw, agg, profile) },
     behaviour:   { weight: 10, emoji: '🧘', name: 'Behavioural Finance',  band: 'Mastery',    color: '#8B5CF6', result: scoreBehaviouralFinance(profile) },
     income:      { weight: 10, emoji: '💼', name: 'Income Architecture',  band: 'Mastery',    color: '#059669', result: scoreIncomeArchitecture(agg, profile) },
   };
 
   // Band scores
-  const foundKeys = ['fire','retirement','savings','emergency','insurance','education','debt'];
+  const foundKeys = ['fire','retirement','savings','emergency','insurance','education'];
   const masteryKeys = ['risk','behaviour','income'];
 
   function bandScore(keys) {
@@ -12824,12 +12760,12 @@ function computeFHSScore() {
   const positiveLabels = {
     fire: 'FIRE-track saver', retirement: 'Retirement-ready', savings: 'Strong saver',
     emergency: 'Well-protected', insurance: 'Insured', education: 'Education-funded',
-    debt: 'Debt-healthy', risk: 'Risk-aware', behaviour: 'Behaviourally disciplined', income: 'Income-diversified',
+    risk: 'Risk-aware', behaviour: 'Behaviourally disciplined', income: 'Income-diversified',
   };
   const concernLabels = {
     fire: 'FIRE corpus gap', retirement: 'Retirement track', savings: 'Savings rate',
     emergency: 'Emergency fund', insurance: 'Insurance coverage', education: 'Education funding',
-    debt: 'Debt service ratio', risk: 'Risk alignment', behaviour: 'Behavioural bias', income: 'Income concentration',
+    risk: 'Risk alignment', behaviour: 'Behavioural bias', income: 'Income architecture',
   };
 
   let summaryLine = '';
@@ -12855,11 +12791,6 @@ function openFHSOnboard() {
     document.getElementById('fhsob-compensation').value = p.annualCompensation || '';
     document.getElementById('fhsob-kids').value = p.kidsCount || 0;
     document.getElementById('fhsob-region').value = p.region || 'IN';
-    if (p.spouseIncome) {
-      document.getElementById('fhsob-married').checked = true;
-      document.getElementById('fhsob-spouse-wrap').style.display = 'block';
-      document.getElementById('fhsob-spouse-income').value = p.spouseIncome;
-    }
   } else {
     document.getElementById('fhsob-retire').value = 60;
     document.getElementById('fhsob-kids').value = 0;
@@ -13051,8 +12982,6 @@ function saveFHSProfile() {
   const retAge = parseInt(document.getElementById('fhsob-retire').value) || 60;
   const insurance = parseFloat(document.getElementById('fhsob-insurance').value) || 0;
   const compensation = parseFloat(document.getElementById('fhsob-compensation').value) || 0;
-  const married = document.getElementById('fhsob-married')?.checked || false;
-  const spouseIncome = married ? (parseFloat(document.getElementById('fhsob-spouse-income')?.value) || 0) : 0;
   const kids = parseInt(document.getElementById('fhsob-kids').value) || 0;
   const region = document.getElementById('fhsob-region').value;
   const kidsAges = [], eduTargets = [];
@@ -13063,7 +12992,7 @@ function saveFHSProfile() {
   if (!age || age < 18 || age > 80) { showToast('⚠️ Please enter a valid age (18–80)', 2500); return; }
   const existing = getFHSProfile();
   saveFHSProfileData({ age, retirementAge: retAge, insuranceCover: insurance, annualCompensation: compensation,
-    spouseIncome, married, kidsCount: kids, kidsAges, educationTargets: eduTargets, region,
+    kidsCount: kids, kidsAges, educationTargets: eduTargets, region,
     accountOverrides: existing?.accountOverrides || {}, riskProfile: existing?.riskProfile,
     behaviourProfile: existing?.behaviourProfile, setupAt: Date.now() });
   closeFHSOnboard();
@@ -13073,69 +13002,6 @@ function saveFHSProfile() {
 function toggleFHSAccountPicker(key) {
   const el = document.getElementById(`fhs-acct-picker-${key}`);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-// Optimistic toggle — updates checkbox visually + saves data without page re-render
-function fhsOptimisticToggle(checkbox) {
-  const key = checkbox.dataset.key;
-  const accountId = checkbox.dataset.id;
-  const checked = checkbox.checked;
-  // Save silently — no re-render, no CLS
-  toggleFHSAccountOverride(key, accountId, checked, true);
-  // Update group header checkbox state
-  fhsUpdateGroupCheckbox(key, checkbox.closest('.fhs-picker-group')?.dataset?.type);
-}
-
-function fhsUpdateGroupCheckbox(key, type) {
-  if (!type) return;
-  const groupEl = document.querySelector(`.fhs-picker-group[data-type="${type}"]`);
-  if (!groupEl) return;
-  const boxes = [...groupEl.querySelectorAll('input[type=checkbox][data-id]')];
-  const allCk = boxes.every(b => b.checked);
-  const someCk = boxes.some(b => b.checked);
-  const hdrCb = groupEl.querySelector('.fhs-picker-group-hdr input[type=checkbox]');
-  if (hdrCb) { hdrCb.checked = allCk; hdrCb.indeterminate = someCk && !allCk; }
-}
-
-// Commit overrides and re-render score (called by Apply button)
-function fhsCommitOverrides(key) {
-  renderFHS();
-  setTimeout(() => {
-    toggleFHSPillar(key); toggleFHSPillar(key);
-    setTimeout(() => {
-      const picker = document.getElementById(`fhs-acct-picker-${key}`);
-      if (picker) picker.style.display = 'block';
-    }, 50);
-  }, 10);
-}
-
-// Search filter — hides non-matching rows in place (no re-render)
-function fhsPickerSearch(input, key) {
-  const q = input.value.toLowerCase().trim();
-  const scroll = document.getElementById(`fhs-picker-scroll-${key}`);
-  if (!scroll) return;
-  // Show/hide individual rows
-  scroll.querySelectorAll('.fhs-picker-row').forEach(row => {
-    const name = row.dataset.name || '';
-    row.style.display = (!q || name.includes(q)) ? '' : 'none';
-  });
-  // Auto-expand groups that have matches, collapse empty ones
-  scroll.querySelectorAll('.fhs-picker-group').forEach(grp => {
-    const visible = [...grp.querySelectorAll('.fhs-picker-row')].some(r => r.style.display !== 'none');
-    const body = grp.querySelector('[id^="fhs-grp-"]');
-    if (body) body.style.display = (q && visible) ? 'block' : (q ? 'none' : body.style.display);
-    grp.style.display = (!q || visible) ? '' : 'none';
-  });
-}
-
-// Toggle group row open/close
-function fhsToggleGroupRow(groupId) {
-  const el = document.getElementById(groupId);
-  const chevron = document.getElementById(`${groupId}-chevron`);
-  if (!el) return;
-  const open = el.style.display === 'none';
-  el.style.display = open ? 'block' : 'none';
-  if (chevron) chevron.classList.toggle('open', open);
 }
 
 function fhsToggleGroup(pillarKey, type, checked) {
@@ -13226,19 +13092,6 @@ function renderFHS() {
   if (!root) return;
   const profile = getFHSProfile();
 
-  // Snapshot score monthly for delta tracking
-  if (profile) {
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    if (!data._fhsScoreHistory) data._fhsScoreHistory = [];
-    const fhsNow = computeFHSScore();
-    const last = data._fhsScoreHistory[data._fhsScoreHistory.length-1];
-    if (!last || last.month !== monthKey) {
-      data._fhsScoreHistory.push({ month: monthKey, score: fhsNow.overallScore });
-      if (data._fhsScoreHistory.length > 13) data._fhsScoreHistory.shift();
-    }
-  }
-
   if (!profile) {
     root.innerHTML = `
       <div style="text-align:center;padding:40px 20px 30px;">
@@ -13293,7 +13146,7 @@ function renderFHS() {
   const fillPath = pct > 0.01 ? arcPath(dialCx, dialCy, dialRadius, startAngle, Math.min(startAngle + sweepAngle * pct, startAngle + sweepAngle - 0.5)) : '';
 
   // Pillar rings
-  const pillarKeys = ['fire','retirement','savings','emergency','insurance','education','debt','risk','behaviour','income'];
+  const pillarKeys = ['fire','retirement','savings','emergency','insurance','education','risk','behaviour','income'];
 
   function renderPillarCard(key) {
     const p = fhs.pillarResults[key];
@@ -13362,102 +13215,115 @@ function renderFHS() {
               ${r.benchmarkSource ? `<div class="fhs-calc-line" style="color:var(--text-light);font-size:0.65em;">Source: ${r.benchmarkSource}</div>` : ''}
             </div>` : ''}
 
-              <!-- Source accounts with manual override -->
-              ${(() => {
-                // Build full account list matching computeNetWorth — includes metals + real estate
-                const baseAccounts = data._nwAccounts || [];
-                const metalsAccounts = (data._metals || []).map((m, idx) => {
-                  const mc = METAL_CONFIG?.[m.metalType] || { emoji: '🥇' };
-                  const grams = Number(m.grams || m.weightGms || 0);
-                  const price = Number(m.price || 0) || (typeof getPriceForMetal === 'function' ? getPriceForMetal(m.metalType||'gold', m.purity) : 0);
-                  const val = grams * price;
-                  const nameParts = [mc.emoji + ' ' + ((m.metalType||'gold').charAt(0).toUpperCase()+(m.metalType||'gold').slice(1))];
-                  if (m.purity) nameParts.push(m.purity);
-                  if (m.occasion) nameParts.push(m.occasion);
-                  return { id: 'import_metal_' + idx, name: nameParts.join(' · '), balance: val, currency: 'USD', type: 'metals', _imported: true };
-                });
-                const allAccounts = [...baseAccounts, ...metalsAccounts];
-                const profile = getFHSProfile();
-                const overrides = profile?.accountOverrides?.[key];
-                const hasAccountPicker = ['fire','retirement','emergency','education'].includes(key);
-                const countedAccounts = r.accounts || [];
-                const availableAccounts = allAccounts.filter(a => !NW_TYPES[a.type]?.isLiab);
-                const groups = {};
-                availableAccounts.forEach(a => { const t = a.type||'other'; if(!groups[t])groups[t]=[]; groups[t].push(a); });
-                const totalAvail = availableAccounts.length;
+            <!-- Source accounts with manual override -->
+            ${(() => {
+              // Build full account list matching computeNetWorth — includes metals + real estate
+              const baseAccounts = data._nwAccounts || [];
+              const metalsAccounts = (data._metals || []).map((m, idx) => {
+                const mc = METAL_CONFIG?.[m.metalType] || { emoji: '🥇' };
+                const grams = Number(m.grams || m.weightGms || 0);
+                const price = Number(m.price || 0) || (typeof getPriceForMetal === 'function' ? getPriceForMetal(m.metalType||'gold', m.purity) : 0);
+                const val = grams * price;
+                const nameParts = [mc.emoji + ' ' + ((m.metalType||'gold').charAt(0).toUpperCase()+(m.metalType||'gold').slice(1))];
+                if (m.purity) nameParts.push(m.purity);
+                if (m.occasion) nameParts.push(m.occasion);
+                return { id: 'import_metal_' + idx, name: nameParts.join(' · '), balance: val, currency: 'USD', type: 'metals', _imported: true };
+              });
+              const allAccounts = [...baseAccounts, ...metalsAccounts];
+              const profile = getFHSProfile();
+              const overrides = profile?.accountOverrides?.[key];
+              const pillarLabels = { fire:'retirement corpus', retirement:'retirement corpus', emergency:'liquid funds', education:'education funds' };
+              const hasAccountPicker = ['fire','retirement','emergency','education'].includes(key);
 
-                const pickerHtml = hasAccountPicker ? (() => {
-                  if (availableAccounts.length === 0) return `<div style="color:var(--text-light);font-size:0.75em;padding:8px;">No accounts in Net Worth yet.</div>`;
-                  const groupHtml = Object.entries(groups).map(([type, accts]) => {
-                    const typeInfo = NW_TYPES[type] || { emoji:'💰', label: type };
-                    const allCk = accts.every(a => overrides ? overrides.includes(a.id) : countedAccounts.some(ca => ca.name === a.name));
-                    const someCk = accts.some(a => overrides ? overrides.includes(a.id) : countedAccounts.some(ca => ca.name === a.name));
-                    const groupTotal = accts.reduce((s,a) => s+nwConvert(a.balance,a.currency),0);
-                    const groupId = `fhs-grp-${key}-${type}`;
-                    return `
-                    <div class="fhs-picker-group" data-type="${type}">
-                      <div class="fhs-picker-group-hdr" onclick="fhsToggleGroupRow('${groupId}')">
-                        <input type="checkbox" ${allCk?'checked':''} data-indeterminate="${someCk&&!allCk}"
-                          onclick="event.stopPropagation();fhsToggleGroup('${key}','${type}',this.checked)"
-                          style="width:15px;height:15px;accent-color:#4338CA;flex-shrink:0;">
-                        <span style="font-size:0.78em;font-weight:800;color:#1E2A6E;flex:1;">${typeInfo.emoji} ${typeInfo.label}</span>
-                        <span style="font-size:0.68em;font-weight:700;color:var(--text-med);">${accts.length} · ${fmt(groupTotal)}</span>
-                        <span class="fhs-grp-chevron" id="${groupId}-chevron">▾</span>
-                      </div>
-                      <div id="${groupId}" style="display:none;">
-                        ${accts.map(a => {
-                          const ck = overrides ? overrides.includes(a.id) : countedAccounts.some(ca => ca.name === a.name);
-                          return `<label class="fhs-picker-row" data-name="${a.name.toLowerCase()}">
-                            <input type="checkbox" ${ck?'checked':''} data-id="${a.id}" data-key="${key}"
-                              onchange="fhsOptimisticToggle(this)"
-                              style="width:15px;height:15px;accent-color:#4338CA;flex-shrink:0;">
-                            <span style="font-size:0.78em;font-weight:700;color:var(--text-dark);flex:1;">${a.name}</span>
-                            <span style="font-size:0.72em;color:var(--text-med);">${fmt(nwConvert(a.balance,a.currency))}</span>
-                          </label>`;
-                        }).join('')}
-                      </div>
-                    </div>`;
-                  }).join('');
+              // Accounts currently counted
+              const countedAccounts = r.accounts || [];
+
+              // All available accounts (non-liability), grouped by type
+              const availableAccounts = allAccounts.filter(a => !NW_TYPES[a.type]?.isLiab);
+              const groups = {};
+              availableAccounts.forEach(a => {
+                const t = a.type || 'other';
+                if (!groups[t]) groups[t] = [];
+                groups[t].push(a);
+              });
+
+              const pickerHtml = hasAccountPicker ? (() => {
+                if (availableAccounts.length === 0) return `<div style="color:var(--text-light);font-size:0.75em;padding:8px;">No accounts in Net Worth yet.</div>`;
+                return Object.entries(groups).map(([type, accts]) => {
+                  const typeInfo = NW_TYPES[type] || { emoji:'💰', label: type };
+                  const allChecked = accts.every(a => overrides ? overrides.includes(a.id) : countedAccounts.some(ca => ca.name === a.name));
+                  const someChecked = accts.some(a => overrides ? overrides.includes(a.id) : countedAccounts.some(ca => ca.name === a.name));
+                  const groupTotal = accts.reduce((s,a) => s + nwConvert(a.balance, a.currency), 0);
+                  const groupId = `fhs-grp-${key}-${type}`;
                   return `
-                  <input type="text" placeholder="🔍 Search ${totalAvail} accounts…" oninput="fhsPickerSearch(this,'${key}')"
-                    style="width:100%;border:1.5px solid #E8E8F0;border-radius:10px;padding:8px 12px;font-size:0.78em;font-weight:700;font-family:Nunito,sans-serif;outline:none;box-sizing:border-box;margin-bottom:8px;"
-                    onclick="event.stopPropagation()">
-                  <div style="max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;" id="fhs-picker-scroll-${key}">
-                    ${groupHtml}
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-                    <span style="font-size:0.63em;color:var(--text-light);">Uncheck all → revert to auto-detection</span>
-                    <button onclick="fhsCommitOverrides('${key}')" style="font-size:0.68em;font-weight:900;background:#4338CA;color:white;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-family:Nunito,sans-serif;">✓ Apply</button>
+                  <div style="margin-bottom:6px;border:1.5px solid #E8E8F0;border-radius:12px;overflow:hidden;">
+                    <!-- Group header -->
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#F0F4FF;cursor:pointer;"
+                         onclick="document.getElementById('${groupId}').style.display=document.getElementById('${groupId}').style.display==='none'?'block':'none'">
+                      <input type="checkbox" ${allChecked ? 'checked' : someChecked ? 'indeterminate' : ''} 
+                        onclick="event.stopPropagation();fhsToggleGroup('${key}','${type}',this.checked)"
+                        style="width:15px;height:15px;accent-color:#4338CA;flex-shrink:0;"
+                        ${someChecked && !allChecked ? 'ref="indeterminate"' : ''}>
+                      <span style="font-size:0.78em;font-weight:800;color:#1E2A6E;flex:1;">${typeInfo.emoji} ${typeInfo.label}</span>
+                      <span style="font-size:0.70em;font-weight:700;color:var(--text-med);">${accts.length} acct${accts.length>1?'s':''} · ${fmt(groupTotal)}</span>
+                      <span style="font-size:0.7em;color:var(--text-light);">▾</span>
+                    </div>
+                    <!-- Group accounts -->
+                    <div id="${groupId}" style="display:none;background:white;">
+                      ${accts.map(a => {
+                        const checked = overrides ? overrides.includes(a.id) : countedAccounts.some(ca => ca.name === a.name);
+                        return `<label style="display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;border-top:1px solid #F0F0F0;">
+                          <input type="checkbox" ${checked ? 'checked' : ''} 
+                            onchange="toggleFHSAccountOverride('${key}','${a.id}',this.checked)"
+                            style="width:15px;height:15px;accent-color:#4338CA;flex-shrink:0;">
+                          <span style="font-size:0.78em;font-weight:700;color:var(--text-dark);flex:1;">${a.name}</span>
+                          <span style="font-size:0.75em;font-weight:700;color:var(--text-med);">${fmt(nwConvert(a.balance, a.currency))}</span>
+                        </label>`;
+                      }).join('')}
+                    </div>
                   </div>`;
-                })() : '';
+                }).join('');
+              })() : '';
 
-                return `
-                <div class="fhs-source-accounts">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                    <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;">🏦 Accounts counted</div>
-                    ${hasAccountPicker ? `<button onclick="toggleFHSAccountPicker('${key}')" style="font-size:0.65em;font-weight:800;background:#F0F4FF;border:1px solid #C7D2FE;border-radius:8px;padding:3px 10px;cursor:pointer;color:#4338CA;font-family:Nunito,sans-serif;">✏️ Edit</button>` : ''}
-                  </div>
+              return `
+              <div class="fhs-source-accounts">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                  <div style="font-size:0.68em;font-weight:800;color:var(--text-light);text-transform:uppercase;">🏦 Accounts counted</div>
+                  ${hasAccountPicker ? `<button onclick="toggleFHSAccountPicker('${key}')" style="font-size:0.65em;font-weight:800;background:#F0F4FF;border:1px solid #C7D2FE;border-radius:8px;padding:3px 10px;cursor:pointer;color:#4338CA;font-family:Nunito,sans-serif;">✏️ Edit</button>` : ''}
+                </div>
 
-                  ${hasAccountPicker ? `
-                  <div id="fhs-acct-picker-${key}" style="display:none;background:#FAFBFF;border:1.5px solid #E8E8F0;border-radius:14px;padding:12px;margin-bottom:10px;">
-                    ${pickerHtml}
-                  </div>` : ''}
+                <!-- Grouped account picker (hidden by default) -->
+                ${hasAccountPicker ? `
+                <div id="fhs-acct-picker-${key}" style="display:none;margin-bottom:10px;">
+                  <div style="font-size:0.68em;font-weight:800;color:var(--text-light);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.3px;">Select by group — tap a group to expand</div>
+                  ${pickerHtml}
+                  <div style="font-size:0.63em;color:var(--text-light);margin-top:6px;">Uncheck all to reset to auto-detection.</div>
+                </div>` : ''}
 
-                  ${countedAccounts.length > 0
-                    ? countedAccounts.map(a => `
-                    <div class="fhs-account-row">
-                      <div class="fhs-account-name">${NW_TYPES[a.type]?.emoji || '💰'} ${a.name}</div>
-                      <div class="fhs-account-val">${fmt(a.val)}</div>
-                    </div>`).join('')
-                    : `<div style="background:#FEF3C7;border-radius:10px;padding:10px 12px;font-size:0.75em;font-weight:700;color:#92400E;margin-top:4px;">
-                        ⚠️ No accounts mapped. Tap ✏️ Edit → expand a group to select.
-                      </div>`
-                  }
-                  ${key === 'emergency' && r.liquidVal ? `<div class="fhs-account-row" style="background:#EEF9F4;"><div class="fhs-account-name" style="color:#065F46;">✅ Total Liquid</div><div class="fhs-account-val" style="color:#065F46;">${fmt(r.liquidVal)}</div></div>` : ''}
-                  ${(key === 'fire' || key === 'retirement') && r.corpus ? `<div class="fhs-account-row" style="background:#EEF9F4;"><div class="fhs-account-name" style="color:#065F46;">✅ Total Corpus</div><div class="fhs-account-val" style="color:#065F46;">${fmt(r.corpus)}</div></div>` : ''}
-                  ${key === 'education' && r.eduCorpus >= 0 ? `<div class="fhs-account-row" style="background:#EEF9F4;"><div class="fhs-account-name" style="color:#065F46;">✅ Total Saved</div><div class="fhs-account-val" style="color:#065F46;">${fmt(r.eduCorpus)}</div></div>` : ''}
-                </div>`;
-              })()}
+                ${countedAccounts.length > 0
+                  ? countedAccounts.map(a => `
+                  <div class="fhs-account-row">
+                    <div class="fhs-account-name">${NW_TYPES[a.type]?.emoji || '💰'} ${a.name}</div>
+                    <div class="fhs-account-val">${fmt(a.val)}</div>
+                  </div>`).join('')
+                  : `<div style="background:#FEF3C7;border-radius:10px;padding:10px 12px;font-size:0.75em;font-weight:700;color:#92400E;margin-top:4px;">
+                      ⚠️ No accounts mapped. Tap ✏️ Edit → expand a group to select accounts.
+                    </div>`
+                }
+                ${key === 'emergency' && r.liquidVal ? `<div class="fhs-account-row" style="background:#EEF9F4;">
+                  <div class="fhs-account-name" style="color:#065F46;">✅ Total Liquid</div>
+                  <div class="fhs-account-val" style="color:#065F46;">${fmt(r.liquidVal)}</div>
+                </div>` : ''}
+                ${(key === 'fire' || key === 'retirement') && r.corpus ? `<div class="fhs-account-row" style="background:#EEF9F4;">
+                  <div class="fhs-account-name" style="color:#065F46;">✅ Total Corpus</div>
+                  <div class="fhs-account-val" style="color:#065F46;">${fmt(r.corpus)}</div>
+                </div>` : ''}
+                ${key === 'education' && r.eduCorpus >= 0 ? `<div class="fhs-account-row" style="background:#EEF9F4;">
+                  <div class="fhs-account-name" style="color:#065F46;">✅ Total Saved</div>
+                  <div class="fhs-account-val" style="color:#065F46;">${fmt(r.eduCorpus)}</div>
+                </div>` : ''}
+              </div>`;
+            })()}
 
             <!-- Nudge -->
             ${renderFHSNudge(key, r, fhs.cfg)}
@@ -13580,14 +13446,7 @@ function renderFHS() {
         const sip = sipNeeded(gap, yearsToCollege);
         return `${fmt(r.eduCorpus)} saved of ${fmt(r.totalTarget)} target (${(cfg.educationInflation*100).toFixed(0)}% inflation to age 18). ${investVerb.charAt(0).toUpperCase()+investVerb.slice(1)} <strong>${fmt(sip)}/mo</strong> via ${eduInvestVerb} for ${yearsToCollege} years.`;
       })(),
-      debt: (() => {
-        if (r.status === 'inactive') return 'Set your annual compensation in Edit Profile to unlock Debt Service scoring.';
-        if (r.monthlyDebt <= 0) return '🎉 No loan payments detected — your debt service ratio is 0%. Excellent financial health.';
-        if (r.dsr > 0.50) return `🚨 Critical: ${r.dsrPct}% of income goes to debt (${fmt(r.monthlyDebt)}/mo on ${fmt(r.grossMonthly)}/mo income). Seek debt consolidation or counselling immediately.`;
-        if (r.dsr > 0.36) return `⚠️ Stressed: DSR ${r.dsrPct}% exceeds the 36% healthy threshold. Focus on paying off highest-rate debt first. Each ${fmt(Math.round(r.monthlyDebt * 0.10))}/mo reduction improves your score significantly.`;
-        if (r.dsr > 0.20) return `Manageable debt load at ${r.dsrPct}%. To reach the excellent tier (≤20%), reduce monthly payments by ${fmt(Math.round(r.monthlyDebt - r.grossMonthly * 0.20))}/mo.`;
-        return `🎉 Excellent DSR of ${r.dsrPct}% — well below the 20% optimal threshold.`;
-      })(),
+      risk: (() => {
         if (r.status === 'inactive') return 'Complete the Mastery onboarding to unlock this pillar.';
         if (r.score >= 80) return `🎉 Your risk profile is well-calibrated. Tolerance (${r.tolerance}) and capacity (${r.capacity}) are aligned — stay the course.`;
         if (r.gap > 30) {
@@ -13622,86 +13481,71 @@ function renderFHS() {
   root.innerHTML = `
     <!-- Hero score card -->
     <div class="fhs-hero">
-      <!-- Top row: title + edit -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;position:relative;z-index:1;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:1em;">❤️</span>
-          <span style="font-size:0.75em;font-weight:900;color:rgba(255,255,255,0.85);text-transform:uppercase;letter-spacing:1.5px;">Financial Health Score</span>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;position:relative;z-index:1;">
+        <div>
+          <div style="font-size:0.7em;font-weight:800;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Financial Health Score</div>
+          <div style="font-size:0.72em;font-weight:700;color:rgba(255,255,255,0.5);">Foundation Band · ${FHS_REGION[fhs.region]?.flag} ${FHS_REGION[fhs.region]?.name}</div>
         </div>
-        <button onclick="openFHSOnboard()" style="background:rgba(255,255,255,0.12);border:none;border-radius:10px;padding:5px 11px;font-size:0.7em;font-weight:800;color:rgba(255,255,255,0.75);cursor:pointer;font-family:Nunito,sans-serif;">✏️ Edit</button>
+        <button onclick="openFHSOnboard()" style="background:rgba(255,255,255,0.12);border:none;border-radius:10px;padding:6px 12px;font-size:0.72em;font-weight:800;color:rgba(255,255,255,0.8);cursor:pointer;font-family:Nunito,sans-serif;">✏️ Edit Profile</button>
       </div>
 
-      <!-- Main row: score left, rings right -->
-      <div style="display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;margin-bottom:14px;">
-        <!-- Left: big score + grade + delta -->
-        <div style="flex:1;">
-          <div style="font-size:5em;font-weight:900;color:white;line-height:1;letter-spacing:-2px;">${fhs.overallScore}</div>
-          <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="background:rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px;font-size:0.72em;font-weight:800;color:white;">
-              ${fhs.gradeLabel}
-            </span>
-            ${(() => {
-              const prev = data._fhsScoreHistory;
-              if (!prev || prev.length < 2) return '';
-              const lastScore = prev[prev.length-2]?.score;
-              if (lastScore == null) return '';
-              const delta = fhs.overallScore - lastScore;
-              if (delta === 0) return `<span style="font-size:0.72em;font-weight:800;color:rgba(255,255,255,0.5);">→ no change</span>`;
-              const col = delta > 0 ? '#4ade80' : '#f87171';
-              const arrow = delta > 0 ? '▲' : '▼';
-              return `<span style="font-size:0.72em;font-weight:800;color:${col};">${arrow} ${delta > 0 ? '+' : ''}${delta} from last month</span>`;
-            })()}
-          </div>
-          <div style="margin-top:12px;font-size:0.82em;font-weight:700;color:rgba(255,255,255,0.85);line-height:1.4;max-width:180px;">${fhs.summaryLine}</div>
-        </div>
-
-        <!-- Right: concentric rings -->
-        <div style="flex-shrink:0;">
-          ${(() => {
-            const cx = 70, cy = 70, sw = 10;
-            const rings = [
-              { r: 58, pct: fhs.foundScore/100,   color: '#4FC3F7', active: true },
-              { r: 44, pct: fhs.hasMastery ? fhs.masteryScore/100 : 0, color: '#F5C842', active: fhs.hasMastery },
-              { r: 30, pct: fhs.overallScore/100,  color: fhs.overallScore>=70?'#4ade80':fhs.overallScore>=50?'#F9A825':'#E17055', active: true },
-            ];
-            function rArc(cx,cy,r,startD,endD) {
-              const toRad = d => (d-90)*Math.PI/180;
-              const sx=cx+r*Math.cos(toRad(startD)), sy=cy+r*Math.sin(toRad(startD));
-              const ex=cx+r*Math.cos(toRad(endD)),   ey=cy+r*Math.sin(toRad(endD));
-              return `M${sx} ${sy} A${r} ${r} 0 ${(endD-startD)>180?1:0} 1 ${ex} ${ey}`;
-            }
-            const s=-210, sw2=300;
-            const svg = rings.map(ring => {
-              const bg=rArc(cx,cy,ring.r,s,s+sw2);
-              const fill=ring.pct>0.005?rArc(cx,cy,ring.r,s,Math.min(s+sw2*ring.pct,s+sw2-0.3)):'';
-              return `<path d="${bg}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${sw}" stroke-linecap="round"/>
-                ${fill?`<path d="${fill}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.active?1:0.25}"/>`:''}`;
-            }).join('');
-            return `<svg width="140" height="140" viewBox="0 0 140 140">
-              ${svg}
-              <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="13" font-weight="900" fill="white" font-family="Nunito">BANDS</text>
-              <text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,0.5)" font-family="Nunito">${FHS_REGION[fhs.region]?.flag||''}${fhs.region}</text>
-            </svg>`;
-          })()}
-        </div>
+      <div class="fhs-score-dial-wrap" style="position:relative;z-index:1;">
+        ${(() => {
+          // Concentric ring radii — outer to inner: Mastery, Foundation, Overall
+          const cx = 90, cy = 90, sw = 11;
+          const rings = [
+            { r: 76, pct: fhs.foundScore/100,   color: '#4FC3F7', label: 'Foundation', score: fhs.foundScore, active: true },
+            { r: 60, pct: fhs.hasMastery ? fhs.masteryScore/100 : 0, color: '#A78BFA', label: 'Mastery', score: fhs.hasMastery ? fhs.masteryScore : null, active: fhs.hasMastery },
+            { r: 44, pct: fhs.overallScore/100,  color: fhs.overallScore>=70?'#00B894':fhs.overallScore>=50?'#F9A825':'#E17055', label: 'Overall', score: fhs.overallScore, active: true },
+          ];
+          function rArc(cx,cy,r,startD,endD) {
+            const toRad = d => (d-90)*Math.PI/180;
+            const sx = cx+r*Math.cos(toRad(startD)), sy = cy+r*Math.sin(toRad(startD));
+            const ex = cx+r*Math.cos(toRad(endD)),   ey = cy+r*Math.sin(toRad(endD));
+            const la = (endD-startD)>180?1:0;
+            return `M${sx} ${sy} A${r} ${r} 0 ${la} 1 ${ex} ${ey}`;
+          }
+          const start = -210, sweep = 300;
+          const ringsSvg = rings.map(ring => {
+            const bgD  = rArc(cx,cy,ring.r, start, start+sweep);
+            const fillD = ring.pct > 0.005 ? rArc(cx,cy,ring.r, start, Math.min(start+sweep*ring.pct, start+sweep-0.3)) : '';
+            return `
+              <path d="${bgD}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="${sw}" stroke-linecap="round"/>
+              ${fillD ? `<path d="${fillD}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.active?1:0.3}"/>` : ''}`;
+          }).join('');
+          return `
+          <svg width="180" height="180" viewBox="0 0 180 180" style="filter:drop-shadow(0 4px 24px rgba(0,0,0,0.35));">
+            <defs>
+              <radialGradient id="fhs-center-grad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" style="stop-color:rgba(255,255,255,0.08)"/>
+                <stop offset="100%" style="stop-color:rgba(255,255,255,0)"/>
+              </radialGradient>
+            </defs>
+            ${ringsSvg}
+            <circle cx="${cx}" cy="${cy}" r="32" fill="url(#fhs-center-grad)"/>
+            <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="26" font-weight="900" fill="white" font-family="Nunito">${fhs.overallScore}</text>
+            <text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="8" font-weight="700" fill="rgba(255,255,255,0.55)" font-family="Nunito">${fhs.gradeLabel.replace(/^[^ ]+ /,'')}</text>
+          </svg>
+          <div style="display:flex;gap:14px;margin-top:8px;justify-content:center;">
+            ${rings.map(ring => `
+              <div style="display:flex;align-items:center;gap:4px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:${ring.color};opacity:${ring.active?1:0.35};flex-shrink:0;"></div>
+                <span style="font-size:0.62em;font-weight:800;color:rgba(255,255,255,${ring.active?'0.75':'0.3'});">
+                  ${ring.label}${ring.score !== null ? ' '+ring.score : ' —'}
+                </span>
+              </div>`).join('')}
+          </div>`;
+        })()}
       </div>
 
-      <!-- Bottom: pillar progress bar -->
-      <div style="position:relative;z-index:1;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:0.62em;font-weight:800;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;">Pillar progress</span>
-          <span style="font-size:0.62em;font-weight:800;color:rgba(255,255,255,0.5);">${fhs.activePillars}/${fhs.totalPillars} active</span>
-        </div>
-        <div style="height:6px;background:rgba(255,255,255,0.1);border-radius:6px;overflow:hidden;">
-          <div style="height:100%;width:${Math.round(fhs.activePillars/fhs.totalPillars*100)}%;background:linear-gradient(90deg,#4ade80,#4FC3F7);border-radius:6px;transition:width 0.6s ease;"></div>
-        </div>
-      </div>
+      <div class="fhs-summary-line">${fhs.summaryLine}</div>
+      <div style="margin-top:8px;font-size:0.65em;font-weight:600;color:rgba(255,255,255,0.4);text-align:center;position:relative;z-index:1;">${fhs.activePillars}/${fhs.totalPillars} pillars active · ${fhs.computeMs}ms</div>
     </div>
 
     <!-- Foundation Pillars -->
     <div class="fhs-section-title">🏗️ Foundation Pillars — tap any ring to expand</div>
     <div class="fhs-rings-wrap" id="fhs-rings-grid">
-      ${['fire','retirement','savings','emergency','insurance','education','debt'].map(k => renderPillarCard(k)).join('')}
+      ${['fire','retirement','savings','emergency','insurance','education'].map(k => renderPillarCard(k)).join('')}
     </div>
 
     <!-- Mastery Pillars -->
