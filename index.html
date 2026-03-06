@@ -3170,6 +3170,11 @@
       </div>
       <div id="fhsob-kids-detail"></div>
       <div class="fhs-onboard-field">
+        <div class="fhs-onboard-label">Annual gross compensation (salary + bonus)</div>
+        <input class="fhs-onboard-input" type="number" id="fhsob-compensation" placeholder="e.g. 120000">
+        <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Used for retirement benchmark and targeted contribution gap analysis.</div>
+      </div>
+      <div class="fhs-onboard-field">
         <div class="fhs-onboard-label">Region</div>
         <select class="fhs-onboard-input" id="fhsob-region">
           <option value="IN">🇮🇳 India</option>
@@ -10596,7 +10601,10 @@ function _nwsBuildForm(type, existing, m) {
   if (type === 'retirement') {
     const opts = RETIRE_SUBTYPES.map(s => `<option value="${s}" ${(m.subtype===s)?'selected':''}>${s}</option>`).join('');
     extraFields += `<div class="nw-sheet-field"><div class="nw-sheet-label">Account Subtype</div><select class="nw-sheet-select" id="nws-subtype">${opts}</select></div>`;
-    extraFields += `<div class="nw-sheet-field"><div class="nw-sheet-label">YTD Contribution</div><input class="nw-sheet-input" id="nws-ytd" type="number" placeholder="0" value="${m.ytdContribution||''}"></div>`;
+    extraFields += `<div class="nw-sheet-row">
+      <div class="nw-sheet-field"><div class="nw-sheet-label">Monthly Contribution</div><input class="nw-sheet-input" id="nws-monthly-contrib" type="number" placeholder="0" value="${m.monthlyContribution||''}"><div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Your regular monthly contribution</div></div>
+      <div class="nw-sheet-field"><div class="nw-sheet-label">Annual Contribution</div><input class="nw-sheet-input" id="nws-annual-contrib" type="number" placeholder="0" value="${m.annualContribution||''}"><div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Total contributed this year</div></div>
+    </div>`;
   }
   if (type === 'credit_card') {
     extraFields += `<div class="nw-sheet-row"><div class="nw-sheet-field"><div class="nw-sheet-label">Credit Limit</div><input class="nw-sheet-input" id="nws-limit" type="number" placeholder="5000" value="${m.limit||''}"></div><div class="nw-sheet-field"><div class="nw-sheet-label">APR %</div><input class="nw-sheet-input" id="nws-apr" type="number" placeholder="19.99" step="0.01" value="${m.apr||''}"></div></div>`;
@@ -10709,6 +10717,10 @@ function saveNWAccount() {
   if (subtypeEl) meta.subtype = subtypeEl.value;
   const ytdEl = document.getElementById('nws-ytd');
   if (ytdEl && ytdEl.value) meta.ytdContribution = Number(ytdEl.value);
+  const mContribEl = document.getElementById('nws-monthly-contrib');
+  if (mContribEl && mContribEl.value) meta.monthlyContribution = Number(mContribEl.value);
+  const aContribEl = document.getElementById('nws-annual-contrib');
+  if (aContribEl && aContribEl.value) meta.annualContribution = Number(aContribEl.value);
   const limitEl = document.getElementById('nws-limit');
   if (limitEl && limitEl.value) meta.limit = Number(limitEl.value);
   const aprEl = document.getElementById('nws-apr');
@@ -12776,6 +12788,7 @@ function openFHSOnboard() {
     document.getElementById('fhsob-age').value = p.age || '';
     document.getElementById('fhsob-retire').value = p.retirementAge || 60;
     document.getElementById('fhsob-insurance').value = p.insuranceCover ?? '';
+    document.getElementById('fhsob-compensation').value = p.annualCompensation || '';
     document.getElementById('fhsob-kids').value = p.kidsCount || 0;
     document.getElementById('fhsob-region').value = p.region || 'IN';
   } else {
@@ -12968,6 +12981,7 @@ function saveFHSProfile() {
   const age = parseInt(document.getElementById('fhsob-age').value);
   const retAge = parseInt(document.getElementById('fhsob-retire').value) || 60;
   const insurance = parseFloat(document.getElementById('fhsob-insurance').value) || 0;
+  const compensation = parseFloat(document.getElementById('fhsob-compensation').value) || 0;
   const kids = parseInt(document.getElementById('fhsob-kids').value) || 0;
   const region = document.getElementById('fhsob-region').value;
   const kidsAges = [], eduTargets = [];
@@ -12977,8 +12991,10 @@ function saveFHSProfile() {
   }
   if (!age || age < 18 || age > 80) { showToast('⚠️ Please enter a valid age (18–80)', 2500); return; }
   const existing = getFHSProfile();
-  saveFHSProfileData({ age, retirementAge: retAge, insuranceCover: insurance, kidsCount: kids, kidsAges, educationTargets: eduTargets, region,
-    accountOverrides: existing?.accountOverrides || {}, setupAt: Date.now() });
+  saveFHSProfileData({ age, retirementAge: retAge, insuranceCover: insurance, annualCompensation: compensation,
+    kidsCount: kids, kidsAges, educationTargets: eduTargets, region,
+    accountOverrides: existing?.accountOverrides || {}, riskProfile: existing?.riskProfile,
+    behaviourProfile: existing?.behaviourProfile, setupAt: Date.now() });
   closeFHSOnboard();
   showToast('✅ Financial Health Score updated!', 2500);
 }
@@ -12989,16 +13005,27 @@ function toggleFHSAccountPicker(key) {
 }
 
 function fhsToggleGroup(pillarKey, type, checked) {
-  const allAccounts = (data._nwAccounts || []).filter(a => a.type === type && !NW_TYPES[a.type]?.isLiab);
-  allAccounts.forEach(a => toggleFHSAccountOverride(pillarKey, a.id, checked, true));
-  // Re-render once after all toggles
+  // Build same account list as picker — includes metals
+  const baseAccounts = (data._nwAccounts || []).filter(a => a.type === type && !NW_TYPES[a.type]?.isLiab);
+  const metalAccounts = type === 'metals'
+    ? (data._metals || []).map((_,idx) => ({ id: 'import_metal_' + idx }))
+    : [];
+  const allInGroup = [...baseAccounts, ...metalAccounts];
+  allInGroup.forEach(a => toggleFHSAccountOverride(pillarKey, a.id, checked, true));
+  // Capture scroll position of the picker container before re-render
+  const pickerEl = document.getElementById(`fhs-acct-picker-${pillarKey}`);
+  const scrollTop = pickerEl ? pickerEl.scrollTop : 0;
   renderFHS();
   setTimeout(() => {
-    const picker = document.getElementById(`fhs-acct-picker-${pillarKey}`);
-    if (picker) picker.style.display = 'block';
-    const grp = document.getElementById(`fhs-grp-${pillarKey}-${type}`);
-    if (grp) grp.style.display = 'block';
-  }, 50);
+    // Re-open picker and restore scroll position
+    toggleFHSPillar(pillarKey); toggleFHSPillar(pillarKey);
+    setTimeout(() => {
+      const picker = document.getElementById(`fhs-acct-picker-${pillarKey}`);
+      if (picker) { picker.style.display = 'block'; picker.scrollTop = scrollTop; }
+      const grp = document.getElementById(`fhs-grp-${pillarKey}-${type}`);
+      if (grp) grp.style.display = 'block';
+    }, 50);
+  }, 10);
 }
 
 function toggleFHSAccountOverride(key, accountId, checked, silent = false) {
@@ -13024,14 +13051,23 @@ function toggleFHSAccountOverride(key, accountId, checked, silent = false) {
 
   saveFHSProfileData({ ...profile, accountOverrides: newOverrides });
   if (silent) return; // batch mode — caller handles re-render
+  // Capture state before re-render
+  const pickerEl = document.getElementById(`fhs-acct-picker-${key}`);
+  const savedScroll = pickerEl ? pickerEl.scrollTop : 0;
+  // Find which group was open
+  const openGroups = pickerEl ? [...pickerEl.querySelectorAll('[id^="fhs-grp-"]')].filter(g => g.style.display !== 'none').map(g => g.id) : [];
   renderFHS();
-  // Re-open the picker after re-render
+  // Re-open the picker after re-render, restore scroll and open groups
   setTimeout(() => {
-    toggleFHSPillar(key); // collapse
-    toggleFHSPillar(key); // re-expand
+    toggleFHSPillar(key);
+    toggleFHSPillar(key);
     setTimeout(() => {
       const picker = document.getElementById(`fhs-acct-picker-${key}`);
-      if (picker) picker.style.display = 'block';
+      if (picker) {
+        picker.style.display = 'block';
+        openGroups.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'block'; });
+        requestAnimationFrame(() => { picker.scrollTop = savedScroll; });
+      }
     }, 50);
   }, 10);
 }
@@ -13346,10 +13382,36 @@ function renderFHS() {
       retirement: (() => {
         if (r.corpus >= r.target) return `🎉 You're ahead of the retirement benchmark! At age ${age}, you've exceeded the ${r.multiple}× salary target.`;
         const gap = r.target - r.corpus;
-        const sip = sipNeeded(gap, yearsLeft);
+        const sipRequired = sipNeeded(gap, yearsLeft);
+
+        // Pull actual monthly contribution from NW accounts
+        const retAccounts = (data._nwAccounts||[]).filter(a => a.type === 'retirement');
+        const currentMonthly = retAccounts.reduce((s,a) => s + (a.meta?.monthlyContribution || 0), 0);
+        const currentMonthlyConverted = currentMonthly > 0 ? nwConvert(currentMonthly, 'USD') : 0;
+
+        // If contributing, project when they'll hit the target at current rate
+        let projectionLine = '';
+        if (currentMonthlyConverted > 0) {
+          const rMo = assumedReturn / 12;
+          // Months to hit gap: solve FV = PV*(1+r)^n + PMT*((1+r)^n-1)/r  → numerical
+          let corpus = r.corpus, months = 0;
+          while (corpus < r.target && months < 600) { corpus = corpus * (1 + rMo) + currentMonthlyConverted; months++; }
+          const yrsToGoal = (months / 12).toFixed(1);
+          const ageAtGoal = age + Math.ceil(months / 12);
+          if (ageAtGoal <= retireAge) {
+            projectionLine = ` At ${fmt(currentMonthlyConverted)}/mo current contribution, you'll hit the target in <strong>${yrsToGoal} years</strong> (age ${ageAtGoal}). 🎯`;
+          } else {
+            const extraNeeded = sipRequired - currentMonthlyConverted;
+            projectionLine = ` Current ${fmt(currentMonthlyConverted)}/mo gets you there at age ${ageAtGoal} — ${ageAtGoal - retireAge} years past your target. Add <strong>${fmt(Math.max(0,extraNeeded))}/mo</strong> to retire on time.`;
+          }
+        }
+
         const nextBracket = Object.keys(cfg.retirementMultiples).map(Number).sort((a,b)=>a-b).find(b => b > age);
-        const nextTarget = nextBracket ? `${cfg.retirementMultiples[nextBracket]}× salary by age ${nextBracket}` : '';
-        return `At age ${age}, benchmark is ${r.multiple}× annual salary = ${fmt(r.target)}. Gap: ${fmt(gap)}. ${investVerb.charAt(0).toUpperCase()+investVerb.slice(1)} <strong>${fmt(sip)}/mo</strong> in your ${retireAccount} to close it by age ${retireAge}.${nextTarget ? ` Next milestone: ${nextTarget}.` : ''}`;
+        const nextTarget = nextBracket ? ` Next milestone: ${cfg.retirementMultiples[nextBracket]}× salary by age ${nextBracket}.` : '';
+        const baseMsg = currentMonthlyConverted > 0
+          ? `At age ${age}, target is ${r.multiple}× salary = ${fmt(r.target)}. Corpus: ${fmt(r.corpus)} (gap: ${fmt(gap)}).`
+          : `At age ${age}, benchmark is ${r.multiple}× annual salary = ${fmt(r.target)}. Gap: ${fmt(gap)}. ${investVerb.charAt(0).toUpperCase()+investVerb.slice(1)} <strong>${fmt(sipRequired)}/mo</strong> in your ${retireAccount} to close by age ${retireAge}.`;
+        return baseMsg + projectionLine + nextTarget;
       })(),
       savings: (() => {
         if (r.rate >= cfg.savingsExcellent) return `🎉 FIRE-track savings rate of ${(r.rate*100).toFixed(1)}%! You're in the top tier.`;
@@ -13428,32 +13490,56 @@ function renderFHS() {
       </div>
 
       <div class="fhs-score-dial-wrap" style="position:relative;z-index:1;">
-        <svg class="fhs-dial-svg" width="140" height="140" viewBox="0 0 140 140">
-          <defs>
-            <linearGradient id="fhs-score-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" style="stop-color:#E17055"/>
-              <stop offset="50%" style="stop-color:#F9A825"/>
-              <stop offset="100%" style="stop-color:#00B894"/>
-            </linearGradient>
-          </defs>
-          <path d="${bgPath}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="10" stroke-linecap="round"/>
-          ${fillPath ? `<path d="${fillPath}" fill="none" stroke="url(#fhs-score-grad)" stroke-width="10" stroke-linecap="round"/>` : ''}
-          <text x="70" y="65" text-anchor="middle" font-size="34" font-weight="900" fill="white" font-family="Nunito">${fhs.overallScore}</text>
-          <text x="70" y="83" text-anchor="middle" font-size="10" font-weight="700" fill="rgba(255,255,255,0.6)" font-family="Nunito">${fhs.gradeLabel}</text>
-        </svg>
-      </div>
-
-      <div class="fhs-band-chips">
-        <div class="fhs-band-chip">🏗️ Foundation ${fhs.foundScore}</div>
-        <div class="fhs-band-chip" style="opacity:0.45;">📈 Growth v2.0</div>
-        <div class="fhs-band-chip" style="${fhs.hasMastery ? '' : 'opacity:0.55;cursor:pointer;'}" onclick="${fhs.hasMastery ? '' : 'openMasteryOnboard()'}">
-          🧠 Mastery ${fhs.hasMastery ? fhs.masteryScore : '— tap to unlock'}
-        </div>
+        ${(() => {
+          // Concentric ring radii — outer to inner: Mastery, Foundation, Overall
+          const cx = 90, cy = 90, sw = 11;
+          const rings = [
+            { r: 76, pct: fhs.foundScore/100,   color: '#4FC3F7', label: 'Foundation', score: fhs.foundScore, active: true },
+            { r: 60, pct: fhs.hasMastery ? fhs.masteryScore/100 : 0, color: '#A78BFA', label: 'Mastery', score: fhs.hasMastery ? fhs.masteryScore : null, active: fhs.hasMastery },
+            { r: 44, pct: fhs.overallScore/100,  color: fhs.overallScore>=70?'#00B894':fhs.overallScore>=50?'#F9A825':'#E17055', label: 'Overall', score: fhs.overallScore, active: true },
+          ];
+          function rArc(cx,cy,r,startD,endD) {
+            const toRad = d => (d-90)*Math.PI/180;
+            const sx = cx+r*Math.cos(toRad(startD)), sy = cy+r*Math.sin(toRad(startD));
+            const ex = cx+r*Math.cos(toRad(endD)),   ey = cy+r*Math.sin(toRad(endD));
+            const la = (endD-startD)>180?1:0;
+            return `M${sx} ${sy} A${r} ${r} 0 ${la} 1 ${ex} ${ey}`;
+          }
+          const start = -210, sweep = 300;
+          const ringsSvg = rings.map(ring => {
+            const bgD  = rArc(cx,cy,ring.r, start, start+sweep);
+            const fillD = ring.pct > 0.005 ? rArc(cx,cy,ring.r, start, Math.min(start+sweep*ring.pct, start+sweep-0.3)) : '';
+            return `
+              <path d="${bgD}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="${sw}" stroke-linecap="round"/>
+              ${fillD ? `<path d="${fillD}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.active?1:0.3}"/>` : ''}`;
+          }).join('');
+          return `
+          <svg width="180" height="180" viewBox="0 0 180 180" style="filter:drop-shadow(0 4px 24px rgba(0,0,0,0.35));">
+            <defs>
+              <radialGradient id="fhs-center-grad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" style="stop-color:rgba(255,255,255,0.08)"/>
+                <stop offset="100%" style="stop-color:rgba(255,255,255,0)"/>
+              </radialGradient>
+            </defs>
+            ${ringsSvg}
+            <circle cx="${cx}" cy="${cy}" r="32" fill="url(#fhs-center-grad)"/>
+            <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="26" font-weight="900" fill="white" font-family="Nunito">${fhs.overallScore}</text>
+            <text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="8" font-weight="700" fill="rgba(255,255,255,0.55)" font-family="Nunito">${fhs.gradeLabel.replace(/^[^ ]+ /,'')}</text>
+          </svg>
+          <div style="display:flex;gap:14px;margin-top:8px;justify-content:center;">
+            ${rings.map(ring => `
+              <div style="display:flex;align-items:center;gap:4px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:${ring.color};opacity:${ring.active?1:0.35};flex-shrink:0;"></div>
+                <span style="font-size:0.62em;font-weight:800;color:rgba(255,255,255,${ring.active?'0.75':'0.3'});">
+                  ${ring.label}${ring.score !== null ? ' '+ring.score : ' —'}
+                </span>
+              </div>`).join('')}
+          </div>`;
+        })()}
       </div>
 
       <div class="fhs-summary-line">${fhs.summaryLine}</div>
-
-      <div style="margin-top:12px;font-size:0.65em;font-weight:600;color:rgba(255,255,255,0.4);text-align:center;position:relative;z-index:1;">${fhs.activePillars}/${fhs.totalPillars} pillars active · computed in ${fhs.computeMs}ms</div>
+      <div style="margin-top:8px;font-size:0.65em;font-weight:600;color:rgba(255,255,255,0.4);text-align:center;position:relative;z-index:1;">${fhs.activePillars}/${fhs.totalPillars} pillars active · ${fhs.computeMs}ms</div>
     </div>
 
     <!-- Foundation Pillars -->
