@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.10.6
+  Version  : 3.10.7
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -4036,13 +4036,32 @@ function ensureMonth(key) { if(!data[key]) data[key]={income:[],expenses:[],inve
 function save() {
   // Always keep localStorage as offline backup
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  // Stamp suppress window IMMEDIATELY — before any debounce fires.
+  // This prevents onSnapshot (from a previous write) arriving during the debounce
+  // window and calling firebaseLoad(), which would overwrite the just-saved local data.
+  if (window._fbUser) window._ownSaveTs = Date.now();
   // Sync to Firebase if logged in
   firebaseSave();
 }
 function fmt(n) { return sym()+Math.abs(Number(n)).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}); }
 function fmtFull(n) { return sym()+Math.abs(Number(n)).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function getCurrencySymbol(currency='USD') { return {'USD':'$','INR':'₹','EUR':'€','GBP':'£','AED':'د.إ','CAD':'C$','AUD':'A$'}[(currency||'USD').toUpperCase()]||(currency||'USD')+' '; }
-function getCompactNum(num) { if(!num)return'0'; if(num>=10000000)return(num/10000000).toFixed(2)+'Cr'; if(num>=100000)return(num/100000).toFixed(2)+'L'; if(num>=1000)return(num/1000).toFixed(1)+'k'; return num.toLocaleString(); }
+function getCompactNum(num) {
+  if (!num) return '0';
+  const isINR = (currentCurrency?.code || 'USD') === 'INR';
+  if (isINR) {
+    if (num >= 1e12)   return (num / 1e12).toFixed(2) + 'L Cr';
+    if (num >= 1e7)    return (num / 1e7).toFixed(2) + ' Cr';
+    if (num >= 1e5)    return (num / 1e5).toFixed(2) + 'L';
+    if (num >= 1e3)    return (num / 1e3).toFixed(1) + 'k';
+  } else {
+    if (num >= 1e12)   return (num / 1e12).toFixed(2) + 'T';
+    if (num >= 1e9)    return (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6)    return (num / 1e6).toFixed(2) + 'M';
+    if (num >= 1e3)    return (num / 1e3).toFixed(1) + 'k';
+  }
+  return num.toLocaleString();
+}
 function showToast(msg, dur=2500) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); }
 
 function toggleTopbarTray() {
@@ -12711,7 +12730,7 @@ function scoreFIRE(nw, agg, profile, cfg) {
   const retAccounts = (data._nwAccounts||[]).filter(a =>
     overrides ? overrides.includes(a.id) : cfg.retirementTypes.includes(a.type)
   );
-  const retCorpus = retAccounts.reduce((s,a) => s + nwConvert(a.balance, a.currency), 0);
+  const retCorpus = (retAccounts||[]).reduce((s,a) => s + nwConvert(a.balance||0, a.currency), 0);
   if (retCorpus <= 0 && retAccounts.length === 0) {
     return { score: 0, status: 'inactive', label: 'No retirement accounts found', corpus: 0, target: 0, accounts: [] };
   }
@@ -12722,8 +12741,8 @@ function scoreFIRE(nw, agg, profile, cfg) {
   const fireMultiple = swrMultiple; // override cfg.fireMultiple with user's choice
   const target = annualExp * fireMultiple;
   if (target <= 0) return { score: 0, status: 'inactive', label: 'No expense data', corpus: retCorpus, target: 0, accounts: retAccounts };
-  const ratio = retCorpus / target;
-  const score = fhsClamp(Math.round(fhsLerp(ratio, 0, 1, 0, 100)), 0, 100);
+  const ratio = isFinite(retCorpus / target) ? retCorpus / target : 0;
+  const score = fhsClamp(Math.round(fhsLerp(Math.max(0, ratio), 0, 1, 0, 100)), 0, 100);
   const gap = Math.max(0, target - retCorpus);
   return {
     score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
@@ -12791,7 +12810,7 @@ function scoreRetirementTrack(nw, agg, profile, cfg) {
 // P3: Savings Rate
 function scoreSavingsRate(agg, cfg) {
   if (!agg || agg.avgInc <= 0) return { score: 0, status: 'inactive', label: 'No income data', rate: 0 };
-  const rate = agg.avgSav / agg.avgInc;
+  const rate = isFinite(agg.avgSav / agg.avgInc) ? agg.avgSav / agg.avgInc : 0;
   let score;
   if (rate >= cfg.savingsExcellent) score = fhsClamp(Math.round(fhsLerp(rate, cfg.savingsExcellent, cfg.savingsExcellent * 1.5, 88, 100)), 0, 100);
   else if (rate >= cfg.savingsGood)  score = Math.round(fhsLerp(rate, cfg.savingsGood, cfg.savingsExcellent, 70, 88));
@@ -13567,9 +13586,12 @@ function computeFHSScore() {
   const lastScore = profile?.lastMonthScore || null;
   const scoreDelta = lastScore !== null ? overallScore - lastScore : 0;
   // Persist current score as last month's for next comparison (only update monthly)
+  // Guard: skip if already in a save cycle to prevent cascade saves during render
   const now = new Date(); const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
-  if (profile && profile._lastScoreMonth !== monthKey) {
+  if (profile && profile._lastScoreMonth !== monthKey && !window._fhsScoreSaving) {
+    window._fhsScoreSaving = true;
     saveFHSProfileData({ ...profile, lastMonthScore: overallScore, _lastScoreMonth: monthKey });
+    setTimeout(() => { window._fhsScoreSaving = false; }, 2000);
   }
   return { overallScore, foundScore, masteryScore, growthScore, hasMastery, hasGrowth, grade, gradeLabel, scoreDelta, pillarResults, activePillars, totalPillars, summaryLine, computeMs, cfg, region, profile };
 }
