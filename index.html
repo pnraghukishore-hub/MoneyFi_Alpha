@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.10.2
+  Version  : 3.10.3
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -12180,18 +12180,32 @@ function startRealtimeSync(uid) {
   if (_unsubscribeListener) _unsubscribeListener();
   const email = window._fbUser ? window._fbUser.email : '';
   const baseRef = getDataRef(_db, uid, email);
-  const mainRef = baseRef.collection('appData').doc('main');
-  _unsubscribeListener = mainRef.onSnapshot(snap => {
+  const mainRef   = baseRef.collection('appData').doc('main');
+  const assetsRef = baseRef.collection('appData').doc('assets');
+
+  const _shouldSuppress = () => window._ownSaveTs && (Date.now() - window._ownSaveTs) < 10000;
+
+  const _mainUnsub = mainRef.onSnapshot(snap => {
     if (!snap.exists || snap.metadata.hasPendingWrites) return;
-    // Suppress re-fetch for our own writes for 4 seconds after last save
-    if (window._ownSaveTs && (Date.now() - window._ownSaveTs) < 4000) return;
-    // Another device updated — reload and re-render all screens
+    if (_shouldSuppress()) return;
     firebaseLoad(uid).then(() => {
       showSyncStatus('🔄 Updated from another device', '#8B5CF6', 2500);
       try { renderNetWorth(); } catch(e) {}
       try { renderMetals(); } catch(e) {}
     });
   }, err => console.warn('Realtime sync error:', err));
+
+  // Also watch assets doc (_nwAccounts, _nwSnapshots, _metals live here)
+  const _assetsUnsub = assetsRef.onSnapshot(snap => {
+    if (!snap.exists || snap.metadata.hasPendingWrites) return;
+    if (_shouldSuppress()) return;
+    firebaseLoad(uid).then(() => {
+      try { renderNetWorth(); } catch(e) {}
+      try { renderMetals(); } catch(e) {}
+    });
+  }, err => console.warn('Realtime assets sync error:', err));
+
+  _unsubscribeListener = () => { _mainUnsub(); _assetsUnsub(); };
 }
 
 // ── Auth state handler ────────────────────────────────────────────────────
