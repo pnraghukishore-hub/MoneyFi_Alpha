@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.7.0
+  Version  : 3.8.0
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -147,7 +147,16 @@
 
     /* ── BOTTOM NAV ── */
     /* ── FHS Module Styles ── */
-    .fhs-hero { background: linear-gradient(145deg, #1E2A6E 0%, #2D3A8C 50%, #1a237e 100%); border-radius: 24px; padding: 24px 20px 20px; margin-bottom: 16px; position: relative; overflow: hidden; }
+    .fhs-hero { background: linear-gradient(145deg, #1E2A6E 0%, #2D3A8C 50%, #1a237e 100%); border-radius: 24px; padding: 24px 20px 20px; margin-bottom: 0; position: relative; overflow: hidden; }
+    .fhs-hero-demo { background: linear-gradient(145deg, #064E3B 0%, #065F46 50%, #047857 100%); border-radius: 24px; padding: 24px 20px 20px; position: relative; overflow: hidden; }
+    .fhs-hero-demo::before { content:''; position:absolute; top:-40px; right:-40px; width:160px; height:160px; background:rgba(110,231,183,0.15); border-radius:50%; }
+    .fhs-hero-demo::after { content:''; position:absolute; bottom:-30px; left:-20px; width:120px; height:120px; background:rgba(255,255,255,0.05); border-radius:50%; }
+    .fhs-hero-scroll { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; gap:12px; margin-bottom:8px; }
+    .fhs-hero-scroll::-webkit-scrollbar { display:none; }
+    .fhs-hero-slide { flex:0 0 100%; scroll-snap-align:start; }
+    .fhs-hero-dots { display:flex; justify-content:center; gap:6px; margin-bottom:16px; }
+    .fhs-hero-dot { width:6px; height:6px; border-radius:50%; background:var(--text-light); transition:all 0.2s; cursor:pointer; }
+    .fhs-hero-dot.active { width:18px; border-radius:3px; background:#1E2A6E; }
     .fhs-hero::before { content:''; position:absolute; top:-40px; right:-40px; width:160px; height:160px; background:rgba(245,166,35,0.15); border-radius:50%; }
     .fhs-hero::after { content:''; position:absolute; bottom:-30px; left:-20px; width:120px; height:120px; background:rgba(255,255,255,0.05); border-radius:50%; }
     .fhs-score-dial-wrap { display:flex; flex-direction:column; align-items:center; margin-bottom:16px; }
@@ -3178,9 +3187,29 @@
         <input class="fhs-onboard-input" type="number" id="fhsob-retire" placeholder="e.g. 60" min="40" max="80">
       </div>
       <div class="fhs-onboard-field">
+        <div class="fhs-onboard-label">Target withdrawal rate (SWR)</div>
+        <select class="fhs-onboard-input" id="fhsob-swr">
+          <option value="3">3% — Conservative (need 33× expenses)</option>
+          <option value="4" selected>4% — Standard (need 25× expenses)</option>
+          <option value="5">5% — Aggressive (need 20× expenses)</option>
+        </select>
+        <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">How much of your corpus you'll withdraw annually in retirement. Lower = safer.</div>
+      </div>
+      <div class="fhs-onboard-field">
         <div class="fhs-onboard-label">Life insurance cover (total term cover)</div>
         <input class="fhs-onboard-input" type="number" id="fhsob-insurance" placeholder="e.g. 5000000">
         <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Enter 0 if none. Enter total sum assured across all term policies.</div>
+      </div>
+      <div class="fhs-onboard-field">
+        <div class="fhs-onboard-label">Employer disability cover</div>
+        <select class="fhs-onboard-input" id="fhsob-disability">
+          <option value="0">None — no employer disability plan</option>
+          <option value="40">40% of salary covered</option>
+          <option value="60" selected>60% of salary (most corporate plans)</option>
+          <option value="70">70% of salary covered</option>
+          <option value="100">100% — fully covered</option>
+        </select>
+        <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Most plans cover 60% of base only — bonus and above-ceiling income left unprotected.</div>
       </div>
       <div class="fhs-onboard-field">
         <div class="fhs-onboard-label">Number of children</div>
@@ -3191,6 +3220,18 @@
         <div class="fhs-onboard-label">Annual gross compensation (salary + bonus)</div>
         <input class="fhs-onboard-input" type="number" id="fhsob-compensation" placeholder="e.g. 120000">
         <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Used for retirement benchmark and contribution gap analysis.</div>
+      </div>
+      <div class="fhs-onboard-field">
+        <div class="fhs-onboard-label">Employer retirement match</div>
+        <select class="fhs-onboard-input" id="fhsob-match">
+          <option value="0">No employer match</option>
+          <option value="3">Up to 3% of salary matched</option>
+          <option value="4">Up to 4% of salary matched</option>
+          <option value="5">Up to 5% of salary matched</option>
+          <option value="6">Up to 6% of salary matched</option>
+          <option value="10">10%+ (NPS / generous scheme)</option>
+        </select>
+        <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Free money — are you contributing enough to capture 100% of your employer's match?</div>
       </div>
       <div class="fhs-onboard-field">
         <div class="fhs-onboard-label">Household status</div>
@@ -12511,16 +12552,21 @@ function scoreFIRE(nw, agg, profile, cfg) {
     return { score: 0, status: 'inactive', label: 'No retirement accounts found', corpus: 0, target: 0, accounts: [] };
   }
   const annualExp = (agg?.avgExp || 0) * 12;
-  const target = annualExp * cfg.fireMultiple;
+  // SWR-driven multiplier: 3% = 33×, 4% = 25×, 5% = 20×
+  const targetSWR = profile?.targetSWR || 4;
+  const swrMultiple = Math.round(100 / targetSWR);
+  const fireMultiple = swrMultiple; // override cfg.fireMultiple with user's choice
+  const target = annualExp * fireMultiple;
   if (target <= 0) return { score: 0, status: 'inactive', label: 'No expense data', corpus: retCorpus, target: 0, accounts: retAccounts };
   const ratio = retCorpus / target;
   const score = fhsClamp(Math.round(fhsLerp(ratio, 0, 1, 0, 100)), 0, 100);
+  const gap = Math.max(0, target - retCorpus);
   return {
     score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
-    corpus: retCorpus, target, ratio, annualExp,
+    corpus: retCorpus, target, ratio, annualExp, gap, targetSWR, fireMultiple,
     accounts: retAccounts.map(a => ({ name: a.name, val: nwConvert(a.balance, a.currency), type: a.type })),
-    calc: `${fmt(retCorpus)} corpus ÷ (${cfg.fireMultiple}× × ${fmt(annualExp)}/yr) = ${(ratio*100).toFixed(0)}%`,
-    benchmarkIN: `Target: ${cfg.fireMultiple}× annual expenses`,
+    calc: `${fmt(retCorpus)} ÷ (${fireMultiple}× expenses @ ${targetSWR}% SWR) = ${(ratio*100).toFixed(0)}%`,
+    benchmarkIN: `${targetSWR}% SWR → need ${fireMultiple}× annual expenses = ${fmt(target)}`,
     benchmarkSource: cfg.benchmarkSource,
   };
 }
@@ -12545,11 +12591,34 @@ function scoreRetirementTrack(nw, agg, profile, cfg) {
   const target = annualIncome * multiple;
   const ratio = target > 0 ? corpus / target : 0;
   const score = fhsClamp(Math.round(fhsLerp(ratio, 0, 1.5, 0, 100)), 0, 100);
+  // Employer match utilization — free money signal
+  const employerMatchPct = profile?.employerMatchPct || 0; // % of salary employer matches
+  const employerMatchMax = (annualIncome * (employerMatchPct / 100)) / 12; // monthly max match
+  const totalMonthlyContrib = retAccounts.reduce((s,a) => s + (a.meta?.monthlyContribution||0), 0);
+  // If contributing at least up to match threshold → capturing full match
+  const matchThresholdMonthly = employerMatchMax;
+  const matchUtilization = matchThresholdMonthly > 0
+    ? Math.min(totalMonthlyContrib / matchThresholdMonthly, 1)
+    : null;
+  // Match bonus: up to +10 pts for capturing 100% of employer match
+  const matchBonus = matchUtilization !== null ? Math.round(matchUtilization * 10) : 0;
+  const matchGapMonthly = matchThresholdMonthly > 0 ? Math.max(0, matchThresholdMonthly - totalMonthlyContrib) : 0;
+  const scoreFinal = fhsClamp(score + matchBonus, 0, 100);
+
+  // Projected shortfall at retirement
+  const yearsLeft = Math.max(0, (profile?.retirementAge || 60) - age);
+  const cagr = 0.10; // 10% default growth assumption
+  const projectedCorpus = corpus * Math.pow(1 + cagr, yearsLeft)
+    + (totalMonthlyContrib * 12) * ((Math.pow(1 + cagr, yearsLeft) - 1) / cagr);
+  const projectedShortfall = Math.max(0, target - projectedCorpus);
+
   return {
-    score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
+    score: scoreFinal, status: scoreFinal >= 70 ? 'good' : scoreFinal >= 40 ? 'fair' : 'poor',
     corpus, target, ratio, multiple, age, annualIncome,
+    matchUtilization, matchBonus, matchGapMonthly, employerMatchPct,
+    projectedCorpus: Math.round(projectedCorpus), projectedShortfall: Math.round(projectedShortfall), yearsLeft,
     accounts: retAccounts.map(a => ({ name: a.name, val: nwConvert(a.balance, a.currency), type: a.type })),
-    calc: `${fmt(corpus)} ÷ (${multiple}× × ${fmt(annualIncome)}/yr salary) = ${(ratio*100).toFixed(0)}%`,
+    calc: `${fmt(corpus)} ÷ (${multiple}× × ${fmt(annualIncome)}/yr) = ${(ratio*100).toFixed(0)}%${matchBonus ? ` + ${matchBonus}pts match bonus` : ''}`,
     benchmarkIN: `Target at age ${age}: ${multiple}× annual salary`,
     benchmarkSource: cfg.benchmarkSource,
   };
@@ -12566,10 +12635,28 @@ function scoreSavingsRate(agg, cfg) {
   else if (rate > 0)                 score = Math.round(fhsLerp(rate, 0, cfg.savingsFair, 5, 40));
   else                               score = 0;
   score = fhsClamp(score, 0, 100);
+
+  // Savings volatility: std dev of monthly savings rates — high = no automation
+  let volatilityPenalty = 0;
+  let savingsVolatility = 0;
+  const monthlyRates = (agg.monthlyData || [])
+    .filter(m => m.inc > 0)
+    .map(m => (m.inc - m.exp) / m.inc);
+  if (monthlyRates.length >= 3) {
+    const mean = monthlyRates.reduce((s,r) => s+r, 0) / monthlyRates.length;
+    const variance = monthlyRates.reduce((s,r) => s + Math.pow(r-mean, 2), 0) / monthlyRates.length;
+    savingsVolatility = Math.sqrt(variance);
+    // Penalise: std dev > 15% → −5pts, > 25% → −10pts (indicates ad-hoc saving)
+    if (savingsVolatility > 0.25) volatilityPenalty = 10;
+    else if (savingsVolatility > 0.15) volatilityPenalty = 5;
+  }
+  const finalScore = fhsClamp(score - volatilityPenalty, 0, 100);
+
   return {
-    score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
+    score: finalScore, status: finalScore >= 70 ? 'good' : finalScore >= 40 ? 'fair' : 'poor',
     rate, avgInc: agg.avgInc, avgExp: agg.avgExp, avgSav: agg.avgSav,
-    calc: `(${fmt(agg.avgInc)} − ${fmt(agg.avgExp)}) ÷ ${fmt(agg.avgInc)} = ${(rate*100).toFixed(1)}%`,
+    savingsVolatility: +(savingsVolatility * 100).toFixed(1), volatilityPenalty,
+    calc: `(${fmt(agg.avgInc)} − ${fmt(agg.avgExp)}) ÷ ${fmt(agg.avgInc)} = ${(rate*100).toFixed(1)}%${volatilityPenalty ? ` − ${volatilityPenalty}pts volatility` : ''}`,
     benchmarkIN: `Good: ≥${(cfg.savingsGood*100).toFixed(0)}% · FIRE-track: ≥${(cfg.savingsExcellent*100).toFixed(0)}%`,
     benchmarkSource: cfg.benchmarkSource,
     monthlyData: agg.monthlyData,
@@ -12591,9 +12678,16 @@ function scoreEmergencyFund(nw, agg, cfg) {
   const monthsCovered = liquidVal / monthlyExp;
   const ratio = monthsCovered / cfg.emergencyMonths;
   const score = fhsClamp(Math.round(fhsLerp(ratio, 0, 1, 0, 100)), 0, 100);
+  // Cash drag: >12 months is opportunity cost — flag but don't penalise Emergency Fund itself
+  // (Portfolio Health penalises excess cash via asset allocation model)
+  const cashDragMonths = Math.max(0, monthsCovered - 12);
+  const hasCashDrag = cashDragMonths > 0;
+
   return {
     score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
     liquidVal, targetAmt, monthsCovered, monthlyExp, emergencyTarget: cfg.emergencyMonths,
+    hasCashDrag, cashDragMonths: +cashDragMonths.toFixed(1),
+    cashDragAmt: cashDragMonths > 0 ? monthlyExp * cashDragMonths : 0,
     accounts: liquidAccounts.map(a => ({ name: a.name, val: nwConvert(a.balance, a.currency), type: a.type })),
     calc: `${fmt(liquidVal)} liquid ÷ ${fmt(monthlyExp)}/mo = ${monthsCovered.toFixed(1)} months (target: ${cfg.emergencyMonths})`,
     benchmarkIN: `Target: ${cfg.emergencyMonths} months expenses · Liquid = ${cfg.liquidTypes.join(', ')}`,
@@ -12610,11 +12704,20 @@ function scoreLifeInsurance(agg, profile, cfg) {
   const target = annualInc * cfg.insuranceMultiple;
   const ratio = cover / target;
   const score = fhsClamp(Math.round(fhsLerp(ratio, 0, 1, 0, 100)), 0, 100);
+  // Disability gap: what % of income is covered if user can't work?
+  // Most corporate plans cover 60% of base only — bonus + above-ceiling gap uncovered
+  const disabilityCoverPct = profile?.disabilityCoverPct ?? 60; // default: corporate plan
+  const disabilityGap = Math.max(0, 100 - disabilityCoverPct); // uncovered %
+  // Penalty: >40% gap = −10pts, >30% = −5pts (major financial vulnerability)
+  const disabilityPenalty = disabilityGap >= 40 ? 10 : disabilityGap >= 30 ? 5 : 0;
+  const finalScore = fhsClamp(score - disabilityPenalty, 0, 100);
+
   return {
-    score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
+    score: finalScore, status: finalScore >= 70 ? 'good' : finalScore >= 40 ? 'fair' : 'poor',
     cover, target, ratio, annualInc,
-    calc: `${fmt(cover)} cover ÷ (${cfg.insuranceMultiple}× × ${fmt(annualInc)}/yr) = ${(ratio*100).toFixed(0)}%`,
-    benchmarkIN: `Target: ${cfg.insuranceMultiple}× annual income (HLV method)`,
+    disabilityCoverPct, disabilityGap, disabilityPenalty,
+    calc: `${fmt(cover)} cover ÷ (${cfg.insuranceMultiple}× × ${fmt(annualInc)}/yr) = ${(ratio*100).toFixed(0)}%${disabilityPenalty ? ` − ${disabilityPenalty}pts disability gap` : ''}`,
+    benchmarkIN: `HLV: ${cfg.insuranceMultiple}× income · Disability: 100% cover ideal`,
     benchmarkSource: cfg.benchmarkSource,
   };
 }
@@ -13138,6 +13241,45 @@ function scoreNWTrajectory(nw, profile) {
   };
 }
 
+// ── Dynamic Pillar Weights ─────────────────────────────────────────────────
+// Weights shift based on user's life stage. Young users: save & behave.
+// Near-retirement: FIRE velocity + retirement track dominate.
+function computeDynamicWeights(age, yearsToRetirement) {
+  const age_  = age || 35;
+  const ytr   = yearsToRetirement || Math.max(1, 60 - age_);
+
+  // Life stage thresholds
+  const isEarly  = age_ < 30;                // wealth building
+  const isMid    = age_ >= 30 && age_ < 45;  // accumulation
+  const isLate   = age_ >= 45 && age_ < 55;  // preservation
+  const isPreRet = age_ >= 55;               // pre-retirement
+
+  // Foundation weights (total ~46)
+  const fire       = isEarly ? 6  : isMid ? 9  : isLate ? 12 : 14;
+  const retirement = isEarly ? 7  : isMid ? 9  : isLate ? 11 : 13;
+  const savings    = isEarly ? 12 : isMid ? 10 : isLate ? 7  : 5;
+  const emergency  = isEarly ? 8  : isMid ? 6  : isLate ? 5  : 4;
+  const insurance  = isEarly ? 7  : isMid ? 6  : isLate ? 5  : 4;
+  const education  = 3; // constant — always important if kids exist
+  const debt       = isEarly ? 5  : isMid ? 6  : isLate ? 7  : 7;
+
+  // Mastery weights (total ~30)
+  const risk       = isEarly ? 8  : isMid ? 10 : isLate ? 11 : 12;
+  const behaviour  = isEarly ? 12 : isMid ? 10 : isLate ? 8  : 6;
+  const income     = isEarly ? 8  : isMid ? 10 : isLate ? 10 : 10;
+  const tax        = isEarly ? 5  : isMid ? 7  : isLate ? 8  : 9;
+  const estate     = isEarly ? 3  : isMid ? 5  : isLate ? 7  : 8;
+
+  // Growth weights (total ~20)
+  const portfolio  = isEarly ? 6  : isMid ? 8  : isLate ? 8  : 7;
+  const sequence   = isEarly ? 8  : isMid ? 6  : isLate ? 5  : 4;
+  const trajectory = isEarly ? 4  : isMid ? 6  : isLate ? 7  : 8;
+
+  return { fire, retirement, savings, emergency, insurance, education, debt,
+           risk, behaviour, income, tax, estate,
+           portfolio, sequence, trajectory };
+}
+
 function computeFHSScore() {
   const t0 = performance.now();
   const profile = getFHSProfile();
@@ -13147,28 +13289,48 @@ function computeFHSScore() {
   const agg = getFHSMonthlyAggregates(6, profile);
 
   // Growth pillar results computed after Foundation+Mastery (Goal Sequencing needs pillarResults)
+  // Dynamic weights — computed after dw is available (see below)
+  // Pre-compute dw here for foundMastery; Growth block below re-uses same dw
+  const _dw = computeDynamicWeights(profile?.age, profile?.retirementAge ? (profile.retirementAge - (profile?.age||35)) : null);
+
   const foundMasteryResults = {
-    fire:        { weight: 10, emoji: '🔥', name: 'FIRE Readiness',         band: 'Foundation', color: '#E17055', result: scoreFIRE(nw, agg, profile, cfg) },
-    retirement:  { weight: 8,  emoji: '🏛️', name: 'Retirement Track',       band: 'Foundation', color: '#4FC3F7', result: scoreRetirementTrack(nw, agg, profile, cfg) },
-    savings:     { weight: 8,  emoji: '💰', name: 'Savings Rate',           band: 'Foundation', color: '#00B894', result: scoreSavingsRate(agg, cfg) },
-    emergency:   { weight: 6,  emoji: '🛡️', name: 'Emergency Fund',         band: 'Foundation', color: '#F9A825', result: scoreEmergencyFund(nw, agg, cfg) },
-    insurance:   { weight: 5,  emoji: '🧬', name: 'Life Insurance',         band: 'Foundation', color: '#7C3AED', result: scoreLifeInsurance(agg, profile, cfg) },
-    education:   { weight: 3,  emoji: '🎓', name: 'Education Goal',         band: 'Foundation', color: '#FFB74D', result: scoreEducationGoal(nw, profile, cfg) },
-    debt:        { weight: 6,  emoji: '🏦', name: 'Debt Service Health',    band: 'Foundation', color: '#F43F5E', result: scoreDebtService(nw, agg, profile) },
-    risk:        { weight: 10, emoji: '⚖️', name: 'Risk Architecture',      band: 'Mastery',    color: '#EF4444', result: scoreRiskArchitecture(nw, agg, profile) },
-    behaviour:   { weight: 10, emoji: '🧘', name: 'Behavioural Finance',    band: 'Mastery',    color: '#8B5CF6', result: scoreBehaviouralFinance(profile) },
-    income:      { weight: 10, emoji: '💼', name: 'Income Architecture',    band: 'Mastery',    color: '#059669', result: scoreIncomeArchitecture(agg, profile) },
-    tax:         { weight: 7,  emoji: '🧾', name: 'Tax Optimization',       band: 'Mastery',    color: '#0EA5E9', result: scoreTaxOptimization(agg, profile, cfg) },
-    estate:      { weight: 6,  emoji: '🏰', name: 'Estate & Legacy',        band: 'Mastery',    color: '#D97706', result: scoreEstateLegacy(profile) },
+    fire:        { weight: _dw.fire,       emoji: '🔥', name: 'FIRE Readiness',         band: 'Foundation', color: '#E17055', result: scoreFIRE(nw, agg, profile, cfg) },
+    retirement:  { weight: _dw.retirement, emoji: '🏛️', name: 'Retirement Track',       band: 'Foundation', color: '#4FC3F7', result: scoreRetirementTrack(nw, agg, profile, cfg) },
+    savings:     { weight: _dw.savings,    emoji: '💰', name: 'Savings Rate',           band: 'Foundation', color: '#00B894', result: scoreSavingsRate(agg, cfg) },
+    emergency:   { weight: _dw.emergency,  emoji: '🛡️', name: 'Emergency Fund',         band: 'Foundation', color: '#F9A825', result: scoreEmergencyFund(nw, agg, cfg) },
+    insurance:   { weight: _dw.insurance,  emoji: '🧬', name: 'Life Insurance',         band: 'Foundation', color: '#7C3AED', result: scoreLifeInsurance(agg, profile, cfg) },
+    education:   { weight: _dw.education,  emoji: '🎓', name: 'Education Goal',         band: 'Foundation', color: '#FFB74D', result: scoreEducationGoal(nw, profile, cfg) },
+    debt:        { weight: _dw.debt,       emoji: '🏦', name: 'Debt Service Health',    band: 'Foundation', color: '#F43F5E', result: scoreDebtService(nw, agg, profile) },
+    risk:        { weight: _dw.risk,       emoji: '⚖️', name: 'Risk Architecture',      band: 'Mastery',    color: '#EF4444', result: scoreRiskArchitecture(nw, agg, profile) },
+    behaviour:   { weight: _dw.behaviour,  emoji: '🧘', name: 'Behavioural Finance',    band: 'Mastery',    color: '#8B5CF6', result: scoreBehaviouralFinance(profile) },
+    income:      { weight: _dw.income,     emoji: '💼', name: 'Income Architecture',    band: 'Mastery',    color: '#059669', result: scoreIncomeArchitecture(agg, profile) },
+    tax:         { weight: _dw.tax,        emoji: '🧾', name: 'Tax Optimization',       band: 'Mastery',    color: '#0EA5E9', result: scoreTaxOptimization(agg, profile, cfg) },
+    estate:      { weight: _dw.estate,     emoji: '🏰', name: 'Estate & Legacy',        band: 'Mastery',    color: '#D97706', result: scoreEstateLegacy(profile) },
   };
 
-  // Growth pillars — G2 Goal Sequencing uses foundMasteryResults
+  // Growth pillars — reuse _dw computed above — G2 Goal Sequencing uses foundMasteryResults
   const pillarResults = {
     ...foundMasteryResults,
-    portfolio:   { weight: 8,  emoji: '📊', name: 'Portfolio Health',       band: 'Growth',     color: '#6366F1', result: scorePortfolioHealth(nw, profile) },
-    sequence:    { weight: 6,  emoji: '🎯', name: 'Goal Sequencing',        band: 'Growth',     color: '#10B981', result: scoreGoalSequencing(foundMasteryResults, profile) },
-    trajectory:  { weight: 6,  emoji: '📈', name: 'NW Trajectory',          band: 'Growth',     color: '#F59E0B', result: scoreNWTrajectory(nw, profile) },
+    portfolio:   { weight: _dw.portfolio,  emoji: '📊', name: 'Portfolio Health',       band: 'Growth',     color: '#6366F1', result: scorePortfolioHealth(nw, profile) },
+    sequence:    { weight: _dw.sequence,   emoji: '🎯', name: 'Goal Sequencing',        band: 'Growth',     color: '#10B981', result: scoreGoalSequencing(foundMasteryResults, profile) },
+    trajectory:  { weight: _dw.trajectory, emoji: '📈', name: 'NW Trajectory',          band: 'Growth',     color: '#F59E0B', result: scoreNWTrajectory(nw, profile) },
   };
+
+  // ── Cascading caps (prerequisite enforcement) ──────────────────────────
+  // Life Insurance poor → Risk Architecture capped at 65 (can't have good risk profile without coverage)
+  if (pillarResults.insurance.result.score < 40 && pillarResults.insurance.result.status !== 'inactive') {
+    const r = pillarResults.risk.result;
+    if (r.score > 65) {
+      pillarResults.risk.result = { ...r, score: 65, _capped: true, _capReason: 'Life Insurance is Poor — fix coverage to unlock full Risk score' };
+    }
+  }
+  // Emergency Fund poor → Savings Rate capped at 70 (savings without a safety net is fragile)
+  if (pillarResults.emergency.result.score < 40 && pillarResults.emergency.result.status !== 'inactive') {
+    const r = pillarResults.savings.result;
+    if (r.score > 70) {
+      pillarResults.savings.result = { ...r, score: 70, _capped: true, _capReason: 'Emergency Fund is Poor — build your safety net first' };
+    }
+  }
 
   // Band scores
   const foundKeys   = ['fire','retirement','savings','emergency','insurance','education','debt'];
@@ -13260,6 +13422,9 @@ function openFHSOnboard() {
   if (p) {
     document.getElementById('fhsob-age').value = p.age || '';
     document.getElementById('fhsob-retire').value = p.retirementAge || 60;
+    if (document.getElementById('fhsob-swr')) document.getElementById('fhsob-swr').value = p.targetSWR || 4;
+    if (document.getElementById('fhsob-disability')) document.getElementById('fhsob-disability').value = p.disabilityCoverPct ?? 60;
+    if (document.getElementById('fhsob-match')) document.getElementById('fhsob-match').value = p.employerMatchPct || 0;
     document.getElementById('fhsob-insurance').value = p.insuranceCover ?? '';
     document.getElementById('fhsob-compensation').value = p.annualCompensation || '';
     document.getElementById('fhsob-married').value = p.spouseIncome > 0 ? 'married' : 'single';
@@ -13281,11 +13446,28 @@ function closeFHSOnboard() {
   renderFHS();
 }
 
+// Hero swipe dots
+function fhsScrollToHero(idx) {
+  const scroll = document.getElementById('fhs-hero-scroll');
+  if (!scroll) return;
+  scroll.scrollTo({ left: idx * scroll.offsetWidth, behavior: 'smooth' });
+}
+function fhsHeroScrollDot() {
+  const scroll = document.getElementById('fhs-hero-scroll');
+  if (!scroll) return;
+  const idx = Math.round(scroll.scrollLeft / scroll.offsetWidth);
+  [0,1].forEach(i => {
+    const d = document.getElementById('fhs-dot-' + i);
+    if (d) d.classList.toggle('active', i === idx);
+  });
+}
+
 // ── MASTERY ONBOARDING ────────────────────────────────
 function openMasteryOnboard() {
   const p = getFHSProfile();
   const bhv = p?.behaviourProfile || {};
   const rp = p?.riskProfile || {};
+  const isUS = (p?.region || 'IN') === 'US';  // needed by Q11 hint
 
   const q = (id, label, options, val, hint='') => `
     <div class="fhs-onboard-field">
@@ -13516,13 +13698,19 @@ function saveFHSProfile() {
   }
   if (!age || age < 18 || age > 80) { showToast('⚠️ Please enter a valid age (18–80)', 2500); return; }
   const existing = getFHSProfile();
+  const targetSWR         = parseInt(document.getElementById('fhsob-swr')?.value) || 4;
+  const disabilityCoverPct = parseInt(document.getElementById('fhsob-disability')?.value) ?? 60;
+  const employerMatchPct   = parseInt(document.getElementById('fhsob-match')?.value) || 0;
+
   saveFHSProfileData({
     age, retirementAge: retAge, insuranceCover: insurance,
     annualCompensation: compensation, spouseIncome,
     householdIncome: compensation + spouseIncome,
     kidsCount: kids, kidsAges, educationTargets: eduTargets, region,
+    targetSWR, disabilityCoverPct, employerMatchPct,
     accountOverrides: existing?.accountOverrides || {},
     riskProfile: existing?.riskProfile, behaviourProfile: existing?.behaviourProfile,
+    taxProfile: existing?.taxProfile,
     lastMonthScore: existing?.lastMonthScore, _lastScoreMonth: existing?._lastScoreMonth,
     setupAt: Date.now()
   });
@@ -14169,16 +14357,35 @@ function renderFHS() {
     return `<div class="fhs-nudge" style="margin-top:10px;">💡 ${text}</div>`;
   }
 
+  // Demo hero SVG rings builder (reusable)
+  function buildHeroRings(scores, hasM, hasG) {
+    const cx=72,cy=72,sw=9;
+    const rings=[
+      {r:61,pct:scores.found/100,color:'#4FC3F7'},
+      {r:48,pct:hasM?scores.mastery/100:0,color:'#A78BFA',dim:!hasM},
+      {r:35,pct:hasG?scores.growth/100:0,color:'#6EE7B7',dim:!hasG},
+      {r:20,pct:scores.overall/100,color:scores.overall>=70?'#F9A825':scores.overall>=50?'#F9A825':'#E17055'},
+    ];
+    function rArc(cx,cy,r,s,e){const rad=d=>(d-90)*Math.PI/180;const sx=cx+r*Math.cos(rad(s)),sy=cy+r*Math.sin(rad(s));const ex=cx+r*Math.cos(rad(e)),ey=cy+r*Math.sin(rad(e));return `M${sx.toFixed(2)} ${sy.toFixed(2)} A${r} ${r} 0 ${(e-s)>180?1:0} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;}
+    const start=-210,sweep=300;
+    const svgRings=rings.map(ring=>{const bg=rArc(cx,cy,ring.r,start,start+sweep);const fill=ring.pct>0.005?rArc(cx,cy,ring.r,start,Math.min(start+sweep*ring.pct,start+sweep-0.3)):'';return `<path d="${bg}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${sw}" stroke-linecap="round"/>${fill?`<path d="${fill}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.dim?0.3:1}"/>`:''}`;}).join('');
+    return `<svg width="144" height="144" viewBox="0 0 144 144">${svgRings}<text x="${cx}" y="${cy+2}" text-anchor="middle" font-size="11" font-weight="900" fill="rgba(255,255,255,0.5)" font-family="Nunito" letter-spacing="1">BANDS</text></svg>`;
+  }
+
   root.innerHTML = `
-    <!-- Hero score card -->
-    <div class="fhs-hero">
+    <!-- Hero swipe container: Card 1 = real score, Card 2 = demo -->
+    <div class="fhs-hero-scroll" id="fhs-hero-scroll" onscroll="fhsHeroScrollDot()">
+
+      <!-- SLIDE 1: Real Score -->
+      <div class="fhs-hero-slide">
+      <div class="fhs-hero">
       <!-- Top row: title + edit -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative;z-index:1;">
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:1em;">❤️</span>
           <span style="font-size:0.68em;font-weight:900;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:1.2px;">Financial Health Score</span>
         </div>
-        <button onclick="openFHSOnboard()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:5px 11px;font-size:0.68em;font-weight:800;color:rgba(255,255,255,0.8);cursor:pointer;font-family:Nunito,sans-serif;">✏️ Edit Profile</button>
+        <button onclick="openFHSOnboard()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:5px 11px;font-size:0.68em;font-weight:800;color:rgba(255,255,255,0.8);cursor:pointer;font-family:Nunito,sans-serif;">⚙️ My Profile</button>
       </div>
 
       <!-- Main row: score left, rings right -->
@@ -14205,34 +14412,9 @@ function renderFHS() {
           </div>
         </div>
 
-        <!-- Right: concentric rings with BANDS label -->
+        <!-- Right: concentric rings -->
         <div style="flex-shrink:0;position:relative;">
-          ${(() => {
-            const cx = 72, cy = 72, sw = 9;
-            const rings = [
-              { r: 61, pct: fhs.foundScore/100,  color: '#4FC3F7' },
-              { r: 48, pct: fhs.hasMastery ? fhs.masteryScore/100 : 0, color: '#A78BFA', dim: !fhs.hasMastery },
-              { r: 35, pct: fhs.hasGrowth  ? fhs.growthScore/100  : 0, color: '#6EE7B7', dim: !fhs.hasGrowth  },
-              { r: 20, pct: fhs.overallScore/100, color: fhs.overallScore>=70?'#F9A825':fhs.overallScore>=50?'#F9A825':'#E17055' },
-            ];
-            function rArc(cx,cy,r,s,e) {
-              const rad = d => (d-90)*Math.PI/180;
-              const sx=cx+r*Math.cos(rad(s)),sy=cy+r*Math.sin(rad(s));
-              const ex=cx+r*Math.cos(rad(e)),ey=cy+r*Math.sin(rad(e));
-              return `M${sx.toFixed(2)} ${sy.toFixed(2)} A${r} ${r} 0 ${(e-s)>180?1:0} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;
-            }
-            const start=-210, sweep=300;
-            const svgRings = rings.map(ring => {
-              const bg = rArc(cx,cy,ring.r,start,start+sweep);
-              const fill = ring.pct>0.005 ? rArc(cx,cy,ring.r,start,Math.min(start+sweep*ring.pct,start+sweep-0.3)) : '';
-              return `<path d="${bg}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${sw}" stroke-linecap="round"/>
-              ${fill?`<path d="${fill}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.dim?0.3:1}"/>`:''}`;
-            }).join('');
-            return `<svg width="144" height="144" viewBox="0 0 144 144">
-              ${svgRings}
-              <text x="${cx}" y="${cy+2}" text-anchor="middle" font-size="11" font-weight="900" fill="rgba(255,255,255,0.5)" font-family="Nunito" letter-spacing="1">BANDS</text>
-            </svg>`;
-          })()}
+          ${buildHeroRings({found:fhs.foundScore,mastery:fhs.masteryScore,growth:fhs.growthScore,overall:fhs.overallScore},fhs.hasMastery,fhs.hasGrowth)}
         </div>
       </div>
 
@@ -14246,6 +14428,67 @@ function renderFHS() {
           <div style="font-size:0.6em;font-weight:700;color:rgba(255,255,255,0.35);">${fhs.computeMs}ms</div>
         </div>
       </div>
+    </div>
+    </div><!-- end slide 1 -->
+
+      <!-- SLIDE 2: Demo Score (Sample) -->
+      <div class="fhs-hero-slide">
+      <div class="fhs-hero-demo">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative;z-index:1;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:0.68em;font-weight:900;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:1.2px;">Sample Score</span>
+            <span style="background:rgba(110,231,183,0.25);border:1px solid rgba(110,231,183,0.4);border-radius:8px;padding:2px 8px;font-size:0.6em;font-weight:900;color:#6EE7B7;">DEMO</span>
+          </div>
+          <button onclick="openFHSOnboard()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:5px 11px;font-size:0.68em;font-weight:800;color:rgba(255,255,255,0.8);cursor:pointer;font-family:Nunito,sans-serif;">⚙️ Set Up Mine</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:4.5em;font-weight:900;color:white;line-height:1;letter-spacing:-2px;">74</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.12);border-radius:20px;padding:3px 10px;">
+                <span style="font-size:0.75em;">✅</span>
+                <span style="font-size:0.75em;font-weight:900;color:rgba(255,255,255,0.9);">Good</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:3px;">
+                <span style="font-size:0.8em;">▲</span>
+                <span style="font-size:0.72em;font-weight:800;color:#6EE7B7;">+6 from last month</span>
+              </div>
+            </div>
+            <div style="font-size:0.78em;font-weight:700;color:rgba(255,255,255,0.75);margin-top:10px;line-height:1.4;">Strong saver. Tax optimization is your blind spot.</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+              <div style="background:rgba(79,195,247,0.2);border:1px solid rgba(79,195,247,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#4FC3F7;">🏗️ 79</div>
+              <div style="background:rgba(167,139,250,0.2);border:1px solid rgba(167,139,250,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#A78BFA;">🧠 68</div>
+              <div style="background:rgba(110,231,183,0.2);border:1px solid rgba(110,231,183,0.4);border-radius:12px;padding:3px 10px;font-size:0.65em;font-weight:800;color:#6EE7B7;">🌱 72</div>
+            </div>
+          </div>
+          <div style="flex-shrink:0;position:relative;">
+            ${buildHeroRings({found:79,mastery:68,growth:72,overall:74},true,true)}
+          </div>
+        </div>
+        <!-- Demo profile caption -->
+        <div style="margin-top:14px;padding:10px 12px;background:rgba(255,255,255,0.07);border-radius:10px;position:relative;z-index:1;">
+          <div style="font-size:0.68em;font-weight:800;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Sample profile</div>
+          <div style="font-size:0.75em;font-weight:700;color:rgba(255,255,255,0.85);line-height:1.5;">
+            Arjun, 34 · Software Engineer · ₹18L/yr income<br>
+            6mo emergency fund · 15× insurance · 2 kids · IND
+          </div>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;margin-top:12px;position:relative;z-index:1;">
+          <div style="height:100%;width:74%;background:linear-gradient(90deg,#6EE7B7,#10B981);border-radius:4px;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;position:relative;z-index:1;">
+          <div style="font-size:0.6em;font-weight:700;color:rgba(255,255,255,0.4);">15/15 pillars active</div>
+          <div style="font-size:0.6em;font-weight:700;color:rgba(255,255,255,0.55);font-style:italic;">← Swipe left for your score</div>
+        </div>
+      </div>
+      </div><!-- end slide 2 -->
+
+    </div><!-- end fhs-hero-scroll -->
+
+    <!-- Scroll indicator dots -->
+    <div class="fhs-hero-dots" id="fhs-hero-dots">
+      <div class="fhs-hero-dot active" id="fhs-dot-0" onclick="fhsScrollToHero(0)"></div>
+      <div class="fhs-hero-dot" id="fhs-dot-1" onclick="fhsScrollToHero(1)"></div>
     </div>
 
     <!-- Foundation Pillars -->
