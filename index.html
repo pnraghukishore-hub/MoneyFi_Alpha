@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.10.4
+  Version  : 3.10.5
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -12078,9 +12078,9 @@ function getDataRef(db, uid, email) {
 let _saveTimer = null;
 function firebaseSave() {
   if (!window._fbUser) return;
-  // Debounce: wait 1.5s after last save call before writing to Firestore
+  // Debounce: 500ms is enough — profile/settings data is tiny
   clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(() => _doFirebaseSave(), 1500);
+  _saveTimer = setTimeout(() => _doFirebaseSave(), 500);
 }
 
 function _doFirebaseSave() {
@@ -12090,13 +12090,13 @@ function _doFirebaseSave() {
   showSyncStatus('☁️ Saving...', '#3B9EFF', 0);
 
   // Split data into chunks to stay well under Firestore 1MB doc limit
-  // Chunk 1: main data (transactions, budgets, goals, settings)
-  // Chunk 2: heavy arrays (metals, NW accounts, investments)
+  // Chunk 1 (main): transactions, budgets, goals, settings, FHS profile
+  // Chunk 2 (assets): heavy arrays — metals, NW accounts, investments, snapshots
   const chunk1 = {};
   const chunk2 = {};
+  const heavy = ['_metals','_nwAccounts','_realEstate','_nwSnapshots'];
 
   Object.keys(data).forEach(k => {
-    const heavy = ['_metals','_nwAccounts','_realEstate'];
     if (heavy.includes(k)) chunk2[k] = data[k];
     else chunk1[k] = data[k];
   });
@@ -12108,19 +12108,33 @@ function _doFirebaseSave() {
   batch.set(baseRef.collection('appData').doc('assets'),
     { ...chunk2, _savedAt: firebase.firestore.FieldValue.serverTimestamp() });
 
-  window._ownSaveInFlight = true;
-  window._ownSaveTs = Date.now(); // timestamp guard — suppress snapshots for 10s after own save
-  batch.commit()
+  // Stamp suppress window BEFORE commit so snapshots fired during write are suppressed
+  window._ownSaveTs = Date.now();
+
+  // Race commit against a 12s timeout — iOS Safari never hangs the status bar forever
+  const commitPromise = batch.commit();
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('commit_timeout')), 12000)
+  );
+
+  Promise.race([commitPromise, timeoutPromise])
     .then(() => {
+      // Refresh suppress window from actual commit completion time
+      window._ownSaveTs = Date.now();
       showSyncStatus('✅ Synced', '#10B981', 2000);
       try { renderNetWorth(); } catch(e) {}
       try { renderMetals(); } catch(e) {}
       try { renderHome(); } catch(e) {}
     })
     .catch(err => {
-      window._ownSaveInFlight = false;
       console.error('Firebase save error:', err);
-      showSyncStatus('⚠️ Sync failed — saved locally', '#F59E0B', 3000);
+      if (err.message === 'commit_timeout') {
+        showSyncStatus('⚠️ Slow connection — saved locally, retrying...', '#F59E0B', 4000);
+        // Retry once after 5s in case connection recovered
+        setTimeout(() => { if (window._fbUser) _doFirebaseSave(); }, 5000);
+      } else {
+        showSyncStatus('⚠️ Sync failed — saved locally', '#F59E0B', 3000);
+      }
     });
 }
 
