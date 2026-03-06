@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.10.7
+  Version  : 3.10.9
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -3608,7 +3608,7 @@
 
 <!-- Sync status bar -->
 <div id="sync-status-bar" style="
-  display:none;position:fixed;top:0;left:0;right:0;z-index:200;
+  display:none;position:fixed;top:0;left:0;right:0;z-index:9999;
   padding:4px 16px;font-size:0.72em;font-weight:700;
   text-align:center;transition:all 0.3s;
 " id="sync-bar"></div>
@@ -3621,6 +3621,8 @@
 // ══════════════════════════════════════════════════════
 const STORAGE_KEY = 'financeData';
 let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+// Restore write nonce from last session so initial onSnapshot is correctly suppressed after reload
+window._writeNonce = parseInt(localStorage.getItem('_mf_nonce') || '0');
 // Restore custom NW types into runtime NW_TYPES object
 setTimeout(() => {
   (data._nwCustomTypes || []).forEach(c => {
@@ -4036,11 +4038,13 @@ function ensureMonth(key) { if(!data[key]) data[key]={income:[],expenses:[],inve
 function save() {
   // Always keep localStorage as offline backup
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  // Stamp suppress window IMMEDIATELY — before any debounce fires.
-  // This prevents onSnapshot (from a previous write) arriving during the debounce
-  // window and calling firebaseLoad(), which would overwrite the just-saved local data.
-  if (window._fbUser) window._ownSaveTs = Date.now();
-  // Sync to Firebase if logged in
+  if (window._fbUser) {
+    // Increment nonce and persist to localStorage so it survives page reload.
+    // After refresh, _writeNonce matches the value stored in cloud → initial onSnapshot suppressed.
+    window._writeNonce = ((window._writeNonce || parseInt(localStorage.getItem('_mf_nonce') || '0')) + 1) % 999999;
+    localStorage.setItem('_mf_nonce', String(window._writeNonce));
+    window._ownSaveTs = Date.now();
+  }
   firebaseSave();
 }
 function fmt(n) { return sym()+Math.abs(Number(n)).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}); }
@@ -12070,11 +12074,26 @@ function showSyncStatus(msg, color='#10B981', duration=2500) {
   bar.style.background = color;
   bar.style.color = 'white';
   bar.style.display = 'block';
+  bar._shownAt = Date.now();
   clearTimeout(bar._hideTimer);
   if (duration > 0) {
     bar._hideTimer = setTimeout(() => { bar.style.display = 'none'; }, duration);
   }
 }
+
+// iOS Safari suspends JS timers when tab is backgrounded.
+// When user returns to the tab, clear any "Saving..." bar that's been stuck > 15s.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  const bar = document.getElementById('sync-status-bar');
+  if (!bar || bar.style.display === 'none') return;
+  const stuckMs = Date.now() - (bar._shownAt || 0);
+  if (stuckMs > 15000 && bar.textContent.includes('Saving')) {
+    // Commit likely timed out while tab was backgrounded — retry now
+    showSyncStatus('⚠️ Sync interrupted — retrying…', '#F59E0B', 4000);
+    setTimeout(() => { if (window._fbUser) _doFirebaseSave(); }, 500);
+  }
+});
 
 // ── Family vs Personal data routing ──────────────────────────────────────
 const FAMILY_EMAILS = [
@@ -12124,12 +12143,14 @@ function _doFirebaseSave() {
 
   const baseRef = getDataRef(_db, uid, email);
   const batch = _db.batch();
+  // Embed nonce into both docs so onSnapshot can identify our own writes
+  const _nonce = window._writeNonce || 0;
   batch.set(baseRef.collection('appData').doc('main'),
-    { ...chunk1, _savedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    { ...chunk1, _savedAt: firebase.firestore.FieldValue.serverTimestamp(), _writeNonce: _nonce });
   batch.set(baseRef.collection('appData').doc('assets'),
-    { ...chunk2, _savedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    { ...chunk2, _savedAt: firebase.firestore.FieldValue.serverTimestamp(), _writeNonce: _nonce });
 
-  // Stamp suppress window BEFORE commit so snapshots fired during write are suppressed
+  // Stamp suppress window BEFORE commit (time guard as secondary fallback)
   window._ownSaveTs = Date.now();
 
   // Race commit against a 12s timeout — iOS Safari never hangs the status bar forever
@@ -12180,8 +12201,14 @@ async function firebaseLoad(uid) {
     const merged = { ...mainData, ...assetsData };
 
     if (Object.keys(merged).length > 0) {
-      // Cloud data exists — merge with local (cloud wins for conflicts)
+      // Cloud data exists — merge with local, but preserve locally-newer profile data.
+      // If iOS commit failed, local profile may be ahead of cloud; don't overwrite it.
+      const localProfile  = data._fhsProfile;
+      const cloudProfile  = merged._fhsProfile;
+      const localNewer = localProfile?.updatedAt && cloudProfile?.updatedAt &&
+                         localProfile.updatedAt > cloudProfile.updatedAt;
       data = { ...data, ...merged };
+      if (localNewer) data._fhsProfile = localProfile; // local wins
       // Migration note: stale INR override cleanup removed — user overrides are intentional
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       showSyncStatus('✅ Data loaded from cloud', '#10B981', 2500);
@@ -12220,11 +12247,16 @@ function startRealtimeSync(uid) {
   const mainRef   = baseRef.collection('appData').doc('main');
   const assetsRef = baseRef.collection('appData').doc('assets');
 
-  const _shouldSuppress = () => window._ownSaveTs && (Date.now() - window._ownSaveTs) < 10000;
+  // Suppress if: (a) nonce matches our last write, OR (b) within 10s time window (clock drift fallback)
+  const _shouldSuppress = (snap) => {
+    const snapNonce = snap.data()?._writeNonce;
+    if (snapNonce !== undefined && snapNonce === window._writeNonce) return true;
+    return window._ownSaveTs && (Date.now() - window._ownSaveTs) < 10000;
+  };
 
   const _mainUnsub = mainRef.onSnapshot(snap => {
     if (!snap.exists || snap.metadata.hasPendingWrites) return;
-    if (_shouldSuppress()) return;
+    if (_shouldSuppress(snap)) return;
     firebaseLoad(uid).then(() => {
       showSyncStatus('🔄 Updated from another device', '#8B5CF6', 2500);
       try { renderNetWorth(); } catch(e) {}
@@ -12235,7 +12267,7 @@ function startRealtimeSync(uid) {
   // Also watch assets doc (_nwAccounts, _nwSnapshots, _metals live here)
   const _assetsUnsub = assetsRef.onSnapshot(snap => {
     if (!snap.exists || snap.metadata.hasPendingWrites) return;
-    if (_shouldSuppress()) return;
+    if (_shouldSuppress(snap)) return;
     firebaseLoad(uid).then(() => {
       try { renderNetWorth(); } catch(e) {}
       try { renderMetals(); } catch(e) {}
@@ -13590,8 +13622,14 @@ function computeFHSScore() {
   const now = new Date(); const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
   if (profile && profile._lastScoreMonth !== monthKey && !window._fhsScoreSaving) {
     window._fhsScoreSaving = true;
-    saveFHSProfileData({ ...profile, lastMonthScore: overallScore, _lastScoreMonth: monthKey });
-    setTimeout(() => { window._fhsScoreSaving = false; }, 2000);
+    try {
+      saveFHSProfileData({ ...profile, lastMonthScore: overallScore, _lastScoreMonth: monthKey });
+    } catch(e) {
+      console.warn('FHS monthly score save failed:', e);
+    } finally {
+      // Always clear the flag — setTimeout as safety net for async paths
+      setTimeout(() => { window._fhsScoreSaving = false; }, 2000);
+    }
   }
   return { overallScore, foundScore, masteryScore, growthScore, hasMastery, hasGrowth, grade, gradeLabel, scoreDelta, pillarResults, activePillars, totalPillars, summaryLine, computeMs, cfg, region, profile };
 }
@@ -13633,9 +13671,10 @@ function openFHSOnboard() {
   document.getElementById('fhs-onboard-modal').style.display = 'flex';
 }
 
-function closeFHSOnboard() {
+function closeFHSOnboard(saved) {
   document.getElementById('fhs-onboard-modal').style.display = 'none';
-  renderFHS();
+  // Only re-render FHS if data was actually saved — avoids redundant render on Cancel
+  if (saved) renderFHS();
 }
 
 // Hero swipe dots
@@ -13993,7 +14032,7 @@ function saveFHSProfile() {
     lastMonthScore: existing?.lastMonthScore, _lastScoreMonth: existing?._lastScoreMonth,
     setupAt: existing?.setupAt || Date.now(), updatedAt: Date.now()
   });
-  closeFHSOnboard();
+  closeFHSOnboard(true); // true = data was saved, trigger re-render
   showToast('✅ Profile saved! Score updating…', 2500);
 }
 
@@ -15346,6 +15385,7 @@ function fhsSheetRender(query) {
   const key = _fhsPickerKey;
   const q = (query || '').toLowerCase().trim();
   const body = document.getElementById('fhs-sheet-body');
+  if (!body) return; // sheet was closed before render completed
 
   const profile = getFHSProfile() || {};
   const currentOverrides = (profile.accountOverrides || {})[key] || null;
@@ -15436,7 +15476,14 @@ function fhsSheetGroupToggle(type, checked) {
   const overrides = profile.accountOverrides || {};
   let current = overrides[key] ? [...overrides[key]] : _fhsPickerData.allAccounts.map(a => a.id);
 
-  const groupAccounts = (_fhsPickerData.groups[type] || []).map(a => a.id);
+  // Respect active search filter: only toggle VISIBLE accounts in this group,
+  // not all items (e.g. 79 metals). If no search active, all items in group are affected.
+  const q = (document.getElementById('fhs-sheet-search')?.value || '').toLowerCase().trim();
+  const allGroupAccounts = _fhsPickerData.groups[type] || [];
+  const visibleGroupAccounts = q
+    ? allGroupAccounts.filter(a => (a.name || '').toLowerCase().includes(q))
+    : allGroupAccounts;
+  const groupAccounts = visibleGroupAccounts.map(a => a.id);
 
   if (checked) {
     groupAccounts.forEach(id => { if (!current.includes(id)) current.push(id); });
@@ -15675,7 +15722,8 @@ function buildHeroRings(scores, hasM, hasG) {
 
 function renderFHS() {
   const root = document.getElementById('fhs-root');
-  if (!root) return;
+  // Guard: element may be detached if user navigated away between the call and execution
+  if (!root || !root.isConnected) return;
   const profile = getFHSProfile();
 
   if (!profile) {
