@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.10.0
+  Version  : 3.10.1
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -1542,7 +1542,7 @@
 
 <!-- TOP BAR — Clean layout with icons inside topbar -->
 <div class="topbar">
-  <div class="topbar-title">💰 MoneyFlow</div>
+  <div class="topbar-title">💰 MoneyFi</div>
   <div style="display:flex;align-items:center;gap:8px;">
     <div class="topbar-badge" id="topbar-month" style="cursor:default;">Feb 2026</div>
     <div class="topbar-icons">
@@ -2144,7 +2144,7 @@
       <div class="theme-grid">
         <div class="theme-card default active-theme" id="theme-default" onclick="setTheme('default')">
           <div class="tc-preview">☀️💰</div>
-          <div class="tc-name">Classic MoneyFlow</div>
+          <div class="tc-name">Classic MoneyFi</div>
           <div class="tc-desc">The original warm & sunny look</div>
           <div class="tc-active-badge">✓</div>
         </div>
@@ -2845,7 +2845,7 @@
 <div class="screen" id="screen-import">
   <div style="margin-bottom:8px;">
     <div style="font-size:1.1em;font-weight:900;color:var(--text-dark);">📥 Import Hub</div>
-    <div style="font-size:0.78em;color:var(--text-light);font-weight:600;margin-top:2px;">Bring your Excel history into MoneyFlow</div>
+    <div style="font-size:0.78em;color:var(--text-light);font-weight:600;margin-top:2px;">Bring your Excel history into MoneyFi</div>
   </div>
 
   <!-- Tabs -->
@@ -3293,10 +3293,11 @@
       <div class="fhs-onboard-field">
         <div class="fhs-onboard-label">Target withdrawal rate (SWR)</div>
         <select class="fhs-onboard-input" id="fhsob-swr">
-          <option value="3">3% — Conservative (need 33× expenses)</option>
-          <option value="4" selected>4% — Standard (need 25× expenses)</option>
-          <option value="5">5% — Aggressive (need 20× expenses)</option>
+          <option value="3">3% — Very Safe · need 33× expenses · longest runway</option>
+          <option value="4" selected>4% — Standard · need 25× expenses · proven safe</option>
+          <option value="5">5% — Aggressive · need 20× expenses · higher depletion risk</option>
         </select>
+        <div style="font-size:0.72em;font-weight:600;color:var(--text-light);margin-top:5px;line-height:1.4;">Lower rate = more corpus needed, but your money lasts longer in retirement.</div>
         <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">How much of your corpus you'll withdraw annually in retirement. Lower = safer.</div>
       </div>
       <div class="fhs-onboard-field">
@@ -7226,7 +7227,7 @@ function exportAllData() {
     XLSX.utils.book_append_sheet(wb, nwWs, 'NW Accounts');
   }
 
-  XLSX.writeFile(wb,"MoneyFlow_Complete.xlsx"); showToast('Excel exported ✅');
+  XLSX.writeFile(wb,"MoneyFi_Complete.xlsx"); showToast('Excel exported ✅');
 }
 function exportDataCategory(type) {
   const list=getDataEffectiveEntries(type); if(!list.length){showToast('No data to export');return;}
@@ -10890,7 +10891,6 @@ function deleteNWAccount(id) {
 function closeNWSheet() {
   document.getElementById('nw-sheet-overlay').classList.remove('open');
   document.getElementById('nw-sheet').classList.remove('open');
-  // Reset for next open
   setTimeout(() => {
     const pick = document.getElementById('nws-phase-pick');
     const form = document.getElementById('nws-phase-form');
@@ -10898,7 +10898,11 @@ function closeNWSheet() {
     if (form) form.style.display = 'none';
     nwSheetType = null;
     nwSheetEditId = null;
-  }, 320); // after slide-down animation
+    // Force reflow + re-render so Net Worth totals update without app restart
+    void document.getElementById('screen-networth')?.offsetHeight;
+    renderNetWorth();
+    try { renderHome(); } catch(e) {}
+  }, 320);
 }
 
 function saveNWAccount() {
@@ -13925,17 +13929,17 @@ function saveFHSProfile() {
     householdIncome: compensation + spouseIncome,
     kidsCount: kids, kidsAges, educationTargets: eduTargets, region,
     targetSWR, disabilityCoverPct, employerMatchPct,
-    // v3.10.0 data completeness fields
-    equityPct: parseFloat(document.getElementById('fhsob-equity-pct')?.value) || null,
-    passiveIncome: parseFloat(document.getElementById('fhsob-passive-income')?.value) || 0,
-    pensionAge: parseInt(document.getElementById('fhsob-pension-age')?.value) || null,
-    dependentMonthly: parseFloat(document.getElementById('fhsob-dep-amount')?.value) || 0,
-    dependentYears: parseInt(document.getElementById('fhsob-dep-years')?.value) || 0,
+    // v3.10.0 data completeness fields — read with blur-safe fallbacks
+    equityPct: (() => { const v = document.getElementById('fhsob-equity-pct')?.value; return v !== '' && v !== undefined ? parseFloat(v) : (existing?.equityPct ?? null); })(),
+    passiveIncome: (() => { const v = document.getElementById('fhsob-passive-income')?.value; return v !== '' ? parseFloat(v) || 0 : (existing?.passiveIncome || 0); })(),
+    pensionAge: (() => { const v = document.getElementById('fhsob-pension-age')?.value; return v !== '' && v !== undefined ? parseInt(v) : (existing?.pensionAge ?? null); })(),
+    dependentMonthly: (() => { const v = document.getElementById('fhsob-dep-amount')?.value; return v !== '' ? parseFloat(v) || 0 : (existing?.dependentMonthly || 0); })(),
+    dependentYears: (() => { const v = document.getElementById('fhsob-dep-years')?.value; return v !== '' ? parseInt(v) || 0 : (existing?.dependentYears || 0); })(),
     accountOverrides: existing?.accountOverrides || {},
     riskProfile: existing?.riskProfile, behaviourProfile: existing?.behaviourProfile,
-    taxProfile: existing?.taxProfile,
+    taxProfile: existing?.taxProfile, masteryProfile: existing?.masteryProfile,
     lastMonthScore: existing?.lastMonthScore, _lastScoreMonth: existing?._lastScoreMonth,
-    setupAt: Date.now()
+    setupAt: existing?.setupAt || Date.now(), updatedAt: Date.now()
   });
   closeFHSOnboard();
   showToast('✅ Financial Health Score updated!', 2500);
@@ -14112,17 +14116,21 @@ function wiRecompute() {
   const isIN = (p?.region || 'IN') !== 'US';
 
   // ── Build a modified profile snapshot ──
-  const incMo  = (p.annualCompensation || p.householdIncome || 0) / 12;
-  const expMo  = getMonthlyExpenses();   // from app data
+  const incMo  = Math.max(
+    (p.annualCompensation || 0) / 12,
+    (p.householdIncome || 0) / 12,
+    expMo * 1.05  // fallback: assume income slightly above expenses
+  );
   const sipAdd = _wiSliders.sip;
   const cutPct = _wiSliders.cut / 100;
   const emgAdd = _wiSliders.emg;
   const insAdd = _wiSliders.ins;
 
-  const newExpMo  = expMo * (1 - cutPct);
-  const extraSav  = sipAdd + (expMo - newExpMo); // SIP boost + expense cut both increase savings
-  const newSavMo  = Math.max(0, incMo - newExpMo) + sipAdd;
-  const newSavRate = incMo > 0 ? Math.min(newSavMo / incMo, 1) : 0;
+  // SIP is redirected from spending (not new income), expense cut frees up cash
+  const newExpMo   = expMo * (1 - cutPct) - sipAdd; // SIP diverted from expenses
+  const savedMo    = Math.max(0, incMo - Math.max(0, newExpMo));
+  const newSavRate = incMo > 0 ? Math.min(savedMo / incMo, 1) : 0;
+  const extraSav   = sipAdd + (expMo - expMo * (1 - cutPct)); // total freed cash
 
   // Get current pillar scores for impact deltas
   const pr = fhsNow.pillarResults;
@@ -14146,16 +14154,21 @@ function wiRecompute() {
 
   // Emergency Fund
   if (emgAdd > 0) {
-    const curMos = pr.emergency?.result?.monthsCovered || 0;
-    const newMos = curMos + emgAdd;
-    const newScore = Math.min(100, Math.round(
-      newMos >= 12 ? 100 :
-      newMos >= 6  ? 90 + (newMos - 6) / 6 * 10 :
-      newMos >= 3  ? 60 + (newMos - 3) / 3 * 30 :
-      newMos / 3 * 60
-    ));
-    const cur = pr.emergency?.result?.score || 0;
-    if (newScore !== cur) impacts.push({ key:'emergency', emoji:'🛡️', name:'Emergency Fund', before:cur, after:newScore });
+    const curMos  = pr.emergency?.result?.monthsCovered || 0;
+    const curScore = pr.emergency?.result?.score || 0;
+    // Already excellent — adding more months shouldn't penalise
+    if (curScore >= 95) {
+      impacts.push({ key:'emergency', emoji:'🛡️', name:'Emergency Fund', before:curScore, after:curScore, note:'✅ Already fully funded' });
+    } else {
+      const newMos  = curMos + emgAdd;
+      const newScore = Math.min(100, Math.round(
+        newMos >= 12 ? 100 :
+        newMos >= 6  ? 90 + (newMos - 6) / 6 * 10 :
+        newMos >= 3  ? 60 + (newMos - 3) / 3 * 30 :
+        newMos / 3 * 60
+      ));
+      if (newScore !== curScore) impacts.push({ key:'emergency', emoji:'🛡️', name:'Emergency Fund', before:curScore, after:newScore });
+    }
   }
 
   // Insurance
@@ -14263,7 +14276,8 @@ function wiRenderImpactList(impacts, containerId) {
   container.innerHTML = impacts.map(i => {
     const delta = i.after - i.before;
     const color = delta > 0 ? '#00B894' : delta < 0 ? '#E17055' : '#6B7280';
-    const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
+    const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '✅';
+    const displayAfter = i.note ? `<div style="font-size:0.7em;font-weight:800;color:#00B894;">${i.note}</div>` : `<div style="font-size:0.85em;font-weight:900;color:${color};">${arrow} ${i.after}</div>`;
     return `<div class="wi-impact-row">
       <div class="wi-impact-emoji">${i.emoji}</div>
       <div style="flex:1;">
@@ -14274,7 +14288,7 @@ function wiRenderImpactList(impacts, containerId) {
       </div>
       <div style="text-align:right;min-width:60px;">
         <div style="font-size:0.7em;color:var(--text-light);">${i.before}</div>
-        <div style="font-size:0.85em;font-weight:900;color:${color};">${arrow} ${i.after}</div>
+        ${displayAfter}
       </div>
     </div>`;
   }).join('');
@@ -14623,6 +14637,21 @@ function wiStressHome(on) {
   wiRenderCombinedStress();
 }
 
+// Region-aware large number formatter for stress test outputs
+function stressFmt(val, isIN) {
+  const n = Math.abs(Number(val) || 0);
+  if (isIN) {
+    if (n >= 10000000) return `₹${(n/10000000).toFixed(1)}Cr`;
+    if (n >= 100000)   return `₹${(n/100000).toFixed(1)}L`;
+    if (n >= 1000)     return `₹${Math.round(n/1000)}K`;
+    return `₹${Math.round(n)}`;
+  } else {
+    if (n >= 1000000) return `$${(n/1000000).toFixed(1)}M`;
+    if (n >= 1000)    return `$${Math.round(n/1000)}K`;
+    return `$${Math.round(n)}`;
+  }
+}
+
 function wiRunAllStressTests() {
   ['lifestyle','market','crisis','sandwich','healthcare','home'].forEach(k => wiRunStressTest(k));
   wiRenderCombinedStress();
@@ -14688,10 +14717,10 @@ function wiRunStressTest(key) {
     const bridgeWiped = shockedCorpus < bridgeFund;
     newRiskScore = bridgeWiped ? Math.max(10, (pr.risk?.result?.score || 50) - 35) : Math.max(20, (pr.risk?.result?.score || 50) - 15);
     scoreImpact = newFireScore - (pr.fire?.result?.score || 0);
-    label = `−${_wiStressState.market}% crash → FIRE corpus ${sym}${Math.round(fireCorpus*(drop)/100000)}L wiped. ${bridgeWiped ? '🚨 Bridge fund depleted!' : 'Bridge fund intact.'}`;
+    label = `−${_wiStressState.market}% crash → FIRE corpus ${stressFmt(fireCorpus*drop, isIN)} wiped. ${bridgeWiped ? '🚨 Bridge fund depleted!' : 'Bridge fund intact.'}`;
     const rebalPct = Math.round((1 - drop) * 30);
     recoveryHtml = bridgeWiped
-      ? `<b>🚨 Bridge fund wiped.</b> To recover: <b>Shift ${rebalPct}% to debt/bonds</b> immediately + build <b>${sym}${Math.round(bridgeFund/100000)}L liquid buffer</b> before retirement. Consider delaying retirement by <b>${Math.ceil(bridgeYears * 0.5)} years</b>.`
+      ? `<b>🚨 Bridge fund wiped.</b> To recover: <b>Shift ${rebalPct}% to debt/bonds</b> immediately + build <b>${stressFmt(bridgeFund, isIN)} liquid buffer</b> before retirement. Consider delaying retirement by <b>${Math.ceil(bridgeYears * 0.5)} years</b>.`
       : `<b>Recovery path:</b> Rebalance <b>${rebalPct}% to debt funds</b> now. Resume SIP — rupee-cost averaging recovers most losses within <b>3–5 years</b>. Avoid panic redemptions.`;
 
   } else if (key === 'crisis') {
@@ -14713,9 +14742,9 @@ function wiRunStressTest(key) {
     const newFireRatio = Math.max(0, (fireCorpus - lump) / fireTarget);
     newFireScore = Math.round(newFireRatio >= 1 ? 100 : newFireRatio * 100);
     scoreImpact = newFireScore - (pr.fire?.result?.score || 0);
-    label = `${sym}${lump >= 100000 ? (lump/100000).toFixed(1)+'L' : (lump/1000).toFixed(0)+'K'} crisis + ${sym}${monthly >= 1000 ? (monthly/1000).toFixed(0)+'K' : monthly}/mo drain — Emergency fund ${newEmgMos < 1 ? 'wiped' : newEmgMos.toFixed(1) + 'mo left'}`;
+    label = `${stressFmt(lump, isIN)} crisis + ${sym}${monthly >= 1000 ? (monthly/1000).toFixed(0)+'K' : monthly}/mo drain — Emergency fund ${newEmgMos < 1 ? 'wiped' : newEmgMos.toFixed(1) + 'mo left'}`;
     const rebuildMonths = lump > 0 && incMo > 0 ? Math.ceil(lump / (incMo * 0.15)) : 0;
-    recoveryHtml = `<b>Recovery path:</b> Emergency fund rebuilds in <b>~${rebuildMonths} months</b> at 15% savings rate. <b>Get a ${sym}${Math.round(lump/2 / 100000)}L critical illness policy</b> — costs ${isIN ? '₹5K–₹15K/yr' : '$200–$600/yr'} and covers exactly this scenario. <b>Ring-fence ${sym}${Math.round(monthly * 24 / 1000)}K</b> as a 2-year care buffer.`;
+    recoveryHtml = `<b>Recovery path:</b> Emergency fund rebuilds in <b>~${rebuildMonths} months</b> at 15% savings rate. <b>Get a ${stressFmt(lump/2, isIN)} critical illness policy</b> — costs ${isIN ? '₹5K–₹15K/yr' : '$200–$600/yr'} and covers exactly this scenario. <b>Ring-fence ${sym}${Math.round(monthly * 24 / 1000)}K</b> as a 2-year care buffer.`;
 
   } else if (key === 'sandwich') {
     const monthly = parseFloat(document.getElementById('wi-stress-sandwich-mo')?.value) || 0;
@@ -14733,7 +14762,7 @@ function wiRunStressTest(key) {
     const newFireRatio = Math.max(0, (fireCorpus - lostCorpus) / fireTarget);
     newFireScore = Math.round(newFireRatio >= 1 ? 100 : newFireRatio * 100);
     scoreImpact = newFireScore - (pr.fire?.result?.score || 0);
-    label = `${sym}${monthly >= 1000 ? (monthly/1000).toFixed(0)+'K' : monthly}/mo × ${sandYears}yr = ${sym}${Math.round(totalBurden/100000).toFixed(1)}L total burden. FIRE corpus opportunity cost: ${sym}${Math.round(lostCorpus/100000).toFixed(1)}L`;
+    label = `${sym}${monthly >= 1000 ? (monthly/1000).toFixed(0)+'K' : monthly}/mo × ${sandYears}yr = ${stressFmt(totalBurden, isIN)} total burden. FIRE corpus opportunity cost: ${stressFmt(lostCorpus, isIN)}`;
     const incNeeded = Math.round(monthly * 1.5);
     recoveryHtml = `<b>Recovery path:</b> <b>Passive income of ${sym}${incNeeded >= 1000 ? (incNeeded/1000).toFixed(0)+'K' : incNeeded}/mo</b> (rental/dividends) absorbs care costs without touching savings. Consider <b>a parent floater health plan</b> to cap medical surprises. <b>Have a direct family conversation</b> about shared care responsibilities.`;
 
@@ -14755,8 +14784,8 @@ function wiRunStressTest(key) {
     const newFireRatio = Math.max(0, (fireCorpus - healthCorpus) / fireTarget);
     newFireScore = Math.round(newFireRatio >= 1 ? 100 : newFireRatio * 100);
     scoreImpact = newFireScore - (pr.fire?.result?.score || 0);
-    label = `${gapYears}-year healthcare gap: ${sym}${Math.round(annualPremium/1000)}K/yr premium = ${sym}${Math.round(healthCorpus/100000).toFixed(1)}L stealth FIRE cost`;
-    recoveryHtml = `<b>Recovery path:</b> Add <b>${sym}${Math.round(healthCorpus/100000).toFixed(1)}L to FIRE target</b> as healthcare reserve. Consider <b>buying a ${isIN ? '₹1Cr super top-up' : '$1M umbrella'} policy now</b> while young and premiums are low.`;
+    label = `${gapYears}-year healthcare gap: ${sym}${Math.round(annualPremium/1000)}K/yr premium = ${stressFmt(healthCorpus, isIN)} stealth FIRE cost`;
+    recoveryHtml = `<b>Recovery path:</b> Add <b>${stressFmt(healthCorpus, isIN)} to FIRE target</b> as healthcare reserve. Consider <b>buying a ${isIN ? '₹1Cr super top-up' : '$1M umbrella'} policy now</b> while young and premiums are low.`;
 
   } else if (key === 'home') {
     const on = _wiStressState.homeInFire;
@@ -14771,8 +14800,14 @@ function wiRunStressTest(key) {
     const newRatio = Math.min(1, (fireCorpus + homeValue) / fireTarget);
     newFireScore = Math.round(newRatio >= 1 ? 100 : newRatio >= 0.75 ? 75 + newRatio * 25 : newRatio * 100);
     scoreImpact = newFireScore - (pr.fire?.result?.score || 0);
-    label = `Home (est. ${sym}${Math.round(homeValue/100000)}L) boosts FIRE score by ${scoreImpact} pts. ⚠️ Liquidity Warning active.`;
+    // Region-aware home value display
+    const homeDisplay = isIN
+      ? (homeValue >= 100000 ? `₹${(homeValue/100000).toFixed(1)}L` : `₹${Math.round(homeValue/1000)}K`)
+      : (homeValue >= 1000000 ? `$${(homeValue/1000000).toFixed(1)}M` : `$${Math.round(homeValue/1000)}K`);
+    label = `Home (est. ${homeDisplay}) boosts FIRE score by ${scoreImpact} pts. ⚠️ Liquidity Warning active.`;
     recoveryHtml = `<b>⚠️ Liquidity Warning:</b> Your home is an <b>illiquid asset</b> — you can't pay grocery bills with your kitchen. If counted, ensure you have <b>a separate liquid corpus</b> for withdrawals. Consider <b>reverse mortgage or downsizing plan</b> as a genuine exit strategy.`;
+    // Update the live score preview bar
+    wiUpdateScoreDisplay(base, Math.min(100, base + scoreImpact));
   }
 
   // Render result
@@ -15711,6 +15746,9 @@ function renderFHS() {
               const overrides = profile?.accountOverrides?.[key];
               const pillarLabels = { fire:'retirement corpus', retirement:'retirement corpus', emergency:'liquid funds', education:'education funds' };
               const hasAccountPicker = ['fire','retirement','emergency','education'].includes(key);
+              // Question-based pillars don't use accounts at all — hide section entirely
+              const isQuestionBased = ['risk','behaviour','tax','estate'].includes(key);
+              if (isQuestionBased) return '';
 
               // Accounts currently counted
               const countedAccounts = r.accounts || [];
