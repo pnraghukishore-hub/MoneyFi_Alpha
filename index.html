@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.6.0
+  Version  : 3.6.1
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -12462,7 +12462,7 @@ function fhsLerp(val, lo, hi, scoreLo, scoreHi) {
 function fhsClamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
 
 // ── Get monthly income/expense aggregates (last N months) ──
-function getFHSMonthlyAggregates(months = 6) {
+function getFHSMonthlyAggregates(months = 6, profile) {
   const now = new Date();
   const mks = [];
   for (let i = 0; i < months; i++) {
@@ -12470,17 +12470,32 @@ function getFHSMonthlyAggregates(months = 6) {
     mks.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   }
   const validMonths = mks.filter(mk => data[mk] && ((data[mk].income||[]).length > 0 || (data[mk].expenses||[]).length > 0));
-  if (validMonths.length === 0) return null;
+
+  // Profile-stated monthly income (annualCompensation + spouseIncome) as floor
+  const _prof = profile || getFHSProfile();
+  const statedMonthly = _prof ? ((_prof.annualCompensation || 0) + (_prof.spouseIncome || 0)) / 12 : 0;
+
+  if (validMonths.length === 0) {
+    // No transactions — use profile salary if available
+    if (statedMonthly > 0) {
+      return { avgInc: statedMonthly, avgExp: 0, avgSav: statedMonthly, monthlyData: [], validMonths: [], _fromProfile: true };
+    }
+    return null;
+  }
 
   const monthlyData = validMonths.map(mk => {
     const inc = (data[mk].income||[]).reduce((s,e) => s + convertAmt(e.amount, e.currency), 0);
     const exp = (data[mk].expenses||[]).reduce((s,e) => s + convertAmt(e.amount, e.currency), 0);
     return { mk, inc, exp, savings: inc - exp };
   });
-  const avgInc = monthlyData.reduce((s,m) => s + m.inc, 0) / monthlyData.length;
-  const avgExp = monthlyData.reduce((s,m) => s + m.exp, 0) / monthlyData.length;
+  const txnAvgInc = monthlyData.reduce((s,m) => s + m.inc, 0) / monthlyData.length;
+  const avgExp    = monthlyData.reduce((s,m) => s + m.exp, 0) / monthlyData.length;
+
+  // Use whichever is higher: transaction-derived income or stated salary
+  // This prevents under-counting when salary is partially tracked
+  const avgInc = Math.max(txnAvgInc, statedMonthly);
   const avgSav = avgInc - avgExp;
-  return { avgInc, avgExp, avgSav, monthlyData, validMonths };
+  return { avgInc, avgExp, avgSav, monthlyData, validMonths, txnAvgInc, statedMonthly };
 }
 
 // ── PILLAR SCORERS ─────────────────────────────────────
@@ -12513,7 +12528,10 @@ function scoreFIRE(nw, agg, profile, cfg) {
 // P2: Retirement Track (corpus vs age-salary benchmark)
 function scoreRetirementTrack(nw, agg, profile, cfg) {
   const age = profile?.age;
-  const annualIncome = (agg?.avgInc || 0) * 12;
+  // Use profile stated compensation if higher than transaction-derived income
+  const txnAnnualInc = (agg?.avgInc || 0) * 12;
+  const profileAnnualInc = profile ? ((profile.annualCompensation || 0) + (profile.spouseIncome || 0)) : 0;
+  const annualIncome = Math.max(txnAnnualInc, profileAnnualInc);
   if (!age || annualIncome <= 0) return { score: 0, status: 'inactive', label: 'Age or income data needed', corpus: 0, target: 0, accounts: [] };
   const overrides = profile?.accountOverrides?.retirement;
   const retAccounts = (data._nwAccounts||[]).filter(a =>
@@ -12838,7 +12856,7 @@ function computeFHSScore() {
   const region = profile?.region || 'IN';
   const cfg = FHS_REGION[region] || FHS_REGION.IN;
   const nw = computeNetWorth();
-  const agg = getFHSMonthlyAggregates(6);
+  const agg = getFHSMonthlyAggregates(6, profile);
 
   const pillarResults = {
     fire:        { weight: 10, emoji: '🔥', name: 'FIRE Readiness',         band: 'Foundation', color: '#E17055', result: scoreFIRE(nw, agg, profile, cfg) },
@@ -13210,13 +13228,26 @@ function openFHSPickerSheet(key) {
   const overrides = (profile.accountOverrides || {})[key] || null;
 
   const baseAccounts = (data._nwAccounts || []).filter(a => !NW_TYPES[a.type]?.isLiab);
-  const metalsAccounts = (data._metals || []).map((m, idx) => ({
-    id: 'import_metal_' + idx,
-    name: [m.metalType, m.karat, m.name].filter(Boolean).join(' · '),
-    type: 'metals',
-    balance: (m.weight || 0) * (m.pricePerGram || 0),
-    currency: 'USD',
-  }));
+  const metalsAccounts = (data._metals || []).map((m, idx) => {
+    const mc = METAL_CONFIG[m.metalType] || METAL_CONFIG['gold'];
+    const grams = Number(m.grams || m.weightGms || 0);
+    const livePrice = getPriceForMetal(m.metalType || 'gold', m.purity || '');
+    const valUSD = grams * livePrice;
+    const nameParts = [mc.emoji + ' ' + ((m.metalType||'gold').charAt(0).toUpperCase()+(m.metalType||'gold').slice(1))];
+    if (m.purity)   nameParts.push(m.purity);
+    if (m.occasion) nameParts.push(m.occasion);
+    if (!m.purity && !m.occasion && m.name && m.name !== m.metalType) nameParts.push(m.name);
+    return {
+      id: 'import_metal_' + idx,
+      name: nameParts.join(' · '),
+      type: 'metals',
+      balance: valUSD,
+      currency: 'USD',
+      _grams: grams,
+      _metalType: m.metalType,
+      _purity: m.purity,
+    };
+  });
   const allAccounts = [...baseAccounts, ...metalsAccounts];
 
   // Group by type
