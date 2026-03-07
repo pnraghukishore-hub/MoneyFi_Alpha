@@ -1,0 +1,55 @@
+name: Deploy MoneyFi to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Prepare deploy folder
+        run: |
+          mkdir -p deploy
+          cp index.html deploy/index.html
+
+      - name: Inject Anthropic API key
+        run: |
+          sed -i "s|YOUR_ANTHROPIC_API_KEY_HERE|${{ secrets.ANTHROPIC_API_KEY }}|g" deploy/index.html
+
+      - name: Verify injection
+        run: |
+          if grep -q "YOUR_ANTHROPIC_API_KEY_HERE" deploy/index.html; then
+            echo "ERROR: Placeholder still present — check secret name is ANTHROPIC_API_KEY"
+            exit 1
+          else
+            echo "OK: API key injected successfully"
+          fi
+
+      - name: Copy assets
+        run: |
+          for f in service-worker.js manifest.json favicon.ico; do
+            [ -f "$f" ] && cp "$f" deploy/ && echo "Copied $f" || echo "Skipped $f"
+          done
+          [ -d "icons" ] && cp -r icons deploy/icons && echo "Copied icons/" || echo "Skipped icons/"
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./deploy
+          publish_branch: gh-pages
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: "Deploy ${{ github.sha }}"
