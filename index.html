@@ -12129,26 +12129,15 @@ function _doFirebaseSave() {
   const email = window._fbUser.email;
   showSyncStatus('☁️ Saving...', '#3B9EFF', 0);
 
-  const chunk1 = {};
-  const chunk2 = {};
+  const chunk1 = {}, chunk2 = {};
   const heavy = ['_metals','_nwAccounts','_realEstate','_nwSnapshots'];
-  Object.keys(data).forEach(k => {
-    if (heavy.includes(k)) chunk2[k] = data[k];
-    else chunk1[k] = data[k];
-  });
+  Object.keys(data).forEach(k => { if (heavy.includes(k)) chunk2[k] = data[k]; else chunk1[k] = data[k]; });
 
-  // Debug: confirm _fhsProfile is in chunk1 and has content
-  const profileInChunk = !!chunk1._fhsProfile;
-  const profileKeys = profileInChunk ? Object.keys(chunk1._fhsProfile) : [];
-  console.log('[SAVE] _doFirebaseSave START', {
-    uid, nonce: window._writeNonce,
-    chunk1Keys: Object.keys(chunk1).length,
-    chunk2Keys: Object.keys(chunk2).length,
-    hasProfile: profileInChunk,
-    profileKeys,
-    chunk1SizeEstimate: JSON.stringify(chunk1).length,
-    chunk2SizeEstimate: JSON.stringify(chunk2).length,
-  });
+  const profilePresent = !!chunk1._fhsProfile;
+  const c1size = JSON.stringify(chunk1).length;
+  const c2size = JSON.stringify(chunk2).length;
+  console.log('[SAVE] _doFirebaseSave', { nonce: window._writeNonce, profilePresent, c1size, c2size,
+    profileUpdatedAt: chunk1._fhsProfile?.updatedAt ? new Date(chunk1._fhsProfile.updatedAt).toISOString() : 'none' });
 
   const baseRef = getDataRef(_db, uid, email);
   const batch = _db.batch();
@@ -12159,7 +12148,6 @@ function _doFirebaseSave() {
     { ...chunk2, _savedAt: firebase.firestore.FieldValue.serverTimestamp(), _writeNonce: _nonce });
 
   window._ownSaveTs = Date.now();
-  console.log('[SAVE] batch.commit() firing — nonce:', _nonce, 'ownSaveTs:', window._ownSaveTs);
 
   const commitPromise = batch.commit();
   const timeoutPromise = new Promise((_, reject) =>
@@ -12169,16 +12157,16 @@ function _doFirebaseSave() {
   Promise.race([commitPromise, timeoutPromise])
     .then(() => {
       window._ownSaveTs = Date.now();
-      console.log('[SAVE] ✅ batch.commit() SUCCESS — nonce:', _nonce);
+      console.log('[SAVE] ✅ SUCCESS nonce:', _nonce, 'c1:', c1size, 'c2:', c2size);
       showSyncStatus('✅ Synced', '#10B981', 2000);
       try { renderNetWorth(); } catch(e) {}
       try { renderMetals(); } catch(e) {}
       try { renderHome(); } catch(e) {}
     })
     .catch(err => {
-      console.error('[SAVE] ❌ batch.commit() FAILED:', err.code, err.message, err);
+      console.error('[SAVE] ❌ FAILED', err.code, err.message);
       if (err.message === 'commit_timeout') {
-        console.warn('[SAVE] ⏱ commit_timeout after 12s — iOS suspend likely');
+        console.warn('[SAVE] ⏱ 12s timeout — iOS background suspend likely');
         showSyncStatus('⚠️ Slow connection — saved locally, retrying...', '#F59E0B', 4000);
         setTimeout(() => { if (window._fbUser) _doFirebaseSave(); }, 5000);
       } else {
@@ -12187,7 +12175,7 @@ function _doFirebaseSave() {
     });
 }
 
-// (profile saves via standard save() → _doFirebaseSave → batch chunk1)
+// _saveProfileToFirebase removed — profile now saved via standard save() → batch chunk1
 
 // ── Firebase Load: merge chunks back into data ────────────────────────────
 async function firebaseLoad(uid) {
@@ -12203,7 +12191,6 @@ async function firebaseLoad(uid) {
     const mainData   = mainSnap.exists   ? mainSnap.data()   : {};
     const assetsData = assetsSnap.exists ? assetsSnap.data() : {};
 
-    // Remove Firestore metadata fields
     delete mainData._savedAt;   delete mainData._writeNonce;
     delete assetsData._savedAt; delete assetsData._writeNonce;
 
@@ -12259,11 +12246,8 @@ function startRealtimeSync(uid) {
   // Suppress if: (a) nonce matches our last write, OR (b) within 10s time window (clock drift fallback)
   const _shouldSuppress = (snap) => {
     const snapNonce = snap.data()?._writeNonce;
-    const nonceMatch = snapNonce !== undefined && snapNonce === window._writeNonce;
-    const timeMatch  = !!(window._ownSaveTs && (Date.now() - window._ownSaveTs) < 10000);
-    console.log('[SYNC] onSnapshot — snapNonce:', snapNonce, 'localNonce:', window._writeNonce,
-      'nonceMatch:', nonceMatch, 'timeMatch:', timeMatch, '→ suppress:', nonceMatch || timeMatch);
-    return nonceMatch || timeMatch;
+    if (snapNonce !== undefined && snapNonce === window._writeNonce) return true;
+    return window._ownSaveTs && (Date.now() - window._ownSaveTs) < 10000;
   };
 
   const _mainUnsub = mainRef.onSnapshot(snap => {
@@ -12721,8 +12705,10 @@ const FHS_REGION = {
 function getFHSProfile() { return data._fhsProfile || null; }
 function saveFHSProfileData(p) {
   data._fhsProfile = p;
-  console.log('[FHS SAVE] saveFHSProfileData called — profile keys:', Object.keys(p || {}));
-  save(); // Uses the standard batch save — _fhsProfile lives in chunk1 (main doc)
+  console.log('[FHS] saveFHSProfileData — keys:', Object.keys(p||{}), 'updatedAt:', p?.updatedAt);
+  // save() writes localStorage + fires batch.set on main+assets docs.
+  // _fhsProfile lives in chunk1 → main doc. Same path used by all other saves.
+  save();
 }
 
 // ── Linear interpolation helper ───────────────────────
@@ -12772,14 +12758,14 @@ function getFHSMonthlyAggregates(months = 6, profile) {
 
 // ── PILLAR SCORERS ─────────────────────────────────────
 
-// Shared account builder — combines _nwAccounts + _metals (same ID scheme as picker)
-// so accountOverrides saved from the picker correctly match scorer filter results.
+// Shared account builder — same ID scheme as the FHS picker sheet
+// so accountOverrides IDs (e.g. 'import_metal_5') match scorer filter results.
 function getFHSAllAccounts() {
   const nwAccs = data._nwAccounts || [];
   const metalAccs = (data._metals || []).map((m, idx) => {
     const mc = (typeof METAL_CONFIG !== 'undefined' && METAL_CONFIG[m.metalType]) || { emoji: '🥇' };
     const grams = Number(m.grams || m.weightGms || 0);
-    const livePrice = (typeof getPriceForMetal === 'function')
+    const livePrice = typeof getPriceForMetal === 'function'
       ? getPriceForMetal(m.metalType || 'gold', m.purity || '')
       : Number(m.price || 0);
     const valUSD = grams * livePrice;
@@ -12787,13 +12773,7 @@ function getFHSAllAccounts() {
     if (m.purity)   nameParts.push(m.purity);
     if (m.occasion) nameParts.push(m.occasion);
     if (!m.purity && !m.occasion && m.name && m.name !== m.metalType) nameParts.push(m.name);
-    return {
-      id: 'import_metal_' + idx,  // same ID scheme as picker sheet
-      name: nameParts.join(' · '),
-      type: 'metals',
-      balance: valUSD,
-      currency: 'USD',
-    };
+    return { id: 'import_metal_' + idx, name: nameParts.join(' · '), type: 'metals', balance: valUSD, currency: 'USD' };
   });
   return [...nwAccs, ...metalAccs];
 }
@@ -12801,12 +12781,11 @@ function getFHSAllAccounts() {
 // P1: FIRE Readiness
 function scoreFIRE(nw, agg, profile, cfg) {
   const overrides = profile?.accountOverrides?.fire;
-  const allFHSAccounts = getFHSAllAccounts();
-  const retAccounts = allFHSAccounts.filter(a =>
+  const allFHSAccs = getFHSAllAccounts();
+  const retAccounts = allFHSAccs.filter(a =>
     overrides ? overrides.includes(a.id) : cfg.retirementTypes.includes(a.type)
   );
-  console.log('[FIRE] overrides:', overrides?.length ?? 'none (default)',
-    '| allAccounts:', allFHSAccounts.length, '| matched:', retAccounts.length);
+  console.log('[FIRE] overrides:', overrides ? overrides.length : 'default', '| pool:', allFHSAccs.length, '| matched:', retAccounts.length);
   const retCorpus = retAccounts.reduce((s,a) => s + nwConvert(a.balance||0, a.currency||'USD'), 0);
   if (retCorpus <= 0 && retAccounts.length === 0) {
     return { score: 0, status: 'inactive', label: 'No retirement accounts found', corpus: 0, target: 0, accounts: [] };
@@ -12840,8 +12819,8 @@ function scoreRetirementTrack(nw, agg, profile, cfg) {
   const annualIncome = Math.max(txnAnnualInc, profileAnnualInc);
   if (!age || annualIncome <= 0) return { score: 0, status: 'inactive', label: 'Age or income data needed', corpus: 0, target: 0, accounts: [] };
   const overrides = profile?.accountOverrides?.retirement;
-  const allFHSAccounts = getFHSAllAccounts();
-  const retAccounts = allFHSAccounts.filter(a =>
+  const allFHSAccs = getFHSAllAccounts();
+  const retAccounts = allFHSAccs.filter(a =>
     overrides ? overrides.includes(a.id) : cfg.retirementTypes.includes(a.type)
   );
   const corpus = retAccounts.reduce((s,a) => s + nwConvert(a.balance||0, a.currency||'USD'), 0);
@@ -12928,8 +12907,8 @@ function scoreSavingsRate(agg, cfg) {
 function scoreEmergencyFund(nw, agg, cfg) {
   const profile = getFHSProfile();
   const overrides = profile?.accountOverrides?.emergency;
-  const allFHSAccounts = getFHSAllAccounts();
-  const liquidAccounts = allFHSAccounts.filter(a =>
+  const allFHSAccs = getFHSAllAccounts();
+  const liquidAccounts = allFHSAccs.filter(a =>
     overrides ? overrides.includes(a.id) : cfg.liquidTypes.includes(a.type)
   );
   const liquidVal = liquidAccounts.reduce((s,a) => s + nwConvert(a.balance||0, a.currency||'USD'), 0);
@@ -12991,8 +12970,8 @@ function scoreEducationGoal(nw, profile, cfg) {
   const eduTargets = profile?.educationTargets || [];
   if (kids === 0) return { score: 100, status: 'na', label: 'No children — N/A', score100: true };
   const overrides = profile?.accountOverrides?.education;
-  const allFHSAccounts = getFHSAllAccounts();
-  const eduAccounts = allFHSAccounts.filter(a =>
+  const allFHSAccs = getFHSAllAccounts();
+  const eduAccounts = allFHSAccs.filter(a =>
     overrides
       ? overrides.includes(a.id)
       : (a.type === 'education' || (a.name && a.name.toLowerCase().includes('edu')))
@@ -14008,7 +13987,6 @@ function saveMasteryProfile() {
     ...profile, riskProfile, behaviourProfile,
     taxProfile: {
       marginalRate: parseFloat(parseFloat(g('marginal_rate') || (profile?.region === 'IN' ? '0.20' : '0.22')).toFixed(2)),
-      // Store raw strings for yes/no fields — booleans show blank for 'no' on reopen
       taxLossHarvesting: g('taxloss') === 'yes',  taxLossRaw: g('taxloss'),
       hsa: g('hsa') === 'yes',                    hsaRaw: g('hsa'),
       hasWill: g('will') === 'yes',               willRaw: g('will'),
@@ -14017,6 +13995,7 @@ function saveMasteryProfile() {
       hasLifeInsurance: profile.insuranceCover > 0,
       savedAt: Date.now(),
     },
+    updatedAt: Date.now(),  // root-level timestamp — required for local-wins check on reload
   });
   closeMasteryOnboard();
   showToast('🧠 Mastery profile saved! Score updating…', 2500);
