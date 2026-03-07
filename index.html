@@ -2,7 +2,7 @@
 <!-- 
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.11.0
+  Version  : 3.11.1
   Built    : 2026-03-06
   Session  : Phase 4 — FHS Full Engine
 
@@ -12180,25 +12180,56 @@ function _doFirebaseSave() {
     });
 }
 
+// ── Dedicated FHS profile save — writes ONLY the tiny profile doc ─────────
+// Completely independent of transaction data size. Always <5KB. Never hangs.
+let _profileSaveTimer = null;
+function _saveProfileToFirebase() {
+  if (!window._fbUser) return;
+  clearTimeout(_profileSaveTimer);
+  _profileSaveTimer = setTimeout(() => {
+    const uid   = window._fbUser.uid;
+    const email = window._fbUser?.email || '';
+    const baseRef = getDataRef(_db, uid, email);
+    const profileDoc = baseRef.collection('appData').doc('profile');
+    const profile = data._fhsProfile || null;
+    if (!profile) return;
+    const nonce = window._writeNonce || 0;
+    const payload = { _fhsProfile: profile, _savedAt: firebase.firestore.FieldValue.serverTimestamp(), _writeNonce: nonce };
+    profileDoc.set(payload)
+      .then(() => {
+        window._ownSaveTs = Date.now();
+        showSyncStatus('✅ Profile saved', '#10B981', 2000);
+        try { renderFHS(); } catch(e) {}
+      })
+      .catch(err => {
+        console.error('Profile save error:', err);
+        showSyncStatus('⚠️ Profile save failed — data kept locally', '#F59E0B', 3000);
+      });
+  }, 300); // 300ms debounce — faster than full save
+}
+
 // ── Firebase Load: merge chunks back into data ────────────────────────────
 async function firebaseLoad(uid) {
   showSyncStatus('☁️ Loading your data...', '#3B9EFF', 0);
   const email = window._fbUser ? window._fbUser.email : '';
   try {
     const baseRef = getDataRef(_db, uid, email);
-    const [mainSnap, assetsSnap] = await Promise.all([
+    const [mainSnap, assetsSnap, profileSnap] = await Promise.all([
       baseRef.collection('appData').doc('main').get(),
-      baseRef.collection('appData').doc('assets').get()
+      baseRef.collection('appData').doc('assets').get(),
+      baseRef.collection('appData').doc('profile').get(),
     ]);
 
-    const mainData   = mainSnap.exists   ? mainSnap.data()   : {};
-    const assetsData = assetsSnap.exists ? assetsSnap.data() : {};
+    const mainData    = mainSnap.exists    ? mainSnap.data()    : {};
+    const assetsData  = assetsSnap.exists  ? assetsSnap.data()  : {};
+    const profileData = profileSnap.exists ? profileSnap.data() : {};
 
     // Remove Firestore metadata fields
-    delete mainData._savedAt;
-    delete assetsData._savedAt;
+    delete mainData._savedAt;  delete mainData._writeNonce;
+    delete assetsData._savedAt; delete assetsData._writeNonce;
+    delete profileData._savedAt; delete profileData._writeNonce;
 
-    const merged = { ...mainData, ...assetsData };
+    const merged = { ...mainData, ...assetsData, ...profileData };
 
     if (Object.keys(merged).length > 0) {
       // Cloud data exists — merge with local, but preserve locally-newer profile data.
@@ -12244,8 +12275,9 @@ function startRealtimeSync(uid) {
   if (_unsubscribeListener) _unsubscribeListener();
   const email = window._fbUser ? window._fbUser.email : '';
   const baseRef = getDataRef(_db, uid, email);
-  const mainRef   = baseRef.collection('appData').doc('main');
-  const assetsRef = baseRef.collection('appData').doc('assets');
+  const mainRef    = baseRef.collection('appData').doc('main');
+  const assetsRef  = baseRef.collection('appData').doc('assets');
+  const profileRef = baseRef.collection('appData').doc('profile');
 
   // Suppress if: (a) nonce matches our last write, OR (b) within 10s time window (clock drift fallback)
   const _shouldSuppress = (snap) => {
@@ -12274,7 +12306,26 @@ function startRealtimeSync(uid) {
     });
   }, err => console.warn('Realtime assets sync error:', err));
 
-  _unsubscribeListener = () => { _mainUnsub(); _assetsUnsub(); };
+  // Profile doc — fast listener, only triggers FHS re-render
+  const _profileUnsub = profileRef.onSnapshot(snap => {
+    if (!snap.exists || snap.metadata.hasPendingWrites) return;
+    if (_shouldSuppress(snap)) return;
+    const pd = snap.data() || {};
+    if (pd._fhsProfile) {
+      // Only update profile, don't reload everything
+      const localProfile = data._fhsProfile;
+      const cloudProfile = pd._fhsProfile;
+      const localNewer = localProfile?.updatedAt && cloudProfile?.updatedAt && localProfile.updatedAt > cloudProfile.updatedAt;
+      if (!localNewer) {
+        data._fhsProfile = pd._fhsProfile;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        try { renderFHS(); } catch(e) {}
+        showSyncStatus('🔄 Profile updated from another device', '#8B5CF6', 2500);
+      }
+    }
+  }, err => console.warn('Profile sync error:', err));
+
+  _unsubscribeListener = () => { _mainUnsub(); _assetsUnsub(); _profileUnsub(); };
 }
 
 // ── Auth state handler ────────────────────────────────────────────────────
@@ -12707,7 +12758,21 @@ const FHS_REGION = {
 
 // ── FHS Profile (stored in data._fhsProfile) ──────────
 function getFHSProfile() { return data._fhsProfile || null; }
-function saveFHSProfileData(p) { data._fhsProfile = p; save(); }
+function saveFHSProfileData(p) {
+  data._fhsProfile = p;
+  // Save profile locally immediately (synchronous, never fails)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  // Increment nonce for suppress logic
+  if (window._fbUser) {
+    window._writeNonce = ((window._writeNonce || parseInt(localStorage.getItem('_mf_nonce') || '0')) + 1) % 999999;
+    localStorage.setItem('_mf_nonce', String(window._writeNonce));
+    window._ownSaveTs = Date.now();
+    // Show immediate feedback so user knows save is happening
+    showSyncStatus('☁️ Saving profile…', '#3B9EFF', 0);
+    // Route to dedicated tiny profile doc — NOT the large transaction batch
+    _saveProfileToFirebase();
+  }
+}
 
 // ── Linear interpolation helper ───────────────────────
 function fhsLerp(val, lo, hi, scoreLo, scoreHi) {
@@ -15729,16 +15794,36 @@ function computeDemoFHS(region) {
 
 function buildHeroRings(scores, hasM, hasG) {
   const cx=72,cy=72,sw=9;
+  const start=-210,sweep=300;
+  // Rings: outermost=Foundation, then Mastery, Growth, innermost=Total
   const rings=[
-    {r:61,pct:scores.found/100,color:'#4FC3F7'},
-    {r:48,pct:hasM?scores.mastery/100:0,color:'#A78BFA',dim:!hasM},
-    {r:35,pct:hasG?scores.growth/100:0,color:'#6EE7B7',dim:!hasG},
-    {r:20,pct:scores.overall/100,color:scores.overall>=70?'#F9A825':scores.overall>=50?'#F9A825':'#E17055'},
+    {r:61,pct:scores.found/100,   color:'#4FC3F7', label:'F', dim:false},
+    {r:48,pct:hasM?scores.mastery/100:0, color:'#A78BFA', label:'M', dim:!hasM},
+    {r:35,pct:hasG?scores.growth/100:0,  color:'#6EE7B7', label:'G', dim:!hasG},
+    {r:20,pct:scores.overall/100, color:scores.overall>=70?'#F9A825':scores.overall>=50?'#F9A825':'#E17055', label:'ToT', dim:false},
   ];
   function rArc(cx,cy,r,s,e){const rad=d=>(d-90)*Math.PI/180;const sx=cx+r*Math.cos(rad(s)),sy=cy+r*Math.sin(rad(s));const ex=cx+r*Math.cos(rad(e)),ey=cy+r*Math.sin(rad(e));return `M${sx.toFixed(2)} ${sy.toFixed(2)} A${r} ${r} 0 ${(e-s)>180?1:0} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;}
-  const start=-210,sweep=300;
-  const svgRings=rings.map(ring=>{const bg=rArc(cx,cy,ring.r,start,start+sweep);const fill=ring.pct>0.005?rArc(cx,cy,ring.r,start,Math.min(start+sweep*ring.pct,start+sweep-0.3)):'';return `<path d="${bg}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${sw}" stroke-linecap="round"/>${fill?`<path d="${fill}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.dim?0.3:1}"/>`:''}`;}).join('');
-  return `<svg width="144" height="144" viewBox="0 0 144 144">${svgRings}<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="10" font-weight="900" fill="rgba(255,255,255,0.5)" font-family="Nunito" letter-spacing="0.5">SCORE</text><text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,0.3)" font-family="Nunito">F·M·G</text></svg>`;
+  function arcStartXY(r,angleDeg){const rad=(angleDeg-90)*Math.PI/180;return {x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)};}
+
+  const svgRings=rings.map(ring=>{
+    const bg=rArc(cx,cy,ring.r,start,start+sweep);
+    const fill=ring.pct>0.005?rArc(cx,cy,ring.r,start,Math.min(start+sweep*ring.pct,start+sweep-0.3)):'';
+    // Label at arc start point, offset slightly outward so it sits beside the ring
+    const labelPt = arcStartXY(ring.r, start);
+    // Nudge label away from center
+    const dx = labelPt.x - cx, dy = labelPt.y - cy;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const lx = (labelPt.x + dx/dist*10).toFixed(1);
+    const ly = (labelPt.y + dy/dist*10 + 3.5).toFixed(1); // +3.5 for text baseline
+    const labelColor = ring.dim ? 'rgba(255,255,255,0.2)' : ring.color;
+    const fontSize = ring.label === 'ToT' ? 7 : 8;
+    return `<path d="${bg}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="${sw}" stroke-linecap="round"/>` +
+      (fill ? `<path d="${fill}" fill="none" stroke="${ring.color}" stroke-width="${sw}" stroke-linecap="round" opacity="${ring.dim?0.3:1}"/>` : '') +
+      `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="${fontSize}" font-weight="900" fill="${labelColor}" font-family="Nunito">${ring.label}</text>`;
+  }).join('');
+  // Center: just the overall score number, clean and minimal
+  const scoreColor = scores.overall>=70?'#F9A825':scores.overall>=50?'#F9A825':'#E17055';
+  return `<svg width="144" height="144" viewBox="0 0 144 144">${svgRings}<text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="18" font-weight="900" fill="${scoreColor}" font-family="Nunito">${scores.overall}</text></svg>`;
 }
 
 function renderFHS() {
@@ -15894,9 +15979,9 @@ function renderFHS() {
               const overrides = profile?.accountOverrides?.[key];
               const pillarLabels = { fire:'retirement corpus', retirement:'retirement corpus', emergency:'liquid funds', education:'education funds' };
               const hasAccountPicker = ['fire','retirement','emergency','education'].includes(key);
-              // Question-based pillars don't use accounts at all — hide section entirely
-              // Exclude question-based pillars AND growth pillars that use whole NW (no picker)
-              const isQuestionBased = ['risk','behaviour','tax','estate','portfolio','sequence','trajectory'].includes(key);
+              // Hide accounts section entirely for pillars that don't use account selection:
+              // question-based (risk/behaviour/tax/estate), growth-NW-based, and transaction-based (debt/savings/insurance)
+              const isQuestionBased = ['risk','behaviour','tax','estate','portfolio','sequence','trajectory','debt','savings','insurance'].includes(key);
               if (isQuestionBased) return '';
 
               // Accounts currently counted
@@ -15924,9 +16009,12 @@ function renderFHS() {
                     <div class="fhs-account-name">${NW_TYPES[a.type]?.emoji || '💰'} ${a.name}</div>
                     <div class="fhs-account-val">${fmt(a.val)}</div>
                   </div>`).join('')
-                  : `<div style="background:#FEF3C7;border-radius:10px;padding:10px 12px;font-size:0.75em;font-weight:700;color:#92400E;margin-top:4px;">
-                      ⚠️ No accounts mapped. Tap ✏️ Edit → expand a group to select accounts.
-                    </div>`
+                  : hasAccountPicker
+                    ? `<div style="background:#EEF2FF;border-radius:10px;padding:10px 14px;font-size:0.75em;font-weight:700;color:#4338CA;margin-top:4px;display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:1.1em;">➕</span>
+                        <span>No accounts selected — tap <strong>✏️ Edit accounts</strong> above to add accounts for this pillar.</span>
+                       </div>`
+                    : ''
                 }
                 ${key === 'emergency' && r.liquidVal ? `<div class="fhs-account-row" style="background:#EEF9F4;">
                   <div class="fhs-account-name" style="color:#065F46;">✅ Total Liquid</div>
@@ -16084,7 +16172,13 @@ function renderFHS() {
         return `Bias penalty: ${r.penalty} points. Top signal: ${top}. Focus on automating your investments to remove emotion from decisions.`;
       })(),
       income: (() => {
-        if (r.status === 'inactive') return 'No income data yet. Add transactions to unlock this pillar.';
+        if (r.status === 'inactive') return `
+          <div style="background:#F0FDF4;border-radius:12px;padding:14px 16px;font-size:0.78em;font-weight:600;color:#065F46;line-height:1.7;">
+            📊 <strong>No transaction data yet.</strong><br>
+            Savings Rate is computed automatically from your logged income and expenses.<br>
+            <span style="color:#059669;">Keep logging your monthly transactions in MoneyFi — this score will activate once you have at least 1 month of data.</span><br><br>
+            💡 <em>Tip: Log your salary as Income and your bills as Expenses each month. No manual calculation needed.</em>
+          </div>`;
         if (r.score >= 80) return `🎉 Strong income architecture — ${r.passivePct}% passive, ${r.sources} source${r.sources>1?'s':''}.`;
         if (r.passivePct < 10) return `Only ${r.passivePct}% of your income is passive. Adding one passive stream (rental, dividend, freelance) can dramatically increase resilience.`;
         if (r.sources < 2) return `Single income source is fragile. Consider adding a side income or building a dividend portfolio as a second stream.`;
