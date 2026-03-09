@@ -2395,23 +2395,6 @@
     <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.16.0 · Built 2026-03</div>
   </div>
 
-  <!-- ══ Keep accordion IDs for JS compatibility ══ -->
-  <div class="settings-accordion" id="acc-recurring" style="display:none;"></div>
-  <div class="settings-accordion" id="acc-currency" style="display:none;"></div>
-  <div class="settings-accordion" id="acc-homecards" style="display:none;"></div>
-  <div class="settings-accordion" id="acc-invcards" style="display:none;"></div>
-  <div class="settings-accordion" id="acc-categories" style="display:none;"></div>
-  <div class="settings-accordion" id="acc-nwtypes" style="display:none;"></div>
-  <div class="settings-accordion" id="acc-theme" style="display:none;"></div>
-  <div class="settings-accordion" id="acc-data" style="display:none;"></div>
-
-  <div class="settings-accordion" id="acc-recurring">
-    <div class="acc-header" onclick="toggleAccordion('acc-recurring')">
-      <span>🔁 Recurring Transactions</span>
-      <span class="acc-chev">▾</span>
-    </div>
-
-
 
 </div>
 <!-- FAB BACKDROP -->
@@ -3585,7 +3568,7 @@
     <!-- What's stored summary -->
     <div class="import-card">
       <div class="import-card-title">📊 What's Currently Stored</div>
-      <div id="reset-data-summary"></div>
+      <div id="import-reset-summary"></div>
     </div>
 
     <!-- Clear individual datasets -->
@@ -11919,27 +11902,30 @@ function _nwsBuildForm(type, existing, m) {
     extraFields += `<div class="nw-sheet-row"><div class="nw-sheet-field"><div class="nw-sheet-label">Interest Rate %</div><input class="nw-sheet-input" id="nws-rate" type="number" placeholder="5.0" step="0.01" value="${m.interestRate||''}"></div><div class="nw-sheet-field"><div class="nw-sheet-label">Maturity Date</div><input class="nw-sheet-input" id="nws-maturity" type="date" value="${m.maturityDate||''}"></div></div>`;
   }
   // ── Rate of Return + Monthly Contribution for goal-oriented and savings accounts ──
+  // 'retirement' excluded — already has its own monthly/annual contrib fields above
   const growthTypes = ['education','emergency','savings_acc','brokerage','checking','cash',
     'mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','epf','ppf','nps',
     'retirement_401k','retirement_roth','retirement_ira','brokerage_taxable','hsa','college_529','ibond'];
-  if (growthTypes.includes(type)) {
+  if (growthTypes.includes(type) && type !== 'retirement') {
     const showMonthly = !['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','stocks_direct'].includes(type);
+    // Pre-compute placeholder to avoid nested ${} inside template literal
+    const retPlaceholder = (['emergency','savings_acc','checking','cash'].includes(type)) ? '2.0'
+      : (['bonds_fd','ibond'].includes(type)) ? '5.0' : '8.0';
     if (showMonthly) {
-      extraFields += `<div class="nw-sheet-row">
-        <div class="nw-sheet-field"><div class="nw-sheet-label">Monthly Contribution</div>
-          <input class="nw-sheet-input" id="nws-monthly-contrib" type="number" placeholder="0" step="1" value="${m.monthlyContribution||''}">
-          <div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Regular monthly savings into this account</div>
-        </div>
-        <div class="nw-sheet-field"><div class="nw-sheet-label">Expected Return % p.a.</div>
-          <input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="${type==='emergency'||type==='savings_acc'||type==='checking'||type==='cash'?'2.0':type==='bonds_fd'||type==='ibond'?'5.0':'8.0'}" step="0.1" value="${m.expectedReturn||''}">
-          <div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Used in ROI projections</div>
-        </div>
-      </div>`;
+      extraFields += '<div class="nw-sheet-row">'
+        + '<div class="nw-sheet-field"><div class="nw-sheet-label">Monthly Contribution</div>'
+        + '<input class="nw-sheet-input" id="nws-monthly-contrib" type="number" placeholder="0" step="1" value="' + (m.monthlyContribution||'') + '">'
+        + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Regular monthly savings into this account</div>'
+        + '</div>'
+        + '<div class="nw-sheet-field"><div class="nw-sheet-label">Expected Return % p.a.</div>'
+        + '<input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="' + retPlaceholder + '" step="0.1" value="' + (m.expectedReturn||'') + '">'
+        + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Used in ROI projections</div>'
+        + '</div></div>';
     } else {
-      extraFields += `<div class="nw-sheet-field"><div class="nw-sheet-label">Expected Return % p.a.</div>
-        <input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="12.0" step="0.1" value="${m.expectedReturn||''}">
-        <div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Historical CAGR or target return — used in ROI Growth Lab</div>
-      </div>`;
+      extraFields += '<div class="nw-sheet-field"><div class="nw-sheet-label">Expected Return % p.a.</div>'
+        + '<input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="12.0" step="0.1" value="' + (m.expectedReturn||'') + '">'
+        + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Historical CAGR or target return — used in ROI Growth Lab</div>'
+        + '</div>';
     }
   }
   if (type === 'metals') {
@@ -13978,7 +13964,7 @@ function processREImport(rows, headers) {
 
 // ── RESET ──
 function renderResetSummary() {
-  const el = document.getElementById('reset-data-summary');
+  const el = document.getElementById('reset-data-summary') || document.getElementById('import-reset-summary');
   if (!el) return;
   const monthKeys = Object.keys(data).filter(k => !k.startsWith('_'));
   let totalTx = 0;
