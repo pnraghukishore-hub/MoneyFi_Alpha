@@ -2359,6 +2359,34 @@
     </div>
     <div class="acc-body" id="acc-data-body" style="display:none;padding:0 16px 14px;">
       <div id="reset-data-summary" style="margin-top:10px;"></div>
+      <!-- Clear individual datasets -->
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#F8F8F8;border-radius:10px;">
+          <div><div style="font-weight:800;font-size:0.82em;">📄 CAMS Imported Data</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;" id="reset-cams-count">—</div></div>
+          <button onclick="clearCAMSImport()" style="background:#FFF0F0;border:none;border-radius:8px;padding:6px 12px;font-weight:800;font-size:0.75em;color:#EF4444;cursor:pointer;flex-shrink:0;">Clear</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#F8F8F8;border-radius:10px;">
+          <div><div style="font-weight:800;font-size:0.82em;">💎 Net Worth Accounts</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;" id="reset-nw-count">—</div></div>
+          <button onclick="clearDataset('networth')" style="background:#FFF0F0;border:none;border-radius:8px;padding:6px 12px;font-weight:800;font-size:0.75em;color:#EF4444;cursor:pointer;flex-shrink:0;">Clear</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#F8F8F8;border-radius:10px;">
+          <div><div style="font-weight:800;font-size:0.82em;">🥇 Metals Holdings</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;" id="reset-metals-count">—</div></div>
+          <button onclick="clearDataset('metals')" style="background:#FFF0F0;border:none;border-radius:8px;padding:6px 12px;font-weight:800;font-size:0.75em;color:#EF4444;cursor:pointer;flex-shrink:0;">Clear</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#F8F8F8;border-radius:10px;">
+          <div><div style="font-weight:800;font-size:0.82em;">🤝 Given to Others</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;" id="reset-given-count">—</div></div>
+          <button onclick="clearDataset('given')" style="background:#FFF0F0;border:none;border-radius:8px;padding:6px 12px;font-weight:800;font-size:0.75em;color:#EF4444;cursor:pointer;flex-shrink:0;">Clear</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#F8F8F8;border-radius:10px;">
+          <div><div style="font-weight:800;font-size:0.82em;">🏡 Real Estate</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;" id="reset-re-count">—</div></div>
+          <button onclick="clearDataset('realestate')" style="background:#FFF0F0;border:none;border-radius:8px;padding:6px 12px;font-weight:800;font-size:0.75em;color:#EF4444;cursor:pointer;flex-shrink:0;">Clear</button>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:12px;background:#FFF5F5;border:1.5px solid #FFDDDD;border-radius:10px;">
+        <div style="font-weight:800;font-size:0.82em;color:#EF4444;margin-bottom:4px;">⚠️ Reset Everything</div>
+        <div style="font-size:0.72em;color:#9CA3AF;margin-bottom:8px;">Permanently deletes ALL data. Cannot be undone.</div>
+        <button onclick="confirmResetAll()" style="width:100%;padding:9px;background:#EF4444;color:white;border:none;border-radius:8px;font-family:Nunito;font-weight:900;font-size:0.82em;cursor:pointer;">🗑️ Delete Everything & Start Fresh</button>
+      </div>
     </div>
 
     <div onclick="showOnboarding()" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;">
@@ -2392,7 +2420,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.16.1 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.16.2 · Built 2026-03</div>
   </div>
 
 
@@ -3141,6 +3169,12 @@
           <div style="font-weight:800;font-size:0.82em;color:#F59E0B;margin-bottom:8px;">⚠️ Possible duplicates found — review before importing:</div>
           <div id="icams-dup-list"></div>
         </div>
+        <!-- NW accounts (Portfolio Details sheet) -->
+        <div id="icams-nw-section" style="display:none;margin-bottom:12px;">
+          <div style="font-weight:800;font-size:0.82em;color:#1E2A6E;margin-bottom:8px;">💎 Portfolio Snapshot — NW accounts to create/update:</div>
+          <div id="icams-nw-list"></div>
+        </div>
+        <!-- Transaction preview table -->
         <div style="overflow-x:auto;max-height:280px;overflow-y:auto;"><table class="import-preview-table" id="icams-preview-table"></table></div>
         <div style="display:flex;gap:8px;margin-top:12px;">
           <button class="import-btn secondary" onclick="resetNamedParser('cams')">← Back</button>
@@ -3152,8 +3186,16 @@
       <div class="import-card" style="text-align:center;padding:32px 20px;">
         <div style="font-size:2.5em;margin-bottom:12px;">🎉</div>
         <div style="font-weight:900;font-size:1.1em;color:var(--text-dark);margin-bottom:6px;" id="icams-done-title">Import Complete!</div>
-        <div style="font-size:0.85em;color:var(--text-light);font-weight:600;margin-bottom:20px;" id="icams-done-sub"></div>
-        <button class="import-btn" onclick="resetNamedParser('cams')">Import Another File</button>
+        <div style="font-size:0.85em;color:var(--text-light);font-weight:600;margin-bottom:16px;" id="icams-done-sub"></div>
+        <!-- Portfolio summary card shown after import -->
+        <div id="icams-done-portfolio" style="display:none;background:#F0FDF4;border-radius:12px;padding:14px;margin-bottom:16px;text-align:left;">
+          <div style="font-weight:900;font-size:0.85em;color:#065F46;margin-bottom:8px;">📊 Portfolio Summary</div>
+          <div id="icams-done-portfolio-list"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="import-btn secondary" style="flex:1;" onclick="clearCAMSImport()">🗑️ Clear CAMS Data</button>
+          <button class="import-btn" style="flex:1;" onclick="resetNamedParser('cams')">Import Another File</button>
+        </div>
       </div>
     </div>
   </div>
@@ -8319,42 +8361,61 @@ function renderROIPortfolioSummary() {
 
 function renderROIAccountsList() {
   const sym = currentCurrency?.symbol || '₹';
-  const accounts = (data._nwAccounts||[]).filter(a => a.investedAmount != null && a.balance > 0);
+  const investmentTypes = ['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','brokerage','brokerage_taxable',
+    'retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','stocks_direct','nps','ppf','epf','investment'];
+  const allInvAccounts = (data._nwAccounts||[]).filter(a => investmentTypes.includes(a.type) && a.balance > 0);
+  const withCost  = allInvAccounts.filter(a => a.investedAmount != null && a.investedAmount > 0);
+  const noCost    = allInvAccounts.filter(a => !(a.investedAmount != null && a.investedAmount > 0));
   const el = document.getElementById('roi-accounts-list');
   if (!el) return;
-  if (!accounts.length) {
+  if (!allInvAccounts.length) {
     el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-light);font-size:0.85em;font-weight:700;">
-      No accounts with cost basis yet.<br>Import CAMS / Fidelity / Schwab files to populate this.</div>`;
+      No investment accounts yet.<br>Import CAMS / Fidelity / Schwab files to populate this.</div>`;
     return;
   }
-  el.innerHTML = accounts.map(a => {
+
+  const renderCard = a => {
     const val  = nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
-    const cost = nwConvert ? nwConvert(a.investedAmount, a.currency) : a.investedAmount;
-    const gain = val - cost;
-    const pct  = cost > 0 ? gain / cost * 100 : 0;
-    const bar  = Math.min(100, Math.max(0, ((val/cost)*100 - 100)));
-    const isGain = gain >= 0;
+    const cost = a.investedAmount != null ? (nwConvert ? nwConvert(a.investedAmount, a.currency) : a.investedAmount) : null;
+    const gain = cost != null ? val - cost : null;
+    const pct  = cost != null && cost > 0 ? gain / cost * 100 : null;
+    const bar  = cost != null && cost > 0 ? Math.min(100, Math.max(0, ((val/cost)*100 - 100))) : 0;
+    const isGain = gain == null || gain >= 0;
+    const typeLabel = (a.type||'investment').replace('mf_','MF ').replace('_',' ');
     return `
     <div style="background:#F8FAFF;border-radius:12px;padding:12px 14px;margin-bottom:8px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-        <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div style="flex:1;margin-right:8px;">
           <div style="font-weight:900;font-size:0.85em;color:var(--text-dark);">${a.name.substring(0,40)}</div>
-          <div style="font-size:0.7em;color:var(--text-light);font-weight:700;margin-top:2px;">${a.type||'investment'} ${a.taxBucket ? '· '+a.taxBucket : ''}</div>
+          <div style="font-size:0.7em;color:var(--text-light);font-weight:700;margin-top:2px;">${typeLabel}${a.taxBucket ? ' · '+a.taxBucket : ''}</div>
         </div>
-        <div style="text-align:right;flex-shrink:0;margin-left:8px;">
-          <div style="font-weight:900;font-size:0.88em;color:${isGain?'#10B981':'#EF4444'};">${isGain?'+':''}${pct.toFixed(1)}%</div>
-          <div style="font-size:0.72em;color:var(--text-light);font-weight:700;">${sym}${Math.round(Math.abs(gain)).toLocaleString()}</div>
+        <div style="text-align:right;flex-shrink:0;">
+          ${pct != null
+            ? `<div style="font-weight:900;font-size:0.88em;color:${pct>=0?'#10B981':'#EF4444'};">${pct>=0?'+':''}${pct.toFixed(1)}%</div>
+               <div style="font-size:0.72em;color:var(--text-light);font-weight:700;">${sym}${Math.round(Math.abs(gain)).toLocaleString()}</div>`
+            : `<div style="font-weight:900;font-size:0.88em;color:#1E2A6E;">${sym}${Math.round(val).toLocaleString()}</div>
+               <div style="font-size:0.68em;color:var(--text-light);font-style:italic;">no cost basis</div>`}
         </div>
       </div>
-      <div style="height:6px;background:#E5E7EB;border-radius:4px;overflow:hidden;">
-        <div style="height:100%;width:${Math.min(bar,100)}%;background:${isGain?'#10B981':'#EF4444'};border-radius:4px;transition:width 0.4s;"></div>
+      ${cost != null ? `<div style="height:6px;background:#E5E7EB;border-radius:4px;overflow:hidden;">
+        <div style="height:100%;width:${bar}%;background:${isGain?'#10B981':'#EF4444'};border-radius:4px;transition:width 0.4s;"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:0.69em;color:var(--text-light);font-weight:700;margin-top:3px;">
         <span>Cost: ${sym}${Math.round(cost).toLocaleString()}</span>
         <span>Value: ${sym}${Math.round(val).toLocaleString()}</span>
-      </div>
+      </div>` : ''}
     </div>`;
-  }).join('');
+  };
+
+  let html = '';
+  if (withCost.length) {
+    html += withCost.map(renderCard).join('');
+  }
+  if (noCost.length) {
+    html += `<div style="font-size:0.75em;font-weight:800;color:#F59E0B;margin:12px 0 6px;">⚠️ ${noCost.length} account(s) missing cost basis — edit to add Invested Amount:</div>`;
+    html += noCost.map(renderCard).join('');
+  }
+  el.innerHTML = html;
 }
 
 function renderROISimulator() {
@@ -11906,6 +11967,15 @@ function _nwsBuildForm(type, existing, m) {
   const growthTypes = ['education','emergency','savings_acc','brokerage','checking','cash',
     'mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','epf','ppf','nps',
     'retirement_401k','retirement_roth','retirement_ira','brokerage_taxable','hsa','college_529','ibond'];
+  // Investment types that need cost basis / invested amount
+  const costBasisTypes = ['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','brokerage','brokerage_taxable',
+    'retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','stocks_direct','nps','ppf'];
+  if (costBasisTypes.includes(type)) {
+    extraFields += '<div class="nw-sheet-field"><div class="nws-section-label">Invested Amount (Cost Basis)</div>'
+      + '<input class="nw-sheet-input" id="nws-invested-amount" type="number" placeholder="Total amount invested" step="0.01" value="' + (existing ? (existing.investedAmount||'') : '') + '">'
+      + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Total invested to date — used for ROI % calculation in Growth Lab</div>'
+      + '</div>';
+  }
   if (growthTypes.includes(type) && type !== 'retirement') {
     const showMonthly = !['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','stocks_direct'].includes(type);
     // Pre-compute placeholder to avoid nested ${} inside template literal
@@ -12084,10 +12154,14 @@ function saveNWAccount() {
   const lastUpdated = dateEl ? dateEl.value : localDateStr();
 
   if (!data._nwAccounts) data._nwAccounts = [];
+  // Read investedAmount from new field if present
+  const investedAmtEl = document.getElementById('nws-invested-amount');
+  const investedAmount = investedAmtEl && investedAmtEl.value ? Number(investedAmtEl.value) : undefined;
   // Hoist key fields for direct access by ROI engine and AI context
   const _acctExtras = {
     _monthlyTotal:  meta.monthlyContribution ? Number(meta.monthlyContribution) : undefined,
     expectedReturn: meta.expectedReturn ? Number(meta.expectedReturn) : undefined,
+    investedAmount: investedAmount !== undefined ? investedAmount : (nwSheetEditId ? (data._nwAccounts.find(a=>a.id===nwSheetEditId)?.investedAmount) : undefined),
   };
   Object.keys(_acctExtras).forEach(k => { if (_acctExtras[k] === undefined) delete _acctExtras[k]; });
   if (nwSheetEditId) {
@@ -12140,11 +12214,11 @@ function renderImportTabs() {
   const regionPickerEl = document.getElementById('import-region-picker');
   if (regionPickerEl) {
     regionPickerEl.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:10px 14px;background:#F0F4FF;border-radius:12px;">
-        <span style="font-size:0.75em;font-weight:800;color:#4F46E5;flex-shrink:0;">🌍 Import Region</span>
-        <select onchange="setImportRegion(this.value)" style="flex:1;border:1.5px solid #E0E7FF;border-radius:8px;padding:6px 10px;font-family:Nunito;font-weight:800;font-size:0.8em;background:white;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:#F0F4FF;border-radius:12px;box-sizing:border-box;width:100%;">
+        <span style="font-size:0.72em;font-weight:900;color:#4F46E5;white-space:nowrap;flex-shrink:0;">🌍 Region</span>
+        <select onchange="setImportRegion(this.value)" style="flex:1;min-width:0;border:1.5px solid #E0E7FF;border-radius:8px;padding:6px 8px;font-family:Nunito;font-weight:800;font-size:0.78em;background:white;max-width:100%;">
           <option value="IN" ${isIN?'selected':''}>🇮🇳 India (CAMS · Zerodha · EPF)</option>
-          <option value="US" ${isUS?'selected':''}>🇺🇸 United States (Fidelity · Schwab · Robinhood)</option>
+          <option value="US" ${isUS?'selected':''}>🇺🇸 United States (Fidelity · Schwab)</option>
           <option value="BOTH">🌐 Multi-country (show all)</option>
         </select>
       </div>`;
@@ -13786,6 +13860,45 @@ function confirmNamedImport(parser) {
   document.getElementById(`i${parser}-done-title`).textContent = doneTitle;
   document.getElementById(`i${parser}-done-sub`).textContent   = doneSub;
 
+  // For CAMS: show portfolio summary in done screen
+  if (parser === 'cams' && nwAccounts.length > 0) {
+    const portEl = document.getElementById('icams-done-portfolio');
+    const portList = document.getElementById('icams-done-portfolio-list');
+    if (portEl && portList) {
+      portEl.style.display = 'block';
+      const totalValue = nwAccounts.reduce((s,a) => s + (a.balance||0), 0);
+      const totalInvested = nwAccounts.reduce((s,a) => s + (a.investedAmount||0), 0);
+      const totalGain = totalValue - totalInvested;
+      const gainPct = totalInvested > 0 ? (totalGain / totalInvested * 100).toFixed(1) : null;
+      const gainColor = totalGain >= 0 ? '#059669' : '#DC2626';
+      portList.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div style="background:white;border-radius:8px;padding:8px 10px;">
+            <div style="font-size:0.7em;font-weight:700;color:#6B7280;">Current Value</div>
+            <div style="font-weight:900;font-size:0.92em;color:#065F46;">${fmt(totalValue)}</div>
+          </div>
+          <div style="background:white;border-radius:8px;padding:8px 10px;">
+            <div style="font-size:0.7em;font-weight:700;color:#6B7280;">Total Invested</div>
+            <div style="font-weight:900;font-size:0.92em;">${fmt(totalInvested)}</div>
+          </div>
+          ${gainPct != null ? `<div style="background:white;border-radius:8px;padding:8px 10px;grid-column:1/-1;">
+            <div style="font-size:0.7em;font-weight:700;color:#6B7280;">Unrealised Gain/Loss</div>
+            <div style="font-weight:900;font-size:0.92em;color:${gainColor};">${totalGain>=0?'▲':'▼'} ${fmt(Math.abs(totalGain))} (${gainPct}%)</div>
+          </div>` : ''}
+        </div>
+        ${nwAccounts.slice(0,5).map(a => {
+          const g = a.investedAmount != null ? a.balance - a.investedAmount : null;
+          const gp = g != null && a.investedAmount > 0 ? (g/a.investedAmount*100).toFixed(1) : null;
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #D1FAE5;font-size:0.78em;">
+            <span style="font-weight:700;color:#065F46;flex:1;margin-right:8px;">${a.name.substring(0,35)}</span>
+            <span style="font-weight:900;">${fmt(a.balance)}</span>
+            ${gp != null ? `<span style="margin-left:8px;font-weight:800;color:${parseFloat(gp)>=0?'#059669':'#DC2626'};">${parseFloat(gp)>=0?'+':''}${gp}%</span>` : ''}
+          </div>`;
+        }).join('')}
+        ${nwAccounts.length > 5 ? `<div style="font-size:0.72em;color:#6B7280;text-align:center;margin-top:6px;">…and ${nwAccounts.length-5} more accounts in Net Worth</div>` : ''}`;
+    }
+  }
+
   document.querySelectorAll(`#isec-${parser} .import-step`).forEach(s => s.classList.remove('active'));
   document.getElementById(`i${parser}-step3`).classList.add('active');
   try { renderHome(); } catch(e) {}
@@ -14026,6 +14139,19 @@ function renderResetSummary() {
   if (reEl) reEl.textContent = (data._realEstate||[]).length + ' properties';
   const nwEl = document.getElementById('reset-nw-count');
   if (nwEl) nwEl.textContent = (data._nwAccounts||[]).length + ' accounts';
+  // CAMS-specific count
+  const camsEl = document.getElementById('reset-cams-count');
+  if (camsEl) {
+    let camsTx = 0;
+    const monthKeys2 = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k));
+    monthKeys2.forEach(mk => {
+      ['expenses','income','investments'].forEach(t => {
+        camsTx += (data[mk][t]||[]).filter(r => String(r._source||'').startsWith('cams')).length;
+      });
+    });
+    const camsNW = (data._nwAccounts||[]).filter(a => a._source === 'cams' || a.source === 'cams').length;
+    camsEl.textContent = `${camsTx} transactions · ${camsNW} NW accounts`;
+  }
 }
 
 function renderMonthsList() {
@@ -14083,6 +14209,30 @@ function toggleResetYear(id) {
   const isOpen = el.style.maxHeight !== '0px';
   el.style.maxHeight = isOpen ? '0px' : '1200px';
   if (chev) chev.style.transform = isOpen ? 'rotate(-90deg)' : '';
+}
+
+function clearCAMSImport() {
+  if (!confirm('Clear all CAMS-imported transactions and NW accounts? Cannot be undone.')) return;
+  // Remove transactions tagged with source 'cams' or 'cams_portfolio'
+  const monthKeys = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k));
+  let txRemoved = 0;
+  monthKeys.forEach(mk => {
+    ['expenses','income','investments'].forEach(t => {
+      const before = (data[mk][t]||[]).length;
+      data[mk][t] = (data[mk][t]||[]).filter(r => !String(r._source||'').startsWith('cams'));
+      txRemoved += before - data[mk][t].length;
+    });
+  });
+  // Remove NW accounts sourced from CAMS
+  const nwBefore = (data._nwAccounts||[]).length;
+  data._nwAccounts = (data._nwAccounts||[]).filter(a => a._source !== 'cams' && a.source !== 'cams');
+  const nwRemoved = nwBefore - (data._nwAccounts||[]).length;
+  save();
+  renderResetSummary();
+  try { renderNetWorth(); } catch(e) {}
+  try { renderHome(); } catch(e) {}
+  resetNamedParser('cams');
+  showToast(`🧹 ${txRemoved} CAMS transactions + ${nwRemoved} NW accounts cleared`);
 }
 
 function clearDataset(type) {
