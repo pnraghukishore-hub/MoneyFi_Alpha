@@ -2,7 +2,7 @@
 <!-- -
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.15.2
+  Version  : 3.16.0
   Changes  : v3.15.0 — AI Quality Engine:
                • classifyScheme() — SEBI keyword classifier for Indian MF (asset class, tax bucket, liquidity, lock-in)
                • classifyUSAccount() — US account name → tax bucket / liquidity map
@@ -22,7 +22,7 @@
   v3.14.1 — NW sections auto-open, viewMonth after restore.
   v3.14.0 — Import Engine v2, duplicate flagging, NW auto-detect, AI Privacy Consent modal.
   Built    : 2026-03-09
-  Session  : Phase 5c — EPF/PF import (PDF + Excel + quick entry), EPF in ROI Growth Lab
+  Session  : Phase 5d — 12 fixes: Tx search, NW imported accounts, FIRE gap ₹→$, employment type, spouse status, education inflation label, monthly contrib + return fields on all accounts, Settings WhatsApp redesign, Data Mgmt consolidation, Import region picker
 
   Changelog:
   3.5.0  2026-03-06  Hero card redesign: score left, Apple Fitness rings right, grade badge, +Δ delta, progress bar
@@ -2160,67 +2160,93 @@
 <!-- ══════════════ SETTINGS ══════════════ -->
 <div class="screen" id="screen-settings">
 
-
-  <!-- ═══ Cloud Sync — Always visible ═══ -->
-    <div style="background:white;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 6px rgba(0,0,0,0.06);">
-    <div style="font-size:0.7em;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">☁️ Cloud Sync Account</div>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-      <img id="firebase-user-avatar" src="" style="display:none;width:40px;height:40px;border-radius:50%;border:2px solid #E8E8E8;">
-      <div>
-        <div id="firebase-user-display" style="font-weight:800;font-size:0.9em;color:#1E2A6E;">Loading...</div>
-        <div style="font-size:0.72em;color:#10B981;font-weight:700;">✅ Synced across devices</div>
+  <!-- ═══ PROFILE HERO — WhatsApp-style ═══ -->
+  <div style="background:linear-gradient(135deg,#1E2A6E,#4F46E5);border-radius:20px;padding:20px 16px 18px;margin-bottom:12px;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;background:rgba(255,255,255,0.05);border-radius:50%;"></div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+      <div style="position:relative;">
+        <img id="firebase-user-avatar" src="" style="display:none;width:56px;height:56px;border-radius:50%;border:3px solid rgba(255,255,255,0.3);">
+        <div id="firebase-user-avatar-placeholder" style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:1.6em;">👤</div>
+      </div>
+      <div style="flex:1;">
+        <div id="firebase-user-display" style="font-weight:900;font-size:1.05em;color:white;margin-bottom:2px;">Loading...</div>
+        <div style="font-size:0.72em;color:rgba(255,255,255,0.7);font-weight:600;" id="settings-sync-status">✅ Synced across devices</div>
       </div>
     </div>
-    <button onclick="signOut()" style="width:100%;padding:10px;background:#FFF0F0;border:1.5px solid #FFCDD2;border-radius:10px;color:#EF4444;font-weight:800;font-size:0.82em;cursor:pointer;">
-      Sign Out
-    </button>
-  </div>
-
-  <!-- ═══ Cloud Sync — Always visible, no toggle ═══ -->
-  <div class="settings-accordion" id="acc-recurring">
-    <div class="acc-header" onclick="toggleAccordion('acc-recurring')">
-      <span>🔁 Recurring Transactions</span>
-      <span class="acc-chev">▾</span>
-    </div>
-    <div class="acc-body">
-      <div id="recurring-rules-list"></div>
+    <!-- Quick-action pills -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="signOut()" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:20px;padding:6px 14px;font-family:Nunito;font-weight:800;font-size:0.75em;color:#FCA5A5;cursor:pointer;">Sign Out</button>
+      <button onclick="openFHSOnboard()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:6px 14px;font-family:Nunito;font-weight:800;font-size:0.75em;color:white;cursor:pointer;">✏️ Edit Profile</button>
     </div>
   </div>
 
-  <!-- ═══ Currency & FX — Collapsible, closed ═══ -->
-  <div class="settings-accordion collapsed" id="acc-currency">
-    <div class="acc-header" onclick="toggleAccordion('acc-currency')">
-      <span>💱 Currency & Exchange Rates</span>
-      <span class="acc-chev">▸</span>
-    </div>
-    <div class="acc-body" style="display:none;">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">All amounts display in your chosen currency symbol.</p>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div>
-          <div style="font-weight:900;font-size:1.1em;" id="settings-curr-display">🇺🇸 USD — $</div>
-          <div style="font-size:0.78em;color:var(--text-light);margin-top:2px;" id="settings-curr-name">US Dollar</div>
-        </div>
-        <button onclick="openCurrencyPicker('settings')" style="background:var(--yellow);border:none;border-radius:10px;padding:10px 18px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.88em;cursor:pointer;">Change</button>
+  <!-- ═══ PREFERENCES group ═══ -->
+  <div style="background:white;border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
+    <div style="font-size:0.65em;font-weight:900;color:#888;text-transform:uppercase;letter-spacing:0.8px;padding:12px 16px 6px;">Preferences</div>
+
+    <!-- Currency -->
+    <div onclick="toggleAccordion('acc-currency')" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#EEF4FF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">💱</div>
+      <div style="flex:1;">
+        <div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Currency &amp; Exchange Rates</div>
+        <div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;" id="settings-curr-display">USD — $</div>
       </div>
-      <div style="border-top:1px solid #F0F0F0;padding-top:14px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <span style="font-size:0.78em;font-weight:800;color:var(--text-med);">FX OVERRIDE RATES <span id="fx-override-badge" style="display:none;background:#F0FFF4;color:#10B981;font-size:0.65em;border-radius:8px;padding:2px 8px;font-weight:800;margin-left:6px;">✏️ Custom</span></span>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
+    </div>
+    <div class="acc-body" id="acc-currency-body" style="display:none;padding:0 16px 14px;">
+      <div id="settings-curr-name" style="display:none;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;margin-bottom:12px;">
+        <span style="font-size:0.82em;font-weight:700;color:var(--text-med);">Current currency</span>
+        <button onclick="openCurrencyPicker('settings')" style="background:var(--yellow);border:none;border-radius:10px;padding:8px 16px;font-family:Nunito;font-weight:900;font-size:0.82em;cursor:pointer;">Change</button>
+      </div>
+      <div style="border-top:1px solid #F0F0F0;padding-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:0.75em;font-weight:800;color:var(--text-med);">FX OVERRIDES <span id="fx-override-badge" style="display:none;background:#F0FFF4;color:#10B981;font-size:0.65em;border-radius:8px;padding:2px 8px;font-weight:800;margin-left:6px;">✏️ Custom</span></span>
           <button onclick="clearAllFXOverrides()" id="fx-clear-all-btn" style="display:none;background:#FFF0F0;border:1.5px solid #EF444430;border-radius:8px;padding:4px 10px;font-size:0.72em;font-weight:800;color:#EF4444;cursor:pointer;">🗑 Clear All</button>
         </div>
-        <p style="font-size:0.78em;color:var(--text-light);font-weight:600;margin-bottom:10px;">Override any rate if the built-in estimate is off. Only currencies in your data appear here.</p>
         <div id="fx-rates-list"></div>
       </div>
     </div>
+
+    <!-- Theme -->
+    <div onclick="toggleAccordion('acc-theme')" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#FFF7ED;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">🎨</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">App Theme</div></div>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
+    </div>
+    <div class="acc-body" id="acc-theme-body" style="display:none;padding:0 16px 14px;">
+      <div class="theme-grid" style="margin-top:10px;">
+        <div class="theme-card default active-theme" id="theme-default" onclick="setTheme('default')"><div class="tc-preview">☀️💰</div><div class="tc-name">Classic</div><div class="tc-active-badge">✓</div></div>
+        <div class="theme-card looney" id="theme-looney" onclick="setTheme('looney')"><div class="tc-preview">🐰🦆</div><div class="tc-name">Looney</div><div class="tc-active-badge">✓</div></div>
+        <div class="theme-card jungle" id="theme-jungle" onclick="setTheme('jungle')"><div class="tc-preview">🐒🌿</div><div class="tc-name">Jungle</div><div class="tc-active-badge">✓</div></div>
+        <div class="theme-card space" id="theme-space" onclick="setTheme('space')"><div class="tc-preview">🚀⭐</div><div class="tc-name">Space</div><div class="tc-active-badge">✓</div></div>
+        <div class="theme-card ocean" id="theme-ocean" onclick="setTheme('ocean')"><div class="tc-preview">🐠🌊</div><div class="tc-name">Ocean</div><div class="tc-active-badge">✓</div></div>
+      </div>
+    </div>
   </div>
 
-  <!-- ═══ Home Spending Cards — Open by default ═══ -->
-  <div class="settings-accordion" id="acc-homecards">
-    <div class="acc-header" onclick="toggleAccordion('acc-homecards')">
-      <span>🏠 Home Spending Cards</span>
-      <span class="acc-chev">▾</span>
+  <!-- ═══ CUSTOMISATION group ═══ -->
+  <div style="background:white;border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
+    <div style="font-size:0.65em;font-weight:900;color:#888;text-transform:uppercase;letter-spacing:0.8px;padding:12px 16px 6px;">Customisation</div>
+
+    <!-- Recurring Transactions -->
+    <div onclick="toggleAccordion('acc-recurring')" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#F0FFF4;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">🔁</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Recurring Transactions</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">Subscriptions, SIPs, EMIs</div></div>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
     </div>
-    <div class="acc-body">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Choose which category cards appear on your home screen. Toggle ✓ to show/hide, ✕ to permanently remove.</p>
+    <div class="acc-body" id="acc-recurring-body" style="display:none;padding:0 16px 14px;">
+      <div id="recurring-rules-list" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Home Spending Cards -->
+    <div onclick="toggleAccordion('acc-homecards')" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#FFF7ED;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">🏠</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Home Spending Cards</div></div>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
+    </div>
+    <div class="acc-body" id="acc-homecards-body" style="display:none;padding:0 16px 14px;">
+      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin:10px 0 10px;">Choose which category cards appear on your home screen.</p>
       <div class="home-card-grid" id="home-card-grid"></div>
       <div style="margin-top:10px;">
         <div style="font-size:0.78em;font-weight:800;color:var(--text-med);margin-bottom:8px;">ADD CUSTOM CARD</div>
@@ -2231,20 +2257,17 @@
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- ═══ Home Investment Cards — Closed by default ═══ -->
-  <div class="settings-accordion collapsed" id="acc-invcards">
-    <div class="acc-header" onclick="toggleAccordion('acc-invcards')">
-      <span>📈 Home Investment Cards</span>
-      <span class="acc-chev">▸</span>
+    <!-- Home Investment Cards -->
+    <div onclick="toggleAccordion('acc-invcards')" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#F5F0FF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">📈</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Home Investment Cards</div></div>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
     </div>
-    <div class="acc-body" style="display:none;">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Choose which investment cards appear on the Investing tab. Toggle ✓ to show/hide, ✕ to remove.</p>
-      <div class="home-card-grid" id="inv-card-grid"></div>
+    <div class="acc-body" id="acc-invcards-body" style="display:none;padding:0 16px 14px;">
+      <div class="home-card-grid" id="inv-card-grid" style="margin-top:10px;"></div>
       <div style="margin-top:10px;">
         <div style="font-size:0.78em;font-weight:800;color:var(--text-med);margin-bottom:8px;">ADD CUSTOM INVESTMENT CARD</div>
-        <div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-bottom:8px;">Pick an emoji, name your card, choose how it tracks</div>
         <div class="home-card-emoji-pick" id="inv-card-emoji-row"></div>
         <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
           <input type="text" class="cat-add-input" id="inv-card-name-input" placeholder="Card name (e.g. PF/VPF, NPS, FD)" style="flex:2;min-width:140px;">
@@ -2260,17 +2283,15 @@
         <button class="cat-add-btn" style="width:100%;" onclick="addInvCard()">+ Add Investment Card</button>
       </div>
     </div>
-  </div>
 
-  <!-- ═══ Manage Categories — Closed by default ═══ -->
-  <div class="settings-accordion collapsed" id="acc-categories">
-    <div class="acc-header" onclick="toggleAccordion('acc-categories')">
-      <span>🏷️ Manage Categories</span>
-      <span class="acc-chev">▸</span>
+    <!-- Manage Categories -->
+    <div onclick="toggleAccordion('acc-categories')" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#ECFDF5;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">🏷️</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Manage Categories</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">Expenses, income, investment labels</div></div>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
     </div>
-    <div class="acc-body" style="display:none;">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Customize subcategories used in Quick Add. Tap ✕ to remove, or add your own below.</p>
-      <div class="cat-mgr-tabs" id="cat-mgr-tabs">
+    <div class="acc-body" id="acc-categories-body" style="display:none;padding:0 16px 14px;">
+      <div class="cat-mgr-tabs" id="cat-mgr-tabs" style="margin-top:10px;">
         <button class="cat-mgr-tab active" onclick="showCatMgrTab('expense',this)">💸 Expense</button>
         <button class="cat-mgr-tab" onclick="showCatMgrTab('income',this)">💵 Income</button>
         <button class="cat-mgr-tab" onclick="showCatMgrTab('investment',this)">📈 Invest</button>
@@ -2284,23 +2305,19 @@
         <button class="cat-add-btn" onclick="addCustomCat()">+ Add</button>
       </div>
     </div>
-  </div>
 
-  <!-- ═══ Net Worth Account Types — Closed by default ═══ -->
-  <div class="settings-accordion collapsed" id="acc-nwtypes">
-    <div class="acc-header" onclick="toggleAccordion('acc-nwtypes')">
-      <span>💎 Net Worth Account Types</span>
-      <span class="acc-chev">▸</span>
+    <!-- NW Account Types -->
+    <div onclick="toggleAccordion('acc-nwtypes')" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;">
+      <div style="width:36px;height:36px;background:#FFFBEB;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">💎</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Net Worth Account Types</div></div>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
     </div>
-    <div class="acc-body" style="display:none;">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Choose which types appear in the Add Account picker. Toggle ✓ to show/hide, ✕ to remove custom types.</p>
-      <div class="home-card-grid" id="nw-type-visibility-grid"></div>
+    <div class="acc-body" id="acc-nwtypes-body" style="display:none;padding:0 16px 14px;">
+      <div class="home-card-grid" id="nw-type-visibility-grid" style="margin-top:10px;"></div>
       <div style="margin-top:12px;border-top:1px solid #F0F0F0;padding-top:12px;">
-        <div style="font-size:0.78em;font-weight:800;color:var(--text-med);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Add Custom Type</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <div id="nw-type-emoji-row" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
+        <div style="font-size:0.78em;font-weight:800;color:var(--text-med);margin-bottom:8px;">ADD CUSTOM TYPE</div>
+        <div id="nw-type-emoji-row" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;">
           <input type="text" id="nw-type-name-input" class="cat-add-input" placeholder="e.g. Auto Loan, Other Asset" style="flex:1;">
           <label style="display:flex;align-items:center;gap:4px;font-size:0.8em;font-weight:700;cursor:pointer;">
             <input type="checkbox" id="nw-type-is-liab"> Liability
@@ -2311,82 +2328,90 @@
     </div>
   </div>
 
-  <!-- ═══ App Theme — Open by default ═══ -->
-  <div class="settings-accordion" id="acc-theme">
-    <div class="acc-header" onclick="toggleAccordion('acc-theme')">
-      <span>🎨 App Theme</span>
+  <!-- ═══ DATA MANAGEMENT group — moved here from Import ═══ -->
+  <div style="background:white;border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
+    <div style="font-size:0.65em;font-weight:900;color:#888;text-transform:uppercase;letter-spacing:0.8px;padding:12px 16px 6px;">Data Management</div>
+
+    <div onclick="downloadBackup()" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#EFF6FF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">💾</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Backup Data</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">Download full JSON backup</div></div>
+      <span style="color:#CCC;font-size:0.85em;">⬇</span>
+    </div>
+
+    <div onclick="exportAllData()" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#ECFDF5;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">📊</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Export to Excel</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">All transactions as spreadsheet</div></div>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
+    </div>
+
+    <label for="restore-settings-file" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#FFF7ED;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">📥</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Restore Backup</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">Upload a .json backup file</div></div>
+      <span style="color:#CCC;font-size:0.85em;">⬆</span>
+      <input type="file" id="restore-settings-file" accept=".json" style="display:none;" onchange="restoreBackup(this)">
+    </label>
+
+    <!-- Reset All — consolidated from Import tab -->
+    <div onclick="toggleAccordion('acc-data')" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#FFF0F0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">🗑</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#EF4444;">Reset / Delete Data</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">Wipe all or selected modules</div></div>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
+    </div>
+    <div class="acc-body" id="acc-data-body" style="display:none;padding:0 16px 14px;">
+      <div id="reset-data-summary" style="margin-top:10px;"></div>
+    </div>
+
+    <div onclick="showOnboarding()" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;">
+      <div style="width:36px;height:36px;background:#F0F4FF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">🎬</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Intro Tour</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">Replay onboarding slides</div></div>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
+    </div>
+  </div>
+
+  <!-- ═══ PREMIUM / COMING SOON group ═══ -->
+  <div style="background:white;border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,0.05);opacity:0.65;">
+    <div style="font-size:0.65em;font-weight:900;color:#888;text-transform:uppercase;letter-spacing:0.8px;padding:12px 16px 6px;">Coming in v4.x</div>
+
+    <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#F5F0FF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">👨‍👩‍👧‍👦</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#6B7280;">Family &amp; Shared Finances</div><div style="font-size:0.7em;color:#9CA3AF;font-weight:600;margin-top:1px;">Multi-member sync · Premium</div></div>
+      <span style="background:#F3F4F6;color:#9CA3AF;font-size:0.65em;font-weight:800;padding:3px 8px;border-radius:8px;">v4.x</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#FFF0F0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">🔒</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#6B7280;">Privacy &amp; Local Mode</div><div style="font-size:0.7em;color:#9CA3AF;font-weight:600;margin-top:1px;">Offline-first, no cloud · Premium</div></div>
+      <span style="background:#F3F4F6;color:#9CA3AF;font-size:0.65em;font-weight:800;padding:3px 8px;border-radius:8px;">v4.x</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;">
+      <div style="width:36px;height:36px;background:#ECFDF5;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">📱</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#6B7280;">Native App (iOS &amp; Android)</div><div style="font-size:0.7em;color:#9CA3AF;font-weight:600;margin-top:1px;">App Store / Play Store · v4.x</div></div>
+      <span style="background:#F3F4F6;color:#9CA3AF;font-size:0.65em;font-weight:800;padding:3px 8px;border-radius:8px;">v4.x</span>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.16.0 · Built 2026-03</div>
+  </div>
+
+  <!-- ══ Keep accordion IDs for JS compatibility ══ -->
+  <div class="settings-accordion" id="acc-recurring" style="display:none;"></div>
+  <div class="settings-accordion" id="acc-currency" style="display:none;"></div>
+  <div class="settings-accordion" id="acc-homecards" style="display:none;"></div>
+  <div class="settings-accordion" id="acc-invcards" style="display:none;"></div>
+  <div class="settings-accordion" id="acc-categories" style="display:none;"></div>
+  <div class="settings-accordion" id="acc-nwtypes" style="display:none;"></div>
+  <div class="settings-accordion" id="acc-theme" style="display:none;"></div>
+  <div class="settings-accordion" id="acc-data" style="display:none;"></div>
+
+  <div class="settings-accordion" id="acc-recurring">
+    <div class="acc-header" onclick="toggleAccordion('acc-recurring')">
+      <span>🔁 Recurring Transactions</span>
       <span class="acc-chev">▾</span>
     </div>
-    <div class="acc-body">
-      <p style="font-size:0.82em;color:var(--text-light);font-weight:600;margin-bottom:14px;">Pick a vibe! Each theme adds fun decorations and colors.</p>
-      <div class="theme-grid">
-        <div class="theme-card default active-theme" id="theme-default" onclick="setTheme('default')">
-          <div class="tc-preview">☀️💰</div>
-          <div class="tc-name">Classic MoneyFi</div>
-          <div class="tc-desc">The original warm & sunny look</div>
-          <div class="tc-active-badge">✓</div>
-        </div>
-        <div class="theme-card looney" id="theme-looney" onclick="setTheme('looney')">
-          <div class="tc-preview">🐰🦆😜</div>
-          <div class="tc-name">Looney Tunes!</div>
-          <div class="tc-desc">Wabbit season for your wallet</div>
-          <div class="tc-active-badge">✓</div>
-        </div>
-        <div class="theme-card jungle" id="theme-jungle" onclick="setTheme('jungle')">
-          <div class="tc-preview">🐒🌿🦜</div>
-          <div class="tc-name">Jungle Vibes</div>
-          <div class="tc-desc">Go bananas with your budget!</div>
-          <div class="tc-active-badge">✓</div>
-        </div>
-        <div class="theme-card space" id="theme-space" onclick="setTheme('space')">
-          <div class="tc-preview">🚀⭐🌙</div>
-          <div class="tc-name">Space Explorer</div>
-          <div class="tc-desc">Finance at warp speed</div>
-          <div class="tc-active-badge">✓</div>
-        </div>
-        <div class="theme-card ocean" id="theme-ocean" onclick="setTheme('ocean')">
-          <div class="tc-preview">🐠🌊🐚</div>
-          <div class="tc-name">Deep Ocean</div>
-          <div class="tc-desc">Dive deep into your finances</div>
-          <div class="tc-active-badge">✓</div>
-        </div>
 
-      </div>
-    </div>
-  </div>
 
-  <!-- ═══ Data Management — Closed by default ═══ -->
-  <div class="settings-accordion collapsed" id="acc-data">
-    <div class="acc-header" onclick="toggleAccordion('acc-data')" style="color:#EF4444;">
-      <span>🗑 Data Management</span>
-      <span class="acc-chev">▸</span>
-    </div>
-    <div class="acc-body" style="display:none;">
-      <div class="settings-card" style="box-shadow:none;padding:0;margin-bottom:0;">
-        <div class="form-row">
-          <span class="form-icon">💾</span><span class="form-label">Backup</span>
-          <button onclick="downloadBackup()" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">⬇️ Download</button>
-        </div>
-        <div class="form-row">
-          <span class="form-icon">📊</span><span class="form-label">Export</span>
-          <button onclick="exportAllData()" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">Export Excel</button>
-        </div>
-        <div class="form-row" style="border-bottom:none;">
-          <span class="form-icon">📥</span><span class="form-label">Restore</span>
-          <label for="restore-settings-file" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">⬆️ Upload</label>
-          <input type="file" id="restore-settings-file" accept=".json" style="display:none;" onchange="restoreBackup(this)">
-        </div>
-        <div class="form-row" style="border-bottom:none;margin-top:4px;">
-          <span class="form-icon">🎬</span><span class="form-label">Intro Tour</span>
-          <div style="display:flex;gap:6px;">
-            <button onclick="showOnboarding()" style="background:var(--yellow-light);border:none;border-radius:8px;padding:8px 12px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--text-dark);">▶ Slides</button>
-            <button onclick="startCoachTour()" style="background:var(--primary-light);border:none;border-radius:8px;padding:8px 12px;font-family:Nunito;font-weight:800;font-size:0.82em;cursor:pointer;color:var(--primary);">🎯 Coach</button>
-          </div>
-        </div>
-      </div>
-      <div id="reset-data-summary" style="margin-top:12px;"></div>
-    </div>
-  </div>
 
 </div>
 <!-- FAB BACKDROP -->
@@ -3026,7 +3051,8 @@
     <div style="font-size:0.78em;color:var(--text-light);font-weight:600;margin-top:2px;">Bring your Excel history into MoneyFi</div>
   </div>
 
-  <!-- Tabs — region-aware: rendered by renderImportTabs() on screen load -->
+  <!-- Region picker + Tabs — rendered by renderImportTabs() -->
+  <div id="import-region-picker"></div>
   <div class="import-tabs" id="import-tabs-container">
     <!-- populated dynamically by renderImportTabs() -->
   </div>
@@ -3818,6 +3844,17 @@
         <div class="fhs-onboard-label">Annual gross compensation (salary + bonus)</div>
         <input class="fhs-onboard-input" type="number" id="fhsob-compensation" placeholder="e.g. 120000">
         <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Used for retirement benchmark and contribution gap analysis.</div>
+      </div>
+      <div class="fhs-onboard-field">
+        <div class="fhs-onboard-label">Employment type</div>
+        <select class="fhs-onboard-input" id="fhsob-employment-type">
+          <option value="w2">W-2 Employee (salaried / hourly)</option>
+          <option value="self_employed">Self-employed / Freelancer / 1099</option>
+          <option value="business_owner">Business owner</option>
+          <option value="retired">Retired</option>
+          <option value="not_working">Not currently working</option>
+        </select>
+        <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Helps the AI advisor give you relevant tax and retirement advice (401k vs SEP-IRA vs Solo 401k).</div>
       </div>
       <div class="fhs-onboard-field">
         <div class="fhs-onboard-label">Employer retirement match</div>
@@ -6377,19 +6414,27 @@ function renderTransactions() {
 
 // ── Settings Accordion ──────────────────────────────────────────
 function toggleAccordion(id) {
+  // New WhatsApp-style settings: body is at id+'-body'
+  const newBody = document.getElementById(id + '-body');
+  if (newBody) {
+    newBody.style.display = newBody.style.display === 'none' ? 'block' : 'none';
+    return;
+  }
+  // Legacy accordion fallback
   const acc = document.getElementById(id);
   if (!acc) return;
   const body = acc.querySelector('.acc-body');
   const chev = acc.querySelector('.acc-chev');
+  if (!body) return;
   const isOpen = !acc.classList.contains('collapsed');
   if (isOpen) {
     acc.classList.add('collapsed');
     body.style.display = 'none';
-    chev.textContent = '▸';
+    if (chev) chev.textContent = '▸';
   } else {
     acc.classList.remove('collapsed');
     body.style.display = '';
-    chev.textContent = '▾';
+    if (chev) chev.textContent = '▾';
   }
 }
 
@@ -6890,20 +6935,16 @@ function onTxSearch(q) {
   });
 
   const authorTag = _authorFilter !== 'all' ? ` · 👤 ${_authorFilter}` : '';
-  resultsEl.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px;gap:8px;">
+  const byMonthKeys = Object.keys(byMonth).sort().reverse();
+
+  resultsEl.innerHTML =
+    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px;gap:8px;">
       <div style="font-size:0.78em;font-weight:800;color:var(--text-light);">
-        ${results.length} result${results.length !== 1 ? 's' : ''} across ${Object.keys(byMonth).length} month${Object.keys(byMonth).length !== 1 ? 's' : ''}${authorTag}
+        ${results.length} result${results.length !== 1 ? 's' : ''} across ${byMonthKeys.length} month${byMonthKeys.length !== 1 ? 's' : ''}${authorTag}
       </div>
       ${results.length > 1 ? `<button id="tx-delete-all-btn" style="flex-shrink:0;background:#FFF0F0;border:1.5px solid #FFCDD2;border-radius:8px;padding:5px 12px;font-size:0.72em;font-weight:900;color:#EF4444;cursor:pointer;font-family:Nunito,sans-serif;">🗑 Delete All (${results.length})</button>` : ''}
     </div>` +
-    // Wire delete-all button after render
-  setTimeout(() => {
-    const dab = document.getElementById('tx-delete-all-btn');
-    if (dab) dab.onclick = () => deleteAllSearchResults(window._txSearchResults || []);
-  }, 0);
-
-  Object.keys(byMonth).sort().reverse().map(mk => `
+    byMonthKeys.map(mk => `
       <div style="margin-bottom:14px;">
         <div style="font-weight:900;font-size:0.82em;color:var(--text-med);margin-bottom:6px;padding:0 2px;">
           📅 ${getDisplayMonth(mk)}
@@ -6941,6 +6982,12 @@ function onTxSearch(q) {
         }).join('')}
       </div>`
     ).join('');
+
+  // Wire delete-all button after DOM is updated
+  setTimeout(() => {
+    const dab = document.getElementById('tx-delete-all-btn');
+    if (dab) dab.onclick = () => deleteAllSearchResults(window._txSearchResults || []);
+  }, 0);
 }
 
 function searchEditTx(monthKey, type, idx) {
@@ -7631,6 +7678,29 @@ function toggleNWType(type) {
 function renderSettings() {
   const months=Object.keys(data).filter(k=>!k.startsWith('_')).sort((a,b)=>b.localeCompare(a));
   renderRecurringRules();
+
+  // Profile hero — update user info
+  const avatar = document.getElementById('firebase-user-avatar');
+  const avatarPlaceholder = document.getElementById('firebase-user-avatar-placeholder');
+  const userDisplay = document.getElementById('firebase-user-display');
+  if (window._fbUser) {
+    if (avatar && window._fbUser.photoURL) {
+      avatar.src = window._fbUser.photoURL;
+      avatar.style.display = 'block';
+      if (avatarPlaceholder) avatarPlaceholder.style.display = 'none';
+    }
+    if (userDisplay) userDisplay.textContent = window._fbUser.displayName || window._fbUser.email || 'Signed in';
+    const syncEl = document.getElementById('settings-sync-status');
+    if (syncEl) syncEl.textContent = '✅ Synced across devices';
+  } else {
+    if (userDisplay) userDisplay.textContent = 'Not signed in';
+    const syncEl = document.getElementById('settings-sync-status');
+    if (syncEl) syncEl.textContent = 'Sign in to sync across devices';
+  }
+  const profile = getFHSProfile();
+  if (profile && userDisplay && !window._fbUser) {
+    userDisplay.textContent = `Age ${profile.age || '?'} · ${profile.region || 'IN'} · ${profile.employmentType === 'w2' ? 'W-2' : profile.employmentType || 'Employee'}`;
+  }
 
   // Theme badge
   document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active-theme'));
@@ -10541,6 +10611,7 @@ const _origOpenQuickAdd = openQuickAdd;
 // ══════════════════════════════════════════════════════
 
 const NW_TYPES = {
+  // ── Core ──────────────────────────────────────────────────────────
   checking:        { label:'Checking Account',       emoji:'🏦', color:'#4A9EFF',   isLiab:false },
   savings_acc:     { label:'Savings Account',        emoji:'💵', color:'#10B981',   isLiab:false },
   brokerage:       { label:'Brokerage / Investment', emoji:'📈', color:'#7C3AED',   isLiab:false },
@@ -10549,9 +10620,31 @@ const NW_TYPES = {
   metals:          { label:'Precious Metals',        emoji:'🥇', color:'#C8900A',   isLiab:false },
   realestate:      { label:'Real Estate',            emoji:'🏡', color:'#10B981',   isLiab:false },
   cash:            { label:'Cash / Wallet',          emoji:'💴', color:'#84CC16',   isLiab:false },
+  education:       { label:'Education Fund',         emoji:'🎓', color:'#06B6D4',   isLiab:false },
+  emergency:       { label:'Emergency Fund',         emoji:'🛡️', color:'#10B981',   isLiab:false },
   credit_card:     { label:'Credit Card',            emoji:'💳', color:'#EF4444',   isLiab:true  },
   loan:            { label:'Loan / Mortgage',        emoji:'🏠', color:'#F97316',   isLiab:true  },
   other_liability: { label:'Other Liability',        emoji:'📉', color:'#8B5CF6',   isLiab:true  },
+  // ── India import types (CAMS / Zerodha / EPF) ──────────────────────
+  mf_equity:       { label:'MF — Equity',           emoji:'📈', color:'#7C3AED',   isLiab:false, importGroup:'India MFs' },
+  mf_debt:         { label:'MF — Debt',             emoji:'📋', color:'#06B6D4',   isLiab:false, importGroup:'India MFs' },
+  mf_elss:         { label:'MF — ELSS (80C)',       emoji:'🔒', color:'#F59E0B',   isLiab:false, importGroup:'India MFs' },
+  mf_hybrid:       { label:'MF — Hybrid',           emoji:'⚖️', color:'#8B5CF6',   isLiab:false, importGroup:'India MFs' },
+  mf_gold:         { label:'MF — Gold',             emoji:'🥇', color:'#C8900A',   isLiab:false, importGroup:'India MFs' },
+  stocks_direct:   { label:'Direct Stocks',         emoji:'📊', color:'#7C3AED',   isLiab:false, importGroup:'India Stocks' },
+  epf:             { label:'EPF (EPFO)',             emoji:'🏛️', color:'#10B981',   isLiab:false, importGroup:'India Retirement' },
+  ppf:             { label:'PPF',                   emoji:'🏛️', color:'#10B981',   isLiab:false, importGroup:'India Retirement' },
+  nps:             { label:'NPS',                   emoji:'🏛️', color:'#F59E0B',   isLiab:false, importGroup:'India Retirement' },
+  bank_fd:         { label:'Bank FD',               emoji:'📋', color:'#06B6D4',   isLiab:false, importGroup:'India Fixed' },
+  // ── US import types (Fidelity / Schwab / Robinhood) ────────────────
+  retirement_401k: { label:'401(k)',                emoji:'🏛️', color:'#F59E0B',   isLiab:false, importGroup:'US Retirement' },
+  retirement_roth: { label:'Roth IRA',              emoji:'🌟', color:'#10B981',   isLiab:false, importGroup:'US Retirement' },
+  retirement_ira:  { label:'Traditional IRA',       emoji:'🏛️', color:'#F59E0B',   isLiab:false, importGroup:'US Retirement' },
+  brokerage_taxable:{ label:'Taxable Brokerage',    emoji:'📈', color:'#7C3AED',   isLiab:false, importGroup:'US Brokerage' },
+  hsa:             { label:'HSA',                   emoji:'🏥', color:'#06B6D4',   isLiab:false, importGroup:'US Special' },
+  college_529:     { label:'529 College Fund',      emoji:'🎓', color:'#06B6D4',   isLiab:false, importGroup:'US Special' },
+  bank_checking_us:{ label:'US Checking',           emoji:'🏦', color:'#4A9EFF',   isLiab:false, importGroup:'US Bank' },
+  ibond:           { label:'I-Bond',                emoji:'🇺🇸', color:'#06B6D4',  isLiab:false, importGroup:'US Fixed' },
 };
 
 const RETIRE_SUBTYPES = ['401k','403b','IRA','Roth IRA','PPF','EPF','NPS','Other'];
@@ -10681,7 +10774,12 @@ function computeNetWorth() {
 
   allAccounts.forEach(acc => {
     const t = acc.type;
-    if (!byType[t]) return;
+    // If type not in byType (e.g. imported mf_equity before NW_TYPES loaded), 
+    // init it dynamically so accounts are never silently dropped
+    if (!byType[t]) {
+      if (NW_TYPES[t]) byType[t] = { total: 0, accounts: [] };
+      else return; // truly unknown type — skip
+    }
     let val = nwConvert(acc.balance, acc.currency);
     // For metals type, auto-calc from grams using purity-aware pricing
     if (t === 'metals' && acc.meta && acc.meta.grams) {
@@ -10958,7 +11056,25 @@ function renderNetWorth() {
   if (customAssetEl) customAssetEl.innerHTML = '';
   if (customLiabEl)  customLiabEl.innerHTML  = '';
 
-  customTypes.forEach(ct => {
+  // Build set of all types that need dynamic rendering:
+  // 1) user-defined custom types, plus
+  // 2) any NW_TYPES entry that has imported accounts but no static DOM element
+  const staticDOMTypes = new Set(['checking','savings_acc','brokerage','retirement','bonds_fd',
+    'metals','realestate','cash','education','emergency','credit_card','loan','other_liability']);
+  const dynamicTypeKeys = new Set([
+    ...customTypes.map(ct => ct.key),
+    // Auto-add any imported type that has accounts
+    ...Object.keys(nw.byType).filter(t =>
+      !staticDOMTypes.has(t) && NW_TYPES[t] && nw.byType[t]?.accounts?.length > 0
+    )
+  ]);
+  // Group dynamic types by importGroup for visual grouping
+  const dynamicTypes = [...dynamicTypeKeys].map(key => {
+    const ct = customTypes.find(c => c.key === key);
+    return ct || { key, label: NW_TYPES[key]?.label || key };
+  });
+
+  dynamicTypes.forEach(ct => {
     const t = ct.key;
     const cfg = NW_TYPES[t];
     if (!cfg) return;
@@ -11802,6 +11918,30 @@ function _nwsBuildForm(type, existing, m) {
   if (type === 'bonds_fd') {
     extraFields += `<div class="nw-sheet-row"><div class="nw-sheet-field"><div class="nw-sheet-label">Interest Rate %</div><input class="nw-sheet-input" id="nws-rate" type="number" placeholder="5.0" step="0.01" value="${m.interestRate||''}"></div><div class="nw-sheet-field"><div class="nw-sheet-label">Maturity Date</div><input class="nw-sheet-input" id="nws-maturity" type="date" value="${m.maturityDate||''}"></div></div>`;
   }
+  // ── Rate of Return + Monthly Contribution for goal-oriented and savings accounts ──
+  const growthTypes = ['education','emergency','savings_acc','brokerage','checking','cash',
+    'mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','epf','ppf','nps',
+    'retirement_401k','retirement_roth','retirement_ira','brokerage_taxable','hsa','college_529','ibond'];
+  if (growthTypes.includes(type)) {
+    const showMonthly = !['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','stocks_direct'].includes(type);
+    if (showMonthly) {
+      extraFields += `<div class="nw-sheet-row">
+        <div class="nw-sheet-field"><div class="nw-sheet-label">Monthly Contribution</div>
+          <input class="nw-sheet-input" id="nws-monthly-contrib" type="number" placeholder="0" step="1" value="${m.monthlyContribution||''}">
+          <div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Regular monthly savings into this account</div>
+        </div>
+        <div class="nw-sheet-field"><div class="nw-sheet-label">Expected Return % p.a.</div>
+          <input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="${type==='emergency'||type==='savings_acc'||type==='checking'||type==='cash'?'2.0':type==='bonds_fd'||type==='ibond'?'5.0':'8.0'}" step="0.1" value="${m.expectedReturn||''}">
+          <div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Used in ROI projections</div>
+        </div>
+      </div>`;
+    } else {
+      extraFields += `<div class="nw-sheet-field"><div class="nw-sheet-label">Expected Return % p.a.</div>
+        <input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="12.0" step="0.1" value="${m.expectedReturn||''}">
+        <div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Historical CAGR or target return — used in ROI Growth Lab</div>
+      </div>`;
+    }
+  }
   if (type === 'metals') {
     const metalTypes = ['gold','silver','platinum'];
     const mOpts = metalTypes.map(mt => `<option value="${mt}" ${(m.metalType===mt)?'selected':''}>${mt.charAt(0).toUpperCase()+mt.slice(1)}</option>`).join('');
@@ -11921,6 +12061,8 @@ function saveNWAccount() {
   if (mpayEl && mpayEl.value) meta.monthlyPayment = Number(mpayEl.value);
   const matEl = document.getElementById('nws-maturity');
   if (matEl && matEl.value) meta.maturityDate = matEl.value;
+  const expRetEl = document.getElementById('nws-expected-return');
+  if (expRetEl && expRetEl.value) meta.expectedReturn = Number(expRetEl.value);
   const mtEl = document.getElementById('nws-metaltype');
   if (mtEl) meta.metalType = mtEl.value;
   const gramsEl = document.getElementById('nws-grams');
@@ -11956,12 +12098,18 @@ function saveNWAccount() {
   const lastUpdated = dateEl ? dateEl.value : localDateStr();
 
   if (!data._nwAccounts) data._nwAccounts = [];
+  // Hoist key fields for direct access by ROI engine and AI context
+  const _acctExtras = {
+    _monthlyTotal:  meta.monthlyContribution ? Number(meta.monthlyContribution) : undefined,
+    expectedReturn: meta.expectedReturn ? Number(meta.expectedReturn) : undefined,
+  };
+  Object.keys(_acctExtras).forEach(k => { if (_acctExtras[k] === undefined) delete _acctExtras[k]; });
   if (nwSheetEditId) {
     const idx = data._nwAccounts.findIndex(a => a.id === nwSheetEditId);
-    if (idx >= 0) data._nwAccounts[idx] = { ...data._nwAccounts[idx], name, type, balance, currency, lastUpdated, meta };
+    if (idx >= 0) data._nwAccounts[idx] = { ...data._nwAccounts[idx], name, type, balance, currency, lastUpdated, meta, ..._acctExtras };
   } else {
     const id = 'nwa_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-    data._nwAccounts.push({ id, name, type, balance, currency, lastUpdated, meta });
+    data._nwAccounts.push({ id, name, type, balance, currency, lastUpdated, meta, ..._acctExtras });
   }
 
   save();
@@ -12002,7 +12150,24 @@ function renderImportTabs() {
   const isIN = region === 'IN';
   const isUS = region === 'US';
 
-  // Always-visible tabs
+  // Region selector above tabs — for multi-country users
+  const regionPickerEl = document.getElementById('import-region-picker');
+  if (regionPickerEl) {
+    regionPickerEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:10px 14px;background:#F0F4FF;border-radius:12px;">
+        <span style="font-size:0.75em;font-weight:800;color:#4F46E5;flex-shrink:0;">🌍 Import Region</span>
+        <select onchange="setImportRegion(this.value)" style="flex:1;border:1.5px solid #E0E7FF;border-radius:8px;padding:6px 10px;font-family:Nunito;font-weight:800;font-size:0.8em;background:white;">
+          <option value="IN" ${isIN?'selected':''}>🇮🇳 India (CAMS · Zerodha · EPF)</option>
+          <option value="US" ${isUS?'selected':''}>🇺🇸 United States (Fidelity · Schwab · Robinhood)</option>
+          <option value="BOTH">🌐 Multi-country (show all)</option>
+        </select>
+      </div>`;
+  }
+
+  const importRegion = window._importRegionOverride || region;
+  const showAll = importRegion === 'BOTH';
+
+  // Tabs — no Reset (moved to Settings > Data Management)
   const tabs = [
     { key:'transactions', label:'💸 Transactions', always: true },
     // India-specific
@@ -12017,13 +12182,20 @@ function renderImportTabs() {
     { key:'given',      label:'🤝 Given',       always: true },
     { key:'metals',     label:'🥇 Metals',       always: true },
     { key:'realestate', label:'🏡 Real Estate',  always: true },
-    { key:'reset',      label:'🗑️ Reset',        always: true },
   ];
 
   container.innerHTML = tabs
-    .filter(t => t.always || t.only === region)
+    .filter(t => t.always || showAll || t.only === importRegion)
     .map((t, i) => `<button class="import-tab${i===0?' active':''}" onclick="setImportTab('${t.key}',this)">${t.label}</button>`)
     .join('');
+}
+
+function setImportRegion(val) {
+  window._importRegionOverride = val;
+  renderImportTabs();
+  // Re-activate first tab
+  const firstTab = document.querySelector('.import-tab');
+  if (firstTab) firstTab.click();
 }
 
 function setImportTab(tab, el) {
@@ -15357,10 +15529,14 @@ function scoreEducationGoal(nw, profile, cfg) {
   const eduCorpus = eduAccounts.reduce((s,a) => s + nwConvert(a.balance||0, a.currency||'USD'), 0);
   let totalTarget = 0;
   const now = new Date().getFullYear();
+  const inflationRate = cfg.educationInflation || 0.06;
+  const kidsBreakdown = [];
   kidsAges.forEach((age, i) => {
     const yearsToCollege = Math.max(0, 18 - age);
     const baseTarget = eduTargets[i] || 2500000;
-    totalTarget += baseTarget * Math.pow(1 + cfg.educationInflation, yearsToCollege);
+    const inflatedTarget = baseTarget * Math.pow(1 + inflationRate, yearsToCollege);
+    totalTarget += inflatedTarget;
+    kidsBreakdown.push({ age, yearsToCollege, baseTarget, inflatedTarget });
   });
   if (totalTarget <= 0) return { score: 30, status: 'fair', label: 'Set education targets in setup', eduCorpus, totalTarget: 0, accounts: eduAccounts };
   const ratio = eduCorpus / totalTarget;
@@ -15370,9 +15546,12 @@ function scoreEducationGoal(nw, profile, cfg) {
     eduCorpus, totalTarget, ratio, kids,
     kidsAges: profile?.kidsAges || [],
     eduTargets: eduTargets,
+    kidsBreakdown,   // ← carries original goal + inflated target per child
+    inflationRate,   // ← so UI can note this is inflation-adjusted
     accounts: eduAccounts.map(a => ({ name: a.name, val: nwConvert(a.balance, a.currency), type: a.type })),
-    calc: `${fmt(eduCorpus)} saved ÷ ${fmt(totalTarget)} target = ${(ratio*100).toFixed(0)}%`,
-    benchmarkIN: `Education inflation: ${(cfg.educationInflation*100).toFixed(0)}% p.a. · Target to age 18`,
+    calc: `${fmt(eduCorpus)} saved ÷ ${fmt(totalTarget)} inflation-adjusted target = ${(ratio*100).toFixed(0)}%`,
+    calcNote: `Your goal was ${eduTargets.map((t,i) => fmt(t)).join(' + ')} — inflation-adjusted to ${fmt(totalTarget)} (${(inflationRate*100).toFixed(0)}% p.a.)`,
+    benchmarkIN: `Education inflation: ${(inflationRate*100).toFixed(0)}% p.a. · Target to age 18`,
     benchmarkSource: cfg.benchmarkSource,
   };
 }
@@ -16075,7 +16254,8 @@ function openFHSOnboard() {
     if (document.getElementById('fhsob-match')) document.getElementById('fhsob-match').value = p.employerMatchPct || 0;
     document.getElementById('fhsob-insurance').value = p.insuranceCover ?? '';
     document.getElementById('fhsob-compensation').value = p.annualCompensation || '';
-    document.getElementById('fhsob-married').value = p.spouseIncome > 0 ? 'married' : 'single';
+    document.getElementById('fhsob-married').value = p.maritalStatus || (p.spouseIncome > 0 ? 'married' : 'single');
+    if (document.getElementById('fhsob-employment-type')) document.getElementById('fhsob-employment-type').value = p.employmentType || 'w2';
     document.getElementById('fhsob-spouse-income').value = p.spouseIncome || '';
     document.getElementById('fhsob-kids').value = p.kidsCount || 0;
     document.getElementById('fhsob-region').value = p.region || 'IN';
@@ -16444,10 +16624,14 @@ function saveFHSProfile() {
   const targetSWR         = parseInt(document.getElementById('fhsob-swr')?.value) || 4;
   const disabilityCoverPct = parseInt(document.getElementById('fhsob-disability')?.value) ?? 60;
   const employerMatchPct   = parseInt(document.getElementById('fhsob-match')?.value) || 0;
+  const employmentType     = document.getElementById('fhsob-employment-type')?.value || 'w2';
 
+  const maritalStatus = document.getElementById('fhsob-married')?.value || 'single';
   saveFHSProfileData({
     age, retirementAge: retAge, insuranceCover: insurance,
     annualCompensation: compensation, spouseIncome,
+    employmentType,
+    maritalStatus,  // stored separately — a homemaker spouse has $0 income but IS married
     householdIncome: compensation + spouseIncome,
     kidsCount: kids, kidsAges, educationTargets: eduTargets, region,
     targetSWR, disabilityCoverPct, employerMatchPct,
@@ -19774,7 +19958,9 @@ USER FINANCIAL SNAPSHOT
 ========================
 Region: ${region} | Age: ${profile?.age || '?'} | Retirement target: ${profile?.retirementAge || 60}
 Annual income: ${sym}${((profile?.annualCompensation || 0) + (profile?.spouseIncome || 0)).toLocaleString()} (self: ${sym}${(profile?.annualCompensation || 0).toLocaleString()}${profile?.spouseIncome ? ', spouse: ' + sym + (profile.spouseIncome || 0).toLocaleString() : ''})
-Family: ${profile?.kidsCount ? profile.kidsCount + ' child(ren)' : 'no children'}${profile?.kidsCount ? ', ages: ' + (profile.kidsAges || []).join(', ') : ''}
+Employment: ${profile?.employmentType === 'w2' ? 'W-2 Employee — has access to employer 401k/403b' : profile?.employmentType === 'self_employed' ? 'Self-employed (1099) — eligible for SEP-IRA/Solo 401k, no employer match' : profile?.employmentType === 'business_owner' ? 'Business owner — eligible for SEP-IRA/Solo 401k/SIMPLE IRA' : profile?.employmentType === 'retired' ? 'Retired — RMD rules apply, focus on distribution strategy' : profile?.employmentType || 'W-2 Employee'}
+Employer 401k match: ${profile?.employerMatchPct > 0 ? profile.employerMatchPct + '% — ALWAYS contribute at least to capture full match' : 'None / not set'}
+Family: ${profile?.maritalStatus === 'married' || profile?.spouseIncome > 0 ? 'Married' : 'Single'}${profile?.maritalStatus === 'married' && !profile?.spouseIncome ? ' (spouse is homemaker — $0 income but household tax filing implications apply)' : ''}${profile?.kidsCount ? ' · ' + profile.kidsCount + ' child(ren), ages: ' + (profile.kidsAges || []).join(', ') : ', no children'}
 Life insurance cover: ${sym}${(profile?.insuranceCover || 0).toLocaleString()} | SWR target: ${profile?.targetSWR || 4}%
 Equity allocation: ${profile?.equityPct != null ? profile.equityPct + '%' : 'not set'} | Passive income: ${sym}${(profile?.passiveIncome || 0).toLocaleString()}/yr
 
@@ -19861,7 +20047,14 @@ function buildSuggestions(fhs, profile) {
 
   // Context-aware extras
   const fireResult = fhs.pillarResults?.fire?.result;
-  if (fireResult?.gap > 0) suggestions.push(`How do I close my ₹${Math.round((fireResult.gap||0)/100000)}L FIRE gap?`);
+  if (fireResult?.gap > 0) {
+    const gap = fireResult.gap || 0;
+    const sym2 = currentCurrency?.symbol || (region === 'IN' ? '₹' : '$');
+    const gapStr = region === 'IN'
+      ? `₹${Math.round(gap/100000)}L`
+      : `${sym2}${gap >= 1e6 ? (gap/1e6).toFixed(1)+'M' : Math.round(gap/1000)+'k'}`;
+    suggestions.push(`How do I close my ${gapStr} FIRE gap?`);
+  }
 
   const savResult = fhs.pillarResults?.savings?.result;
   if (savResult?.rate < 0.2) suggestions.push('How do I increase my savings rate?');
