@@ -2392,7 +2392,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.16.0 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.16.1 · Built 2026-03</div>
   </div>
 
 
@@ -12501,46 +12501,56 @@ function processNamedParserFile(file, parser) {
     reader.onload = e => {
       try {
         const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
-        // For CAMS: parse BOTH sheets — Transactions sheet for txns AND Portfolio sheet for NW
+        // For CAMS: route by sheet name — Portfolio Details → NW accounts, Transaction Details → txns
         let wsName = wb.SheetNames[0];
-        if (parser === 'cams') {
-          const txSheet = wb.SheetNames.find(n => /transaction/i.test(n));
-          if (txSheet) wsName = txSheet;
-        }
-        const ws = wb.Sheets[wsName];
-        const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
         let records = [];
         if (parser === 'cams') {
-          records = parseCAMSRows(rawRows);
-          // Also parse Portfolio sheet for NW account snapshot (current values)
+          const txSheet   = wb.SheetNames.find(n => /transaction/i.test(n));
           const portSheet = wb.SheetNames.find(n => /portfolio/i.test(n));
+
+          // Parse Transaction Details → transactions
+          if (txSheet) {
+            const txRows = XLSX.utils.sheet_to_json(wb.Sheets[txSheet], { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
+            records = records.concat(parseCAMSRows(txRows));
+          }
+
+          // Parse Portfolio Details → NW accounts (current value + invested value)
           if (portSheet) {
             const portRows = XLSX.utils.sheet_to_json(wb.Sheets[portSheet], { header: 1, raw: false });
-            const portNW = parseCAMSPortfolio(portRows);
-            // Merge portfolio NW records with transaction records
-            records = records.concat(portNW);
+            records = records.concat(parseCAMSPortfolio(portRows));
           }
-        } else if (parser === 'zerodha') {
-          records = parseZerodhaRows(rawRows, _namedParserState.zerodha.zerodhaType);
-        } else if (parser === 'fidelity') {
-          // Auto-detect: positions vs activity by header
-          const h0 = rawRows.slice(0,10).flat().map(c=>String(c||'').toLowerCase());
-          if (h0.some(c=>c.includes('run date')) || h0.some(c=>c.includes('action'))) {
-            records = parseFidelityActivity(rawRows);
-          } else {
-            records = parseFidelityPositions(rawRows);
+
+          // Fallback: if no named sheets found, try first sheet with both parsers
+          if (!txSheet && !portSheet) {
+            const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
+            const txRecs = parseCAMSRows(rawRows);
+            const nwRecs = parseCAMSPortfolio(rawRows);
+            records = txRecs.length ? txRecs : nwRecs;
           }
-        } else if (parser === 'schwab') {
-          const h0 = rawRows.slice(0,3).flat().map(c=>String(c||'').toLowerCase());
-          if (h0.some(c=>c.includes('date')) && h0.some(c=>c.includes('action'))) {
-            records = parseSchwabTransactions(rawRows);
-          } else {
-            records = parseSchwabPositions(rawRows);
+        } else {
+          // All non-CAMS parsers: read first sheet as rawRows
+          const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
+          if (parser === 'zerodha') {
+            records = parseZerodhaRows(rawRows, _namedParserState.zerodha.zerodhaType);
+          } else if (parser === 'fidelity') {
+            const h0 = rawRows.slice(0,10).flat().map(c=>String(c||'').toLowerCase());
+            if (h0.some(c=>c.includes('run date')) || h0.some(c=>c.includes('action'))) {
+              records = parseFidelityActivity(rawRows);
+            } else {
+              records = parseFidelityPositions(rawRows);
+            }
+          } else if (parser === 'schwab') {
+            const h0 = rawRows.slice(0,3).flat().map(c=>String(c||'').toLowerCase());
+            if (h0.some(c=>c.includes('date')) && h0.some(c=>c.includes('action'))) {
+              records = parseSchwabTransactions(rawRows);
+            } else {
+              records = parseSchwabPositions(rawRows);
+            }
+          } else if (parser === 'robinhood') {
+            records = parseRobinhoodActivity(rawRows);
+          } else if (parser === 'epf') {
+            records = parseEPFRows(rawRows);
           }
-        } else if (parser === 'robinhood') {
-          records = parseRobinhoodActivity(rawRows);
-        } else if (parser === 'epf') {
-          records = parseEPFRows(rawRows);
         }
         finishNamedParse(parser, records, file.name);
       } catch(err) { showToast('Error reading file ❌ ' + err.message); }
@@ -12850,18 +12860,23 @@ function parseCAMSPortfolio(rawRows) {
   const records = [];
   const cur = currentCurrency?.code || 'INR';
   let headerIdx = -1;
-  let colScheme=-1, colUnits=-1, colNav=-1, colValue=-1, colCost=-1;
+  let colScheme=-1, colUnits=-1, colNav=-1, colValue=-1, colCost=-1, colAmc=-1, colCategory=-1;
 
-  for (let i = 0; i < Math.min(rawRows.length, 20); i++) {
+  for (let i = 0; i < Math.min(rawRows.length, 25); i++) {
     const row = rawRows[i].map(c => String(c||'').trim().toLowerCase());
-    if (row.some(c=>c.includes('scheme')) && row.some(c=>c.includes('value')||c.includes('amount'))) {
+    // Match any row containing scheme/fund name column AND some value column
+    if (row.some(c=>c.includes('scheme')||c==='fund name') && row.some(c=>c.includes('value')||c.includes('amount'))) {
       headerIdx = i;
       const find = kws => row.findIndex(c => kws.some(k => c.includes(k)));
-      colScheme = find(['scheme','fund name','fund']);
-      colUnits  = find(['units','unit']);
-      colNav    = find(['nav','price']);
-      colValue  = find(['current value','market value','value','amount']);
-      colCost   = find(['cost','invested','purchase','book value']);
+      colScheme   = find(['scheme','fund name','fund']);
+      colAmc      = find(['amc','asset management','amc name']);
+      colCategory = find(['category','type']);
+      colUnits    = find(['units','unit']);
+      colNav      = find(['nav','price']);
+      // Prioritise 'current value' over plain 'value', and 'invested value' / 'cost' for cost basis
+      colValue  = find(['current value','market value','current']);
+      if (colValue < 0) colValue = find(['value','amount']);
+      colCost   = find(['invested value','invested','cost','purchase','book value']);
       break;
     }
   }
@@ -12901,8 +12916,8 @@ function parseCAMSPortfolio(rawRows) {
         liquidity: classification.liquidity,
         lockIn: classification.lockIn,
         sebiCategory: classification.sebiCategory,
-        balance: curVal,
-        investedAmount,
+        balance: curVal,              // current market value → shown as balance
+        investedAmount,               // cost basis → for ROI calc
         dataConfidence,
         currency: cur,
         source: 'cams',
@@ -13609,7 +13624,8 @@ function extractNWAccounts(records) {
 // FINISH PARSE → run duplicate detection, build preview, go to step 2
 // ══════════════════════════════════════════════════════════════════════
 function finishNamedParse(parser, records, filename) {
-  if (!records.length) { showToast('No transactions found in file ❌'); return; }
+  const nwOnly = records.length > 0 && records.every(r => r._holdingsOnly);
+  if (!records.length) { showToast('No data found in file ❌'); return; }
 
   const dups     = detectDuplicates(records);
   const nwAccts  = extractNWAccounts(records);
@@ -13622,11 +13638,11 @@ function finishNamedParse(parser, records, filename) {
   const months = new Set(txOnly.map(r => r.date.substring(0,7)));
 
   // Summary grid
-  document.getElementById(`i${parser}-summary-grid`).innerHTML = `
-    <div class="import-summary-box"><div class="isb-num">${txOnly.length}</div><div class="isb-label">Transactions</div></div>
+  document.getElementById(`i${parser}-summary-grid`).innerHTML = nwOnly
+    ? `<div class="import-summary-box" style="grid-column:1/-1"><div class="isb-num">${nwAccts.length}</div><div class="isb-label">NW Accounts Detected</div></div>`
+    : `<div class="import-summary-box"><div class="isb-num">${txOnly.length}</div><div class="isb-label">Transactions</div></div>
     <div class="import-summary-box"><div class="isb-num">${months.size}</div><div class="isb-label">Months</div></div>
-    <div class="import-summary-box"><div class="isb-num">${dups.length}</div><div class="isb-label">Duplicates</div></div>
-  `;
+    <div class="import-summary-box"><div class="isb-num">${dups.length}</div><div class="isb-label">Duplicates</div></div>`;
 
   document.getElementById(`i${parser}-summary-text`).textContent =
     `Parsed ${records.length} records from ${filename}. ${nwAccts.length ? nwAccts.length + ' NW accounts detected.' : ''}`;
@@ -13652,8 +13668,9 @@ function finishNamedParse(parser, records, filename) {
 
   // Preview table
   const preview = txOnly.slice(0, 20);
-  document.getElementById(`i${parser}-preview-table`).innerHTML =
-    `<thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th><th>Source</th></tr></thead><tbody>` +
+  document.getElementById(`i${parser}-preview-table`).innerHTML = nwOnly
+    ? `<thead><tr><th colspan="5" style="text-align:center;color:var(--text-light);font-style:italic;padding:16px;">Portfolio snapshot — no transactions (NW accounts will be created below)</th></tr></thead><tbody></tbody>`
+    : `<thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th><th>Source</th></tr></thead><tbody>` +
     preview.map(r => `<tr>
       <td>${r.date}</td>
       <td>${r.description.substring(0,45)}</td>
@@ -13669,11 +13686,21 @@ function finishNamedParse(parser, records, filename) {
   if (nwSec) {
     if (nwAccts.length > 0) {
       nwSec.style.display = 'block';
-      document.getElementById(`i${parser}-nw-list`).innerHTML = nwAccts.map(a => `
-        <div style="background:#EFF6FF;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:0.82em;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-weight:800;color:#1E2A6E;">${a.name}</span>
-          <span style="font-weight:900;color:#059669;">${fmt(a.balance)}</span>
-        </div>`).join('');
+      document.getElementById(`i${parser}-nw-list`).innerHTML = nwAccts.map(a => {
+        const gain = a.investedAmount != null ? a.balance - a.investedAmount : null;
+        const gainPct = gain != null && a.investedAmount > 0 ? (gain / a.investedAmount * 100).toFixed(1) : null;
+        const gainColor = gain == null ? '' : gain >= 0 ? '#059669' : '#DC2626';
+        return `<div style="background:#EFF6FF;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:0.82em;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:800;color:#1E2A6E;flex:1;margin-right:8px;">${a.name.substring(0,45)}</span>
+            <span style="font-weight:900;color:#059669;">${fmt(a.balance)}</span>
+          </div>
+          ${a.investedAmount != null ? `<div style="display:flex;gap:12px;margin-top:3px;font-size:0.9em;color:var(--text-light);">
+            <span>Invested: <b>${fmt(a.investedAmount)}</b></span>
+            ${gain != null ? `<span style="color:${gainColor};font-weight:800;">${gain >= 0 ? '▲' : '▼'} ${fmt(Math.abs(gain))} (${gainPct}%)</span>` : ''}
+          </div>` : ''}
+        </div>`;
+      }).join('');
     } else {
       nwSec.style.display = 'none';
     }
@@ -13682,7 +13709,7 @@ function finishNamedParse(parser, records, filename) {
   // Go to step 2
   document.querySelectorAll(`#isec-${parser} .import-step`).forEach(s => s.classList.remove('active'));
   document.getElementById(`i${parser}-step2`).classList.add('active');
-  showToast(`✅ ${records.length} records found`);
+  showToast(nwOnly ? `✅ ${nwAccts.length} NW accounts ready to import` : `✅ ${records.length} records found`);
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -13691,6 +13718,7 @@ function finishNamedParse(parser, records, filename) {
 function confirmNamedImport(parser) {
   const { records, dups, nwAccounts } = _namedParserState[parser];
   const skipIdxs = new Set(dups.filter(d => d.skip).map(d => d.idx));
+  const nwOnly = records.length > 0 && records.every(r => r._holdingsOnly);
 
   let txImported = 0, txSkipped = 0, nwCreated = 0, nwUpdated = 0;
 
@@ -13730,9 +13758,15 @@ function confirmNamedImport(parser) {
         name: acct.name,
         type: acct.type || 'investment',
         balance: acct.balance,
+        investedAmount: acct.investedAmount || null,
         currency: acct.currency || currentCurrency.code,
         lastUpdated: localDateStr(),
         _source: acct.source || parser,
+        assetClass: acct.assetClass || null,
+        taxBucket: acct.taxBucket || null,
+        liquidity: acct.liquidity || null,
+        sebiCategory: acct.sebiCategory || null,
+        dataConfidence: acct.dataConfidence || null,
       });
       nwCreated++;
     }
@@ -13740,7 +13774,9 @@ function confirmNamedImport(parser) {
 
   save();
 
-  const doneTitle = `${txImported} transactions imported!`;
+  const doneTitle = nwCreated + nwUpdated > 0 && txImported === 0
+    ? `${nwCreated + nwUpdated} NW accounts imported!`
+    : `${txImported} transactions imported!`;
   const doneSub = [
     txSkipped  ? `${txSkipped} duplicates skipped` : '',
     nwCreated  ? `${nwCreated} NW accounts created` : '',
