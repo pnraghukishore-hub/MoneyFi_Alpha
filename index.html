@@ -2483,7 +2483,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.17.7 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.17.8 · Built 2026-03</div>
   </div>
 
 
@@ -11969,13 +11969,13 @@ function renderNWDonut(nw) {
   }
 
   // Build geography breakdown per asset class for sub-lines
-  const geoByClass = {}; // { EQUITY: { US: val, IN: val, GLOBAL: val } }
-  Object.keys(NW_TYPES).forEach(t => {
+  var geoByClass = {};
+  Object.keys(NW_TYPES).forEach(function(t) {
     if (NW_TYPES[t].isLiab) return;
-    (nw.byType[t]?.accounts || []).forEach(acc => {
+    (nw.byType[t] && nw.byType[t].accounts || []).forEach(function(acc) {
       if (!acc._val) return;
-      const cls = inferAssetClass(acc);
-      const geo = inferGeography(acc);
+      var cls = inferAssetClass(acc);
+      var geo = inferGeography(acc);
       if (!geoByClass[cls]) geoByClass[cls] = {};
       geoByClass[cls][geo] = (geoByClass[cls][geo] || 0) + acc._val;
     });
@@ -11983,40 +11983,38 @@ function renderNWDonut(nw) {
 
   // Legend rows with mini progress bars + geography sub-line
   if (legendEl) {
-    legendEl.innerHTML = segments.map(s => {
-      const pct = nw.totalAssets > 0 ? (s.val / nw.totalAssets * 100).toFixed(1) : '0';
-      // Build geography sub-line for this asset class
-      const geoBreakdown = geoByClass[s.cls] || {};
-      const geoEntries = Object.entries(geoBreakdown)
-        .filter(([,v]) => v > 0)
-        .sort((a,b) => b[1]-a[1]);
-      let geoSubLine = '';
+    legendEl.innerHTML = segments.map(function(s) {
+      var pct = nw.totalAssets > 0 ? (s.val / nw.totalAssets * 100).toFixed(1) : '0';
+      // Geography sub-line
+      var geoBreakdown = geoByClass[s.cls] || {};
+      var geoEntries = Object.entries(geoBreakdown).filter(function(e){ return e[1] > 0; }).sort(function(a,b){ return b[1]-a[1]; });
+      var geoSubLine = '';
       if (geoEntries.length > 1) {
-        // Only show geo split if there are 2+ geographies in this class
-        geoSubLine = geoEntries.map(([geo, val]) => {
-          const geoPct = s.val > 0 ? (val / s.val * 100).toFixed(0) : '0';
-          const geoMeta = GEOGRAPHY_META[geo] || { flag: '🌐', label: geo };
-          return \`<span style="font-size:0.65em;font-weight:700;color:var(--text-light);">\${geoMeta.flag}\${geoPct}%</span>\`;
+        geoSubLine = geoEntries.map(function(e) {
+          var geo = e[0]; var val = e[1];
+          var geoPct = s.val > 0 ? (val / s.val * 100).toFixed(0) : '0';
+          var geoMeta = GEOGRAPHY_META[geo] || { flag: '🌐', label: geo };
+          return '<span style="font-size:0.65em;font-weight:700;color:var(--text-light);">' + geoMeta.flag + geoPct + '%</span>';
         }).join('<span style="color:#DDD;font-size:0.65em;"> · </span>');
       }
-      return \`<div style="margin-bottom:9px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-          <div style="display:flex;align-items:center;gap:7px;">
-            <div style="width:10px;height:10px;border-radius:3px;background:\${s.color};flex-shrink:0;"></div>
-            <div>
-              <span style="font-size:0.78em;font-weight:700;color:var(--text-dark);">\${s.label}</span>
-              \${geoSubLine ? \`<div style="margin-top:1px;">\${geoSubLine}</div>\` : ''}
-            </div>
-          </div>
-          <div style="display:flex;gap:10px;align-items:center;">
-            <span style="font-size:0.72em;font-weight:700;color:var(--text-light);">\${pct}%</span>
-            <span style="font-size:0.78em;font-weight:900;color:var(--text-dark);min-width:60px;text-align:right;">\${fmt(s.val)}</span>
-          </div>
-        </div>
-        <div style="height:4px;background:#F0F0F0;border-radius:2px;">
-          <div style="height:100%;width:\${Math.min(parseFloat(pct),100)}%;background:\${s.color};border-radius:2px;transition:width 0.4s ease;"></div>
-        </div>
-      </div>\`;
+      return '<div style="margin-bottom:9px;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
+        +   '<div style="display:flex;align-items:center;gap:7px;">'
+        +     '<div style="width:10px;height:10px;border-radius:3px;background:' + s.color + ';flex-shrink:0;"></div>'
+        +     '<div>'
+        +       '<span style="font-size:0.78em;font-weight:700;color:var(--text-dark);">' + s.label + '</span>'
+        +       (geoSubLine ? '<div style="margin-top:1px;">' + geoSubLine + '</div>' : '')
+        +     '</div>'
+        +   '</div>'
+        +   '<div style="display:flex;gap:10px;align-items:center;">'
+        +     '<span style="font-size:0.72em;font-weight:700;color:var(--text-light);">' + pct + '%</span>'
+        +     '<span style="font-size:0.78em;font-weight:900;color:var(--text-dark);min-width:60px;text-align:right;">' + fmt(s.val) + '</span>'
+        +   '</div>'
+        + '</div>'
+        + '<div style="height:4px;background:#F0F0F0;border-radius:2px;">'
+        +   '<div style="height:100%;width:' + Math.min(parseFloat(pct),100) + '%;background:' + s.color + ';border-radius:2px;transition:width 0.4s ease;"></div>'
+        + '</div>'
+        + '</div>';
     }).join('');
   }
 }
@@ -12660,42 +12658,7 @@ function _nwsBuildForm(type, existing, m) {
       ${(type === 'checking' || type === 'savings_acc' || type === 'credit_card') ? `<div class="nw-sheet-field"><div class="nws-section-label">Account # (Last 4)</div><input class="nw-sheet-input" id="nws-acct4" type="text" maxlength="4" placeholder="1234" value="${m.last4||''}"></div>` : ''}
     </div>` : ''}`}
     ${extraFields}
-    ${(() => {
-      const isLiabType = NW_TYPES[type]?.isLiab;
-      const isCashType = ['checking','cash','emergency','bank_checking_us'].includes(type);
-      const isCreditLoan = ['credit_card','loan','other_liability'].includes(type);
-      if (isLiabType || isCashType || isCreditLoan) return '';
-      // Asset class override pill picker
-      const currentAC  = existing?.assetClass || ASSET_CLASS_MAP[type] || 'OTHER';
-      const currentGeo = existing?.geography   || GEOGRAPHY_MAP[type]   || 'GLOBAL';
-      const acPills = Object.entries(ASSET_CLASS_META).map(([k,v]) =>
-        \`<button type="button" onclick="nwsPickAC(this,'${k}')" data-ac="${k}"
-          style="padding:5px 10px;border-radius:20px;border:1.5px solid \${currentAC===k?v.color:'#E0E0E0'};
-          background:\${currentAC===k?v.color+'22':'transparent'};color:\${currentAC===k?v.color:'var(--text-light)'};
-          font-family:Nunito,sans-serif;font-weight:800;font-size:0.72em;cursor:pointer;white-space:nowrap;
-          transition:all 0.15s;">\${v.emoji} \${v.label}</button>\`
-      ).join('');
-      const geoPills = Object.entries(GEOGRAPHY_META).map(([k,v]) =>
-        \`<button type="button" onclick="nwsPickGeo(this,'${k}')" data-geo="${k}"
-          style="padding:5px 12px;border-radius:20px;border:1.5px solid \${currentGeo===k?'#4F46E5':'#E0E0E0'};
-          background:\${currentGeo===k?'#EEF2FF':'transparent'};color:\${currentGeo===k?'#4F46E5':'var(--text-light)'};
-          font-family:Nunito,sans-serif;font-weight:800;font-size:0.72em;cursor:pointer;
-          transition:all 0.15s;">\${v.flag} \${v.label}</button>\`
-      ).join('');
-      return \`
-      <input type="hidden" id="nws-asset-class" value="\${currentAC}">
-      <input type="hidden" id="nws-geography" value="\${currentGeo}">
-      <div class="nw-sheet-field">
-        <div class="nws-section-label">Asset Class</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">\${acPills}</div>
-        <div style="font-size:0.67em;color:var(--text-light);margin-top:4px;">Used in allocation chart and FHS scoring</div>
-      </div>
-      <div class="nw-sheet-field">
-        <div class="nws-section-label">Geography</div>
-        <div style="display:flex;gap:6px;margin-top:2px;">\${geoPills}</div>
-        <div style="font-size:0.67em;color:var(--text-light);margin-top:4px;">Used for geographic diversification analysis</div>
-      </div>\`;
-    })()}
+    ${_buildACGeoPickers(type, existing)}
     <div class="nw-sheet-field">
       <div class="nws-section-label">Notes</div>
       <input class="nw-sheet-input" id="nws-notes" type="text" placeholder="Optional" value="${m.notes||''}">
@@ -12728,6 +12691,55 @@ function closeNWSheet() {
     renderNetWorth();
     try { renderHome(); } catch(e) {}
   }, 320);
+}
+
+function _buildACGeoPickers(type, existing) {
+  const isLiabType   = NW_TYPES[type] && NW_TYPES[type].isLiab;
+  const isCashType   = ['checking','cash','emergency','bank_checking_us'].includes(type);
+  const isCreditLoan = ['credit_card','loan','other_liability'].includes(type);
+  if (isLiabType || isCashType || isCreditLoan) return '';
+
+  const currentAC  = (existing && existing.assetClass)  || ASSET_CLASS_MAP[type]  || 'OTHER';
+  const currentGeo = (existing && existing.geography)    || GEOGRAPHY_MAP[type]    || 'GLOBAL';
+
+  const acPills = Object.entries(ASSET_CLASS_META).map(function(entry) {
+    var k = entry[0]; var v = entry[1];
+    var active = currentAC === k;
+    var border = active ? v.color : '#E0E0E0';
+    var bg     = active ? (v.color + '22') : 'transparent';
+    var color  = active ? v.color : 'var(--text-light)';
+    return '<button type="button" onclick="nwsPickAC(this,\'' + k + '\')" data-ac="' + k + '" '
+      + 'style="padding:5px 10px;border-radius:20px;border:1.5px solid ' + border + ';'
+      + 'background:' + bg + ';color:' + color + ';'
+      + 'font-family:Nunito,sans-serif;font-weight:800;font-size:0.72em;cursor:pointer;white-space:nowrap;transition:all 0.15s;">'
+      + v.emoji + ' ' + v.label + '</button>';
+  }).join('');
+
+  const geoPills = Object.entries(GEOGRAPHY_META).map(function(entry) {
+    var k = entry[0]; var v = entry[1];
+    var active = currentGeo === k;
+    var border = active ? '#4F46E5' : '#E0E0E0';
+    var bg     = active ? '#EEF2FF' : 'transparent';
+    var color  = active ? '#4F46E5' : 'var(--text-light)';
+    return '<button type="button" onclick="nwsPickGeo(this,\'' + k + '\')" data-geo="' + k + '" '
+      + 'style="padding:5px 12px;border-radius:20px;border:1.5px solid ' + border + ';'
+      + 'background:' + bg + ';color:' + color + ';'
+      + 'font-family:Nunito,sans-serif;font-weight:800;font-size:0.72em;cursor:pointer;transition:all 0.15s;">'
+      + v.flag + ' ' + v.label + '</button>';
+  }).join('');
+
+  return '<input type="hidden" id="nws-asset-class" value="' + currentAC + '">'
+    + '<input type="hidden" id="nws-geography" value="' + currentGeo + '">'
+    + '<div class="nw-sheet-field">'
+    +   '<div class="nws-section-label">Asset Class</div>'
+    +   '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">' + acPills + '</div>'
+    +   '<div style="font-size:0.67em;color:var(--text-light);margin-top:4px;">Used in allocation chart and FHS scoring</div>'
+    + '</div>'
+    + '<div class="nw-sheet-field">'
+    +   '<div class="nws-section-label">Geography</div>'
+    +   '<div style="display:flex;gap:6px;margin-top:2px;">' + geoPills + '</div>'
+    +   '<div style="font-size:0.67em;color:var(--text-light);margin-top:4px;">Used for geographic diversification analysis</div>'
+    + '</div>';
 }
 
 function nwsPickAC(btn, cls) {
