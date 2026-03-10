@@ -1223,6 +1223,11 @@
     .import-tabs::-webkit-scrollbar { display:none; }
     .import-tab { flex-shrink:0; padding:8px 14px; border:none; background:var(--white); border-radius:var(--radius-sm); font-family:'Nunito',sans-serif; font-weight:800; font-size:0.78em; color:var(--text-light); cursor:pointer; box-shadow:var(--card-shadow); transition:all 0.2s; white-space:nowrap; }
     .import-tab.active { background:var(--yellow); color:var(--text-dark); }
+    /* ROI Growth Lab tab buttons */
+    .roi-tab-btn { border:none; border-radius:10px; font-family:'Nunito',sans-serif; font-weight:800; font-size:0.68em; cursor:pointer; padding:7px 4px; line-height:1.4; background:rgba(255,255,255,0.15); color:rgba(255,255,255,0.8); transition:all 0.2s; }
+    .roi-tab-btn.roi-tab-active { background:white; color:#1E2A6E; }
+    .roi-sort-btn { white-space:nowrap; padding:6px 12px; border:1.5px solid #E8E8E8; border-radius:20px; font-family:'Nunito',sans-serif; font-weight:800; font-size:0.72em; background:white; color:var(--text-med); cursor:pointer; flex-shrink:0; transition:all 0.2s; }
+    .roi-sort-btn.roi-sort-active { background:#EEF2FF; color:#4F46E5; border-color:#E0E7FF; }
     .import-section { display:none; }
     .import-section.active { display:block; }
     .import-card { background:var(--white); border-radius:var(--radius); box-shadow:var(--card-shadow); padding:20px; margin-bottom:14px; }
@@ -2078,82 +2083,142 @@
 
 <!-- ══════════════ ROI GROWTH LAB ══════════════ -->
 <div class="screen" id="screen-roi">
-  <!-- Hero -->
-  <div style="background:linear-gradient(135deg,#1E2A6E,#4F46E5);padding:28px 20px 22px;border-radius:0 0 28px 28px;margin-bottom:20px;">
-    <div style="font-size:0.78em;font-weight:800;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;">Investment Growth Lab</div>
-    <div style="font-size:1.6em;font-weight:900;color:#fff;margin-bottom:2px;">📈 What If?</div>
-    <div style="font-size:0.82em;color:rgba(255,255,255,0.75);font-weight:600;">See how small changes compound into big outcomes</div>
+  <!-- Hero with tab nav -->
+  <div style="background:linear-gradient(135deg,#0F172A,#1E2A6E,#4F46E5);padding:24px 16px 16px;border-radius:0 0 24px 24px;margin-bottom:0;">
+    <div style="font-size:0.7em;font-weight:800;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px;">Investment Growth Lab</div>
+    <div style="font-size:1.45em;font-weight:900;color:#fff;margin-bottom:1px;">📈 Your Money Story</div>
+    <div style="font-size:0.78em;color:rgba(255,255,255,0.65);font-weight:600;margin-bottom:14px;">Portfolio journey · SIP tracking · Retirement outlook</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;">
+      <button onclick="switchROITab('story')" id="roi-tab-story"  class="roi-tab-btn roi-tab-active">📖<br>Story</button>
+      <button onclick="switchROITab('funds')" id="roi-tab-funds"  class="roi-tab-btn">💼<br>Funds</button>
+      <button onclick="switchROITab('sip')"   id="roi-tab-sip"    class="roi-tab-btn">🔄<br>SIPs</button>
+      <button onclick="switchROITab('retire')" id="roi-tab-retire" class="roi-tab-btn">🏦<br>Retire</button>
+      <button onclick="switchROITab('sim')"   id="roi-tab-sim"    class="roi-tab-btn">🎯<br>What If</button>
+    </div>
   </div>
 
-  <div style="padding:0 16px 100px;">
+  <div style="padding:14px 14px 100px;">
 
-    <!-- Portfolio ROI Summary -->
-    <div style="background:white;border-radius:18px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:16px;">
-      <div style="font-weight:900;font-size:0.9em;color:var(--text-dark);margin-bottom:12px;">💼 Portfolio ROI Summary</div>
-      <div id="roi-portfolio-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
-    </div>
-
-    <!-- Account-by-account ROI -->
-    <div style="background:white;border-radius:18px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:16px;">
-      <div style="font-weight:900;font-size:0.9em;color:var(--text-dark);margin-bottom:4px;">🔍 ROI by Account</div>
-      <div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Based on imported cost basis vs current value</div>
-      <div id="roi-accounts-list"></div>
-    </div>
-
-    <!-- Compound Growth Simulator -->
-    <div style="background:white;border-radius:18px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:16px;">
-      <div style="font-weight:900;font-size:0.9em;color:var(--text-dark);margin-bottom:4px;">🎯 Contribution Simulator</div>
-      <div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-bottom:14px;">How much faster do you reach your goal with a small extra contribution?</div>
-
-      <!-- Inputs -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-        <div>
-          <div style="font-size:0.72em;font-weight:800;color:var(--text-light);margin-bottom:4px;">CURRENT BALANCE</div>
-          <input type="number" id="roi-current-balance" oninput="renderROISimulator()" placeholder="0"
-            style="width:100%;box-sizing:border-box;padding:10px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.9em;">
-        </div>
-        <div>
-          <div style="font-size:0.72em;font-weight:800;color:var(--text-light);margin-bottom:4px;">MONTHLY CONTRIBUTION</div>
-          <input type="number" id="roi-monthly-contrib" oninput="renderROISimulator()" placeholder="500"
-            style="width:100%;box-sizing:border-box;padding:10px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.9em;">
-        </div>
-        <div>
-          <div style="font-size:0.72em;font-weight:800;color:var(--text-light);margin-bottom:4px;">ANNUAL RETURN (%)</div>
-          <input type="number" id="roi-annual-return" oninput="renderROISimulator()" placeholder="8" step="0.5"
-            style="width:100%;box-sizing:border-box;padding:10px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.9em;">
-        </div>
-        <div>
-          <div style="font-size:0.72em;font-weight:800;color:var(--text-light);margin-bottom:4px;">TARGET AMOUNT</div>
-          <input type="number" id="roi-target" oninput="renderROISimulator()" placeholder="1000000"
-            style="width:100%;box-sizing:border-box;padding:10px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.9em;">
+    <!-- ══ STORY TAB ══ -->
+    <div id="roi-panel-story">
+      <!-- Hero summary -->
+      <div style="background:linear-gradient(135deg,#1E2A6E,#312E81);border-radius:18px;padding:18px;margin-bottom:12px;color:white;">
+        <div style="font-size:0.68em;font-weight:800;opacity:0.65;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Total Portfolio Value</div>
+        <div id="roi-hero-value" style="font-size:2em;font-weight:900;margin-bottom:2px;">—</div>
+        <div id="roi-hero-gain" style="font-size:0.8em;font-weight:800;opacity:0.85;margin-bottom:12px;">—</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+          <div style="background:rgba(255,255,255,0.1);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:0.6em;font-weight:700;opacity:0.7;">INVESTED</div>
+            <div id="roi-hero-invested" style="font-weight:900;font-size:0.85em;margin-top:2px;">—</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.1);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:0.6em;font-weight:700;opacity:0.7;">GAIN</div>
+            <div id="roi-hero-abs-gain" style="font-weight:900;font-size:0.85em;margin-top:2px;">—</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.1);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:0.6em;font-weight:700;opacity:0.7;">RETURN</div>
+            <div id="roi-hero-pct" style="font-weight:900;font-size:0.85em;margin-top:2px;">—</div>
+          </div>
         </div>
       </div>
 
-      <!-- Extra contribution slider -->
-      <div style="margin-bottom:14px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <div style="font-size:0.78em;font-weight:900;color:var(--text-dark);">Extra monthly contribution</div>
-          <div style="font-size:0.85em;font-weight:900;color:#4F46E5;" id="roi-extra-label">+0/mo</div>
+      <!-- Timeline chart -->
+      <div style="background:white;border-radius:16px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+          <div style="font-weight:900;font-size:0.85em;color:var(--text-dark);">📊 Investment Timeline</div>
+          <div style="font-size:0.65em;color:var(--text-light);font-weight:700;" id="roi-timeline-label">cumulative invested ₹ over time</div>
         </div>
-        <input type="range" id="roi-extra-slider" min="0" max="2000" step="50" value="0"
-          oninput="document.getElementById('roi-extra-label').textContent='+'+Number(this.value).toLocaleString()+'/mo';renderROISimulator()"
-          style="width:100%;accent-color:#4F46E5;">
-        <div style="display:flex;justify-content:space-between;font-size:0.68em;color:var(--text-light);font-weight:700;margin-top:2px;">
-          <span>+0</span><span>+2,000/mo</span>
-        </div>
+        <canvas id="roi-timeline-canvas" height="120" style="width:100%;display:block;margin-top:8px;"></canvas>
+        <div id="roi-timeline-legend" style="margin-top:6px;display:flex;gap:12px;flex-wrap:wrap;"></div>
       </div>
 
-      <!-- Results comparison -->
-      <div id="roi-simulator-result"></div>
+      <!-- Asset mix -->
+      <div style="background:white;border-radius:16px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:12px;">
+        <div style="font-weight:900;font-size:0.85em;color:var(--text-dark);margin-bottom:10px;">🧩 Asset Mix</div>
+        <div style="display:flex;gap:14px;align-items:center;">
+          <canvas id="roi-donut-canvas" width="88" height="88" style="flex-shrink:0;"></canvas>
+          <div id="roi-donut-legend" style="flex:1;"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Retirement / EPF/401k compounder -->
-    <div style="background:white;border-radius:18px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:16px;">
-      <div style="font-weight:900;font-size:0.9em;color:var(--text-dark);margin-bottom:4px;">🏦 Retirement Accelerator</div>
-      <div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-bottom:12px;">Locked accounts (EPF/NPS/401k) compounding visualized</div>
-      <div id="roi-retirement-cards"></div>
+    <!-- ══ FUNDS TAB ══ -->
+    <div id="roi-panel-funds" style="display:none;">
+      <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;">
+        <button onclick="sortROIFunds('gain')"     id="rfbtn-gain"     class="roi-sort-btn roi-sort-active">📈 Best Return</button>
+        <button onclick="sortROIFunds('value')"    id="rfbtn-value"    class="roi-sort-btn">💰 Highest Value</button>
+        <button onclick="sortROIFunds('worst')"    id="rfbtn-worst"    class="roi-sort-btn">⚠️ Laggards</button>
+        <button onclick="sortROIFunds('invested')" id="rfbtn-invested" class="roi-sort-btn">📦 Most Invested</button>
+      </div>
+      <div id="roi-funds-list"></div>
     </div>
 
+    <!-- ══ SIP TAB ══ -->
+    <div id="roi-panel-sip" style="display:none;">
+      <div style="background:linear-gradient(135deg,#065F46,#059669);border-radius:16px;padding:16px;margin-bottom:12px;color:white;">
+        <div style="font-size:0.68em;font-weight:800;opacity:0.75;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Total Monthly SIP</div>
+        <div id="roi-sip-total" style="font-size:1.8em;font-weight:900;margin-bottom:1px;">—</div>
+        <div id="roi-sip-subtitle" style="font-size:0.75em;opacity:0.8;font-weight:600;">detected from transaction history</div>
+      </div>
+      <div id="roi-sip-list"></div>
+    </div>
+
+    <!-- ══ RETIRE TAB ══ -->
+    <div id="roi-panel-retire" style="display:none;">
+      <div id="roi-retire-summary" style="margin-bottom:12px;"></div>
+      <div style="background:white;border-radius:16px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:12px;">
+        <div style="font-weight:900;font-size:0.85em;color:var(--text-dark);margin-bottom:4px;">🏦 Retirement Accelerator</div>
+        <div style="font-size:0.72em;color:var(--text-light);font-weight:600;margin-bottom:10px;">Locked accounts (EPF/NPS/401k) compounding to retirement</div>
+        <div id="roi-retirement-cards"></div>
+      </div>
+    </div>
+
+    <!-- ══ SIMULATOR TAB ══ -->
+    <div id="roi-panel-sim" style="display:none;">
+      <div style="background:white;border-radius:16px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:12px;">
+        <div style="font-weight:900;font-size:0.88em;color:var(--text-dark);margin-bottom:4px;">🎯 Contribution Simulator</div>
+        <div style="font-size:0.72em;color:var(--text-light);font-weight:600;margin-bottom:12px;">How much faster do you reach your goal with a small extra contribution?</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:0.7em;font-weight:800;color:var(--text-light);margin-bottom:4px;">CURRENT BALANCE</div>
+            <input type="number" id="roi-current-balance" oninput="renderROISimulator()" placeholder="0"
+              style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.88em;">
+          </div>
+          <div>
+            <div style="font-size:0.7em;font-weight:800;color:var(--text-light);margin-bottom:4px;">MONTHLY CONTRIBUTION</div>
+            <input type="number" id="roi-monthly-contrib" oninput="renderROISimulator()" placeholder="500"
+              style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.88em;">
+          </div>
+          <div>
+            <div style="font-size:0.7em;font-weight:800;color:var(--text-light);margin-bottom:4px;">ANNUAL RETURN (%)</div>
+            <input type="number" id="roi-annual-return" oninput="renderROISimulator()" placeholder="8" step="0.5"
+              style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.88em;">
+          </div>
+          <div>
+            <div style="font-size:0.7em;font-weight:800;color:var(--text-light);margin-bottom:4px;">TARGET AMOUNT</div>
+            <input type="number" id="roi-target" oninput="renderROISimulator()" placeholder="1000000"
+              style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #E8E8E8;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.88em;">
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+            <div style="font-size:0.78em;font-weight:900;color:var(--text-dark);">Extra monthly contribution</div>
+            <div style="font-size:0.82em;font-weight:900;color:#4F46E5;" id="roi-extra-label">+0/mo</div>
+          </div>
+          <input type="range" id="roi-extra-slider" min="0" max="20000" step="500" value="0"
+            oninput="document.getElementById('roi-extra-label').textContent='+₹'+Number(this.value).toLocaleString()+'/mo';renderROISimulator()"
+            style="width:100%;accent-color:#4F46E5;">
+          <div style="display:flex;justify-content:space-between;font-size:0.66em;color:var(--text-light);font-weight:700;margin-top:2px;">
+            <span>+0</span><span>+20,000/mo</span>
+          </div>
+        </div>
+        <div id="roi-simulator-result"></div>
+      </div>
+    </div>
+
+    <!-- hidden legacy compat -->
+    <div id="roi-portfolio-grid" style="display:none;"></div>
+    <div id="roi-accounts-list" style="display:none;"></div>
   </div>
 </div>
 
@@ -2420,7 +2485,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.16.2 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.17.0 · Built 2026-03</div>
   </div>
 
 
@@ -8288,136 +8353,603 @@ function switchMetal(type) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// ROI GROWTH LAB — Portfolio ROI + Compound Simulator + Retirement Cards
 // ══════════════════════════════════════════════════════════════════════
+// ROI GROWTH LAB v2 — Tabbed: Story | Funds | SIPs | Retire | What-If
+// ══════════════════════════════════════════════════════════════════════
+
+let _roiCurrentTab = 'story';
+let _roiFundSort   = 'gain';
+
+function switchROITab(tab) {
+  _roiCurrentTab = tab;
+  const tabs   = ['story','funds','sip','retire','sim'];
+  const panels = ['story','funds','sip','retire','sim'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('roi-tab-' + t);
+    if (!btn) return;
+    if (t === tab) { btn.classList.add('roi-tab-active'); }
+    else           { btn.classList.remove('roi-tab-active'); }
+  });
+  panels.forEach(p => {
+    const el = document.getElementById('roi-panel-' + p);
+    if (el) el.style.display = (p === tab) ? '' : 'none';
+  });
+  if (tab === 'story')  { renderROIStory(); }
+  if (tab === 'funds')  { renderROIFunds(_roiFundSort); }
+  if (tab === 'sip')    { renderROISIPs(); }
+  if (tab === 'retire') { renderROIRetirementCards(); renderROIRetireSummary(); }
+  if (tab === 'sim')    { renderROISimulator(); }
+}
+
 function renderROIScreen() {
-  renderROIPortfolioSummary();
-  renderROIAccountsList();
-  renderROIRetirementCards();
-  renderROISimulator();
   // Pre-fill simulator from profile
   const profile = getFHSProfile();
-  const nw = computeNetWorth();
-  const sym = currentCurrency?.symbol || '₹';
-  const region = profile?.region || 'IN';
-  if (!document.getElementById('roi-current-balance').value) {
-    // Pre-fill with total investable NW (exclude locked)
+  const region  = profile?.region || 'IN';
+  if (!document.getElementById('roi-current-balance')?.value) {
     const investable = (data._nwAccounts||[]).reduce((s,a) => {
-      const meta = NW_TYPE_META[a.type] || {};
-      const liq = a.liquidity || meta.liquidity || 'medium';
+      const liq = a.liquidity || (NW_TYPE_META[a.type]||{}).liquidity || 'medium';
       if (liq !== 'locked') s += nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
       return s;
     }, 0);
-    if (investable) document.getElementById('roi-current-balance').value = Math.round(investable);
+    const el = document.getElementById('roi-current-balance');
+    if (el && investable) el.value = Math.round(investable);
   }
-  if (!document.getElementById('roi-annual-return').value)
-    document.getElementById('roi-annual-return').value = region === 'US' ? '8' : '12';
-  if (!document.getElementById('roi-target').value && profile?.retirementAge && profile?.age) {
-    // Default target: FIRE corpus = 25× annual expenses
+  const arEl = document.getElementById('roi-annual-return');
+  if (arEl && !arEl.value) arEl.value = region === 'US' ? '8' : '12';
+  const tgEl = document.getElementById('roi-target');
+  if (tgEl && !tgEl.value && profile?.retirementAge && profile?.age) {
     const agg = getFHSMonthlyAggregates(6, profile);
-    if (agg?.avgExp) {
-      const target = Math.round(agg.avgExp * 12 * 25);
-      document.getElementById('roi-target').value = target;
-    }
+    if (agg?.avgExp) tgEl.value = Math.round(agg.avgExp * 12 * 25);
   }
-  renderROISimulator();
+  // Render active tab
+  switchROITab(_roiCurrentTab || 'story');
 }
 
-function renderROIPortfolioSummary() {
+// ── HELPER: extract MF investment data from all sources ──────────────
+function _buildROIData() {
   const sym = currentCurrency?.symbol || '₹';
-  const accounts = data._nwAccounts || [];
-  let totalVal = 0, totalCost = 0, withCost = 0;
-  accounts.forEach(a => {
-    const val = nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
-    totalVal += val;
-    if (a.investedAmount != null) {
-      totalCost += nwConvert ? nwConvert(a.investedAmount, a.currency) : a.investedAmount;
-      withCost++;
-    }
+
+  // All investment-type NW accounts
+  const INV_TYPES = new Set(['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold',
+    'mf_index','brokerage','brokerage_taxable','stocks_direct','nps','ppf','epf',
+    'retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','investment']);
+  const nwAccounts = (data._nwAccounts||[]).filter(a => INV_TYPES.has(a.type) && a.balance > 0);
+
+  // Aggregate all investment transactions grouped by fund name
+  const fundMap = {};  // name → { sipAmts[], sipDates[], totalInvested, txCount, lastDate, isActive }
+  const monthKeys = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
+  const monthlyTotals = {}; // YYYY-MM → total invested that month
+
+  monthKeys.forEach(mk => {
+    const txList = [...(data[mk].investments||[]), ...(data[mk].expenses||[])
+      .filter(e => (e.category||'').toLowerCase().includes('mutual') ||
+                   (e.category||'').toLowerCase().includes('sip') ||
+                   (e.category||'').toLowerCase().includes('investment'))];
+    txList.forEach(tx => {
+      const amt = nwConvert ? nwConvert(Number(tx.amount||0), tx.currency) : Number(tx.amount||0);
+      if (amt <= 0) return;
+      // Extract fund name from description
+      let fname = tx.description || '';
+      // Strip CAMS prefixes like "Sys. Investment HDFC EMandate (18/61) —"
+      fname = fname.replace(/^(Sys\.|NFO|Systematic|Purchase|Redemption)[^—–-]*[—–-]+\s*/i, '').trim();
+      fname = fname.replace(/\s*[-–—]\s*$/, '').trim() || 'Other Investments';
+      if (fname.length > 50) fname = fname.substring(0, 50);
+
+      if (!fundMap[fname]) fundMap[fname] = { sipAmts:[], sipDates:[], totalInvested:0, txCount:0, lastDate:'', redemptions:0 };
+      const entry = fundMap[fname];
+      if ((tx.category||'').toLowerCase() === 'redemption') {
+        entry.redemptions += amt;
+      } else {
+        entry.sipAmts.push(amt);
+        entry.sipDates.push(tx.date || mk + '-01');
+        entry.totalInvested += amt;
+        entry.txCount++;
+        if (!entry.lastDate || tx.date > entry.lastDate) entry.lastDate = tx.date || mk + '-01';
+      }
+      // Monthly cumulative
+      monthlyTotals[mk] = (monthlyTotals[mk] || 0) + (((tx.category||'').toLowerCase() === 'redemption') ? -amt : amt);
+    });
   });
-  const gain = totalVal - totalCost;
-  const gainPct = totalCost > 0 ? (gain / totalCost * 100) : null;
-  const gainColor = gain >= 0 ? '#10B981' : '#EF4444';
 
-  const el = document.getElementById('roi-portfolio-grid');
-  if (!el) return;
+  // Merge with NW accounts (add currentValue, type)
+  nwAccounts.forEach(a => {
+    const val = nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
+    const invested = a.investedAmount != null ? (nwConvert ? nwConvert(a.investedAmount, a.currency) : a.investedAmount) : null;
+    const name = a.name || 'Unknown';
+    // Try match to fundMap entry
+    let matched = null;
+    Object.keys(fundMap).forEach(k => {
+      if (!matched && (name.toLowerCase().includes(k.toLowerCase().substring(0,15)) ||
+                       k.toLowerCase().includes(name.toLowerCase().substring(0,15)))) {
+        matched = k;
+      }
+    });
+    const key = matched || name;
+    if (!fundMap[key]) fundMap[key] = { sipAmts:[], sipDates:[], totalInvested: invested||0, txCount:0, lastDate:'', redemptions:0 };
+    fundMap[key].currentValue = val;
+    fundMap[key].nwType = a.type;
+    fundMap[key].nwId   = a.id;
+    if (invested && !fundMap[key].totalInvested) fundMap[key].totalInvested = invested;
+    if (invested && fundMap[key].totalInvested < invested) fundMap[key].totalInvested = invested;
+  });
 
-  const cards = [
-    { label: 'Current Value', val: `${sym}${Math.round(totalVal).toLocaleString()}`, color: '#1E2A6E' },
-    { label: 'Total Invested', val: totalCost > 0 ? `${sym}${Math.round(totalCost).toLocaleString()}` : '—', color: '#374151' },
-    { label: 'Unrealised Gain', val: totalCost > 0 ? `${gain>=0?'+':''}${sym}${Math.round(Math.abs(gain)).toLocaleString()}` : '—', color: gainColor },
-    { label: 'Overall Return', val: gainPct !== null ? `${gainPct>=0?'+':''}${gainPct.toFixed(1)}%` : '—', color: gainColor },
-  ];
-  el.innerHTML = cards.map(c => `
-    <div style="background:#F8FAFF;border-radius:12px;padding:12px 14px;">
-      <div style="font-size:0.7em;font-weight:800;color:var(--text-light);margin-bottom:4px;">${c.label}</div>
-      <div style="font-weight:900;font-size:1em;color:${c.color};">${c.val}</div>
-    </div>`).join('');
-  if (withCost < accounts.length && accounts.length > 0) {
-    el.innerHTML += `<div style="grid-column:1/-1;font-size:0.72em;color:var(--text-light);font-weight:700;margin-top:4px;">
-      ℹ️ Cost basis available for ${withCost}/${accounts.length} accounts. Import via CAMS/Fidelity/Schwab for full picture.</div>`;
-  }
+  // Detect active SIPs: fund had a transaction in last 3 months
+  const now = new Date();
+  const cutoff = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().substring(0,7);
+  Object.keys(fundMap).forEach(k => {
+    const e = fundMap[k];
+    e.isActive = e.lastDate >= cutoff;
+    // Median SIP amount = typical monthly contribution
+    if (e.sipAmts.length) {
+      const sorted = [...e.sipAmts].sort((a,b)=>a-b);
+      e.medianSIP = sorted[Math.floor(sorted.length/2)];
+    } else { e.medianSIP = 0; }
+  });
+
+  return { fundMap, nwAccounts, monthlyTotals, monthKeys };
 }
 
-function renderROIAccountsList() {
+// ── STORY TAB ──────────────────────────────────────────────────────────
+function renderROIStory() {
   const sym = currentCurrency?.symbol || '₹';
-  const investmentTypes = ['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','brokerage','brokerage_taxable',
-    'retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','stocks_direct','nps','ppf','epf','investment'];
-  const allInvAccounts = (data._nwAccounts||[]).filter(a => investmentTypes.includes(a.type) && a.balance > 0);
-  const withCost  = allInvAccounts.filter(a => a.investedAmount != null && a.investedAmount > 0);
-  const noCost    = allInvAccounts.filter(a => !(a.investedAmount != null && a.investedAmount > 0));
-  const el = document.getElementById('roi-accounts-list');
-  if (!el) return;
-  if (!allInvAccounts.length) {
-    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-light);font-size:0.85em;font-weight:700;">
-      No investment accounts yet.<br>Import CAMS / Fidelity / Schwab files to populate this.</div>`;
+  const { fundMap, nwAccounts, monthlyTotals, monthKeys } = _buildROIData();
+
+  // Hero numbers
+  let totalVal = 0, totalInv = 0;
+  nwAccounts.forEach(a => {
+    totalVal += nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
+    if (a.investedAmount != null) totalInv += nwConvert ? nwConvert(a.investedAmount, a.currency) : a.investedAmount;
+  });
+  // Also sum from transactions if no NW accounts
+  if (!totalInv) {
+    Object.values(fundMap).forEach(e => { totalInv += e.totalInvested||0; });
+  }
+  const gain = totalVal - totalInv;
+  const gainPct = totalInv > 0 ? (gain / totalInv * 100) : null;
+  const gainCol = gain >= 0 ? '#34D399' : '#F87171';
+
+  const hv = document.getElementById('roi-hero-value');
+  const hg = document.getElementById('roi-hero-gain');
+  const hi = document.getElementById('roi-hero-invested');
+  const ha = document.getElementById('roi-hero-abs-gain');
+  const hp = document.getElementById('roi-hero-pct');
+  if (hv) hv.textContent = totalVal ? sym + Math.round(totalVal).toLocaleString() : '—';
+  if (hg) {
+    hg.textContent = gainPct != null
+      ? (gain >= 0 ? '▲ ' : '▼ ') + sym + Math.round(Math.abs(gain)).toLocaleString() + ' (' + gainPct.toFixed(1) + '%) unrealised'
+      : totalVal ? 'Add cost basis via CAMS import for ROI' : 'Import CAMS to see portfolio story';
+    hg.style.color = gainPct != null ? gainCol : 'rgba(255,255,255,0.6)';
+  }
+  if (hi) hi.textContent = totalInv ? sym + Math.round(totalInv).toLocaleString() : '—';
+  if (ha) { ha.textContent = gain ? sym + Math.round(Math.abs(gain)).toLocaleString() : '—'; ha.style.color = gainCol; }
+  if (hp) { hp.textContent = gainPct != null ? (gain>=0?'+':'') + gainPct.toFixed(1) + '%' : '—'; hp.style.color = gainCol; }
+
+  // Timeline chart
+  _drawTimeline(monthlyTotals, monthKeys);
+
+  // Donut chart
+  _drawDonut(nwAccounts);
+}
+
+function _drawTimeline(monthlyTotals, monthKeys) {
+  const canvas = document.getElementById('roi-timeline-canvas');
+  if (!canvas) return;
+  const sym = currentCurrency?.symbol || '₹';
+
+  // Build cumulative series
+  const keys = Object.keys(monthlyTotals).sort();
+  if (!keys.length) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth || 300;
+    ctx.fillStyle = '#9CA3AF';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No investment transactions yet', canvas.width/2, 60);
     return;
   }
 
-  const renderCard = a => {
+  // Cumulative invested
+  let cumulative = 0;
+  const points = keys.map(k => { cumulative += monthlyTotals[k]; return { month: k, val: Math.max(0, cumulative) }; });
+
+  const W = canvas.offsetWidth || 320;
+  canvas.width = W * window.devicePixelRatio || W;
+  canvas.height = 120 * (window.devicePixelRatio || 1);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = '120px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+  const PAD = { t:8, r:8, b:28, l:50 };
+  const cW = W - PAD.l - PAD.r;
+  const cH = 120 - PAD.t - PAD.b;
+
+  const maxVal = Math.max(...points.map(p=>p.val), 1);
+  const xOf = i => PAD.l + (i / (points.length - 1 || 1)) * cW;
+  const yOf = v => PAD.t + cH - (v / maxVal) * cH;
+
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + cH);
+  grad.addColorStop(0, 'rgba(79,70,229,0.25)');
+  grad.addColorStop(1, 'rgba(79,70,229,0.02)');
+
+  ctx.beginPath();
+  points.forEach((p,i) => i===0 ? ctx.moveTo(xOf(i), yOf(p.val)) : ctx.lineTo(xOf(i), yOf(p.val)));
+  ctx.lineTo(xOf(points.length-1), PAD.t+cH);
+  ctx.lineTo(xOf(0), PAD.t+cH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  points.forEach((p,i) => i===0 ? ctx.moveTo(xOf(i), yOf(p.val)) : ctx.lineTo(xOf(i), yOf(p.val)));
+  ctx.strokeStyle = '#4F46E5';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Y axis labels
+  ctx.fillStyle = '#9CA3AF';
+  ctx.font = '9px sans-serif';
+  ctx.textAlign = 'right';
+  [0, 0.5, 1].forEach(frac => {
+    const v = maxVal * frac;
+    const y = yOf(v);
+    const label = v >= 1e7 ? (v/1e7).toFixed(1)+'Cr' : v >= 1e5 ? (v/1e5).toFixed(0)+'L' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : Math.round(v);
+    ctx.fillText(label, PAD.l - 4, y + 3);
+  });
+
+  // X axis — first and last label
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#9CA3AF';
+  if (points.length) {
+    const fmt = m => { const [y,mo]=m.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo)-1]+' '+y.slice(2); };
+    ctx.fillText(fmt(points[0].month), xOf(0), PAD.t+cH+14);
+    if (points.length > 1) ctx.fillText(fmt(points[points.length-1].month), xOf(points.length-1), PAD.t+cH+14);
+  }
+
+  // Dot at end
+  const last = points[points.length-1];
+  ctx.beginPath();
+  ctx.arc(xOf(points.length-1), yOf(last.val), 4, 0, Math.PI*2);
+  ctx.fillStyle = '#4F46E5';
+  ctx.fill();
+
+  const legendEl = document.getElementById('roi-timeline-legend');
+  if (legendEl) {
+    legendEl.innerHTML = '<span style="font-size:0.7em;font-weight:700;color:#4F46E5;">⬛ Cumulative Invested</span>'
+      + ' <span style="font-size:0.7em;color:var(--text-light);font-weight:600;">(' + points.length + ' months of data)</span>';
+  }
+}
+
+function _drawDonut(nwAccounts) {
+  const canvas = document.getElementById('roi-donut-canvas');
+  const legend = document.getElementById('roi-donut-legend');
+  if (!canvas || !legend) return;
+  const sym = currentCurrency?.symbol || '₹';
+
+  const TYPE_LABEL = {
+    mf_equity:'MF Equity', mf_debt:'MF Debt', mf_elss:'ELSS', mf_hybrid:'MF Hybrid',
+    mf_gold:'Gold MF', mf_index:'Index MF', brokerage:'Brokerage', stocks_direct:'Stocks',
+    epf:'EPF', ppf:'PPF', nps:'NPS', retirement_401k:'401k', retirement_roth:'Roth IRA',
+    retirement_ira:'IRA', hsa:'HSA', ibond:'I-Bond', investment:'Investment',
+  };
+  const COLORS = ['#4F46E5','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#84CC16','#F97316','#EC4899','#6B7280'];
+
+  // Group by type
+  const groups = {};
+  nwAccounts.forEach(a => {
+    const lbl = TYPE_LABEL[a.type] || a.type;
+    const val = nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
+    groups[lbl] = (groups[lbl]||0) + val;
+  });
+  const entries = Object.entries(groups).sort((a,b)=>b[1]-a[1]);
+  const total = entries.reduce((s,[,v])=>s+v, 0);
+
+  if (!total) {
+    legend.innerHTML = '<div style="font-size:0.78em;color:var(--text-light);">No investment accounts yet</div>';
+    return;
+  }
+
+  const W = 88, H = 88, cx = W/2, cy = H/2, R = 36, r = 22;
+  canvas.width = W * (window.devicePixelRatio||1);
+  canvas.height = H * (window.devicePixelRatio||1);
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio||1, window.devicePixelRatio||1);
+
+  let angle = -Math.PI/2;
+  entries.forEach(([lbl,val],i) => {
+    const slice = (val/total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, angle, angle+slice);
+    ctx.closePath();
+    ctx.fillStyle = COLORS[i % COLORS.length];
+    ctx.fill();
+    angle += slice;
+  });
+  // Donut hole
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fillStyle = 'white';
+  ctx.fill();
+  // Center text
+  ctx.fillStyle = '#1E2A6E';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(entries.length + ' types', cx, cy+3);
+
+  legend.innerHTML = entries.slice(0,6).map(([lbl,val],i) =>
+    '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;">'
+    + '<div style="width:10px;height:10px;border-radius:3px;background:'+COLORS[i%COLORS.length]+';flex-shrink:0;"></div>'
+    + '<div style="font-size:0.72em;font-weight:800;color:var(--text-dark);flex:1;">' + lbl + '</div>'
+    + '<div style="font-size:0.7em;font-weight:900;color:var(--text-med);">' + (val/total*100).toFixed(0) + '%</div>'
+    + '</div>'
+  ).join('') + (entries.length > 6 ? '<div style="font-size:0.67em;color:var(--text-light);">+' + (entries.length-6) + ' more types</div>' : '');
+}
+
+// ── FUNDS TAB ──────────────────────────────────────────────────────────
+function sortROIFunds(by) {
+  _roiFundSort = by;
+  ['gain','value','worst','invested'].forEach(k => {
+    const btn = document.getElementById('rfbtn-'+k);
+    if (!btn) return;
+    if (k === by) { btn.classList.add('roi-sort-active'); }
+    else          { btn.classList.remove('roi-sort-active'); }
+  });
+  renderROIFunds(by);
+}
+
+function renderROIFunds(sortBy) {
+  const sym = currentCurrency?.symbol || '₹';
+  const el  = document.getElementById('roi-funds-list');
+  if (!el) return;
+
+  const INV_TYPES = new Set(['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold',
+    'mf_index','brokerage','brokerage_taxable','stocks_direct','nps','ppf','epf',
+    'retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','investment']);
+  const accounts = (data._nwAccounts||[]).filter(a => INV_TYPES.has(a.type) && a.balance > 0);
+
+  if (!accounts.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--text-light);font-size:0.85em;font-weight:700;background:white;border-radius:16px;">'
+      + '<div style="font-size:2em;margin-bottom:8px;">💼</div>Import CAMS to see fund-by-fund story</div>';
+    return;
+  }
+
+  // Enrich with SIP history from transactions
+  const { fundMap } = _buildROIData();
+
+  let funds = accounts.map(a => {
     const val  = nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
     const cost = a.investedAmount != null ? (nwConvert ? nwConvert(a.investedAmount, a.currency) : a.investedAmount) : null;
     const gain = cost != null ? val - cost : null;
-    const pct  = cost != null && cost > 0 ? gain / cost * 100 : null;
-    const bar  = cost != null && cost > 0 ? Math.min(100, Math.max(0, ((val/cost)*100 - 100))) : 0;
+    const pct  = cost && cost > 0 ? gain/cost*100 : null;
+    // Find SIP info
+    let sipInfo = null;
+    Object.entries(fundMap).forEach(([k,v]) => {
+      if (!sipInfo && (a.name.toLowerCase().includes(k.toLowerCase().substring(0,12)) ||
+                       k.toLowerCase().includes(a.name.toLowerCase().substring(0,12)))) sipInfo = v;
+    });
+    return { a, val, cost, gain, pct, sipInfo };
+  });
+
+  // Sort
+  if (sortBy === 'gain')     funds.sort((a,b) => (b.pct??-999) - (a.pct??-999));
+  if (sortBy === 'worst')    funds.sort((a,b) => (a.pct??999)  - (b.pct??999));
+  if (sortBy === 'value')    funds.sort((a,b) => b.val - a.val);
+  if (sortBy === 'invested') funds.sort((a,b) => (b.cost??0) - (a.cost??0));
+
+  const TYPE_COLOR = { mf_equity:'#4F46E5', mf_gold:'#F59E0B', mf_elss:'#10B981',
+    mf_debt:'#06B6D4', mf_hybrid:'#8B5CF6', epf:'#059669', ppf:'#047857',
+    brokerage:'#EF4444', stocks_direct:'#F97316', nps:'#6B7280', investment:'#1E2A6E' };
+
+  el.innerHTML = funds.map(({ a, val, cost, gain, pct, sipInfo }) => {
+    const barW = cost && val && cost > 0 ? Math.min(100, Math.max(2, (val/cost)*100 - 100 + 50)) : 50;
     const isGain = gain == null || gain >= 0;
-    const typeLabel = (a.type||'investment').replace('mf_','MF ').replace('_',' ');
-    return `
-    <div style="background:#F8FAFF;border-radius:12px;padding:12px 14px;margin-bottom:8px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-        <div style="flex:1;margin-right:8px;">
-          <div style="font-weight:900;font-size:0.85em;color:var(--text-dark);">${a.name.substring(0,40)}</div>
-          <div style="font-size:0.7em;color:var(--text-light);font-weight:700;margin-top:2px;">${typeLabel}${a.taxBucket ? ' · '+a.taxBucket : ''}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0;">
-          ${pct != null
-            ? `<div style="font-weight:900;font-size:0.88em;color:${pct>=0?'#10B981':'#EF4444'};">${pct>=0?'+':''}${pct.toFixed(1)}%</div>
-               <div style="font-size:0.72em;color:var(--text-light);font-weight:700;">${sym}${Math.round(Math.abs(gain)).toLocaleString()}</div>`
-            : `<div style="font-weight:900;font-size:0.88em;color:#1E2A6E;">${sym}${Math.round(val).toLocaleString()}</div>
-               <div style="font-size:0.68em;color:var(--text-light);font-style:italic;">no cost basis</div>`}
-        </div>
-      </div>
-      ${cost != null ? `<div style="height:6px;background:#E5E7EB;border-radius:4px;overflow:hidden;">
-        <div style="height:100%;width:${bar}%;background:${isGain?'#10B981':'#EF4444'};border-radius:4px;transition:width 0.4s;"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:0.69em;color:var(--text-light);font-weight:700;margin-top:3px;">
-        <span>Cost: ${sym}${Math.round(cost).toLocaleString()}</span>
-        <span>Value: ${sym}${Math.round(val).toLocaleString()}</span>
-      </div>` : ''}
-    </div>`;
+    const accentCol = pct != null ? (isGain ? '#10B981' : '#EF4444') : '#4F46E5';
+    const typeCol = TYPE_COLOR[a.type] || '#6B7280';
+    const typeLabel = (a.type||'').replace('mf_','').replace('_',' ').toUpperCase();
+    const sipCount = sipInfo?.txCount || 0;
+    const isActive = sipInfo?.isActive;
+    const medianSIP = sipInfo?.medianSIP || 0;
+
+    // Story line
+    let story = '';
+    if (sipCount > 0 && cost) {
+      story = sipCount + ' SIPs · ' + sym + Math.round(medianSIP).toLocaleString() + '/mo avg';
+      if (isActive) story += ' · 🟢 Active';
+      else          story += ' · ⭕ Paused';
+    } else if (cost) {
+      story = 'Cost basis: ' + sym + Math.round(cost).toLocaleString();
+    }
+
+    return '<div style="background:white;border-radius:14px;padding:13px;margin-bottom:8px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">'
+      +   '<div style="flex:1;margin-right:8px;">'
+      +     '<div style="font-weight:900;font-size:0.82em;color:var(--text-dark);line-height:1.3;">' + a.name.substring(0,45) + '</div>'
+      +     '<div style="display:flex;align-items:center;gap:5px;margin-top:3px;">'
+      +       '<span style="background:'+typeCol+'18;color:'+typeCol+';font-size:0.6em;font-weight:800;padding:2px 6px;border-radius:6px;">' + typeLabel + '</span>'
+      +       (story ? '<span style="font-size:0.65em;color:var(--text-light);font-weight:700;">' + story + '</span>' : '')
+      +     '</div>'
+      +   '</div>'
+      +   '<div style="text-align:right;flex-shrink:0;">'
+      +     '<div style="font-weight:900;font-size:0.9em;color:var(--text-dark);">' + sym + Math.round(val).toLocaleString() + '</div>'
+      +     (pct != null
+        ? '<div style="font-weight:800;font-size:0.78em;color:'+accentCol+';">' + (pct>=0?'+':'') + pct.toFixed(1) + '%</div>'
+        : '<div style="font-size:0.65em;color:var(--text-light);font-style:italic;">no cost basis</div>')
+      +   '</div>'
+      + '</div>'
+      + (cost != null
+        ? '<div style="height:5px;background:#F3F4F6;border-radius:4px;overflow:hidden;margin-bottom:3px;">'
+          + '<div style="height:100%;width:' + barW + '%;background:' + accentCol + ';border-radius:4px;"></div>'
+          + '</div>'
+          + '<div style="display:flex;justify-content:space-between;font-size:0.65em;color:var(--text-light);font-weight:700;">'
+          + '<span>Invested ' + sym + Math.round(cost).toLocaleString() + '</span>'
+          + '<span>' + (gain>=0?'▲ +':'▼ ') + sym + Math.round(Math.abs(gain)).toLocaleString() + ' gain</span>'
+          + '</div>'
+        : '')
+      + '</div>';
+  }).join('');
+}
+
+// ── SIP TAB ──────────────────────────────────────────────────────────
+function renderROISIPs() {
+  const sym = currentCurrency?.symbol || '₹';
+  const el  = document.getElementById('roi-sip-list');
+  const totEl = document.getElementById('roi-sip-total');
+  const subEl = document.getElementById('roi-sip-subtitle');
+  if (!el) return;
+
+  const { fundMap } = _buildROIData();
+  const allFunds = Object.entries(fundMap).filter(([,v]) => v.txCount > 0);
+  if (!allFunds.length) {
+    el.innerHTML = '<div style="background:white;border-radius:14px;padding:24px;text-align:center;color:var(--text-light);font-size:0.85em;font-weight:700;">'
+      + '🔄 Import CAMS transaction history to see your SIP tracker</div>';
+    if (totEl) totEl.textContent = '—';
+    return;
+  }
+
+  const active   = allFunds.filter(([,v]) => v.isActive).sort((a,b)=>(b[1].medianSIP||0)-(a[1].medianSIP||0));
+  const paused   = allFunds.filter(([,v]) => !v.isActive).sort((a,b)=>(b[1].medianSIP||0)-(a[1].medianSIP||0));
+  const totalSIP = active.reduce((s,[,v])=>s+(v.medianSIP||0), 0);
+
+  if (totEl) totEl.textContent = sym + Math.round(totalSIP).toLocaleString() + '/mo';
+  if (subEl) subEl.textContent = active.length + ' active · ' + paused.length + ' paused';
+
+  const renderFundSIP = ([name, v], isAct) => {
+    const amt     = v.medianSIP || 0;
+    const total   = v.totalInvested || 0;
+    const count   = v.txCount || 0;
+    const lastD   = v.lastDate || '';
+    const lastMo  = lastD ? lastD.substring(0,7) : '—';
+    const dotCol  = isAct ? '#10B981' : '#9CA3AF';
+    const bgCol   = isAct ? '#F0FDF4' : '#F9FAFB';
+    const border  = isAct ? '1.5px solid #BBF7D0' : '1.5px solid #E5E7EB';
+
+    // SIP consistency bar (last 12 months)
+    const now12  = [];
+    for (let i=11; i>=0; i--) { const d=new Date(); d.setMonth(d.getMonth()-i); now12.push(d.toISOString().substring(0,7)); }
+    const sipMonthSet = new Set(v.sipDates.map(d=>d.substring(0,7)));
+    const barHtml = now12.map(mo => {
+      const active = sipMonthSet.has(mo);
+      return '<div style="width:6px;height:18px;border-radius:3px;background:'+(active?(isAct?'#10B981':'#9CA3AF'):'#E5E7EB')+';"></div>';
+    }).join('');
+
+    return '<div style="border-radius:14px;padding:13px;margin-bottom:8px;background:'+bgCol+';border:'+border+';">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">'
+      +   '<div style="flex:1;margin-right:8px;">'
+      +     '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">'
+      +       '<div style="width:7px;height:7px;border-radius:50%;background:'+dotCol+';flex-shrink:0;"></div>'
+      +       '<div style="font-weight:900;font-size:0.8em;color:var(--text-dark);line-height:1.3;">' + name.substring(0,42) + '</div>'
+      +     '</div>'
+      +     '<div style="font-size:0.65em;color:var(--text-light);font-weight:700;margin-left:12px;">'
+      +       count + ' transactions · Last: ' + lastMo
+      +     '</div>'
+      +   '</div>'
+      +   '<div style="text-align:right;flex-shrink:0;">'
+      +     (amt ? '<div style="font-weight:900;font-size:0.88em;color:var(--text-dark);">' + sym + Math.round(amt).toLocaleString() + '/mo</div>' : '')
+      +     '<div style="font-size:0.68em;color:var(--text-light);font-weight:700;">Total ' + sym + Math.round(total).toLocaleString() + '</div>'
+      +   '</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:3px;align-items:center;">'
+      +   barHtml
+      +   '<span style="font-size:0.6em;color:var(--text-light);margin-left:4px;">12mo</span>'
+      + '</div>'
+      + '</div>';
   };
 
   let html = '';
-  if (withCost.length) {
-    html += withCost.map(renderCard).join('');
+  if (active.length) {
+    html += '<div style="font-size:0.72em;font-weight:900;color:#065F46;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🟢 Active SIPs (' + active.length + ')</div>';
+    html += active.map(f => renderFundSIP(f, true)).join('');
   }
-  if (noCost.length) {
-    html += `<div style="font-size:0.75em;font-weight:800;color:#F59E0B;margin:12px 0 6px;">⚠️ ${noCost.length} account(s) missing cost basis — edit to add Invested Amount:</div>`;
-    html += noCost.map(renderCard).join('');
+  if (paused.length) {
+    html += '<div style="font-size:0.72em;font-weight:900;color:#6B7280;text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 6px;">⭕ Paused / Completed (' + paused.length + ')</div>';
+    html += paused.map(f => renderFundSIP(f, false)).join('');
   }
   el.innerHTML = html;
 }
 
+// ── RETIRE TAB ──────────────────────────────────────────────────────
+function renderROIRetireSummary() {
+  const sym = currentCurrency?.symbol || '₹';
+  const el  = document.getElementById('roi-retire-summary');
+  if (!el) return;
+  const profile  = getFHSProfile();
+  const age      = profile?.age || 35;
+  const retAge   = profile?.retirementAge || 60;
+  const yearsLeft = Math.max(0, retAge - age);
+  const RET_TYPES = new Set(['epf','ppf','nps','retirement_401k','retirement_roth','retirement_ira']);
+  const retAccs  = (data._nwAccounts||[]).filter(a => RET_TYPES.has(a.type) && a.balance > 0);
+  const totalRet = retAccs.reduce((s,a) => s + (nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0)), 0);
+  if (!totalRet) return;
+  const annReturn = 10;
+  const projected = totalRet * Math.pow(1 + annReturn/100, yearsLeft);
+  el.innerHTML = '<div style="background:linear-gradient(135deg,#064E3B,#065F46);border-radius:16px;padding:14px;color:white;margin-bottom:0;">'
+    + '<div style="font-size:0.68em;font-weight:800;opacity:0.7;text-transform:uppercase;margin-bottom:4px;">Retirement Corpus Now</div>'
+    + '<div style="font-size:1.5em;font-weight:900;margin-bottom:2px;">' + sym + Math.round(totalRet).toLocaleString() + '</div>'
+    + '<div style="font-size:0.78em;opacity:0.85;font-weight:700;">→ Grows to <b>' + sym + Math.round(projected).toLocaleString() + '</b> by age ' + retAge + ' at 10% p.a.</div>'
+    + '<div style="font-size:0.7em;opacity:0.6;margin-top:4px;">' + retAccs.length + ' account(s) · ' + yearsLeft + ' years to retirement</div>'
+    + '</div>';
+}
+
+function renderROIRetirementCards() {
+  const sym = currentCurrency?.symbol || '₹';
+  const profile = getFHSProfile();
+  const age = profile?.age || 35;
+  const retAge = profile?.retirementAge || 60;
+  const yearsLeft = Math.max(0, retAge - age);
+  const annReturn = 10;
+  const r = annReturn / 100 / 12;
+  const el = document.getElementById('roi-retirement-cards');
+  if (!el) return;
+
+  const retirementTypes = ['epf','ppf','nps','retirement_401k','retirement_roth','retirement_ira'];
+  const retAccounts = (data._nwAccounts||[]).filter(a => retirementTypes.includes(a.type) && a.balance > 0);
+
+  if (!retAccounts.length) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-light);font-size:0.82em;font-weight:700;">'
+      + 'No retirement accounts yet.<br>Import EPF / NPS / 401k via CAMS or add manually.</div>';
+    return;
+  }
+
+  el.innerHTML = retAccounts.map(a => {
+    const bal = nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
+    const projected = bal * Math.pow(1 + annReturn/100, yearsLeft);
+    const monthlyContrib = a._monthlyTotal || 1000;
+    let projWithSIP = bal;
+    for (let i=0; i<yearsLeft*12; i++) projWithSIP = projWithSIP*(1+r)+monthlyContrib;
+    const extra = projWithSIP - projected;
+
+    return '<div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:14px;padding:13px;margin-bottom:10px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
+      +   '<div><div style="font-weight:900;font-size:0.83em;color:#065F46;">' + a.name.substring(0,35) + '</div>'
+      +   '<div style="font-size:0.68em;color:#047857;font-weight:700;margin-top:2px;">' + a.type.toUpperCase() + ' · ' + yearsLeft + 'y to retirement · ' + annReturn + '% p.a.</div></div>'
+      +   '<div style="font-weight:900;font-size:0.9em;color:#065F46;">' + sym + Math.round(bal).toLocaleString() + '</div>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
+      +   '<div style="background:white;border-radius:10px;padding:10px;text-align:center;">'
+      +     '<div style="font-size:0.62em;font-weight:800;color:var(--text-light);">AT ' + retAge + ' NO SIP</div>'
+      +     '<div style="font-weight:900;font-size:0.9em;color:#065F46;margin-top:3px;">' + sym + Math.round(projected).toLocaleString() + '</div>'
+      +   '</div>'
+      +   '<div style="background:white;border-radius:10px;padding:10px;text-align:center;border:2px solid #34D399;">'
+      +     '<div style="font-size:0.62em;font-weight:800;color:#047857;">+' + sym + monthlyContrib.toLocaleString() + '/MO SIP</div>'
+      +     '<div style="font-weight:900;font-size:0.9em;color:#065F46;margin-top:3px;">' + sym + Math.round(projWithSIP).toLocaleString() + '</div>'
+      +     '<div style="font-size:0.62em;color:#10B981;font-weight:700;">🚀 +' + sym + Math.round(extra).toLocaleString() + ' extra</div>'
+      +   '</div>'
+      + '</div>'
+      + '<div style="font-size:0.68em;color:#047857;font-weight:700;background:rgba(52,211,153,0.1);border-radius:8px;padding:5px 8px;text-align:center;">'
+      + '💡 Adding ' + sym + monthlyContrib.toLocaleString() + '/mo = ' + sym + Math.round(extra).toLocaleString() + ' more at retirement'
+      + '</div></div>';
+  }).join('');
+}
+
+// ── PORTFOLIO SUMMARY (legacy compat) ─────────────────────────────
+function renderROIPortfolioSummary() {}  // no-op — merged into Story tab
+function renderROIAccountsList() {}       // no-op — merged into Funds tab
+
+// ── SIMULATOR ────────────────────────────────────────────────────────
 function renderROISimulator() {
   const sym = currentCurrency?.symbol || '₹';
   const balance   = parseFloat(document.getElementById('roi-current-balance')?.value) || 0;
@@ -8434,7 +8966,6 @@ function renderROISimulator() {
     while (cur < tgt && months < 1200) { cur = cur * (1 + rateM) + mon; months++; }
     return months < 1200 ? months : null;
   }
-
   function projectValue(bal, mon, rateM, months) {
     let v = bal;
     for (let i = 0; i < months; i++) v = v * (1 + rateM) + mon;
@@ -8444,10 +8975,10 @@ function renderROISimulator() {
   const el = document.getElementById('roi-simulator-result');
   if (!el) return;
 
-  const years = [5, 10, 20, 30].filter(y => y * 12 > 0);
+  const years = [5, 10, 20, 30];
   const projections = years.map(y => ({
     years: y,
-    base: projectValue(balance, monthly, r, y*12),
+    base:  projectValue(balance, monthly, r, y*12),
     boost: projectValue(balance, monthly + extra, r, y*12),
   }));
 
@@ -8456,7 +8987,6 @@ function renderROISimulator() {
   const savedMonths = m1 !== null && m2 !== null ? m1 - m2 : null;
 
   let html = '';
-
   if (target > 0 && m1 !== null) {
     const y1 = Math.floor(m1/12), mo1 = m1%12;
     const y2 = m2 !== null ? Math.floor(m2/12) : null;
@@ -8478,22 +9008,21 @@ function renderROISimulator() {
     </div>`;
   }
 
-  // Projection bars
   html += `<div style="font-weight:900;font-size:0.82em;color:var(--text-dark);margin-bottom:10px;">📈 Projected Value</div>`;
   html += projections.map(p => {
     const diff = p.boost - p.base;
     const maxVal = Math.max(p.boost, p.base, target || 1);
-    const baseW = Math.round(p.base / maxVal * 100);
+    const baseW  = Math.round(p.base / maxVal * 100);
     const boostW = Math.round(p.boost / maxVal * 100);
     return `<div style="margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;font-size:0.72em;font-weight:800;color:var(--text-light);margin-bottom:5px;">
         <span>${p.years} years</span>
         ${extra > 0 ? `<span style="color:#4F46E5;">+${sym}${Math.round(diff).toLocaleString()} extra</span>` : ''}
       </div>
-      <div style="background:#E5E7EB;border-radius:6px;height:10px;overflow:visible;position:relative;margin-bottom:3px;">
+      <div style="background:#E5E7EB;border-radius:6px;height:10px;overflow:hidden;margin-bottom:3px;">
         <div style="height:100%;width:${baseW}%;background:#1E2A6E;border-radius:6px;"></div>
       </div>
-      ${extra > 0 ? `<div style="background:#EDE9FE;border-radius:6px;height:10px;overflow:visible;position:relative;margin-bottom:3px;">
+      ${extra > 0 ? `<div style="background:#EDE9FE;border-radius:6px;height:10px;overflow:hidden;margin-bottom:3px;">
         <div style="height:100%;width:${boostW}%;background:#4F46E5;border-radius:6px;"></div>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between;font-size:0.7em;font-weight:800;color:var(--text-dark);">
@@ -8502,63 +9031,7 @@ function renderROISimulator() {
       </div>
     </div>`;
   }).join('');
-
   el.innerHTML = html;
-}
-
-function renderROIRetirementCards() {
-  const sym = currentCurrency?.symbol || '₹';
-  const profile = getFHSProfile();
-  const age = profile?.age || 35;
-  const retAge = profile?.retirementAge || 60;
-  const yearsLeft = Math.max(0, retAge - age);
-  const annReturn = parseFloat(document.getElementById('roi-annual-return')?.value) || (profile?.region === 'US' ? 7 : 10);
-  const r = annReturn / 100 / 12;
-  const el = document.getElementById('roi-retirement-cards');
-  if (!el) return;
-
-  const retirementTypes = ['epf','ppf','nps','retirement_401k','retirement_roth','retirement_ira'];
-  const retAccounts = (data._nwAccounts||[]).filter(a => retirementTypes.includes(a.type) && a.balance > 0);
-
-  if (!retAccounts.length) {
-    el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-light);font-size:0.82em;font-weight:700;">
-      No retirement accounts imported yet.<br>Import EPF / NPS / 401k via CAMS or Fidelity.</div>`;
-    return;
-  }
-
-  el.innerHTML = retAccounts.map(a => {
-    const bal = nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
-    const projected = bal * Math.pow(1 + annReturn/100, yearsLeft);
-    // Use actual monthly contribution if available from import/quick-entry
-    const monthlyContrib = a._monthlyTotal || (a.investedAmount && yearsLeft ? Math.round(a.investedAmount / (yearsLeft * 12)) : 500);
-    let projWithSIP = bal;
-    for (let i = 0; i < yearsLeft*12; i++) projWithSIP = projWithSIP*(1+r)+monthlyContrib;
-
-    return `<div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:14px;padding:14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div>
-          <div style="font-weight:900;font-size:0.85em;color:#065F46;">${a.name.substring(0,35)}</div>
-          <div style="font-size:0.7em;color:#047857;font-weight:700;">${a.type} · ${yearsLeft}y to retirement</div>
-        </div>
-        <div style="font-weight:900;font-size:0.92em;color:#065F46;">${sym}${Math.round(bal).toLocaleString()}</div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-        <div style="background:white;border-radius:10px;padding:10px;text-align:center;">
-          <div style="font-size:0.65em;font-weight:800;color:var(--text-light);">AT ${retAge} (current)</div>
-          <div style="font-weight:900;font-size:0.95em;color:#065F46;">${sym}${Math.round(projected).toLocaleString()}</div>
-          <div style="font-size:0.65em;color:var(--text-light);">${annReturn}% p.a.</div>
-        </div>
-        <div style="background:white;border-radius:10px;padding:10px;text-align:center;border:2px solid #34D399;">
-          <div style="font-size:0.65em;font-weight:800;color:#047857;">+${sym}${monthlyContrib}/MO EXTRA</div>
-          <div style="font-weight:900;font-size:0.95em;color:#065F46;">${sym}${Math.round(projWithSIP).toLocaleString()}</div>
-          <div style="font-size:0.65em;color:#047857;">🚀 +${sym}${Math.round(projWithSIP-projected).toLocaleString()} more</div>
-        </div>
-      </div>
-      <div style="font-size:0.7em;color:#047857;font-weight:700;background:rgba(52,211,153,0.1);border-radius:8px;padding:6px 8px;text-align:center;">
-        💡 Adding ${sym}${monthlyContrib.toLocaleString()}/mo today = ${sym}${Math.round(projWithSIP-projected).toLocaleString()} more at retirement
-      </div>
-    </div>`;
-  }).join('');
 }
 
 function renderMetals() {
