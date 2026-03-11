@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.18.1 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.18.2 · Built 2026-03</div>
   </div>
 
 
@@ -15541,25 +15541,7 @@ function renderResetSummary() {
     { id: 'robinhood', label: 'Robinhood',     sourcePrefix: 'robinhood', clearFn: "clearDataset('robinhood')" },
   ];
 
-  IMPORT_SOURCE_CONFIG.forEach(cfg => {
-    let txCount = 0;
-    monthKeys2.forEach(mk => {
-      ['expenses','income','investments'].forEach(t => {
-        txCount += (data[mk][t]||[]).filter(r => String(r._source||'').startsWith(cfg.sourcePrefix)).length;
-      });
-    });
-    const nwCount = (data._nwAccounts||[]).filter(a =>
-      String(a._source||a.source||'').startsWith(cfg.sourcePrefix)
-    ).length;
-    const text = txCount + nwCount > 0
-      ? `${txCount} transactions · ${nwCount} NW accounts`
-      : '—';
-    // Populate all matching elements (settings panel + import panel use different IDs)
-    [`reset-${cfg.id}-count`, `reset-${cfg.id}-count-settings`, `reset-${cfg.id}-count2`].forEach(elId => {
-      const el2 = document.getElementById(elId);
-      if (el2) el2.textContent = text;
-    });
-  });
+  // Import source counts now rendered inline by _renderImportSourceRows()
 
   // ── Dynamically build the import sources rows in both reset panels ──
   _renderImportSourceRows();
@@ -15577,16 +15559,18 @@ function _renderImportSourceRows() {
   ];
   const monthKeys2 = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k));
 
-  // Only show sources that actually have data
-  const activeRows = IMPORT_SOURCE_CONFIG.filter(cfg => {
-    let has = false;
+  // Count data per source (show all sources always, with 0 if empty)
+  const activeRows = IMPORT_SOURCE_CONFIG.map(cfg => {
+    let txCount = 0;
     monthKeys2.forEach(mk => {
       ['expenses','income','investments'].forEach(t => {
-        if ((data[mk][t]||[]).some(r => String(r._source||'').startsWith(cfg.sourcePrefix))) has = true;
+        txCount += (data[mk][t]||[]).filter(r => String(r._source||'').startsWith(cfg.sourcePrefix)).length;
       });
     });
-    if ((data._nwAccounts||[]).some(a => String(a._source||a.source||'').startsWith(cfg.sourcePrefix))) has = true;
-    return has;
+    const nwCount = (data._nwAccounts||[]).filter(a =>
+      String(a._source||a.source||'').startsWith(cfg.sourcePrefix)
+    ).length;
+    return { ...cfg, _txCount: txCount, _nwCount: nwCount };
   });
 
   const rowHTML = (cfg, styleSmall) => {
@@ -15596,53 +15580,33 @@ function _renderImportSourceRows() {
     const btnPad = styleSmall ? '6px 12px' : '7px 14px';
     const btnFont = styleSmall ? '0.75em' : '0.78em';
     const radius = styleSmall ? '10px' : '12px';
+    const tx = cfg._txCount || 0;
+    const nw = cfg._nwCount || 0;
+    const countText = (tx > 0 || nw > 0)
+      ? `${tx} transactions · ${nw} NW accounts`
+      : 'No data imported yet';
+    const btnStyle = (tx > 0 || nw > 0)
+      ? `background:#FFF0F0;color:#EF4444;`
+      : `background:#F5F5F5;color:#9CA3AF;`;
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:${pad};background:#F8F8F8;border-radius:${radius};">
       <div>
         <div style="font-weight:800;font-size:${fontSize};">${cfg.emoji} ${cfg.label}</div>
-        <div style="font-size:${subFontSize};color:var(--text-light);font-weight:600;" id="reset-${cfg.id}-count-dyn">—</div>
+        <div style="font-size:${subFontSize};color:var(--text-light);font-weight:600;">${countText}</div>
       </div>
-      <button onclick="clearDataset('${cfg.clearType}')" style="background:#FFF0F0;border:none;border-radius:8px;padding:${btnPad};font-weight:800;font-size:${btnFont};color:#EF4444;cursor:pointer;flex-shrink:0;">Clear</button>
+      <button onclick="clearDataset('${cfg.clearType}')" style="${btnStyle}border:none;border-radius:8px;padding:${btnPad};font-weight:800;font-size:${btnFont};cursor:pointer;flex-shrink:0;">Clear</button>
     </div>`;
   };
 
   // Render into settings panel container
   const settingsContainer = document.getElementById('reset-import-sources-settings');
   if (settingsContainer) {
-    settingsContainer.innerHTML = activeRows.length
-      ? activeRows.map(cfg => rowHTML(cfg, true)).join('')
-      : '<div style="font-size:0.78em;color:var(--text-light);padding:8px 0;">No import data found</div>';
-    // Update dyn count els
-    activeRows.forEach(cfg => {
-      let txCount = 0;
-      monthKeys2.forEach(mk => {
-        ['expenses','income','investments'].forEach(t => {
-          txCount += (data[mk][t]||[]).filter(r => String(r._source||'').startsWith(cfg.sourcePrefix)).length;
-        });
-      });
-      const nwCount = (data._nwAccounts||[]).filter(a => String(a._source||a.source||'').startsWith(cfg.sourcePrefix)).length;
-      const el2 = document.getElementById(`reset-${cfg.id}-count-dyn`);
-      if (el2) el2.textContent = txCount + nwCount > 0 ? `${txCount} transactions · ${nwCount} NW accounts` : '—';
-    });
+    settingsContainer.innerHTML = activeRows.map(cfg => rowHTML(cfg, true)).join('');
   }
 
   // Render into import tab container
   const importContainer = document.getElementById('reset-import-sources-import');
   if (importContainer) {
-    importContainer.innerHTML = activeRows.length
-      ? activeRows.map(cfg => rowHTML(cfg, false)).join('')
-      : '<div style="font-size:0.82em;color:var(--text-light);padding:8px 0;">No import data found</div>';
-    // Update dyn count els (same IDs — only one panel visible at a time, so ok)
-    activeRows.forEach(cfg => {
-      let txCount = 0;
-      monthKeys2.forEach(mk => {
-        ['expenses','income','investments'].forEach(t => {
-          txCount += (data[mk][t]||[]).filter(r => String(r._source||'').startsWith(cfg.sourcePrefix)).length;
-        });
-      });
-      const nwCount = (data._nwAccounts||[]).filter(a => String(a._source||a.source||'').startsWith(cfg.sourcePrefix)).length;
-      const el2 = document.getElementById(`reset-${cfg.id}-count-dyn`);
-      if (el2) el2.textContent = txCount + nwCount > 0 ? `${txCount} transactions · ${nwCount} NW accounts` : '—';
-    });
+    importContainer.innerHTML = activeRows.map(cfg => rowHTML(cfg, false)).join('');
   }
 }
 
