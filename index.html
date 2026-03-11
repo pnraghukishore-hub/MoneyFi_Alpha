@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.3 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.4 · Built 2026-03</div>
   </div>
 
 
@@ -14537,8 +14537,8 @@ function parseZerodhaRows(rawRows, zerodhaType) {
     // "Other Debits and Credits" sheet — import as expense transactions
     return parseZerodhaDebitsCredits(headers, rows, cur);
   } else if (hasBuyValue) {
-    // P&L statement — extract holdings from open positions
-    return parseZerodhaPnL(headers, rows, cur);
+    // P&L statement — extract holdings from open positions + realized P&L transactions
+    return parseZerodhaPnL(headers, rows, cur, rawRows);
   } else if (zerodhaType === 'tradebook' || hasTradeType || hasOrderId) {
     return parseZerodhaTradebook(headers, rows, cur);
   } else {
@@ -14617,12 +14617,25 @@ function parseZerodhaHoldings(headers, rows, cur) {
   return records;
 }
 
-function parseZerodhaPnL(headers, rows, cur) {
+function parseZerodhaPnL(headers, rows, cur, rawRows) {
   // P&L Statement: Symbol, ISIN, Quantity(traded), Buy Value, Sell Value, Realized P&L,
   //                Realized P&L Pct., Previous Closing Price, Open Quantity, Open Quantity Type,
   //                Open Value, Unrealized P&L, Unrealized P&L Pct.
   const records = [];
   const col = k => headers.findIndex(h => h.includes(k));
+
+  // Extract period end date from header: "P&L Statement for Equity from YYYY-MM-DD to YYYY-MM-DD"
+  let pnlEndDate = localDateStr(); // fallback to today
+  if (rawRows) {
+    for (let i = 0; i < Math.min(rawRows.length, 20); i++) {
+      for (let j = 0; j < rawRows[i].length; j++) {
+        const cell = String(rawRows[i][j] || '');
+        const m = cell.match(/from\s+(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})/i);
+        if (m) { pnlEndDate = m[2]; break; }
+      }
+      if (pnlEndDate !== localDateStr()) break;
+    }
+  }
   const cSym      = col('symbol') >= 0 ? col('symbol') : col('instrument');
   const cOpenQty  = col('open quantity');
   const cOpenVal  = col('open value');
@@ -14656,11 +14669,11 @@ function parseZerodhaPnL(headers, rows, cur) {
       });
     }
 
-    // Realized P&L rows → income/loss transaction
+    // Realized P&L rows → income/loss transaction (dated to period end)
     const realPnl = parseFloat(String(row[cRealPnl] || '0').replace(/[,₹]/g,'')) || 0;
     if (Math.abs(realPnl) > 0) {
       records.push({
-        date: localDateStr(),
+        date: pnlEndDate,
         description: `${symbol} — Realized P&L`,
         amount: Math.abs(realPnl),
         currency: cur,
