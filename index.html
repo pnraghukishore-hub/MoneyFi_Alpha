@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.18.2 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.0 · Built 2026-03</div>
   </div>
 
 
@@ -11311,6 +11311,34 @@ function inferGeography(acc) {
 
 // Silent one-time migration: tag all existing NW accounts that lack assetClass,
 // and fix any Zerodha accounts saved with wrong type:'investment' from pre-v3.17.3
+
+// ── CAMS sebiCategory migration — re-classify existing MF NW accounts ──
+// Called once on load. Safe to call repeatedly (idempotent).
+function migrateSebiCategory() {
+  const MF_TYPES = ['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold'];
+  const accts = data._nwAccounts || [];
+  let changed = 0;
+  accts.forEach(acc => {
+    if (!MF_TYPES.includes(acc.type)) return;
+    if (!acc.name) return;
+    const cls = classifyScheme(acc.name);
+    // Update type if classifier gives a more specific one
+    const newType = cls.assetClass === 'GOLD' ? 'mf_gold'
+      : cls.taxBucket === 'elss_80c' ? 'mf_elss'
+      : cls.assetClass === 'DEBT' ? 'mf_debt'
+      : cls.assetClass === 'HYBRID' ? 'mf_hybrid'
+      : 'mf_equity';
+    let dirty = false;
+    if (acc.sebiCategory !== cls.sebiCategory) { acc.sebiCategory = cls.sebiCategory; dirty = true; }
+    if (acc.taxBucket   !== cls.taxBucket)   { acc.taxBucket   = cls.taxBucket;   dirty = true; }
+    if (acc.liquidity   !== cls.liquidity)   { acc.liquidity   = cls.liquidity;   dirty = true; }
+    if (cls.lockIn && !acc.lockIn)           { acc.lockIn      = cls.lockIn;      dirty = true; }
+    if (acc.type !== newType)                { acc.type        = newType;         dirty = true; }
+    if (dirty) changed++;
+  });
+  if (changed > 0) { save(); }
+}
+
 function migrateAssetClassTags() {
   if (!data._nwAccounts || data._nwAccounts.length === 0) return;
   let changed = 0;
@@ -11492,16 +11520,16 @@ function computeNetWorth() {
   const reFromImport = (data._realEstate || []).map((p, idx) => {
     const cv = Number(p.currentValue || p.purchaseValue || 0);
     const curr = (p.currency || 'USD').toUpperCase();
-    // Store raw value + real currency — let nwConvert handle conversion once, consistently
     const nameParts = ['🏡', p.description || 'Property'];
     if (p.country && p.country !== 'US') nameParts.push(p.country);
     return {
       id: 'import_re_' + idx,
+      _reIdx: idx,          // track original index for edit/delete
       name: nameParts.join(' '),
-      balance: cv,      // raw value in original currency
-      currency: curr,   // nwConvert will convert correctly
+      balance: cv,
+      currency: curr,
       lastUpdated: p.date || '',
-      _imported: true,
+      _isREImport: true,    // separate flag so swipe still works
       type: 'realestate',
       meta: {
         purchaseValue: p.purchaseValue,
@@ -11549,6 +11577,88 @@ function computeNetWorth() {
 }
 
 // ── Render Net Worth ──
+
+
+// ── MF NW Section: grouped by sebiCategory ──────────────────────────
+function buildNWMFBody(accounts, cfg, sectionTotal, addBtnLabel, t) {
+  // Group by sebiCategory
+  const groups = {};
+  accounts.forEach(acc => {
+    const cat = acc.sebiCategory || 'Other';
+    if (!groups[cat]) groups[cat] = { accounts: [], total: 0 };
+    groups[cat].accounts.push(acc);
+    groups[cat].total += acc._val || 0;
+  });
+
+  const renderRow = acc => {
+    const pct     = sectionTotal > 0 ? Math.min(acc._val / sectionTotal, 1) : 0;
+    const dateStr = acc.lastUpdated
+      ? new Date(acc.lastUpdated + 'T00:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'})
+      : '';
+    const metaLine   = buildAccountMetaLine(acc);
+    const valColor   = cfg.color;
+    const swipeActions = acc._imported ? '' :
+      `<div class="nw-swipe-actions">
+        <button class="swipe-btn swipe-btn-edit" onclick="openNWSheet('${acc.type}','${acc.id}')">
+          <span class="swipe-btn-icon">✏️</span>Edit
+        </button>
+        <button class="swipe-btn swipe-btn-del" onclick="deleteNWAccount('${acc.id}')">
+          <span class="swipe-btn-icon">🗑️</span>Delete
+        </button>
+      </div>`;
+    return `<div class="${acc._imported ? '' : 'nw-swipe-wrap'}">
+      ${swipeActions}
+      <div class="nw-account-row">
+        <div class="nw-account-left">
+          <div class="nw-account-name">${acc.name}</div>
+          ${metaLine ? `<div class="nw-account-meta">${metaLine}</div>` : ''}
+          <div class="nw-account-bar-wrap"><div class="nw-account-bar-fill" style="width:${(pct*100).toFixed(0)}%;background:${cfg.color};"></div></div>
+        </div>
+        <div class="nw-account-right">
+          <div>
+            <div class="nw-account-val" style="color:${valColor};">${fmt(acc._val)}</div>
+            ${dateStr ? `<div class="nw-account-updated">Updated ${dateStr}</div>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  // Preferred category order
+  const CAT_ORDER = [
+    'Large Cap Fund','Large & Mid Cap Fund','Mid Cap Fund','Small Cap Fund','Micro Cap Fund',
+    'Flexi Cap Fund','Multi Cap Fund','Focused Fund','Contra Fund','Value/Dividend Yield Fund',
+    'Index Fund / ETF','ELSS (Tax Saver)','Sectoral / Thematic Fund',
+    'International / Global Fund','Fund of Funds (FoF)',
+    'Balanced Advantage Fund','Aggressive Hybrid Fund','Conservative Hybrid Fund',
+    'Hybrid Fund','Arbitrage Fund',
+    'Overnight Fund','Liquid Fund','Ultra Short Duration','Low Duration Fund',
+    'Short Duration Fund','Medium Duration Fund','Gilt Fund',
+    'Fixed Maturity Plan','Credit Risk Fund','Corporate Bond Fund','Debt Fund',
+    'Gold/Metal Fund','Retirement Fund','Equity Fund','Other',
+  ];
+
+  const sortedCats = Object.keys(groups).sort((a, b) => {
+    const ai = CAT_ORDER.indexOf(a); const bi = CAT_ORDER.indexOf(b);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
+
+  let html = '';
+  sortedCats.forEach(cat => {
+    const g = groups[cat];
+    const catTotal = g.accounts.reduce((s, a) => s + (a._val || 0), 0);
+    const catPct = sectionTotal > 0 ? (catTotal / sectionTotal * 100).toFixed(0) : 0;
+    html += `<div style="font-size:0.68em;font-weight:900;color:#888;text-transform:uppercase;
+              letter-spacing:0.5px;padding:10px 0 5px;display:flex;justify-content:space-between;align-items:center;">
+      <span>${cat}</span>
+      <span style="color:${cfg.color};">${catPct}% · ${fmt(catTotal)}</span>
+    </div>`;
+    html += g.accounts.map(renderRow).join('');
+  });
+
+  html += `<div style="padding-top:8px;"><button class="nw-section-add" onclick="openNWSheet('${t}')">${addBtnLabel}</button></div>`;
+  return html;
+}
 
 function buildNWMetalsBody(accounts, cfg, addBtnLabel) {
   // Group by metalType first, then by purity within each type
@@ -11781,6 +11891,9 @@ function renderNetWorth() {
     if (t === 'metals') {
       // ── Grouped hierarchy: Metal Type → Purity → Items ──
       bodyEl.innerHTML = buildNWMetalsBody(group.accounts, cfg, addBtnLabel);
+    } else if (['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold'].includes(t)) {
+      // ── MF: group by sebiCategory ──
+      bodyEl.innerHTML = buildNWMFBody(group.accounts, cfg, sectionTotal, addBtnLabel, t);
     } else {
       bodyEl.innerHTML = group.accounts.map(acc => {
         const pct     = sectionTotal > 0 ? Math.min(acc._val / sectionTotal, 1) : 0;
@@ -11788,18 +11901,20 @@ function renderNetWorth() {
         const metaLine = buildAccountMetaLine(acc);
         const isLiab   = cfg.isLiab;
         const valColor = isLiab ? 'var(--expenses)' : cfg.color;
-        const swipeActions = acc._imported ? '' :
+        // RE imports use _reIdx for edit/delete; all other imports get no swipe
+        const swipeActions = (acc._imported && !acc._isREImport) ? '' :
           `<div class="nw-swipe-actions">
-            <button class="swipe-btn swipe-btn-edit" onclick="openNWSheet('${acc.type}','${acc.id}')">
+            <button class="swipe-btn swipe-btn-edit" onclick="${acc._isREImport ? `editREProperty(${acc._reIdx})` : `openNWSheet('${acc.type}','${acc.id}')`}">
               <span class="swipe-btn-icon">✏️</span>Edit
             </button>
-            <button class="swipe-btn swipe-btn-del" onclick="deleteNWAccount('${acc.id}')">
+            <button class="swipe-btn swipe-btn-del" onclick="${acc._isREImport ? `deleteREProperty(${acc._reIdx})` : `deleteNWAccount('${acc.id}')`}">
               <span class="swipe-btn-icon">🗑️</span>Delete
             </button>
           </div>`;
+        const wrapClass = (acc._imported && !acc._isREImport) ? '' : 'nw-swipe-wrap';
         const hasDrillDown = acc.type === 'stocks_direct' && acc.meta && acc.meta.holdings && acc.meta.holdings.length > 0;
         const rowClickAttr = hasDrillDown ? `onclick="openZerodhaSheet('${acc.id}')" title="Tap to see holdings" style="cursor:pointer;"` : '';
-        return `<div class="${acc._imported ? '' : 'nw-swipe-wrap'}">
+        return `<div class="${wrapClass}">
           ${swipeActions}
           <div class="nw-account-row" ${rowClickAttr}>
             <div class="nw-account-left">
@@ -11991,6 +12106,22 @@ function buildAccountMetaLine(acc) {
     if (acc.meta.country)       parts.push(acc.meta.country);
     if (acc.meta.purchaseValue) parts.push('Purchased: ' + fmt(acc.meta.purchaseValue));
   }
+  // MF accounts — show SEBI category + lock-in
+  const MF_TYPES = ['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold'];
+  if (MF_TYPES.includes(acc.type) && acc.sebiCategory) {
+    parts.push(acc.sebiCategory);
+    if (acc.lockIn && acc.lockIn.label) parts.push('🔒 ' + acc.lockIn.label);
+    if (acc.investedAmount) {
+      const roi = acc.balance && acc.investedAmount
+        ? ((Number(acc.balance) - Number(acc.investedAmount)) / Number(acc.investedAmount) * 100)
+        : null;
+      if (roi != null && !isNaN(roi)) {
+        const sign = roi >= 0 ? '▲' : '▼';
+        parts.push(sign + ' ' + Math.abs(roi).toFixed(1) + '% ROI');
+      }
+    }
+  }
+
   // Zerodha direct equity — show stock count + P&L hint
   if (acc.type === 'stocks_direct' && acc.meta && acc.meta.stockCount) {
     parts.push(acc.meta.stockCount + ' stocks');
@@ -12838,6 +12969,42 @@ function deleteNWAccount(id) {
   showToast('Account deleted');
 }
 
+
+function deleteREProperty(idx) {
+  if (!confirm('Delete this property?')) return;
+  if (!data._realEstate || !data._realEstate[idx]) return;
+  data._realEstate.splice(idx, 1);
+  save();
+  renderNetWorth();
+  showToast('🏡 Property deleted');
+}
+
+function editREProperty(idx) {
+  const p = (data._realEstate || [])[idx];
+  if (!p) return;
+  // Open the NW sheet for realestate, then pre-fill the RE-specific fields
+  openNWSheet('realestate');
+  // After sheet opens, inject the RE data into form fields
+  setTimeout(() => {
+    const descEl = document.getElementById('nws-re-desc');
+    const pvEl   = document.getElementById('nws-re-pv');
+    const cvEl   = document.getElementById('nws-re-cv');
+    const areaEl = document.getElementById('nws-re-area');
+    const ctryEl = document.getElementById('nws-re-country');
+    const currEl = document.getElementById('nws-currency-sel') || document.getElementById('nws-currency');
+    if (descEl)  descEl.value  = p.description  || '';
+    if (pvEl)    pvEl.value    = p.purchaseValue || '';
+    if (cvEl)    cvEl.value    = p.currentValue  || p.purchaseValue || '';
+    if (areaEl)  areaEl.value  = p.area          || '';
+    if (ctryEl)  ctryEl.value  = p.country       || '';
+    // Store idx on window so save knows to update instead of add
+    window._editingREIdx = idx;
+    // Update sheet title
+    const titleEl = document.querySelector('#nws-phase-form .nw-sheet-title');
+    if (titleEl) titleEl.textContent = 'Edit Property';
+  }, 350);
+}
+
 function closeNWSheet() {
   document.getElementById('nw-sheet-overlay').classList.remove('open');
   document.getElementById('nw-sheet').classList.remove('open');
@@ -12848,6 +13015,7 @@ function closeNWSheet() {
     if (form) form.style.display = 'none';
     nwSheetType = null;
     nwSheetEditId = null;
+    window._editingREIdx = null;
     // Force reflow + re-render so Net Worth totals update without app restart
     void document.getElementById('screen-networth')?.offsetHeight;
     renderNetWorth();
@@ -16438,6 +16606,7 @@ async function firebaseLoad(uid) {
 
     // ── Silent asset class migration (Phase 2) ──
     migrateAssetClassTags();
+  migrateSebiCategory();
 
     // Re-render everything with cloud data
     applyStoredTheme();
@@ -21147,44 +21316,102 @@ function classifyScheme(schemeName) {
   const s = (schemeName || '').toLowerCase();
   let assetClass = 'EQUITY', taxBucket = 'taxable', liquidity = 'medium', lockIn = null, sebiCategory = null;
 
-  // Gold / Metals
+  // ── Gold / Commodities ─────────────────────────────────────────────
   if (/gold|silver|metal|commodity/.test(s)) {
     assetClass = 'GOLD'; sebiCategory = 'Gold/Metal Fund';
-  }
-  // Debt variants
-  else if (/liquid|overnight|money market/.test(s)) {
-    assetClass = 'DEBT'; liquidity = 'instant'; sebiCategory = 'Liquid/Overnight';
-  }
-  else if (/gilt|gsec|government securities/.test(s)) {
-    assetClass = 'DEBT'; liquidity = 'medium'; sebiCategory = 'Gilt';
-  }
-  else if (/debt|bond|income|credit|fixed maturity|fmp|corporate/.test(s)) {
-    assetClass = 'DEBT'; sebiCategory = 'Debt';
-  }
-  // Hybrid
-  else if (/arbitrage/.test(s)) {
-    assetClass = 'HYBRID'; sebiCategory = 'Arbitrage';
-  }
-  else if (/hybrid|balanced|multi asset|dynamic allocation|aggressive hybrid/.test(s)) {
-    assetClass = 'HYBRID'; sebiCategory = 'Hybrid';
-  }
-  // ELSS — must come before generic equity check
-  else if (/elss|tax saver|tax saving/.test(s)) {
+
+  // ── DEBT: Liquid / Overnight ───────────────────────────────────────
+  } else if (/\bovernight\b/.test(s)) {
+    assetClass = 'DEBT'; liquidity = 'instant'; sebiCategory = 'Overnight Fund';
+  } else if (/\bliquid\b|money market/.test(s)) {
+    assetClass = 'DEBT'; liquidity = 'instant'; sebiCategory = 'Liquid Fund';
+
+  // ── DEBT: Ultra Short / Low Duration ──────────────────────────────
+  } else if (/ultra.short|ultrashort/.test(s)) {
+    assetClass = 'DEBT'; liquidity = 'high'; sebiCategory = 'Ultra Short Duration';
+  } else if (/low duration/.test(s)) {
+    assetClass = 'DEBT'; liquidity = 'high'; sebiCategory = 'Low Duration Fund';
+
+  // ── DEBT: Short / Medium Duration ─────────────────────────────────
+  } else if (/short.?dur|short term/.test(s)) {
+    assetClass = 'DEBT'; liquidity = 'medium'; sebiCategory = 'Short Duration Fund';
+  } else if (/medium.?dur|medium term/.test(s)) {
+    assetClass = 'DEBT'; liquidity = 'medium'; sebiCategory = 'Medium Duration Fund';
+
+  // ── DEBT: Gilt ─────────────────────────────────────────────────────
+  } else if (/gilt|gsec|g-sec|government securities/.test(s)) {
+    assetClass = 'DEBT'; liquidity = 'medium'; sebiCategory = 'Gilt Fund';
+
+  // ── DEBT: FMP / Credit Risk / Corporate Bond ───────────────────────
+  } else if (/fixed maturity|fmp/.test(s)) {
+    assetClass = 'DEBT'; liquidity = 'low'; sebiCategory = 'Fixed Maturity Plan';
+  } else if (/credit risk/.test(s)) {
+    assetClass = 'DEBT'; liquidity = 'medium'; sebiCategory = 'Credit Risk Fund';
+  } else if (/corporate bond/.test(s)) {
+    assetClass = 'DEBT'; liquidity = 'medium'; sebiCategory = 'Corporate Bond Fund';
+  } else if (/\bdebt\b|\bbond\b|income fund|banking.?psu/.test(s)) {
+    assetClass = 'DEBT'; sebiCategory = 'Debt Fund';
+
+  // ── HYBRID: Arbitrage ──────────────────────────────────────────────
+  } else if (/arbitrage/.test(s)) {
+    assetClass = 'HYBRID'; taxBucket = 'equity_like'; sebiCategory = 'Arbitrage Fund';
+
+  // ── HYBRID: Balanced Advantage / Dynamic ──────────────────────────
+  } else if (/balanced advantage|dynamic asset|dynamic allocation/.test(s)) {
+    assetClass = 'HYBRID'; sebiCategory = 'Balanced Advantage Fund';
+  } else if (/aggressive hybrid/.test(s)) {
+    assetClass = 'HYBRID'; sebiCategory = 'Aggressive Hybrid Fund';
+  } else if (/conservative hybrid/.test(s)) {
+    assetClass = 'HYBRID'; sebiCategory = 'Conservative Hybrid Fund';
+  } else if (/hybrid|balanced|multi asset/.test(s)) {
+    assetClass = 'HYBRID'; sebiCategory = 'Hybrid Fund';
+
+  // ── ELSS — must be before generic equity ──────────────────────────
+  } else if (/elss|tax saver|tax saving/.test(s)) {
     assetClass = 'EQUITY'; taxBucket = 'elss_80c'; liquidity = 'low';
-    lockIn = { months: 36, label: '3yr lock-in (ELSS)' }; sebiCategory = 'ELSS';
-  }
-  // Retirement / Pension
-  else if (/retirement|pension/.test(s)) {
+    lockIn = { months: 36, label: '3yr lock-in (ELSS)' }; sebiCategory = 'ELSS (Tax Saver)';
+
+  // ── Retirement / Pension ───────────────────────────────────────────
+  } else if (/retirement|pension/.test(s)) {
     assetClass = 'EQUITY'; taxBucket = 'tax_deferred'; liquidity = 'locked';
     lockIn = { months: null, label: 'Locked till retirement' }; sebiCategory = 'Retirement Fund';
-  }
-  // Index / ETF
-  else if (/index|nifty|sensex|etf|bees/.test(s)) {
-    assetClass = 'EQUITY'; sebiCategory = 'Index/ETF';
-  }
-  // Generic equity
-  else if (/large cap|mid cap|small cap|flexi cap|multi cap|sectoral|thematic|contra|value|dividend yield|focused/.test(s)) {
-    assetClass = 'EQUITY'; sebiCategory = 'Equity';
+
+  // ── EQUITY: Index / ETF ────────────────────────────────────────────
+  } else if (/\bindex\b|nifty|sensex|\betf\b|\bbees\b|nifty 50|nifty50|nifty next/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Index Fund / ETF';
+
+  // ── EQUITY: Market Cap Specific ────────────────────────────────────
+  } else if (/large.?and.?mid|large.mid/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Large & Mid Cap Fund';
+  } else if (/large.?cap/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Large Cap Fund';
+  } else if (/mid.?cap/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Mid Cap Fund';
+  } else if (/small.?cap/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Small Cap Fund';
+  } else if (/micro.?cap/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Micro Cap Fund';
+
+  // ── EQUITY: Diversified / Style ────────────────────────────────────
+  } else if (/flexi.?cap/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Flexi Cap Fund';
+  } else if (/multi.?cap/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Multi Cap Fund';
+  } else if (/\bfocused\b/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Focused Fund';
+  } else if (/contra/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Contra Fund';
+  } else if (/value|dividend.?yield/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Value/Dividend Yield Fund';
+  } else if (/sectoral|thematic|infra|pharma|bank|technology|tech fund|consumption|esg/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Sectoral / Thematic Fund';
+  } else if (/internation|global|overseas|world|us equity|nasdaq/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'International / Global Fund';
+  } else if (/\bfof\b|fund of fund/.test(s)) {
+    assetClass = 'EQUITY'; sebiCategory = 'Fund of Funds (FoF)';
+  } else {
+    // Default: equity-like
+    assetClass = 'EQUITY'; sebiCategory = 'Equity Fund';
   }
 
   return { assetClass, taxBucket, liquidity, lockIn, sebiCategory };
