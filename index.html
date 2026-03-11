@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.2 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.3 · Built 2026-03</div>
   </div>
 
 
@@ -13158,9 +13158,10 @@ function _buildACGeoPickers(type, existing) {
       row.style.transform = 'translateX(' + clampedDx + 'px)';
     }, { passive: false });
 
-    row.addEventListener('touchend', function() {
+    row.addEventListener('touchend', function(e) {
       row.style.transition = '';
       const SNAP = 0.35; // snap if dragged past 35% of action width
+      const TAP_THRESHOLD = 6; // px — treat as tap if moved less than this
       if (dx < -(rightW * SNAP) && rightW > 0) {
         // Snap open to left (reveal right actions)
         row.style.transform = 'translateX(-' + rightW + 'px)';
@@ -13172,6 +13173,12 @@ function _buildACGeoPickers(type, existing) {
       } else {
         row.style.transform = 'translateX(0)';
         if (_activeSwipe === wrap) _activeSwipe = null;
+        // If it was a tap (barely moved), fire the onclick manually
+        // This fixes iOS Safari swallowing click events after touchend
+        if (Math.abs(dx) < TAP_THRESHOLD && row.getAttribute('onclick')) {
+          e.preventDefault();
+          try { new Function(row.getAttribute('onclick')).call(row); } catch(err) {}
+        }
       }
     });
 
