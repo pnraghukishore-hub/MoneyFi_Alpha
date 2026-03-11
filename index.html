@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.4 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.5 · Built 2026-03</div>
   </div>
 
 
@@ -11921,7 +11921,7 @@ function renderNetWorth() {
         const wrapClass = (acc._imported && !acc._isREImport) ? '' : 'nw-swipe-wrap';
         const hasDrillDown = acc.meta && acc.meta.holdings && acc.meta.holdings.length > 0 &&
           (acc.type === 'stocks_direct' || (acc.meta && acc.meta.holdingType === 'us_brokerage'));
-        const rowClickAttr = hasDrillDown ? `onclick="openZerodhaSheet('${acc.id}')" title="Tap to see holdings" style="cursor:pointer;"` : '';
+        const rowClickAttr = hasDrillDown ? `data-drilldown="${acc.id}" title="Tap to see holdings" style="cursor:pointer;"` : '';
         return `<div class="${wrapClass}">
           ${swipeActions}
           <div class="nw-account-row" ${rowClickAttr}>
@@ -13219,6 +13219,31 @@ function _buildACGeoPickers(type, existing) {
       ? (typeof containerSel === 'string' ? document.querySelector(containerSel) : containerSel)
       : document;
     container.querySelectorAll('.swipe-wrap, .nw-swipe-wrap').forEach(attachSwipe);
+
+    // Attach tap listeners to drill-down rows (imported accounts — no swipe wrap)
+    container.querySelectorAll('[data-drilldown]').forEach(function(row) {
+      if (row._drilldownAttached) return;
+      row._drilldownAttached = true;
+      var tapStartX = 0, tapStartY = 0;
+      row.addEventListener('touchstart', function(e) {
+        tapStartX = e.touches[0].clientX;
+        tapStartY = e.touches[0].clientY;
+      }, { passive: true });
+      row.addEventListener('touchend', function(e) {
+        var dx = Math.abs(e.changedTouches[0].clientX - tapStartX);
+        var dy = Math.abs(e.changedTouches[0].clientY - tapStartY);
+        if (dx < 8 && dy < 8) {
+          e.preventDefault();
+          var accId = row.getAttribute('data-drilldown');
+          if (accId) openZerodhaSheet(accId);
+        }
+      }, { passive: false });
+      // Also handle mouse click for desktop testing
+      row.addEventListener('click', function() {
+        var accId = row.getAttribute('data-drilldown');
+        if (accId) openZerodhaSheet(accId);
+      });
+    });
   };
 
   // Also re-init on any DOM mutation in known containers (catch renderTransactions/renderNetWorth)
@@ -13230,6 +13255,10 @@ function _buildACGeoPickers(type, existing) {
           attachSwipe(node);
         }
         node.querySelectorAll && node.querySelectorAll('.swipe-wrap, .nw-swipe-wrap').forEach(attachSwipe);
+        // Re-attach drill-down tap listeners for newly added imported rows
+        if (window.initSwipeRows && node.querySelectorAll) {
+          window.initSwipeRows(node);
+        }
       });
     });
   });
@@ -14669,21 +14698,10 @@ function parseZerodhaPnL(headers, rows, cur, rawRows) {
       });
     }
 
-    // Realized P&L rows → income/loss transaction (dated to period end)
-    const realPnl = parseFloat(String(row[cRealPnl] || '0').replace(/[,₹]/g,'')) || 0;
-    if (Math.abs(realPnl) > 0) {
-      records.push({
-        date: pnlEndDate,
-        description: `${symbol} — Realized P&L`,
-        amount: Math.abs(realPnl),
-        currency: cur,
-        type: realPnl >= 0 ? 'income' : 'expense',
-        category: realPnl >= 0 ? 'Stock Sale' : 'Investment Loss',
-        source: 'zerodha_pnl',
-        confidence: 0.9,
-        _symbol: symbol,
-      });
-    }
+    // Realized P&L rows — INTENTIONALLY NOT imported as transactions.
+    // The Tradebook file already contains each individual trade with the correct date.
+    // Importing P&L realized rows would create duplicates with wrong dates (period summary).
+    // Use the Tradebook (tradebook-*.xlsx) for all buy/sell transaction history.
   });
   return records;
 }
@@ -15176,7 +15194,14 @@ function detectDuplicates(records) {
     const fuzzyMatch = existing.find(e => {
       const sameDate = e.date === r.date;
       const sameAmt  = Math.abs((e.amount || 0) - r.amount) <= 1;
-      return sameDate && sameAmt;
+      if (!sameDate || !sameAmt) return false;
+      // Amount+date match is necessary but not sufficient — also require
+      // category match OR description prefix similarity (first 6 chars)
+      const sameCategory = (e.category || '') === (r.category || '');
+      const descA = String(e.description || '').substring(0, 8).toLowerCase();
+      const descB = String(r.description || '').substring(0, 8).toLowerCase();
+      const similarDesc = descA.length > 3 && descB.length > 3 && descA === descB;
+      return sameCategory || similarDesc;
     });
 
     if (fuzzyMatch) {
