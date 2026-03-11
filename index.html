@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.18.0 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.18.1 · Built 2026-03</div>
   </div>
 
 
@@ -6599,7 +6599,12 @@ function toggleAccordion(id) {
   // New WhatsApp-style settings: body is at id+'-body'
   const newBody = document.getElementById(id + '-body');
   if (newBody) {
-    newBody.style.display = newBody.style.display === 'none' ? 'block' : 'none';
+    const opening = newBody.style.display === 'none';
+    newBody.style.display = opening ? 'block' : 'none';
+    // Populate reset panel whenever data accordion opens
+    if (opening && id === 'acc-data') {
+      try { renderResetSummary(); } catch(e) {}
+    }
     return;
   }
   // Legacy accordion fallback
@@ -7918,6 +7923,8 @@ function renderSettings() {
   renderNWTypeSettings();
   // FX rate overrides panel
   renderFXRatesPanel();
+  // Populate reset summary in case data accordion is already open
+  try { renderResetSummary(); } catch(e) {}
 }
 function deleteMonth(key) { if(!confirm(`Delete all data for ${getDisplayMonth(key)}?`)) return; delete data[key]; save(); renderHome(); renderMonthsList(); renderResetSummary(); showToast('🗑️ ' + getDisplayMonth(key) + ' deleted'); }
 
