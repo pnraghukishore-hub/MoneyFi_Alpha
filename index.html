@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.0 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.2 · Built 2026-03</div>
   </div>
 
 
@@ -6255,11 +6255,18 @@ function switchScreen(name, btn) {
   if(name==='settings') { renderRecurringRules(); }
   if(name==='budget') { budgetViewMonth = viewMonth; document.getElementById('budget-month-label').textContent = getDisplayMonth(budgetViewMonth); renderBudgetModule(); }
   if(name==='networth') renderNetWorth();
-  if(name==='import') { renderImportTabs(); setTimeout(()=>{ const firstTab=document.querySelector('.import-tab'); setImportTab('transactions', firstTab); },0); renderGivenLedger(); renderResetSummary(); renderMonthsList(); }
+  if(name==='import') {
+    // Reset region override when entering import fresh (but preserve if already on import)
+    if (window._currentScreen !== 'import') window._importRegionOverride = null;
+    renderImportTabs();
+    setTimeout(()=>{ const firstTab=document.querySelector('.import-tab'); setImportTab('transactions', firstTab); },0);
+    renderGivenLedger(); renderResetSummary(); renderMonthsList();
+  }
   if(name==='fhs') renderFHS();
 }
 
 function goToScreen(name) {
+  window._currentScreen = name;
   // Clear transaction search when navigating away from tx screen
   if (name !== 'tx' && _txSearchActive) {
     clearTxSearch();
@@ -11912,7 +11919,8 @@ function renderNetWorth() {
             </button>
           </div>`;
         const wrapClass = (acc._imported && !acc._isREImport) ? '' : 'nw-swipe-wrap';
-        const hasDrillDown = acc.type === 'stocks_direct' && acc.meta && acc.meta.holdings && acc.meta.holdings.length > 0;
+        const hasDrillDown = acc.meta && acc.meta.holdings && acc.meta.holdings.length > 0 &&
+          (acc.type === 'stocks_direct' || (acc.meta && acc.meta.holdingType === 'us_brokerage'));
         const rowClickAttr = hasDrillDown ? `onclick="openZerodhaSheet('${acc.id}')" title="Tap to see holdings" style="cursor:pointer;"` : '';
         return `<div class="${wrapClass}">
           ${swipeActions}
@@ -13232,6 +13240,7 @@ var _zhHoldings = [];   // current full list
 var _zhFiltered = [];   // after search filter
 var _zhSortKey  = 'val';
 var _zhTotal    = 0;
+var _zhIsUS     = false; // true for US brokerage accounts
 
 function openZerodhaSheet(accId) {
   const acc = (data._nwAccounts || []).find(a => a.id === accId);
@@ -13244,24 +13253,34 @@ function openZerodhaSheet(accId) {
   const totalInv  = holdings.reduce(function(s,h){ return s + (h.invested||h.avgCost*h.qty||0); }, 0);
   const totalPnl  = holdings.reduce(function(s,h){ return s + (h.pnl||0); }, 0);
 
-  _zhHoldings = holdings.slice();
-  _zhTotal    = totalVal;
-  _zhSortKey  = 'val';
+  _zhHoldings  = holdings.slice();
+  _zhTotal     = totalVal;
+  _zhSortKey   = 'val';
+  _zhIsUS      = !!(acc.meta && acc.meta.holdingType === 'us_brokerage');
 
   // Title
   document.getElementById('zh-title').textContent = acc.name || 'Zerodha Holdings';
+  const isUS = acc.meta && acc.meta.holdingType === 'us_brokerage';
+  const dateLocale = isUS ? 'en-US' : 'en-IN';
   document.getElementById('zh-subtitle').textContent =
-    holdings.length + ' stocks · as of ' +
-    (acc.lastUpdated ? new Date(acc.lastUpdated + 'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'last import');
+    holdings.length + (isUS ? ' positions' : ' stocks') + ' · as of ' +
+    (acc.lastUpdated ? new Date(acc.lastUpdated + 'T00:00:00').toLocaleDateString(dateLocale,{day:'numeric',month:'short',year:'numeric'}) : 'last import');
 
   // Summary boxes
   const pnlColor  = totalPnl >= 0 ? '#059669' : '#DC2626';
   const pnlPct    = totalInv > 0 ? (totalPnl / totalInv * 100).toFixed(1) : null;
+  // For US accounts, use USD formatting; for India use current currency
+  const fmtHolding = (v) => {
+    if (acc.meta && acc.meta.holdingType === 'us_brokerage') {
+      return '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+    }
+    return fmt(v);
+  };
   document.getElementById('zh-summary').innerHTML =
-    '<div class="zh-summary-box"><div class="zh-summary-num">' + fmt(totalVal) + '</div><div class="zh-summary-label">Current Value</div></div>' +
-    (totalInv > 0 ? '<div class="zh-summary-box"><div class="zh-summary-num">' + fmt(totalInv) + '</div><div class="zh-summary-label">Invested</div></div>' : '') +
+    '<div class="zh-summary-box"><div class="zh-summary-num">' + fmtHolding(totalVal) + '</div><div class="zh-summary-label">Current Value</div></div>' +
+    (totalInv > 0 ? '<div class="zh-summary-box"><div class="zh-summary-num">' + fmtHolding(totalInv) + '</div><div class="zh-summary-label">Cost Basis</div></div>' : '') +
     '<div class="zh-summary-box"><div class="zh-summary-num" style="color:' + pnlColor + ';">' +
-      (totalPnl >= 0 ? '+' : '') + fmt(totalPnl) +
+      (totalPnl >= 0 ? '+' : '') + fmtHolding(totalPnl) +
       (pnlPct ? '<br><span style="font-size:0.7em;">' + (totalPnl>=0?'+':'') + pnlPct + '%</span>' : '') +
     '</div><div class="zh-summary-label">Unrealized P&L</div></div>';
 
@@ -13326,27 +13345,34 @@ function zhRenderList() {
       ' exceed' + (warns.length > 1 ? '' : 's') + ' 10% of your equity portfolio</div>';
   }
 
+  var fmtV = function(v) {
+    if (_zhIsUS) return '$' + Number(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+    return fmt(v);
+  };
+  var currSymbol = _zhIsUS ? '$' : (currentCurrency ? currentCurrency.symbol : '₹');
+
   var html = warnHtml + sorted.map(function(h) {
-    var pnl     = h.pnl || 0;
-    var invested = h.invested || (h.avgCost * h.qty) || 0;
-    var pnlPct  = invested > 0 ? (pnl / invested * 100).toFixed(1) : null;
-    var pnlPos  = pnl >= 0;
+    var pnl      = h.pnl != null ? h.pnl : 0;
+    var invested = h.costBasis || h.invested || (h.avgCost && h.qty ? h.avgCost * h.qty : 0);
+    var pnlPct   = invested > 0 ? (pnl / invested * 100).toFixed(1) : null;
+    var pnlPos   = pnl >= 0;
     var pnlColor = pnlPos ? '#059669' : '#DC2626';
-    var pnlBg   = pnlPos ? '#ECFDF5' : '#FEF2F2';
-    var pnlSign = pnlPos ? '▲' : '▼';
-    var barPct  = _zhTotal > 0 ? Math.min((h.curVal||0) / _zhTotal * 100, 100) : 0;
-    // Bar colour: green if profit, red if loss, grey if unknown
+    var pnlBg    = pnlPos ? '#ECFDF5' : '#FEF2F2';
+    var pnlSign  = pnlPos ? '▲' : '▼';
+    var barPct   = _zhTotal > 0 ? Math.min((h.curVal||0) / _zhTotal * 100, 100) : 0;
     var barColor = pnl > 0 ? '#10B981' : pnl < 0 ? '#EF4444' : '#6B7280';
+    var qtyLabel = _zhIsUS ? ' shares' : ' shares';
+    var avgLabel = _zhIsUS ? 'avg ' + currSymbol : 'avg ₹';
 
     return '<div class="zh-stock-row">' +
       '<div class="zh-stock-top">' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
           '<span class="zh-stock-symbol">' + h.symbol + '</span>' +
-          '<span class="zh-stock-qty">' + (h.qty||0) + ' shares</span>' +
+          (h.qty ? '<span class="zh-stock-qty">' + Number(h.qty).toFixed(h.qty % 1 === 0 ? 0 : 4) + qtyLabel + '</span>' : '') +
         '</div>' +
         '<div style="text-align:right;">' +
-          '<div class="zh-stock-val" style="color:var(--text-dark);">' + fmt(h.curVal||0) + '</div>' +
-          (h.avgCost ? '<div style="font-size:0.68em;color:var(--text-light);font-weight:700;">avg ₹' + Number(h.avgCost).toFixed(2) + '</div>' : '') +
+          '<div class="zh-stock-val" style="color:var(--text-dark);">' + fmtV(h.curVal||0) + '</div>' +
+          (h.avgCost ? '<div style="font-size:0.68em;color:var(--text-light);font-weight:700;">' + avgLabel + Number(h.avgCost).toFixed(2) + '</div>' : '') +
         '</div>' +
       '</div>' +
       '<div class="zh-stock-bar-wrap">' +
@@ -13355,11 +13381,11 @@ function zhRenderList() {
       '<div class="zh-stock-bottom">' +
         '<div class="zh-stock-invested">' +
           (barPct > 0 ? barPct.toFixed(1) + '% of portfolio' : '') +
-          (invested > 0 ? ' · inv ' + fmt(invested) : '') +
+          (invested > 0 ? ' · cost ' + fmtV(invested) : '') +
         '</div>' +
         (pnl !== 0 ?
           '<span class="zh-pnl-badge" style="background:' + pnlBg + ';color:' + pnlColor + ';">' +
-            pnlSign + ' ' + fmt(Math.abs(pnl)) +
+            pnlSign + ' ' + fmtV(Math.abs(pnl)) +
             (pnlPct ? ' (' + (pnlPos?'+':'') + pnlPct + '%)' : '') +
           '</span>' : ''
         ) +
@@ -13545,13 +13571,15 @@ function renderImportTabs() {
   // Region selector above tabs — for multi-country users
   const regionPickerEl = document.getElementById('import-region-picker');
   if (regionPickerEl) {
+    // Use override if set, otherwise fall back to profile region
+    const selectedRegion = window._importRegionOverride || region;
     regionPickerEl.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:#F0F4FF;border-radius:12px;box-sizing:border-box;width:100%;">
         <span style="font-size:0.72em;font-weight:900;color:#4F46E5;white-space:nowrap;flex-shrink:0;">🌍 Region</span>
         <select onchange="setImportRegion(this.value)" style="flex:1;min-width:0;border:1.5px solid #E0E7FF;border-radius:8px;padding:6px 8px;font-family:Nunito;font-weight:800;font-size:0.78em;background:white;max-width:100%;">
-          <option value="IN" ${isIN?'selected':''}>🇮🇳 India (CAMS · Zerodha · EPF)</option>
-          <option value="US" ${isUS?'selected':''}>🇺🇸 United States (Fidelity · Schwab)</option>
-          <option value="BOTH">🌐 Multi-country (show all)</option>
+          <option value="IN" ${selectedRegion==='IN'?'selected':''}>🇮🇳 India (CAMS · Zerodha · EPF)</option>
+          <option value="US" ${selectedRegion==='US'?'selected':''}>🇺🇸 United States (Fidelity · Schwab)</option>
+          <option value="BOTH" ${selectedRegion==='BOTH'?'selected':''}>🌐 Multi-country (show all)</option>
         </select>
       </div>`;
   }
@@ -14725,26 +14753,26 @@ function parseFidelityPositions(rawRows) {
     const acctMeta = classifyUSAccount(accountName);
     const assetClass = US_TICKER_MAP[symbol] || classifyUSTickerByDescription(description);
 
+    const rawQty = cols.qty >= 0 ? parseFloat(String(row[cols.qty]||'0').replace(/,/g,'')) || 0 : 0;
+    const rawPrice = curVal && rawQty ? curVal / rawQty : 0;
     records.push({
       date: localDateStr(),
       description: `${symbol} — ${description.substring(0,40)} (Fidelity)`,
       amount: 0, currency: cur, type: 'investment', category: 'Investment',
       source: 'fidelity_positions', confidence: 0.97,
-      _nwAccount: {
-        name: `${symbol} (${accountName.substring(0,25)})`,
-        type: acctMeta.type,
-        taxBucket: acctMeta.taxBucket,
-        liquidity: acctMeta.liquidity,
-        assetClass,
-        balance: curVal,
-        investedAmount: costBasis,
-        dataConfidence: costBasis != null ? 'established' : 'partial',
-        currency: cur,
-        source: 'fidelity',
-        _goldTaxWarning: assetClass === 'GOLD' && acctMeta.taxBucket === 'taxable',
-        _suppressRebalance: assetClass === 'HYBRID',
-      },
       _holdingsOnly: true,
+      _usBrokerageHolding: {
+        broker: 'fidelity',
+        brokerLabel: 'Fidelity',
+        accountName: accountName,
+        acctMeta: acctMeta,
+        symbol, description,
+        curVal, costBasis,
+        qty: rawQty,
+        avgCost: rawQty > 0 ? (costBasis || curVal) / rawQty : 0,
+        pnl: costBasis != null ? curVal - costBasis : null,
+        assetClass,
+      },
     });
   }
   return records;
@@ -14869,21 +14897,18 @@ function parseSchwabPositions(rawRows) {
       description: `${symbol} — ${description.substring(0,40)} (Schwab)`,
       amount: 0, currency: cur, type: 'investment', category: 'Investment',
       source: 'schwab_positions', confidence: 0.96,
-      _nwAccount: {
-        name: `${symbol} (Schwab)`,
-        type: acctMeta.type,
-        taxBucket: acctMeta.taxBucket,
-        liquidity: acctMeta.liquidity,
-        assetClass,
-        balance: curVal,
-        investedAmount,
-        dataConfidence: investedAmount != null ? 'established' : 'partial',
-        currency: cur,
-        source: 'schwab',
-        _goldTaxWarning: assetClass === 'GOLD' && acctMeta.taxBucket === 'taxable',
-        _suppressRebalance: assetClass === 'HYBRID',
-      },
       _holdingsOnly: true,
+      _usBrokerageHolding: {
+        broker: 'schwab',
+        brokerLabel: 'Schwab',
+        accountName: 'Schwab',
+        acctMeta: acctMeta,
+        symbol, description,
+        curVal, costBasis: investedAmount,
+        qty, avgCost: avgCost || 0,
+        pnl: investedAmount != null ? curVal - investedAmount : null,
+        assetClass,
+      },
     });
   }
   return records;
@@ -15182,6 +15207,65 @@ function extractNWAccounts(records) {
         holdings: stockList,   // stored for future drill-down (Phase 3)
       },
     };
+  }
+
+  // ── Aggregate US brokerage holdings (Fidelity, Schwab) into ONE account per broker ──
+  const usBrokerageHoldings = records.filter(r => r._usBrokerageHolding);
+  if (usBrokerageHoldings.length > 0) {
+    // Group by broker
+    const brokerGroups = {};
+    usBrokerageHoldings.forEach(r => {
+      const b = r._usBrokerageHolding.broker;
+      if (!brokerGroups[b]) brokerGroups[b] = [];
+      brokerGroups[b].push(r._usBrokerageHolding);
+    });
+
+    Object.entries(brokerGroups).forEach(([broker, holdings]) => {
+      const label   = holdings[0].brokerLabel || broker;
+      const acctMeta = holdings[0].acctMeta || {};
+      let totalVal = 0, totalCost = 0, totalPnl = 0;
+      const holdingList = [];
+
+      holdings.forEach(h => {
+        totalVal  += h.curVal   || 0;
+        totalCost += h.costBasis || 0;
+        if (h.pnl != null) totalPnl += h.pnl;
+        holdingList.push({
+          symbol:      h.symbol,
+          description: h.description,
+          curVal:      h.curVal,
+          costBasis:   h.costBasis,
+          qty:         h.qty,
+          avgCost:     h.avgCost,
+          pnl:         h.pnl,
+          assetClass:  h.assetClass,
+        });
+      });
+
+      // Sort by value descending
+      holdingList.sort((a, b) => (b.curVal || 0) - (a.curVal || 0));
+
+      seen['__us_' + broker + '__'] = {
+        name: `${label} — Portfolio`,
+        type: acctMeta.type || 'brokerage',
+        taxBucket: acctMeta.taxBucket || 'taxable',
+        liquidity: acctMeta.liquidity || 'high',
+        assetClass: 'EQUITY',
+        balance: totalVal,
+        investedAmount: totalCost > 0 ? totalCost : null,
+        dataConfidence: totalCost > 0 ? 'established' : 'partial',
+        currency: 'USD',
+        source: broker,
+        meta: {
+          holdingType: 'us_brokerage',
+          broker: broker,
+          brokerLabel: label,
+          stockCount: holdingList.length,
+          unrealizedPnl: totalPnl,
+          holdings: holdingList,
+        },
+      };
+    });
   }
 
   // ── All other parsers: dedupe by name as before ──
