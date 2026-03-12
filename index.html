@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.6 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.7 · Built 2026-03</div>
   </div>
 
 
@@ -8538,7 +8538,7 @@ function _buildROIData() {
   // All investment-type NW accounts
   const INV_TYPES = new Set(['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold',
     'mf_index','brokerage','brokerage_taxable','stocks_direct','nps','ppf','epf',
-    'retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','investment']);
+    'retirement','retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','investment']);
   const nwAccounts = (data._nwAccounts||[]).filter(a => INV_TYPES.has(a.type) && a.balance > 0);
 
   // Aggregate all investment transactions grouped by fund name
@@ -8833,8 +8833,7 @@ function renderROIFunds(sortBy) {
   if (!el) return;
 
   const INV_TYPES = new Set(['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold',
-    'mf_index','brokerage','brokerage_taxable','stocks_direct','nps','ppf','epf',
-    'retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','investment']);
+    'mf_index','brokerage','brokerage_taxable','stocks_direct','nps','ppf'retirement','retirement_401k','retirement_roth','retirement_ira'tirement_ira','hsa','college_529','ibond','investment']);
   const accounts = (data._nwAccounts||[]).filter(a => INV_TYPES.has(a.type) && a.balance > 0);
 
   if (!accounts.length) {
@@ -9006,7 +9005,7 @@ function renderROIRetireSummary() {
   const age      = profile?.age || 35;
   const retAge   = profile?.retirementAge || 60;
   const yearsLeft = Math.max(0, retAge - age);
-  const RET_TYPES = new Set(['epf','ppf','nps','retirement_401k','retirement_roth','retirement_ira']);
+  const RET_TYPES = new Set(['epf','ppf','nps','retirement','retirement_401k','retirement_roth','retirement_ira']);
   const retAccs  = (data._nwAccounts||[]).filter(a => RET_TYPES.has(a.type) && a.balance > 0);
   const totalRet = retAccs.reduce((s,a) => s + (nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0)), 0);
   if (!totalRet) return;
@@ -9031,7 +9030,8 @@ function renderROIRetirementCards() {
   const el = document.getElementById('roi-retirement-cards');
   if (!el) return;
 
-  const retirementTypes = ['epf','ppf','nps','retirement_401k','retirement_roth','retirement_ira'];
+  // Include generic 'retirement' type (covers EPF/PPF/NPS added via subtype picker)
+  const retirementTypes = ['epf','ppf','nps','retirement','retirement_401k','retirement_roth','retirement_ira'];
   const retAccounts = (data._nwAccounts||[]).filter(a => retirementTypes.includes(a.type) && a.balance > 0);
 
   if (!retAccounts.length) {
@@ -11530,12 +11530,22 @@ function computeNetWorth() {
     };
   });
 
+  // Map country string to standard geography code for allocation card geo sub-lines
+  const _reCountryToGeo = (country) => {
+    if (!country) return 'GLOBAL';
+    const c = country.toUpperCase().trim();
+    if (c === 'US' || c === 'USA' || c === 'UNITED STATES') return 'US';
+    if (c === 'IN' || c === 'IND' || c === 'INDIA') return 'IN';
+    return 'GLOBAL';
+  };
+
   // Also pull real estate from import data as read-only reference
   const reFromImport = (data._realEstate || []).map((p, idx) => {
     const cv = Number(p.currentValue || p.purchaseValue || 0);
     const curr = (p.currency || 'USD').toUpperCase();
     const nameParts = ['🏡', p.description || 'Property'];
     if (p.country && p.country !== 'US') nameParts.push(p.country);
+    const reGeo = p.geography || _reCountryToGeo(p.country);
     return {
       id: 'import_re_' + idx,
       _reIdx: idx,          // track original index for edit/delete
@@ -11545,6 +11555,7 @@ function computeNetWorth() {
       lastUpdated: p.date || '',
       _isREImport: true,    // separate flag so swipe still works
       type: 'realestate',
+      geography: reGeo,     // derived from country — enables geo sub-line in allocation card
       meta: {
         purchaseValue: p.purchaseValue,
         country: p.country,
@@ -12863,24 +12874,63 @@ function _nwsBuildForm(type, existing, m) {
   let extraFields = '';
   if (type === 'retirement') {
     const opts = RETIRE_SUBTYPES.map(s => `<option value="${s}" ${(m.subtype===s)?'selected':''}>${s}</option>`).join('');
-    extraFields += `<div class="nw-sheet-field"><div class="nw-sheet-label">Account Subtype</div><select class="nw-sheet-select" id="nws-subtype">${opts}</select></div>`;
+    // Determine if subtype is India-style provident (EPF/PPF/NPS) — needs interest rate
+    const isIndiaRetire = ['EPF','PPF','NPS'].includes(m.subtype || '');
+    const indiaRate = m.subtype === 'EPF' ? '8.25' : m.subtype === 'PPF' ? '7.1' : m.subtype === 'NPS' ? '10.0' : '8.0';
+    extraFields += `<div class="nw-sheet-field"><div class="nw-sheet-label">Account Subtype</div>
+      <select class="nw-sheet-select" id="nws-subtype" onchange="(function(sel){
+        var sub = sel.value;
+        var isIndia = ['EPF','PPF','NPS'].includes(sub);
+        var rateRow = document.getElementById('nws-retire-rate-row');
+        var invRow = document.getElementById('nws-retire-inv-row');
+        if (rateRow) rateRow.style.display = isIndia ? '' : 'none';
+        if (invRow) invRow.style.display = isIndia ? '' : 'none';
+        // Update placeholder rate
+        var rateEl = document.getElementById('nws-expected-return');
+        if (rateEl) rateEl.placeholder = sub==='EPF'?'8.25':sub==='PPF'?'7.1':'10.0';
+      })(this)">${opts}</select>
+    </div>`;
     extraFields += `<div class="nw-sheet-row">
       <div class="nw-sheet-field"><div class="nw-sheet-label">Monthly Contribution</div><input class="nw-sheet-input" id="nws-monthly-contrib" type="number" placeholder="0" value="${m.monthlyContribution||''}"><div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Your regular monthly contribution</div></div>
       <div class="nw-sheet-field"><div class="nw-sheet-label">Annual Contribution</div><input class="nw-sheet-input" id="nws-annual-contrib" type="number" placeholder="0" value="${m.annualContribution||''}"><div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Total contributed this year</div></div>
     </div>`;
+    // India provident fund fields — interest rate + invested amount (hidden for 401k/IRA etc)
+    extraFields += `<div id="nws-retire-rate-row" class="nw-sheet-row" style="display:${isIndiaRetire?'':'none'};">
+      <div class="nw-sheet-field"><div class="nw-sheet-label">Interest / Return Rate % p.a.</div>
+        <input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="${indiaRate}" step="0.01" value="${m.expectedReturn||''}">
+        <div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Current declared rate — used for corpus projections</div>
+      </div>
+      <div class="nw-sheet-field"><div class="nw-sheet-label">Invested Amount (Cost Basis)</div>
+        <input class="nw-sheet-input" id="nws-retire-inv-inner" type="number" placeholder="Total contributed to date" step="0.01" value="${existing ? (existing.investedAmount||'') : ''}">
+        <div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Total deposited — for ROI % calculation</div>
+      </div>
+    </div>`;
   }
-  if (['epf','ppf'].includes(type)) {
-    const epfLabel = type === 'epf' ? 'EPF' : 'PPF';
-    const defaultRate = type === 'epf' ? '8.25' : '7.1';
-    extraFields += '<div class="nw-sheet-row">'
-      + '<div class="nw-sheet-field"><div class="nw-sheet-label">Provisional Interest Rate % p.a.</div>'
-      + '<input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="' + defaultRate + '" step="0.01" value="' + (m.expectedReturn||'') + '">'
-      + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Current declared rate — used for corpus projections</div>'
-      + '</div>'
-      + '<div class="nw-sheet-field"><div class="nw-sheet-label">Monthly Contribution</div>'
-      + '<input class="nw-sheet-input" id="nws-monthly-contrib" type="number" placeholder="0" value="' + (m.monthlyContribution||'') + '">'
-      + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Your monthly ' + epfLabel + ' contribution</div>'
-      + '</div></div>';
+  if (['epf','ppf'].includes(type) || type === 'retirement') {
+    // For EPF/PPF direct types, or 'retirement' type (manually added PF accounts)
+    const isEPF = type === 'epf' || (type === 'retirement' && (m.subtype||'').toUpperCase() === 'EPF');
+    const isPPF = type === 'ppf' || (type === 'retirement' && (m.subtype||'').toUpperCase() === 'PPF');
+    const epfLabel = isEPF ? 'EPF' : isPPF ? 'PPF' : 'this fund';
+    const defaultRate = isEPF ? '8.25' : isPPF ? '7.1' : '8.0';
+    // Only add rate+contrib here if NOT also handled by 'retirement' section below
+    // 'retirement' already adds monthly+annual contrib — just add rate field
+    if (['epf','ppf'].includes(type)) {
+      extraFields += '<div class="nw-sheet-row">'
+        + '<div class="nw-sheet-field"><div class="nw-sheet-label">Provisional Interest Rate % p.a.</div>'
+        + '<input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="' + defaultRate + '" step="0.01" value="' + (m.expectedReturn||'') + '">'
+        + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Current declared rate — used for corpus projections</div>'
+        + '</div>'
+        + '<div class="nw-sheet-field"><div class="nw-sheet-label">Monthly Contribution</div>'
+        + '<input class="nw-sheet-input" id="nws-monthly-contrib" type="number" placeholder="0" value="' + (m.monthlyContribution||'') + '">'
+        + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Your monthly ' + epfLabel + ' contribution</div>'
+        + '</div></div>';
+    } else {
+      // type === 'retirement': add just the interest rate field (contrib fields added below by retirement block)
+      extraFields += '<div class="nw-sheet-field"><div class="nw-sheet-label">Provisional Interest Rate % p.a.</div>'
+        + '<input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="' + defaultRate + '" step="0.01" value="' + (m.expectedReturn||'') + '">'
+        + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">EPF/PPF/NPS declared rate — used for ROI projections in Growth Lab</div>'
+        + '</div>';
+    }
   }
   if (type === 'credit_card') {
     extraFields += `<div class="nw-sheet-row"><div class="nw-sheet-field"><div class="nw-sheet-label">Credit Limit</div><input class="nw-sheet-input" id="nws-limit" type="number" placeholder="5000" value="${m.limit||''}"></div><div class="nw-sheet-field"><div class="nw-sheet-label">APR %</div><input class="nw-sheet-input" id="nws-apr" type="number" placeholder="19.99" step="0.01" value="${m.apr||''}"></div></div>`;
@@ -12894,12 +12944,10 @@ function _nwsBuildForm(type, existing, m) {
   // ── Rate of Return + Monthly Contribution for goal-oriented and savings accounts ──
   // 'retirement' excluded — already has its own monthly/annual contrib fields above
   const growthTypes = ['education','emergency','savings_acc','brokerage','checking','cash',
-    'mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','nps',
-    'retirement_401k','retirement_roth','retirement_ira','brokerage_taxable','hsa','college_529','ibond'];
+    'mf_equity','mf_debt','mf_'retirement','retirement_401k','retirement_roth','retirement_ira'01k','retirement_roth','retirement_ira','brokerage_taxable','hsa','college_529','ibond'];
     // epf + ppf excluded — they get their own interest rate + contribution fields above
   // Investment types that need cost basis / invested amount
-  const costBasisTypes = ['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','brokerage','brokerage_taxable',
-    'retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','stocks_direct','nps','ppf',
+  const costBasisTypes = ['mf_equity','mf_debt','mf_elss','mf_hyb'retirement','retirement_401k','retirement_roth','retirement_ira''retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','stocks_direct','nps','ppf',
     'education','epf'];  // education + EPF need invested amount for ROI and FHS corpus tracking
   if (costBasisTypes.includes(type)) {
     extraFields += '<div class="nw-sheet-field"><div class="nws-section-label">Invested Amount (Cost Basis)</div>'
@@ -13016,17 +13064,25 @@ function editREProperty(idx) {
   openNWSheet('realestate');
   // After sheet opens, inject the RE data into form fields
   setTimeout(() => {
+    const nameEl = document.getElementById('nws-name');
     const descEl = document.getElementById('nws-re-desc');
     const pvEl   = document.getElementById('nws-re-pv');
     const cvEl   = document.getElementById('nws-re-cv');
+    const balEl  = document.getElementById('nws-balance');
     const areaEl = document.getElementById('nws-re-area');
     const ctryEl = document.getElementById('nws-re-country');
     const currEl = document.getElementById('nws-currency-sel') || document.getElementById('nws-currency');
+    // Fill Name field — RE stores name as 'description'
+    if (nameEl)  nameEl.value  = p.description  || p.name || 'Property';
     if (descEl)  descEl.value  = p.description  || '';
     if (pvEl)    pvEl.value    = p.purchaseValue || '';
-    if (cvEl)    cvEl.value    = p.currentValue  || p.purchaseValue || '';
+    // Fill both nws-re-cv (if present) and nws-balance (the shared current value field)
+    const cv = p.currentValue || p.purchaseValue || '';
+    if (cvEl)    cvEl.value    = cv;
+    if (balEl)   balEl.value   = cv;
     if (areaEl)  areaEl.value  = p.area          || '';
     if (ctryEl)  ctryEl.value  = p.country       || '';
+    if (currEl)  currEl.value  = p.currency      || 'INR';
     // Store idx on window so save knows to update instead of add
     window._editingREIdx = idx;
     // Update sheet title
@@ -13054,10 +13110,11 @@ function closeNWSheet() {
 }
 
 function _buildACGeoPickers(type, existing) {
-  const isLiabType   = NW_TYPES[type] && NW_TYPES[type].isLiab;
-  const isCashType   = ['checking','cash','emergency','bank_checking_us'].includes(type);
-  const isCreditLoan = ['credit_card','loan','other_liability'].includes(type);
-  if (isLiabType || isCashType || isCreditLoan) return '';
+  // Only skip geo picker for cash-equivalent types (geography is obvious/irrelevant)
+  const isCashType   = ['cash','emergency'].includes(type);
+  if (isCashType) return '';
+  // All other types — including liabilities — get geography picker
+  // Liabilities benefit from geography tracking (e.g. India mortgage vs US credit card)
 
   const currentAC  = (existing && existing.assetClass)  || ASSET_CLASS_MAP[type]  || 'OTHER';
   const currentGeo = (existing && existing.geography)    || GEOGRAPHY_MAP[type]    || 'GLOBAL';
@@ -13195,11 +13252,17 @@ function _buildACGeoPickers(type, existing) {
       } else {
         row.style.transform = 'translateX(0)';
         if (_activeSwipe === wrap) _activeSwipe = null;
-        // If it was a tap (barely moved), fire the onclick manually
+        // If it was a tap (barely moved), fire the onclick or data-drilldown
         // This fixes iOS Safari swallowing click events after touchend
-        if (Math.abs(dx) < TAP_THRESHOLD && row.getAttribute('onclick')) {
+        if (Math.abs(dx) < TAP_THRESHOLD) {
           e.preventDefault();
-          try { new Function(row.getAttribute('onclick')).call(row); } catch(err) {}
+          if (row.getAttribute('onclick')) {
+            try { new Function(row.getAttribute('onclick')).call(row); } catch(err) {}
+          } else {
+            // Check for data-drilldown (Zerodha/US holdings drill-down)
+            const drillId = row.getAttribute('data-drilldown');
+            if (drillId && typeof openZerodhaSheet === 'function') openZerodhaSheet(drillId);
+          }
         }
       }
     });
@@ -13242,22 +13305,26 @@ function _buildACGeoPickers(type, existing) {
       : document;
     container.querySelectorAll('.swipe-wrap, .nw-swipe-wrap').forEach(attachSwipe);
 
-    // Attach tap listeners to drill-down rows (imported accounts — no swipe wrap)
+    // Attach tap listeners to drill-down rows (NW account rows with data-drilldown attr)
     container.querySelectorAll('[data-drilldown]').forEach(function(row) {
       if (row._drilldownAttached) return;
       row._drilldownAttached = true;
-      var tapStartX = 0, tapStartY = 0;
+      var tapStartX = 0, tapStartY = 0, tapStartTime = 0;
       row.addEventListener('touchstart', function(e) {
         tapStartX = e.touches[0].clientX;
         tapStartY = e.touches[0].clientY;
+        tapStartTime = Date.now();
       }, { passive: true });
       row.addEventListener('touchend', function(e) {
         var dx = Math.abs(e.changedTouches[0].clientX - tapStartX);
         var dy = Math.abs(e.changedTouches[0].clientY - tapStartY);
-        if (dx < 8 && dy < 8) {
+        var dt = Date.now() - tapStartTime;
+        // Treat as tap: minimal movement + under 500ms (not a long-press)
+        if (dx < 12 && dy < 12 && dt < 500) {
           e.preventDefault();
+          e.stopPropagation();
           var accId = row.getAttribute('data-drilldown');
-          if (accId) openZerodhaSheet(accId);
+          if (accId) { setTimeout(function(){ openZerodhaSheet(accId); }, 10); }
         }
       }, { passive: false });
       // Also handle mouse click for desktop testing
@@ -13554,8 +13621,8 @@ function saveNWAccount() {
   const lastUpdated = dateEl ? dateEl.value : localDateStr();
 
   if (!data._nwAccounts) data._nwAccounts = [];
-  // Read investedAmount from new field if present
-  const investedAmtEl = document.getElementById('nws-invested-amount');
+  // Read investedAmount from either the standard field or the retirement-specific field
+  const investedAmtEl = document.getElementById('nws-invested-amount') || document.getElementById('nws-retire-inv-inner');
   const investedAmount = investedAmtEl && investedAmtEl.value ? Number(investedAmtEl.value) : undefined;
   // Hoist key fields for direct access by ROI engine and AI context
   const _acctExtras = {
@@ -17231,7 +17298,7 @@ const FHS_REGION = {
     retirementMultiples: { 30: 1, 40: 3, 50: 6, 60: 10 },
     savingsExcellent: 0.30, savingsGood: 0.20, savingsFair: 0.10,
     liquidTypes: ['checking','savings_acc','bonds_fd','cash'],
-    retirementTypes: ['retirement'],
+    retirementTypes: ['retirement','epf','ppf','nps'],
     dtiExcellent: 1.0, dtiGood: 2.5, dtiFair: 4.0,
     benchmarkSource: 'SEBI / NPS Trust / AMFI India',
   },
@@ -17244,7 +17311,7 @@ const FHS_REGION = {
     retirementMultiples: { 30: 1, 40: 3, 50: 6, 60: 8 },
     savingsExcellent: 0.20, savingsGood: 0.15, savingsFair: 0.08,
     liquidTypes: ['checking','savings_acc','cash'],
-    retirementTypes: ['retirement'],
+    retirementTypes: ['retirement','retirement_401k','retirement_roth','retirement_ira','hsa'],
     dtiExcellent: 0.5, dtiGood: 1.5, dtiFair: 3.0,
     benchmarkSource: 'Fidelity / CFP Board',
   },
@@ -17257,7 +17324,7 @@ const FHS_REGION = {
     retirementMultiples: { 30: 1, 40: 3, 50: 6, 60: 8 },
     savingsExcellent: 0.20, savingsGood: 0.15, savingsFair: 0.08,
     liquidTypes: ['checking','savings_acc','cash'],
-    retirementTypes: ['retirement'],
+    retirementTypes: ['retirement','retirement_401k','retirement_roth','retirement_ira','hsa'],
     dtiExcellent: 0.5, dtiGood: 1.5, dtiFair: 3.0,
     benchmarkSource: 'CFP Board',
   }
