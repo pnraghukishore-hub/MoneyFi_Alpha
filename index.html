@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.5 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.6 · Built 2026-03</div>
   </div>
 
 
@@ -3199,12 +3199,14 @@
     <div id="nw-sheet-body"></div>
 
     <!-- Save + Cancel -->
-    <button class="nw-sheet-save" onclick="saveNWAccount()" style="background:var(--yellow);border:none;border-radius:14px;padding:16px;width:100%;font-family:Nunito,sans-serif;font-weight:900;font-size:1em;cursor:pointer;margin-top:8px;">
+    <div style="position:sticky;bottom:0;background:var(--white);padding:12px 0 8px;margin-top:8px;border-top:1px solid #F0F0F0;z-index:10;">
+    <button onclick="saveNWAccount()" style="background:var(--yellow);border:none;border-radius:14px;padding:16px;width:100%;font-family:Nunito,sans-serif;font-weight:900;font-size:1em;cursor:pointer;">
       ✅ Save
     </button>
     <button onclick="closeNWSheet()" style="width:100%;background:none;border:none;font-family:Nunito,sans-serif;font-weight:800;font-size:0.88em;color:var(--text-light);cursor:pointer;padding:12px;margin-top:4px;">
       Cancel
     </button>
+    </div>
   </div>
 </div>
 
@@ -7146,41 +7148,44 @@ function onTxSearch(q) {
         ${byMonth[mk].map(t => {
           const d = t.date ? new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
           const amt = convertAmt(t.amount, t.currency);
-          return `<div style="background:var(--white);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);
-                              padding:11px 14px;margin-bottom:6px;">
-            <div style="display:flex;align-items:center;gap:11px;">
-              <div style="width:38px;height:38px;border-radius:11px;background:${bgMap[t._type]||'#eee'};
-                          display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">
-                ${iconMap[t._type]||'💰'}
-              </div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-weight:900;font-size:0.88em;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                  ${t.category || 'Other'}
-                </div>
-                <div style="font-size:0.73em;color:var(--text-light);font-weight:600;margin-top:2px;">
-                  ${d}${t.description ? ' · ' + t.description : ''}
-                </div>
-              </div>
-              <div style="font-weight:900;font-size:0.92em;color:${t._type==='income'?'var(--income)':'var(--expenses)'};flex-shrink:0;">
-                ${t._type==='income'?'+':'-'}${fmt(amt)}
-              </div>
+          // Use swipe-wrap structure matching the main tx view
+          return `<div class="swipe-wrap" style="margin-bottom:6px;">
+            <div class="swipe-actions-right">
+              <button class="swipe-btn swipe-btn-edit" onclick="searchEditTx('${t._month}','${t._type}',${t._idx})">
+                <span class="swipe-btn-icon">✏️</span>Edit
+              </button>
+              <button class="swipe-btn swipe-btn-del" data-month="${t._month}" data-type="${t._type}" data-idx="${t._idx}" data-amt="${Math.abs(Number(t.amount||0))}" data-cat="${(t.category||'').replace(/"/g,'&quot;')}" onclick="searchDeleteTxByEl(this)">
+                <span class="swipe-btn-icon">🗑️</span>Delete
+              </button>
             </div>
-            <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;">
-              <button onclick="searchEditTx('${t._month}','${t._type}',${t._idx})"
-                style="background:#F0F4FF;border:none;border-radius:8px;padding:5px 12px;font-size:0.72em;font-weight:800;color:var(--primary);cursor:pointer;">✏️ Edit</button>
-              <button data-month="${t._month}" data-type="${t._type}" data-idx="${t._idx}" data-amt="${Math.abs(Number(t.amount||0))}" data-cat="${(t.category||'').replace(/"/g,'&quot;')}"
-                onclick="searchDeleteTxByEl(this)"
-                style="background:#FFF0F0;border:none;border-radius:8px;padding:5px 12px;font-size:0.72em;font-weight:800;color:var(--expenses);cursor:pointer;">✕ Delete</button>
+            <div class="swipe-row" style="background:var(--white);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:11px 14px;">
+              <div style="display:flex;align-items:center;gap:11px;">
+                <div style="width:38px;height:38px;border-radius:11px;background:${bgMap[t._type]||'#eee'};display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">
+                  ${iconMap[t._type]||'💰'}
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-weight:900;font-size:0.88em;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    ${t.category || 'Other'}
+                  </div>
+                  <div style="font-size:0.73em;color:var(--text-light);font-weight:600;margin-top:2px;">
+                    ${d}${t.description ? ' · ' + t.description : ''}
+                  </div>
+                </div>
+                <div style="font-weight:900;font-size:0.92em;color:${t._type==='income'?'var(--income)':'var(--expenses)'};flex-shrink:0;">
+                  ${t._type==='income'?'+':'-'}${fmt(amt)}
+                </div>
+              </div>
             </div>
           </div>`;
         }).join('')}
       </div>`
     ).join('');
 
-  // Wire delete-all button after DOM is updated
+  // Wire delete-all button + attach swipe to search result rows
   setTimeout(() => {
     const dab = document.getElementById('tx-delete-all-btn');
     if (dab) dab.onclick = () => deleteAllSearchResults(window._txSearchResults || []);
+    if (window.initSwipeRows) initSwipeRows(document.getElementById('tx-search-results'));
   }, 0);
 }
 
@@ -11299,6 +11304,8 @@ const GEOGRAPHY_MAP = {
   retirement_401k:'US', retirement_roth:'US', retirement_ira:'US',
   brokerage_taxable:'US', hsa:'US', college_529:'US',
   bank_checking_us:'US', ibond:'US',
+  // Liabilities — geography comes from where the debt is held
+  credit_card:'IN', loan:'IN', other_liability:'IN',
   // Universal
   metals:'GLOBAL', realestate:'GLOBAL',
   retirement:'GLOBAL', education:'GLOBAL', emergency:'GLOBAL',
@@ -12862,6 +12869,19 @@ function _nwsBuildForm(type, existing, m) {
       <div class="nw-sheet-field"><div class="nw-sheet-label">Annual Contribution</div><input class="nw-sheet-input" id="nws-annual-contrib" type="number" placeholder="0" value="${m.annualContribution||''}"><div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Total contributed this year</div></div>
     </div>`;
   }
+  if (['epf','ppf'].includes(type)) {
+    const epfLabel = type === 'epf' ? 'EPF' : 'PPF';
+    const defaultRate = type === 'epf' ? '8.25' : '7.1';
+    extraFields += '<div class="nw-sheet-row">'
+      + '<div class="nw-sheet-field"><div class="nw-sheet-label">Provisional Interest Rate % p.a.</div>'
+      + '<input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="' + defaultRate + '" step="0.01" value="' + (m.expectedReturn||'') + '">'
+      + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Current declared rate — used for corpus projections</div>'
+      + '</div>'
+      + '<div class="nw-sheet-field"><div class="nw-sheet-label">Monthly Contribution</div>'
+      + '<input class="nw-sheet-input" id="nws-monthly-contrib" type="number" placeholder="0" value="' + (m.monthlyContribution||'') + '">'
+      + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Your monthly ' + epfLabel + ' contribution</div>'
+      + '</div></div>';
+  }
   if (type === 'credit_card') {
     extraFields += `<div class="nw-sheet-row"><div class="nw-sheet-field"><div class="nw-sheet-label">Credit Limit</div><input class="nw-sheet-input" id="nws-limit" type="number" placeholder="5000" value="${m.limit||''}"></div><div class="nw-sheet-field"><div class="nw-sheet-label">APR %</div><input class="nw-sheet-input" id="nws-apr" type="number" placeholder="19.99" step="0.01" value="${m.apr||''}"></div></div>`;
   }
@@ -12874,11 +12894,13 @@ function _nwsBuildForm(type, existing, m) {
   // ── Rate of Return + Monthly Contribution for goal-oriented and savings accounts ──
   // 'retirement' excluded — already has its own monthly/annual contrib fields above
   const growthTypes = ['education','emergency','savings_acc','brokerage','checking','cash',
-    'mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','epf','ppf','nps',
+    'mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','nps',
     'retirement_401k','retirement_roth','retirement_ira','brokerage_taxable','hsa','college_529','ibond'];
+    // epf + ppf excluded — they get their own interest rate + contribution fields above
   // Investment types that need cost basis / invested amount
   const costBasisTypes = ['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','brokerage','brokerage_taxable',
-    'retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','stocks_direct','nps','ppf'];
+    'retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','stocks_direct','nps','ppf',
+    'education','epf'];  // education + EPF need invested amount for ROI and FHS corpus tracking
   if (costBasisTypes.includes(type)) {
     extraFields += '<div class="nw-sheet-field"><div class="nws-section-label">Invested Amount (Cost Basis)</div>'
       + '<input class="nw-sheet-input" id="nws-invested-amount" type="number" placeholder="Total amount invested" step="0.01" value="' + (existing ? (existing.investedAmount||'') : '') + '">'
@@ -13548,7 +13570,24 @@ function saveNWAccount() {
   const savedAssetClass = acEl?.value  || ASSET_CLASS_MAP[type] || null;
   const savedGeography  = geoEl?.value || GEOGRAPHY_MAP[type]   || null;
 
-  if (nwSheetEditId) {
+  // Real estate edit path — _editingREIdx is set by editREProperty()
+  if (type === 'realestate' && window._editingREIdx != null) {
+    const reIdx = window._editingREIdx;
+    if (!data._realEstate) data._realEstate = [];
+    if (data._realEstate[reIdx]) {
+      // Update existing RE record in-place
+      data._realEstate[reIdx] = {
+        ...data._realEstate[reIdx],
+        description:   meta.description   || data._realEstate[reIdx].description,
+        purchaseValue: meta.purchaseValue  != null ? meta.purchaseValue : data._realEstate[reIdx].purchaseValue,
+        currentValue:  balance             || data._realEstate[reIdx].currentValue,
+        area:          meta.area           || data._realEstate[reIdx].area,
+        country:       meta.country        || data._realEstate[reIdx].country,
+        currency:      currency,
+        geography:     savedGeography      || data._realEstate[reIdx].geography,
+      };
+    }
+  } else if (nwSheetEditId) {
     const idx = data._nwAccounts.findIndex(a => a.id === nwSheetEditId);
     if (idx >= 0) data._nwAccounts[idx] = {
       ...data._nwAccounts[idx], name, type, balance, currency, lastUpdated, meta,
@@ -14615,11 +14654,14 @@ function parseZerodhaHoldings(headers, rows, cur) {
   // Holdings export → each stock becomes _zerodhaHolding; aggregated into ONE NW account
   const records = [];
   const col = k => headers.findIndex(h => h.includes(k));
-  const cSym  = col('instrument') >= 0 ? col('instrument') : col('symbol');
-  const cVal  = col('cur_val') >= 0 ? col('cur_val') : col('current') >= 0 ? col('current') : col('value');
-  const cCost = col('avg_cost') >= 0 ? col('avg_cost') : col('avg cost') >= 0 ? col('avg cost') : col('cost');
-  const cQty  = col('qty') >= 0 ? col('qty') : col('quantity');
-  const cPnl  = col('p&l') >= 0 ? col('p&l') : col('pnl') >= 0 ? col('pnl') : col('profit');
+  // Column matching handles both XLSX ('cur_val','avg_cost') and CSV ('cur. val','avg. cost') variants
+  const colFuzzy = (needles) => headers.findIndex(h => needles.some(n => h.replace(/[_\s\.]/g,'').includes(n.replace(/[_\s\.]/g,''))));
+  const cSym  = colFuzzy(['instrument','symbol']);
+  const cVal  = colFuzzy(['curval','currentvalue','marketvalue','cur.val']);
+  const cCost = colFuzzy(['avgcost','avg.cost','averagecost']);
+  const cQty  = colFuzzy(['qty','quantity']);
+  const cPnl  = colFuzzy(['p&l','pnl','profit']);
+  const cInv  = colFuzzy(['invested','investedvalue']);  // CSV has 'Invested' column directly
 
   rows.forEach(row => {
     const symbol = String(row[cSym] || '').trim();
@@ -14630,6 +14672,9 @@ function parseZerodhaHoldings(headers, rows, cur) {
     const pnl     = parseFloat(String(row[cPnl]  || '0').replace(/[,₹$]/g,'')) || 0;
     if (!curVal || !symbol) return;
 
+    // Use 'Invested' column directly if available (CSV), else derive from avgCost * qty
+    const investedDirect = cInv >= 0 ? (parseFloat(String(row[cInv] || '0').replace(/[,₹$]/g,'')) || 0) : 0;
+    const invested = investedDirect > 0 ? investedDirect : avgCost * qty;
     records.push({
       date: localDateStr(),
       description: `${symbol} — Holdings snapshot`,
@@ -14640,7 +14685,7 @@ function parseZerodhaHoldings(headers, rows, cur) {
       source: 'zerodha_holdings',
       confidence: 0.98,
       _holdingsOnly: true,
-      _zerodhaHolding: { symbol, curVal, avgCost, qty, pnl, invested: avgCost * qty },
+      _zerodhaHolding: { symbol, curVal, avgCost, qty, pnl, invested },
     });
   });
   return records;
