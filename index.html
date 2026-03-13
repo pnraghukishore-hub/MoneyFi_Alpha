@@ -77,6 +77,7 @@
   <title>MoneyFi – Personal Finance</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -1225,6 +1226,321 @@
     .import-tab.active { background:var(--yellow); color:var(--text-dark); }
     /* ROI Growth Lab tab buttons */
     
+    /* ══ GOAL ORCHESTRATION ══ */
+
+    /* ══ GOAL ORCHESTRATION ══ */
+    .goal-conflict-banner, .goal-ok-banner {
+      display:flex; gap:10px; align-items:flex-start;
+      border-radius:14px; padding:13px 14px; margin-bottom:10px;
+    }
+    .goal-conflict-banner { background:#FFF1F2; border:1.5px solid #FECDD3; }
+    .goal-ok-banner       { background:#F0FDF4; border:1.5px solid #BBF7D0; }
+    .goal-conflict-icon   { font-size:1.3em; flex-shrink:0; margin-top:1px; }
+    .goal-conflict-title  { font-size:0.82em; font-weight:900; color:#111827; margin-bottom:3px; }
+    .goal-conflict-desc   { font-size:0.71em; font-weight:700; color:#6B7280; line-height:1.4; }
+
+    .goal-sip-strip {
+      display:flex; align-items:center; justify-content:space-between;
+      background:#fff; border-radius:16px; padding:14px;
+      box-shadow:0 1px 8px rgba(0,0,0,0.06); margin-bottom:10px;
+    }
+    .goal-sip-strip-item { text-align:center; flex:1; }
+    .goal-sip-strip-val  { font-size:1em; font-weight:900; color:#1E2A6E; }
+    .goal-sip-strip-lbl  { font-size:0.58em; font-weight:700; color:#9CA3AF;
+                           text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+    .goal-sip-strip-sep  { font-size:1.1em; color:#D1D5DB; font-weight:900; flex-shrink:0; padding:0 4px; }
+
+    /* Timeline */
+    .goal-timeline-row {
+      display:flex; position:relative; padding-left:24px; margin-bottom:0;
+    }
+    .goal-tl-dot {
+      width:12px; height:12px; border-radius:50%;
+      background:var(--tl-col, #9CA3AF); border:2.5px solid #fff;
+      box-shadow:0 0 0 2px var(--tl-col, #9CA3AF);
+      position:absolute; left:0; top:8px; flex-shrink:0;
+    }
+    .goal-tl-line {
+      position:absolute; left:5px; top:22px; bottom:-14px;
+      width:2px; background:#E5E7EB;
+    }
+    .goal-tl-content  { flex:1; padding:4px 0 18px 0; }
+    .goal-tl-header   { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+    .goal-tl-icon     { font-size:1em; }
+    .goal-tl-name     { flex:1; font-size:0.8em; font-weight:900; color:#111827; }
+    .goal-tl-year     { font-size:0.68em; font-weight:800; color:#9CA3AF; flex-shrink:0; }
+    .goal-tl-pct      { font-size:0.78em; font-weight:900; flex-shrink:0; }
+    .goal-tl-bar-track { background:#F3F4F6; border-radius:4px; height:5px; margin-bottom:4px; overflow:hidden; }
+    .goal-tl-bar-fill  { height:100%; border-radius:4px; transition:width 0.5s; }
+    .goal-tl-meta      { font-size:0.66em; font-weight:700; color:#9CA3AF;
+                         display:flex; justify-content:space-between; }
+
+    /* Deep goal cards */
+    .goal-deep-card {
+      background:#fff; border-radius:16px; padding:14px;
+      margin-bottom:10px; box-shadow:0 1px 10px rgba(0,0,0,0.06);
+    }
+    .goal-deep-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2px; }
+    .goal-deep-name   { font-size:0.88em; font-weight:900; color:#111827; }
+    .goal-deep-sub    { font-size:0.66em; font-weight:700; color:#9CA3AF; margin-top:2px; }
+    .goal-deep-pct    { font-size:1.4em; font-weight:900; line-height:1; }
+    .goal-deep-funded { font-size:0.6em; font-weight:700; color:#9CA3AF; text-align:right; }
+
+    .goal-stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+    .goal-stat-box { background:#F9FAFB; border-radius:10px; padding:8px 6px; text-align:center; }
+    .goal-stat-val { font-size:0.82em; font-weight:900; color:#1E2A6E; }
+    .goal-stat-lbl { font-size:0.58em; font-weight:700; color:#9CA3AF;
+                     text-transform:uppercase; letter-spacing:0.3px; margin-top:2px; }
+
+    .goal-sip-needed {
+      display:flex; gap:8px; align-items:flex-start;
+      background:#FEF3C7; border:1.5px solid #FDE68A;
+      border-radius:11px; padding:10px 12px; margin-bottom:8px;
+    }
+    .goal-sip-icon   { font-size:1.1em; flex-shrink:0; }
+    .goal-sip-label  { font-size:0.72em; font-weight:700; color:#92400E; }
+    .goal-sip-amount { font-size:1em; font-weight:900; color:#D97706; margin-top:2px; }
+
+    .goal-inflation-note {
+      display:flex; gap:6px; font-size:0.69em; font-weight:700; color:#6B7280;
+      background:#F9FAFB; border-radius:9px; padding:8px 10px;
+      margin-bottom:6px; line-height:1.4; align-items:flex-start;
+    }
+    .goal-mismatch-warn {
+      display:flex; gap:6px; font-size:0.69em; font-weight:700; color:#92400E;
+      background:#FFF7ED; border:1px solid #FED7AA;
+      border-radius:9px; padding:8px 10px; line-height:1.4; align-items:flex-start;
+    }
+
+    /* Tax exit ordering */
+    .tax-exit-row {
+      display:flex; align-items:flex-start; gap:10px;
+      padding:10px 0; border-bottom:1px solid #F3F4F6;
+    }
+    .tax-exit-row:last-child { border-bottom:none; }
+    .tax-exit-num  {
+      width:24px; height:24px; border-radius:50%; background:#1E2A6E;
+      color:#fff; font-size:0.7em; font-weight:900;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .tax-exit-name { font-size:0.78em; font-weight:900; color:#111827; margin-bottom:3px; }
+    .tax-exit-note { font-size:0.67em; font-weight:700; color:#6B7280; line-height:1.4; }
+    .tax-exit-val  { font-size:0.82em; font-weight:900; color:#1E2A6E; }
+    .tax-exit-save { font-size:0.64em; font-weight:700; color:#059669; margin-top:2px; }
+
+    /* ══ CLARITY ENGINE ══ */
+
+    /* ══ CLARITY TAB — PORTFOLIO CLARITY ENGINE ══ */
+
+    /* PCS Score ring + animated count-up */
+
+    /* ── Clarity snapshot card ─────────────────────────── */
+    .clarity-snapshot-card {
+      background: linear-gradient(135deg, #1E2A6E 0%, #2D3EA8 100%);
+      border-radius: 20px; padding: 18px 16px 14px; margin-bottom: 14px;
+    }
+    .cs-eyebrow { font-size:.58em; font-weight:900; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,.5); margin-bottom:12px; }
+    .cs-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; }
+    .cs-stat { text-align:center; background:rgba(255,255,255,.12); border-radius:12px; padding:10px 4px; }
+    .cs-val { font-size:1.35em; font-weight:900; color:#fff; line-height:1.1; }
+    .cs-lbl { font-size:.58em; font-weight:700; color:rgba(255,255,255,.55); margin-top:3px; text-transform:uppercase; letter-spacing:.4px; }
+    .cs-gain { text-align:center; font-size:.72em; font-weight:800; color:rgba(255,255,255,.6); margin-bottom:10px; }
+    .cs-prot { font-size:.68em; font-weight:700; color:rgba(255,255,255,.75); background:rgba(255,255,255,.1); border-radius:10px; padding:8px 10px; margin-bottom:10px; line-height:1.4; }
+    .cs-findings { display:flex; flex-direction:column; gap:6px; }
+    .cs-finding { font-size:.71em; font-weight:700; padding:8px 11px; border-radius:11px; line-height:1.35; }
+    .csf-ok   { background:rgba(255,255,255,.12); color:#86EFAC; }
+    .csf-warn { background:rgba(255,255,255,.10); color:#FDE68A; }
+    .csf-bad  { background:rgba(255,255,255,.10); color:#FCA5A5; }
+    .csf-info { background:rgba(255,255,255,.10); color:#BAE6FD; }
+
+    /* ── Section divider (investments + plan separators) ── */
+    .lab-section-divider { display:flex; align-items:center; gap:10px; margin:18px 0 12px; }
+    .lab-section-divider::before,.lab-section-divider::after { content:''; flex:1; height:1px; background:rgba(0,0,0,.1); }
+    .lab-section-divider span { font-size:.62em; font-weight:900; letter-spacing:1.5px; text-transform:uppercase; color:#9AA0B2; white-space:nowrap; padding:0 6px; }
+
+    .pcs-ring-wrap {
+      display:flex; flex-direction:column; align-items:center;
+      padding:20px 0 10px;
+    }
+    .pcs-ring-svg { overflow:visible; }
+    .pcs-ring-track { fill:none; stroke:#E5E7EB; stroke-width:10; }
+    .pcs-ring-fill  {
+      fill:none; stroke-width:10; stroke-linecap:round;
+      transition:stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1),stroke 0.4s;
+      transform-origin:center; transform:rotate(-90deg);
+    }
+    .pcs-score-num {
+      font-size:2.6em; font-weight:900; text-anchor:middle;
+      dominant-baseline:central; font-family:'Nunito',sans-serif;
+    }
+    .pcs-grade-lbl {
+      font-size:0.85em; font-weight:900; text-anchor:middle;
+      dominant-baseline:central; font-family:'Nunito',sans-serif;
+      letter-spacing:1px;
+    }
+    .pcs-hero-card {
+      background:linear-gradient(145deg,#1E2A6E,#2D3A9E);
+      border-radius:22px; padding:18px 16px 14px;
+      margin-bottom:10px; color:#fff;
+      box-shadow:0 10px 36px rgba(30,42,110,0.35);
+    }
+    .pcs-hero-eyebrow {
+      font-size:0.6em; font-weight:900; opacity:0.5;
+      text-transform:uppercase; letter-spacing:1.2px;
+      text-align:center; margin-bottom:0;
+    }
+    .pcs-hero-title {
+      font-size:1em; font-weight:900; text-align:center;
+      margin-bottom:14px; opacity:0.85;
+    }
+    .pcs-stat-row {
+      display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px;
+    }
+    .pcs-stat {
+      background:rgba(255,255,255,0.1); border-radius:12px;
+      padding:9px 6px; text-align:center;
+    }
+    .pcs-stat-val  { font-size:1.1em; font-weight:900; }
+    .pcs-stat-lbl  { font-size:0.56em; font-weight:700; opacity:0.6;
+                     text-transform:uppercase; letter-spacing:0.4px; margin-top:2px; }
+
+    /* Penalty breakdown */
+    .pcs-penalty-row {
+      display:flex; align-items:center; gap:10px; padding:8px 0;
+      border-bottom:1px solid #F3F4F6;
+    }
+    .pcs-penalty-row:last-child { border-bottom:none; }
+    .pcs-penalty-icon { font-size:1.1em; flex-shrink:0; width:22px; text-align:center; }
+    .pcs-penalty-label { flex:1; font-size:0.78em; font-weight:700; color:#374151; }
+    .pcs-penalty-pts {
+      font-size:0.78em; font-weight:900; padding:3px 8px;
+      border-radius:20px; flex-shrink:0;
+    }
+    .pcs-penalty-ok  { background:#ECFDF5; color:#059669; }
+    .pcs-penalty-bad { background:#FEF2F2; color:#DC2626; }
+    .pcs-penalty-mid { background:#FEF3C7; color:#D97706; }
+
+    /* KEEP/REVIEW/EXIT fund cards */
+    .clarity-fund-card {
+      border-radius:15px; padding:12px 13px; margin-bottom:8px;
+      border-left:4px solid transparent;
+    }
+    .clarity-fund-keep   { background:#F0FDF4; border-color:#22C55E; }
+    .clarity-fund-review { background:#FFFBEB; border-color:#F59E0B; }
+    .clarity-fund-exit   { background:#FFF1F2; border-color:#F43F5E; }
+    .clarity-fund-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:5px; }
+    .clarity-fund-name   { font-size:0.8em; font-weight:900; color:#111827; flex:1; margin-right:8px; line-height:1.3; }
+    .clarity-fund-tag    {
+      font-size:0.6em; font-weight:900; padding:3px 9px; border-radius:20px;
+      flex-shrink:0; letter-spacing:0.3px;
+    }
+    .tag-keep   { background:#22C55E; color:#fff; }
+    .tag-review { background:#F59E0B; color:#fff; }
+    .tag-exit   { background:#F43F5E; color:#fff; }
+    .clarity-fund-reason {
+      font-size:0.71em; font-weight:700; line-height:1.4;
+      margin-bottom:5px;
+    }
+    .clarity-fund-reason-keep   { color:#166534; }
+    .clarity-fund-reason-review { color:#92400E; }
+    .clarity-fund-reason-exit   { color:#9F1239; }
+    .clarity-fund-meta {
+      display:flex; justify-content:space-between; align-items:center;
+      font-size:0.65em; font-weight:700; color:#9CA3AF;
+    }
+    .clarity-fund-val  { font-size:0.82em; font-weight:900; color:#374151; }
+
+    /* Overlap section */
+    .overlap-category-row {
+      background:#fff; border-radius:14px; padding:12px 13px;
+      margin-bottom:8px; box-shadow:0 1px 8px rgba(0,0,0,0.05);
+    }
+    .overlap-cat-header {
+      display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;
+    }
+    .overlap-cat-name { font-size:0.82em; font-weight:900; color:#1E2A6E; }
+    .overlap-cat-count {
+      font-size:0.62em; font-weight:900; padding:3px 9px;
+      border-radius:20px; background:#FEF2F2; color:#DC2626;
+    }
+    .overlap-cat-count-ok { background:#ECFDF5; color:#059669; }
+    .overlap-cat-funds {
+      font-size:0.68em; font-weight:700; color:#6B7280; line-height:1.6;
+    }
+    .overlap-advisor-tip {
+      font-size:0.69em; font-weight:700; color:#7C3AED;
+      background:#F5F3FF; border-radius:8px; padding:6px 9px;
+      margin-top:7px; display:flex; gap:6px; align-items:flex-start; line-height:1.4;
+    }
+
+    /* Paused fund triage */
+    .triage-bucket {
+      border-radius:15px; padding:12px 13px; margin-bottom:8px;
+    }
+    .triage-sleeping { background:#EFF6FF; border:1.5px solid #BFDBFE; }
+    .triage-idle     { background:#FEF3C7; border:1.5px solid #FDE68A; }
+    .triage-noise    { background:#F9FAFB; border:1.5px solid #E5E7EB; }
+    .triage-taxsens  { background:#FDF4FF; border:1.5px solid #E9D5FF; }
+    .triage-header   { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+    .triage-title    { font-size:0.8em; font-weight:900; }
+    .triage-count    { font-size:0.65em; font-weight:800; padding:3px 8px; border-radius:20px; }
+    .triage-sleeping .triage-title { color:#1D4ED8; }
+    .triage-sleeping .triage-count { background:#DBEAFE; color:#1D4ED8; }
+    .triage-idle     .triage-title { color:#92400E; }
+    .triage-idle     .triage-count { background:#FDE68A; color:#92400E; }
+    .triage-noise    .triage-title { color:#6B7280; }
+    .triage-noise    .triage-count { background:#E5E7EB; color:#6B7280; }
+    .triage-taxsens  .triage-title { color:#7C3AED; }
+    .triage-taxsens  .triage-count { background:#EDE9FE; color:#7C3AED; }
+    .triage-desc     { font-size:0.7em; font-weight:700; color:#6B7280; margin-bottom:7px; line-height:1.4; }
+    .triage-fund-item {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:5px 0; border-bottom:1px solid rgba(0,0,0,0.05);
+      font-size:0.72em; font-weight:700;
+    }
+    .triage-fund-item:last-child { border-bottom:none; }
+    .triage-cta {
+      margin-top:8px; width:100%; border:none; border-radius:10px;
+      padding:8px; font-family:'Nunito',sans-serif; font-weight:900;
+      font-size:0.72em; cursor:pointer; transition:all 0.18s;
+    }
+    .triage-sleeping .triage-cta { background:#2563EB; color:#fff; }
+    .triage-idle     .triage-cta { background:#D97706; color:#fff; }
+    .triage-noise    .triage-cta { background:#6B7280; color:#fff; }
+    .triage-taxsens  .triage-cta { background:#7C3AED; color:#fff; }
+
+    /* AMC concentration */
+    .amc-bar-row { margin-bottom:8px; }
+    .amc-bar-label { display:flex; justify-content:space-between; font-size:0.74em; font-weight:800; color:#374151; margin-bottom:3px; }
+    .amc-bar-track { background:#F3F4F6; border-radius:5px; height:8px; overflow:hidden; }
+    .amc-bar-fill  { height:100%; border-radius:5px; transition:width 0.5s; }
+
+    /* Goal alignment */
+    .goal-align-card {
+      background:#fff; border-radius:15px; padding:12px 13px;
+      margin-bottom:8px; box-shadow:0 1px 8px rgba(0,0,0,0.05);
+      border-left:4px solid transparent;
+    }
+    .goal-align-ok      { border-color:#22C55E; }
+    .goal-align-warning { border-color:#F59E0B; }
+    .goal-align-danger  { border-color:#F43F5E; }
+    .goal-align-header  { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:5px; }
+    .goal-align-name    { font-size:0.82em; font-weight:900; color:#111827; }
+    .goal-align-status  { font-size:0.62em; font-weight:900; padding:3px 8px; border-radius:20px; flex-shrink:0; }
+    .goal-align-ok      .goal-align-status { background:#ECFDF5; color:#059669; }
+    .goal-align-warning .goal-align-status { background:#FFFBEB; color:#D97706; }
+    .goal-align-danger  .goal-align-status { background:#FFF1F2; color:#DC2626; }
+    .goal-align-detail  { font-size:0.7em; font-weight:700; color:#6B7280; line-height:1.4; }
+
+    /* Tax estimate */
+    .tax-row { display:flex; justify-content:space-between; align-items:center;
+               padding:7px 0; border-bottom:1px solid #F3F4F6; }
+    .tax-row:last-child { border-bottom:none; }
+    .tax-row-label { font-size:0.75em; font-weight:800; color:#374151; }
+    .tax-row-val   { font-size:0.78em; font-weight:900; color:#1E2A6E; }
+    .tax-row-rate  { font-size:0.64em; font-weight:700; color:#9CA3AF; margin-top:1px; }
+
+
     /* ══ GROWTH LAB — MASTERPIECE DESIGN ══ */
     .lab-hero {
       background: linear-gradient(160deg, #0A0F2C 0%, #1A1F5E 45%, #2D3A9E 100%);
@@ -2480,22 +2796,19 @@
   <div class="lab-hero">
     <div class="lab-hero-eyebrow">⚗️ Investment Growth Lab</div>
     <div class="lab-hero-title">Your Money Command Centre</div>
-    <div class="lab-hero-sub">Advisor-grade insights · Live experiments · What-if scenarios</div>
+    <div class="lab-hero-sub">Portfolio clarity · Investment tracking · Retirement planning · Goal simulation</div>
     <div class="lab-tabs" id="lab-tab-row">
-      <button class="lab-tab lab-tab-active" onclick="switchROITab('story')"  id="roi-tab-story">
-        <span class="lab-tab-icon">📊</span><span class="lab-tab-label">Overview</span>
+      <button class="lab-tab lab-tab-active" onclick="switchROITab('clarity')" id="roi-tab-clarity">
+        <span class="lab-tab-icon">🔍</span><span class="lab-tab-label">Clarity</span>
       </button>
-      <button class="lab-tab" onclick="switchROITab('funds')"  id="roi-tab-funds">
-        <span class="lab-tab-icon">💼</span><span class="lab-tab-label">Funds</span>
-      </button>
-      <button class="lab-tab" onclick="switchROITab('sip')"    id="roi-tab-sip">
-        <span class="lab-tab-icon">🔄</span><span class="lab-tab-label">SIPs</span>
+      <button class="lab-tab" onclick="switchROITab('investments')" id="roi-tab-investments">
+        <span class="lab-tab-icon">💼</span><span class="lab-tab-label">Investments</span>
       </button>
       <button class="lab-tab" onclick="switchROITab('retire')" id="roi-tab-retire">
         <span class="lab-tab-icon">🏦</span><span class="lab-tab-label">Retire</span>
       </button>
-      <button class="lab-tab" onclick="switchROITab('sim')"    id="roi-tab-sim">
-        <span class="lab-tab-icon">🎯</span><span class="lab-tab-label">What If</span>
+      <button class="lab-tab" onclick="switchROITab('plan')" id="roi-tab-plan">
+        <span class="lab-tab-icon">🎯</span><span class="lab-tab-label">Plan</span>
       </button>
     </div>
   </div>
@@ -2692,6 +3005,145 @@
       </div>
 
     </div>
+
+
+
+    <!-- ══ GOALS ORCHESTRATION TAB ══ -->
+    <div id="roi-panel-goals" style="display:none;">
+      <div id="goal-orch-body"></div>
+    </div>
+
+
+    <!-- ══ CLARITY TAB ══ -->
+    <div id="roi-panel-clarity" style="display:none;">
+
+      <!-- PCS Hero Card -->
+      <div class="pcs-hero-card">
+        <div class="pcs-hero-eyebrow">Portfolio Clarity Engine</div>
+        <div class="pcs-hero-title">How clean and focused is your portfolio?</div>
+
+        <div class="pcs-ring-wrap">
+          <svg class="pcs-ring-svg" width="160" height="160" viewBox="0 0 160 160">
+            <circle class="pcs-ring-track" cx="80" cy="80" r="66"/>
+            <circle class="pcs-ring-fill" id="pcs-ring-fill" cx="80" cy="80" r="66"
+              stroke-dasharray="414.69" stroke-dashoffset="414.69" stroke="#22C55E"/>
+            <text class="pcs-score-num" id="pcs-score-num" x="80" y="72" fill="#fff">0</text>
+            <text class="pcs-grade-lbl" id="pcs-grade-lbl" x="80" y="98" fill="rgba(255,255,255,0.6)">CALCULATING</text>
+          </svg>
+        </div>
+
+        <div class="pcs-stat-row">
+          <div class="pcs-stat">
+            <div class="pcs-stat-val" id="pcs-funds-count">—</div>
+            <div class="pcs-stat-lbl">MF / SIP Funds</div>
+          </div>
+          <div class="pcs-stat">
+            <div class="pcs-stat-val" id="pcs-issues-count">—</div>
+            <div class="pcs-stat-lbl">Issues Found</div>
+          </div>
+          <div class="pcs-stat">
+            <div class="pcs-stat-val" id="pcs-idle-val">—</div>
+            <div class="pcs-stat-lbl">Idle Capital</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Score After Actions nudge -->
+      <div class="lab-insight-banner" id="pcs-action-nudge" style="display:none;">
+        <div class="lab-insight-icon">🚀</div>
+        <div class="lab-insight-text" id="pcs-action-text"></div>
+      </div>
+
+      <!-- Protected accounts note -->
+      <div id="pcs-protected-note" style="display:none;background:#EFF6FF;border-radius:12px;padding:10px 13px;margin-bottom:8px;font-size:0.72em;font-weight:700;color:#1D4ED8;display:flex;gap:7px;align-items:center;">
+        <span>🛡️</span>
+        <span id="pcs-protected-text"></span>
+      </div>
+
+      <!-- Export Actions Row -->
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button onclick="generateClarityPDF()" style="flex:1;background:#1E2A6E;color:#fff;border:none;border-radius:14px;padding:11px 8px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          📄 CA Export PDF
+        </button>
+        <button onclick="generateBeforeAfterCard()" style="flex:1;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;border:none;border-radius:14px;padding:11px 8px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          🎴 Share Card
+        </button>
+      </div>
+
+      <!-- Share Card Preview (hidden until generated) -->
+      <div id="clarity-share-preview" style="display:none;margin-bottom:10px;">
+        <canvas id="clarity-share-canvas" style="width:100%;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.15);"></canvas>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button onclick="downloadShareCard()" style="flex:1;background:#22C55E;color:#fff;border:none;border-radius:12px;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.76em;cursor:pointer;">⬇️ Save Image</button>
+          <button onclick="shareCardWhatsApp()" style="flex:1;background:#25D366;color:#fff;border:none;border-radius:12px;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.76em;cursor:pointer;">💬 WhatsApp</button>
+        </div>
+      </div>
+
+      <!-- Penalty Breakdown -->
+      <div class="lab-card">
+        <div class="lab-card-header">
+          <div class="lab-card-title">🔍 Score Breakdown</div>
+          <div class="lab-card-badge" id="pcs-grade-badge">—</div>
+        </div>
+        <div id="pcs-penalty-body"></div>
+      </div>
+
+      <!-- Category Overlap -->
+      <div class="lab-card" id="clarity-overlap-card">
+        <div class="lab-card-header">
+          <div class="lab-card-title">🔁 Category Overlap</div>
+          <div class="lab-card-badge lab-badge-warn" id="clarity-overlap-badge">—</div>
+        </div>
+        <div id="clarity-overlap-body"></div>
+      </div>
+
+      <!-- KEEP / REVIEW / EXIT -->
+      <div class="lab-section-label">📋 Consolidation Advisor</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;">
+        <button class="lab-sort-btn lab-sort-active" onclick="filterClarityFunds('all')"   id="cfbtn-all">All</button>
+        <button class="lab-sort-btn" onclick="filterClarityFunds('keep')"  id="cfbtn-keep">✅ Keep</button>
+        <button class="lab-sort-btn" onclick="filterClarityFunds('review')" id="cfbtn-review">⚠️ Review</button>
+        <button class="lab-sort-btn" onclick="filterClarityFunds('exit')"  id="cfbtn-exit">🚫 Exit</button>
+      </div>
+      <div id="clarity-funds-list"></div>
+
+      <!-- Paused Fund Triage -->
+      <div class="lab-section-label" id="clarity-triage-label" style="display:none;">🗂️ Paused Fund Triage</div>
+      <div id="clarity-triage-body"></div>
+
+      <!-- AMC Concentration -->
+      <div class="lab-card" id="clarity-amc-card" style="display:none;">
+        <div class="lab-card-header">
+          <div class="lab-card-title">🏦 AMC Concentration</div>
+          <div class="lab-card-badge" id="clarity-amc-badge">—</div>
+        </div>
+        <div id="clarity-amc-body"></div>
+      </div>
+
+      <!-- Goal Alignment -->
+      <div class="lab-card" id="clarity-goals-card" style="display:none;">
+        <div class="lab-card-header">
+          <div class="lab-card-title">🎯 Goal Alignment</div>
+          <div class="lab-card-badge lab-badge-blue" id="clarity-goals-badge">—</div>
+        </div>
+        <div id="clarity-goals-body"></div>
+      </div>
+
+      <!-- Tax Estimate -->
+      <div class="lab-card" id="clarity-tax-card" style="display:none;">
+        <div class="lab-card-header">
+          <div class="lab-card-title">🧾 Tax Estimate on Exit</div>
+          <div class="lab-card-badge lab-badge-warn">Indicative only</div>
+        </div>
+        <div id="clarity-tax-body"></div>
+        <div style="font-size:0.62em;font-weight:600;color:#9CA3AF;margin-top:8px;line-height:1.5;">
+          Based on LTCG (10% above ₹1L, held &gt;1yr) and STCG (15%, held &lt;1yr) rules as of 2024. 
+          Verify with your CA for your specific situation. For NRI: DTAA implications apply separately.
+        </div>
+      </div>
+
+    </div><!-- /clarity -->
+
 
   </div><!-- /lab-body -->
 </div>
@@ -8877,18 +9329,65 @@ let _roiSimRate      = 10;
 let _roiTimelineMode = 'invested';
 
 function switchROITab(tab) {
-  _roiCurrentTab = tab;
-  ['story','funds','sip','retire','sim'].forEach(t => {
-    const btn = document.getElementById('roi-tab-' + t);
-    const panel = document.getElementById('roi-panel-' + t);
-    if (btn) btn.classList.toggle('lab-tab-active', t === tab);
-    if (panel) panel.style.display = (t === tab) ? '' : 'none';
+  // All existing panel IDs — hide everything first
+  const ALL_PANELS = ['story','funds','sip','retire','sim','clarity','goals'];
+  const ALL_TABS   = ['clarity','investments','retire','plan'];
+
+  ALL_PANELS.forEach(t => {
+    const p = document.getElementById('roi-panel-' + t);
+    if (p) p.style.display = 'none';
   });
-  if (tab === 'story')  renderROIStory();
-  if (tab === 'funds')  renderROIFunds(_roiFundSort);
-  if (tab === 'sip')    renderROISIPs();
-  if (tab === 'retire') { renderROIRetireSummary(); renderROIRetirementCards(); renderROIGapAnalysis(); }
-  if (tab === 'sim')    { initSimScenario(); renderROISimulator(); }
+  ALL_TABS.forEach(t => {
+    const b = document.getElementById('roi-tab-' + t);
+    if (b) b.classList.toggle('lab-tab-active', t === tab);
+  });
+
+  _roiCurrentTab = tab;
+
+  if (tab === 'clarity') {
+    const p = document.getElementById('roi-panel-clarity');
+    if (p) p.style.display = '';
+    renderROIClarity();
+  }
+  if (tab === 'investments') {
+    // funds + sip panels shown together, separated by a divider
+    ['funds','sip'].forEach(t => {
+      const p = document.getElementById('roi-panel-' + t);
+      if (p) p.style.display = '';
+    });
+    // Insert section divider between funds and sip if not already there
+    const sipPanel = document.getElementById('roi-panel-sip');
+    if (sipPanel && !sipPanel.previousElementSibling?.classList.contains('lab-inv-divider')) {
+      const div = document.createElement('div');
+      div.className = 'lab-inv-divider lab-section-divider';
+      div.innerHTML = '<span>SIP Tracker</span>';
+      sipPanel.parentNode.insertBefore(div, sipPanel);
+    }
+    renderROIFunds(_roiFundSort);
+    renderROISIPs();
+  }
+  if (tab === 'retire') {
+    const p = document.getElementById('roi-panel-retire');
+    if (p) p.style.display = '';
+    renderROIRetireSummary(); renderROIRetirementCards(); renderROIGapAnalysis();
+  }
+  if (tab === 'plan') {
+    // goals + sim panels shown together
+    ['goals','sim'].forEach(t => {
+      const p = document.getElementById('roi-panel-' + t);
+      if (p) p.style.display = '';
+    });
+    // Insert section divider between goals and sim if not already there
+    const simPanel = document.getElementById('roi-panel-sim');
+    if (simPanel && !simPanel.previousElementSibling?.classList.contains('lab-plan-divider')) {
+      const div = document.createElement('div');
+      div.className = 'lab-plan-divider lab-section-divider';
+      div.innerHTML = '<span>Investment Simulator</span>';
+      simPanel.parentNode.insertBefore(div, simPanel);
+    }
+    renderGoalOrchestration();
+    initSimScenario(); renderROISimulator();
+  }
 }
 
 function sortROIFunds(by) {
@@ -8909,6 +9408,1542 @@ function setTimelineMode(mode) {
   const { monthlyTotals, monthKeys } = _buildROIData();
   _drawTimeline(monthlyTotals, monthKeys);
 }
+
+
+
+
+// ══════════════════════════════════════════════════════════════════
+// FULL GOAL ORCHESTRATION ENGINE
+// Timeline · Per-goal SIP calculator · Funding conflicts · Tax-aware exits
+// ══════════════════════════════════════════════════════════════════
+
+const GOAL_HORIZON_RISK = {
+  // Safe fund types by years-to-goal
+  safe:   (yrs) => yrs < 2  ? ['Liquid Fund','Overnight Fund','Ultra Short Duration'] :
+                   yrs < 4  ? ['Short Duration Fund','Medium Duration Fund','Conservative Hybrid','Arbitrage Fund'] :
+                   yrs < 7  ? ['Balanced Hybrid','Flexi Cap Fund','Large Cap Fund','Index Fund'] :
+                              ['Mid Cap Fund','Flexi Cap Fund','Aggressive Hybrid','Multi Cap Fund','Small Cap Fund'],
+  risky:  (yrs) => yrs < 2  ? ['Mid Cap Fund','Small Cap Fund','Sectoral/Thematic','Aggressive Hybrid'] :
+                   yrs < 4  ? ['Small Cap Fund','Sectoral/Thematic'] :
+                   yrs < 7  ? ['Small Cap Fund'] : [],
+};
+
+const INFLATION_RATE = 0.06; // 6% default
+
+// ── Compute per-goal projected corpus ──────────────────────────────
+function _goalProjection(g, rate) {
+  const r = (rate || 10) / 100;
+  const yearsLeft = Math.max(0, (new Date(g.targetDate) - new Date()) / (365.25*24*3600*1000));
+  const current   = computeGoalCurrent(g.mappedAccounts||[], g.unit||'currency', g.goalType||'grow');
+  const projected = current * Math.pow(1+r, yearsLeft);
+  const target    = goalTargetInDisplay(g);
+  const gap       = Math.max(0, target - projected);
+
+  // Monthly SIP needed to close gap
+  // FV of annuity = PMT * [(1+r/12)^(n) - 1] / (r/12)
+  const n = yearsLeft * 12;
+  const rm = r / 12;
+  const sipNeeded = (gap > 0 && n > 0 && rm > 0)
+    ? gap / ((Math.pow(1+rm, n) - 1) / rm)
+    : 0;
+
+  // Inflation-adjusted target (real value of target in today's money)
+  const inflatedTarget = target * Math.pow(1+INFLATION_RATE, yearsLeft);
+  const realProjected  = projected / Math.pow(1+INFLATION_RATE, yearsLeft); // today's value of projected
+
+  const fundingPct = target > 0 ? Math.min(100, (projected / target) * 100) : 0;
+  const isOnTrack  = fundingPct >= 90;
+
+  return {
+    yearsLeft, current, projected, target, gap,
+    sipNeeded, fundingPct, isOnTrack,
+    inflatedTarget, realProjected,
+    inflationNote: inflatedTarget > target * 1.1,
+  };
+}
+
+// ── Detect goal conflicts (can't fund all at current SIP rate) ─────
+function _detectGoalConflicts(goals, monthlyAvailableSIP) {
+  const active = goals.filter(g => g.targetDate && !g.achieved);
+  const totalSIPNeeded = active.reduce((s, g) => {
+    const proj = _goalProjection(g, 10);
+    return s + proj.sipNeeded;
+  }, 0);
+  const hasConflict = monthlyAvailableSIP > 0 && totalSIPNeeded > monthlyAvailableSIP * 1.2;
+  return { totalSIPNeeded, hasConflict, deficit: Math.max(0, totalSIPNeeded - monthlyAvailableSIP) };
+}
+
+// ── Tax-aware exit ordering for EXIT-tagged funds ──────────────────
+function _taxAwareExitOrder(exitFunds) {
+  const now = new Date();
+  const oneYearAgo = new Date(now); oneYearAgo.setFullYear(now.getFullYear()-1);
+  const aprStart = new Date(now.getFullYear(), 3, 1); // April 1 current FY
+  const marEnd   = new Date(now.getFullYear(), 2, 31); // March 31
+  const isNearFYEnd = now.getMonth() === 1 || now.getMonth() === 2; // Feb or Mar
+
+  return exitFunds.map(f => {
+    const lastD = f.a._lastTransactionDate || '';
+    const purchaseD = lastD ? new Date(lastD+'-01') : null;
+    const heldYrs = purchaseD ? (now-purchaseD)/(365.25*24*3600*1000) : null;
+    const gain  = f.val - (f.cost||f.val);
+    const isLTCG = heldYrs===null || heldYrs >= 1;
+    const isLoss = gain <= 0;
+
+    let priority, taxNote, taxSaving;
+    if (isLoss) {
+      priority = 1;
+      taxNote = 'Exit first — realize loss for tax harvesting, no LTCG due.';
+      taxSaving = null;
+    } else if (isLTCG && gain < 100000) {
+      priority = 2;
+      taxNote = 'Held >1yr and gain within ₹1L exemption — exit tax-free.';
+      taxSaving = 0;
+    } else if (isLTCG) {
+      priority = isNearFYEnd ? 4 : 3;
+      taxNote = isNearFYEnd
+        ? '⚠️ Consider waiting for April — exiting in Mar triggers current-FY LTCG.'
+        : `LTCG at 10% on gains above ₹1L. Spread across FY if gain is large.`;
+      taxSaving = isNearFYEnd ? Math.round(gain * 0.10) : null;
+    } else {
+      priority = 5;
+      taxNote = `STCG at 15% — held ${heldYrs!=null?Math.round(heldYrs*12):0} months. Wait for 1-yr mark saves ₹${Math.round(gain*0.15-(Math.max(0,gain-100000)*0.10)).toLocaleString()}.`;
+      taxSaving = Math.round(gain * 0.15 - Math.max(0, gain-100000) * 0.10);
+    }
+
+    return { ...f, priority, taxNote, taxSaving, isLTCG, isLoss, heldYrs, gain };
+  }).sort((a,b) => a.priority - b.priority);
+}
+
+// ── Main render ────────────────────────────────────────────────────
+function renderGoalOrchestration() {
+  const sym  = currentCurrency?.symbol || '₹';
+  const profile = getFHSProfile() || {};
+  const agg  = getFHSMonthlyAggregates(6);
+  const goals = getGoals().filter(g => g.targetDate);
+
+  // Monthly surplus available for SIPs
+  const monthlyIncome  = agg?.avgInc  || 0;
+  const monthlyExpense = agg?.avgExp  || 0;
+  const currentSIPAmt  = (() => {
+    const { fundMap } = _buildROIData();
+    const now3mo = new Date(); now3mo.setMonth(now3mo.getMonth()-3);
+    const cut = now3mo.toISOString().substring(0,7);
+    let total = 0;
+    Object.values(fundMap).forEach(v => {
+      if (v.lastDate >= cut) total += v.medianSIP || 0;
+    });
+    return nwConvert ? total : total;
+  })();
+  const availableSurplus = Math.max(0, monthlyIncome - monthlyExpense);
+
+  // Render container
+  const el = document.getElementById('goal-orch-body');
+  if (!el) return;
+
+  if (!goals.length) {
+    el.innerHTML = `<div class="lab-card" style="text-align:center;padding:24px;">
+      <div style="font-size:2em;margin-bottom:8px;">🎯</div>
+      <div style="font-weight:900;color:#1E2A6E;margin-bottom:6px;">No Goals Set Yet</div>
+      <div style="font-size:0.78em;color:#9CA3AF;font-weight:700;">Add goals via the Goals screen to see your funding plan here.</div>
+    </div>`;
+    return;
+  }
+
+  // ── Conflict banner ──────────────────────────────────────────────
+  const conflict = _detectGoalConflicts(goals, availableSurplus);
+  const conflictHTML = conflict.hasConflict ? `
+    <div class="goal-conflict-banner">
+      <div class="goal-conflict-icon">⚠️</div>
+      <div>
+        <div class="goal-conflict-title">Funding Conflict Detected</div>
+        <div class="goal-conflict-desc">Your goals need ${sym}${_fmtK(conflict.totalSIPNeeded)}/mo but your estimated surplus is ${sym}${_fmtK(availableSurplus)}/mo. You may need to prioritise or extend timelines.</div>
+      </div>
+    </div>` : (availableSurplus > 0 ? `
+    <div class="goal-ok-banner">
+      <div class="goal-conflict-icon">✅</div>
+      <div>
+        <div class="goal-conflict-title">Surplus Available</div>
+        <div class="goal-conflict-desc">Estimated monthly surplus: ${sym}${_fmtK(availableSurplus)}. Your goals appear fundable at current income.</div>
+      </div>
+    </div>` : '');
+
+  // ── Timeline: goals sorted by target date ───────────────────────
+  const sortedGoals = [...goals].sort((a,b) => new Date(a.targetDate)-new Date(b.targetDate));
+
+  const timelineHTML = `
+    <div class="lab-card" style="padding:0;overflow:hidden;">
+      <div style="padding:14px 16px 10px;border-bottom:1px solid #F3F4F6;">
+        <div class="lab-card-title">📅 Goal Timeline</div>
+      </div>
+      <div style="padding:12px 16px;">
+        ${sortedGoals.map((g, i) => {
+          const proj = _goalProjection(g, _roiRetireRate || 10);
+          const col  = proj.isOnTrack ? '#22C55E' : proj.fundingPct >= 60 ? '#F59E0B' : '#EF4444';
+          const barW = Math.min(100, proj.fundingPct);
+          const yr   = new Date(g.targetDate).getFullYear();
+          return `<div class="goal-timeline-row" style="--tl-col:${col}">
+            <div class="goal-tl-dot"></div>
+            ${i < sortedGoals.length-1 ? '<div class="goal-tl-line"></div>' : ''}
+            <div class="goal-tl-content">
+              <div class="goal-tl-header">
+                <span class="goal-tl-icon">${g.icon||'🎯'}</span>
+                <span class="goal-tl-name">${g.name}</span>
+                <span class="goal-tl-year">${yr}</span>
+                <span class="goal-tl-pct" style="color:${col};">${Math.round(proj.fundingPct)}%</span>
+              </div>
+              <div class="goal-tl-bar-track">
+                <div class="goal-tl-bar-fill" style="width:${barW}%;background:${col};"></div>
+              </div>
+              <div class="goal-tl-meta">
+                <span>${proj.yearsLeft.toFixed(1)}y away · ${sym}${_fmtK(proj.current)} of ${sym}${_fmtK(proj.target)}</span>
+                <span style="color:${col};">${proj.isOnTrack ? 'On Track' : 'Needs Attention'}</span>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  // ── Per-goal deep cards ─────────────────────────────────────────
+  const goalCardsHTML = sortedGoals.map(g => {
+    const proj = _goalProjection(g, _roiRetireRate || 10);
+    const col  = proj.isOnTrack ? '#22C55E' : proj.fundingPct >= 60 ? '#F59E0B' : '#EF4444';
+    const mappedAccs = (g.mappedAccounts||[])
+      .map(id => (data._nwAccounts||[]).find(a=>a.id===id))
+      .filter(Boolean);
+
+    // Horizon mismatch check
+    const mismatches = mappedAccs.filter(a => {
+      const cat  = a.sebiCategory || _typeToCat(a.type);
+      const meta = cat ? SEBI_CAT_META[cat] : null;
+      return meta && meta.minHorizonYrs > proj.yearsLeft;
+    });
+
+    // Inflation note
+    const inflNote = proj.inflationNote
+      ? `At 6% inflation, you'll need ${sym}${_fmtK(proj.inflatedTarget)} in nominal terms (${sym}${_fmtK(proj.target)} in today's money).`
+      : null;
+
+    return `<div class="goal-deep-card" style="border-top:3px solid ${col}">
+      <div class="goal-deep-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:1.4em;">${g.icon||'🎯'}</span>
+          <div>
+            <div class="goal-deep-name">${g.name}</div>
+            <div class="goal-deep-sub">${proj.yearsLeft.toFixed(1)} years · ${new Date(g.targetDate).toLocaleDateString('en-IN',{month:'short',year:'numeric'})}</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div class="goal-deep-pct" style="color:${col};">${Math.round(proj.fundingPct)}%</div>
+          <div class="goal-deep-funded">funded</div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div style="background:#F3F4F6;border-radius:6px;height:8px;margin:10px 0 12px;overflow:hidden;">
+        <div style="width:${Math.min(100,proj.fundingPct)}%;height:100%;background:${col};border-radius:6px;transition:width 0.5s;"></div>
+      </div>
+
+      <!-- Stat row -->
+      <div class="goal-stat-row">
+        <div class="goal-stat-box">
+          <div class="goal-stat-val">${sym}${_fmtK(proj.current)}</div>
+          <div class="goal-stat-lbl">Current</div>
+        </div>
+        <div class="goal-stat-box">
+          <div class="goal-stat-val">${sym}${_fmtK(proj.projected)}</div>
+          <div class="goal-stat-lbl">Projected</div>
+        </div>
+        <div class="goal-stat-box">
+          <div class="goal-stat-val">${sym}${_fmtK(proj.target)}</div>
+          <div class="goal-stat-lbl">Target</div>
+        </div>
+      </div>
+
+      ${proj.gap > 0 ? `
+      <!-- SIP needed -->
+      <div class="goal-sip-needed">
+        <div class="goal-sip-icon">📌</div>
+        <div>
+          <div class="goal-sip-label">Additional SIP needed to close gap</div>
+          <div class="goal-sip-amount">${sym}${Math.round(proj.sipNeeded).toLocaleString()}/mo</div>
+        </div>
+      </div>` : `
+      <div class="goal-sip-needed" style="background:#F0FDF4;border-color:#86EFAC;">
+        <div class="goal-sip-icon">✅</div>
+        <div>
+          <div class="goal-sip-label" style="color:#166534;">This goal is on track — no additional SIP needed.</div>
+        </div>
+      </div>`}
+
+      ${inflNote ? `
+      <div class="goal-inflation-note">
+        📉 <span>${inflNote}</span>
+      </div>` : ''}
+
+      ${mismatches.length ? `
+      <div class="goal-mismatch-warn">
+        ⚠️ <span><strong>Horizon mismatch:</strong> ${mismatches.map(a=>_cleanFundName(a.name)).join(', ')} — too volatile for a ${proj.yearsLeft.toFixed(1)}-year goal. Consider switching to safer fund types.</span>
+      </div>` : ''}
+
+      ${mappedAccs.length === 0 ? `
+      <div class="goal-mismatch-warn" style="background:#F5F3FF;border-color:#C4B5FD;">
+        💡 <span>No accounts mapped to this goal. Link accounts via the Goals screen to track progress.</span>
+      </div>` : ''}
+
+    </div>`;
+  }).join('');
+
+  // ── Tax-aware exit ordering ──────────────────────────────────────
+  // _clarityFundData only contains scoreableAccs — protected types already excluded
+  const exitFunds = (_clarityFundData||[]).filter(f=>f.verdict==='exit');
+  let taxExitHTML = '';
+  if (exitFunds.length) {
+    const ordered = _taxAwareExitOrder(exitFunds);
+    taxExitHTML = `
+      <div class="lab-section-label">🧾 Tax-Aware Exit Order</div>
+      <div class="lab-card">
+        <div class="lab-card-header">
+          <div class="lab-card-title">Recommended Exit Sequence</div>
+          <div class="lab-card-badge lab-badge-blue">Most tax-efficient first</div>
+        </div>
+        <div style="font-size:0.68em;font-weight:700;color:#9CA3AF;margin-bottom:10px;line-height:1.5;">
+          Exit in this order to minimise tax drag. Exit losses first (tax harvesting), LTCG within exemption second, large LTCG third, STCG last.
+        </div>
+        ${ordered.map((f, i) => {
+          const isNearFY = f.priority === 4;
+          return `<div class="tax-exit-row" style="${isNearFY?'background:#FEF9C3;border-radius:10px;':''}">
+            <div class="tax-exit-num">${i+1}</div>
+            <div style="flex:1;min-width:0;">
+              <div class="tax-exit-name">${_cleanFundName(f.a.name)}</div>
+              <div class="tax-exit-note" style="${isNearFY?'color:#D97706;':''}">${f.taxNote}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div class="tax-exit-val">${sym}${_fmtK(f.val)}</div>
+              ${f.taxSaving!=null&&f.taxSaving>0?`<div class="tax-exit-save">Save ${sym}${_fmtK(f.taxSaving)}</div>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  // ── Assemble ────────────────────────────────────────────────────
+  el.innerHTML = `
+    ${conflictHTML}
+
+    <!-- Monthly SIP summary strip -->
+    <div class="goal-sip-strip">
+      <div class="goal-sip-strip-item">
+        <div class="goal-sip-strip-val">${sym}${_fmtK(currentSIPAmt)}</div>
+        <div class="goal-sip-strip-lbl">Current SIP/mo</div>
+      </div>
+      <div class="goal-sip-strip-sep">→</div>
+      <div class="goal-sip-strip-item">
+        <div class="goal-sip-strip-val">${sym}${_fmtK(conflict.totalSIPNeeded)}</div>
+        <div class="goal-sip-strip-lbl">Needed for all goals</div>
+      </div>
+      <div class="goal-sip-strip-sep">→</div>
+      <div class="goal-sip-strip-item" style="color:${conflict.hasConflict?'#EF4444':'#22C55E'};">
+        <div class="goal-sip-strip-val">${conflict.hasConflict?'−':'+'} ${sym}${_fmtK(Math.abs(availableSurplus - conflict.totalSIPNeeded))}</div>
+        <div class="goal-sip-strip-lbl">${conflict.hasConflict?'Shortfall':'Surplus'}</div>
+      </div>
+    </div>
+
+    ${timelineHTML}
+
+    <div class="lab-section-label">🎯 Goal Detail & SIP Plan</div>
+    ${goalCardsHTML}
+
+    ${taxExitHTML}
+  `;
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// CA EXPORT PDF — Client-side, jsPDF, zero server
+// ══════════════════════════════════════════════════════════════════
+function generateClarityPDF() {
+  const jsPDFLib = window.jspdf?.jsPDF;
+  if (!jsPDFLib) {
+    showToast('⏳ PDF library loading — try again in 2 seconds');
+    return;
+  }
+
+  const d   = _computePCS();
+  const sym = currentCurrency?.symbol || '₹';
+  const profile = getFHSProfile() || {};
+  const today = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  const grade = d.pcs>=85?'A':d.pcs>=70?'B':d.pcs>=50?'C':d.pcs>=30?'D':'F';
+  const gradeLabel = {A:'Clean & Focused',B:'Good Shape',C:'Fragmented',D:'Significant Overlap',F:'Critical — Act Now'};
+
+  const doc = new jsPDFLib({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W = 210, M = 18;  // page width, margin
+  let y = 0;
+
+  // ── Helper fns ──────────────────────────────────────────────────
+  const line  = (text, x, yy, size, style='normal', color=[30,42,110]) => {
+    doc.setFontSize(size); doc.setFont('helvetica', style);
+    doc.setTextColor(...color); doc.text(text, x, yy);
+  };
+  const hline = (yy, col=[229,231,235]) => {
+    doc.setDrawColor(...col); doc.setLineWidth(0.3); doc.line(M, yy, W-M, yy);
+  };
+  const rect = (x, yy, w, h, fill) => {
+    doc.setFillColor(...fill); doc.roundedRect(x, yy, w, h, 2, 2, 'F');
+  };
+
+  // ── Page 1: Cover ───────────────────────────────────────────────
+  // Header bar
+  rect(0, 0, W, 38, [30, 42, 110]);
+  line('MoneyFi', M, 14, 20, 'bold', [255,255,255]);
+  line('Portfolio Consolidation Plan', M, 22, 10, 'normal', [180,190,230]);
+  line(`Prepared: ${today}`, M, 30, 8, 'normal', [150,165,210]);
+  if (profile.name) line(`For: ${profile.name}`, W-M, 30, 8, 'normal', [150,165,210]);
+
+  y = 52;
+
+  // PCS Score box
+  rect(M, y, W-2*M, 28, [245,248,255]);
+  line('PORTFOLIO CLARITY SCORE', M+5, y+8, 7, 'bold', [100,116,139]);
+  line(`${d.pcs}/100`, M+5, y+18, 22, 'bold', [30,42,110]);
+  line(`Grade ${grade} — ${gradeLabel[grade]}`, M+5, y+25, 8, 'normal', [100,116,139]);
+  // Score bar
+  doc.setFillColor(229,231,235); doc.rect(W/2, y+10, W/2-M-5, 5, 'F');
+  const barW = Math.round((d.pcs/100) * (W/2-M-5));
+  const barCol = grade==='A'||grade==='B' ? [34,197,94] : grade==='C' ? [245,158,11] : [239,68,68];
+  doc.setFillColor(...barCol); doc.rect(W/2, y+10, barW, 5, 'F');
+  line(`${d.activeCount} active · ${d.pausedCount} paused · ${d.totalFunds} total funds`, W/2, y+22, 7, 'normal', [100,116,139]);
+
+  y += 36;
+
+  // Penalty summary
+  line('SCORE BREAKDOWN', M, y, 8, 'bold', [100,116,139]); y += 6;
+  hline(y); y += 5;
+  const penalties = [
+    ['Category Overlap Penalty',   `-${d.redundancyPenalty} pts`, d.redundancyPenalty===0],
+    ['AMC Concentration Penalty',  `-${d.concentrationPenalty} pts`, d.concentrationPenalty===0],
+    ['Paused Fund Drift Penalty',  `-${d.driftPenalty} pts`, d.driftPenalty===0],
+    ['Goal-Horizon Mismatch',      `-${d.goalMismatchPenalty} pts`, d.goalMismatchPenalty===0],
+  ];
+  penalties.forEach(([lbl, pts, ok]) => {
+    line(lbl, M, y, 8, 'normal', [55,65,81]);
+    line(pts, W-M, y, 8, 'bold', ok?[5,150,105]:[220,38,38]);
+    y += 6;
+  });
+  hline(y); y += 5;
+  line('Penalties subtracted from 100', M, y, 7, 'italic', [156,163,175]);
+  y += 12;
+
+  // ── Overlap section ──────────────────────────────────────────────
+  if (d.overlapDetails.length > 0) {
+    line('CATEGORY OVERLAP DETECTED', M, y, 9, 'bold', [30,42,110]); y += 6;
+    hline(y); y += 5;
+    d.overlapDetails.forEach(({ cat, accs, max }) => {
+      if (y > 255) { doc.addPage(); y = M; }
+      line(`${cat}`, M, y, 8, 'bold', [55,65,81]);
+      line(`${accs.length} funds (max ${max} recommended)`, W-M, y, 7, 'normal', [220,38,38]);
+      y += 5;
+      accs.forEach(a => {
+        const val = nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);
+        const cost = a.investedAmount!=null?(nwConvert?nwConvert(a.investedAmount,a.currency):a.investedAmount):null;
+        const pct = cost&&cost>0?(val-cost)/cost*100:null;
+        const roi = pct!=null?` (${pct>=0?'+':''}${pct.toFixed(0)}%)` : '';
+        line(`  · ${_cleanFundName(a.name).substring(0,45)} — ${sym}${Math.round(val).toLocaleString()}${roi}`, M+3, y, 7, 'normal', [75,85,99]);
+        y += 5;
+      });
+      y += 2;
+    });
+    y += 4;
+  }
+
+  // ── KEEP / REVIEW / EXIT table ───────────────────────────────────
+  if (y > 220) { doc.addPage(); y = M; }
+  line('CONSOLIDATION RECOMMENDATIONS', M, y, 9, 'bold', [30,42,110]); y += 6;
+  hline(y); y += 5;
+
+  const verdictCols = { keep:[34,197,94], review:[245,158,11], exit:[244,63,94] };
+  const verdictLabels = { keep:'KEEP', review:'REVIEW', exit:'EXIT' };
+
+  _clarityFundData.forEach(({ a, verdict, val, pct }) => {
+    if (y > 265) { doc.addPage(); y = M; }
+    const col = verdictCols[verdict];
+    rect(M, y-4, 14, 5, col);
+    line(verdictLabels[verdict], M+1, y, 5, 'bold', [255,255,255]);
+    line(_cleanFundName(a.name).substring(0,42), M+16, y, 7.5, 'normal', [30,42,110]);
+    const valStr = `${sym}${Math.round(val).toLocaleString()}${pct!=null?' · '+(pct>=0?'+':'')+pct.toFixed(0)+'%':''}`;
+    line(valStr, W-M, y, 7, 'normal', [100,116,139]);
+    y += 7;
+  });
+
+  // ── Tax Estimate page ────────────────────────────────────────────
+  const exitFunds = _clarityFundData.filter(f=>f.verdict==='exit'&&f.cost!=null&&f.pct!=null&&f.pct>0);
+  if (exitFunds.length) {
+    if (y > 220) { doc.addPage(); y = M; }
+    y += 6;
+    line('TAX ESTIMATE ON EXIT FUNDS', M, y, 9, 'bold', [30,42,110]); y += 6;
+    hline(y); y += 5;
+
+    const now = new Date();
+    const oneYearAgo = new Date(now); oneYearAgo.setFullYear(oneYearAgo.getFullYear()-1);
+    const isINR = (currentCurrency?.code||'INR')==='INR';
+    let ltcgGain=0, stcgGain=0;
+
+    exitFunds.forEach(({ a, val, cost }) => {
+      const gain = val - cost;
+      if (gain <= 0) return;
+      const lastD = a._lastTransactionDate || '';
+      const purchaseD = lastD ? new Date(lastD+'-01') : null;
+      const heldYrs = purchaseD ? (now-purchaseD)/(365.25*24*3600*1000) : null;
+      if (heldYrs===null||heldYrs>=1) ltcgGain += gain;
+      else stcgGain += gain;
+    });
+
+    const LTCG_EXEMPT = isINR ? 100000 : 0;
+    const ltcgTaxable = Math.max(0, ltcgGain - LTCG_EXEMPT);
+    const ltcgTax  = Math.round(ltcgTaxable * 0.10);
+    const stcgTax  = Math.round(stcgGain * 0.15);
+    const totalTax = ltcgTax + stcgTax;
+
+    const taxRows = [
+      ['Long-Term Gains (held >1yr)', sym+_fmtK(ltcgGain), '10% LTCG'+(isINR?' above ₹1L exemption':''), sym+_fmtK(ltcgTax)],
+      ['Short-Term Gains (held <1yr)', sym+_fmtK(stcgGain), '15% STCG — wait for 1yr mark if possible', sym+_fmtK(stcgTax)],
+      ['TOTAL ESTIMATED TAX', '', '', sym+_fmtK(totalTax)],
+    ];
+
+    taxRows.forEach(([lbl, gain, note, tax], i) => {
+      if (i===2) { hline(y); y+=4; }
+      line(lbl, M, y, i===2?9:8, i===2?'bold':'normal', i===2?[30,42,110]:[55,65,81]);
+      if (gain) line(gain, M+80, y, 8, 'normal', [100,116,139]);
+      line(tax, W-M, y, i===2?9:8, i===2?'bold':'normal', i===2?[220,38,38]:[100,116,139]);
+      if (note && i<2) { y+=4; line(note, M+3, y, 6.5, 'italic', [156,163,175]); }
+      y += 7;
+    });
+
+    y += 4;
+    line('This is an indicative estimate only. Verify with your CA.', M, y, 6.5, 'italic', [156,163,175]);
+    if (profile.region==='IN' || isINR) {
+      y += 4;
+      line('NRI note: DTAA provisions may apply. LTCG rates may differ per treaty.', M, y, 6.5, 'italic', [156,163,175]);
+    }
+  }
+
+  // ── Footer on all pages ──────────────────────────────────────────
+  const totalPages = doc.getNumberOfPages();
+  for (let p=1; p<=totalPages; p++) {
+    doc.setPage(p);
+    hline(285);
+    line(`MoneyFi · Portfolio Consolidation Plan · ${today}`, M, 290, 6.5, 'normal', [156,163,175]);
+    line(`Page ${p} of ${totalPages}`, W-M, 290, 6.5, 'normal', [156,163,175]);
+    line('Indicative only — not financial advice. Verify with your CA/advisor.', W/2, 290, 6, 'italic', [156,163,175]);
+  }
+
+  doc.save(`MoneyFi_Consolidation_Plan_${today.replace(/ /g,'_')}.pdf`);
+  showToast('📄 CA Export PDF downloaded!', 3000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BEFORE / AFTER SHARE CARD — Canvas, 1080×1080, WhatsApp-optimised
+// ══════════════════════════════════════════════════════════════════
+let _shareCardBlob = null;
+
+function generateBeforeAfterCard() {
+  const d   = _computePCS();
+  const sym = currentCurrency?.symbol || '₹';
+  const grade = d.pcs>=85?'A':d.pcs>=70?'B':d.pcs>=50?'C':d.pcs>=30?'D':'F';
+  const gradeLabel = {A:'Clean & Focused',B:'Good Shape',C:'Fragmented',D:'Overlapping',F:'Critical'};
+  const gradeColor = {A:'#22C55E',B:'#14B8A6',C:'#F59E0B',D:'#F97316',F:'#EF4444'};
+
+  const exitCount   = _clarityFundData.filter(f=>f.verdict==='exit').length;
+  const keepCount   = _clarityFundData.filter(f=>f.verdict==='keep').length;
+  const totalBefore = d.totalFunds;
+  const totalAfter  = totalBefore - exitCount;
+  const idleStr     = d.idleCapital > 0 ? sym + _fmtK(d.idleCapital) : null;
+
+  // Build canvas
+  const canvas = document.getElementById('clarity-share-canvas');
+  if (!canvas) return;
+
+  const SIZE = 1080;
+  canvas.width  = SIZE;
+  canvas.height = SIZE;
+  canvas.style.maxWidth = '100%';
+
+  const ctx = canvas.getContext('2d');
+
+  // ── Background gradient ──
+  const bg = ctx.createLinearGradient(0, 0, SIZE, SIZE);
+  bg.addColorStop(0, '#0F172A');
+  bg.addColorStop(1, '#1E2A6E');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // ── Subtle grid lines ──
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let i=0; i<SIZE; i+=60) {
+    ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,SIZE); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(SIZE,i); ctx.stroke();
+  }
+
+  // ── Logo / brand top ──
+  ctx.font = 'bold 42px sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('MoneyFi', 60, 90);
+  ctx.font = '26px sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText('Portfolio Clarity Report', 60, 128);
+
+  // ── PCS Score circle (top right) ──
+  const cx = SIZE-160, cy = 100, r = 75;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fill();
+  // Arc fill
+  ctx.beginPath();
+  ctx.arc(cx, cy, r-8, -Math.PI/2, -Math.PI/2 + (Math.PI*2*(d.pcs/100)), false);
+  ctx.strokeStyle = gradeColor[grade]; ctx.lineWidth = 12; ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.font = 'bold 46px sans-serif'; ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.fillText(d.pcs, cx, cy+8);
+  ctx.font = 'bold 20px sans-serif'; ctx.fillStyle = gradeColor[grade];
+  ctx.fillText('Grade '+grade, cx, cy+38);
+  ctx.textAlign = 'left';
+
+  // ── Divider ──
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(60, 180, SIZE-120, 1.5);
+
+  // ── BEFORE / AFTER panels ──
+  const panelY = 210, panelH = 360;
+  const panelW = (SIZE-160) / 2;
+  const beforeX = 60, afterX = beforeX + panelW + 40;
+
+  // BEFORE panel
+  ctx.fillStyle = 'rgba(239,68,68,0.12)';
+  _roundRect(ctx, beforeX, panelY, panelW, panelH, 24);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(239,68,68,0.4)'; ctx.lineWidth = 1.5;
+  _roundRect(ctx, beforeX, panelY, panelW, panelH, 24);
+  ctx.stroke();
+
+  ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = 'rgba(239,68,68,0.9)';
+  ctx.fillText('BEFORE', beforeX+24, panelY+44);
+
+  ctx.font = 'bold 86px sans-serif'; ctx.fillStyle = '#fff';
+  ctx.fillText(totalBefore, beforeX+24, panelY+148);
+  ctx.font = '26px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillText('total funds', beforeX+24, panelY+186);
+
+  ctx.font = 'bold 36px sans-serif'; ctx.fillStyle = '#EF4444';
+  ctx.fillText('Complexity: HIGH', beforeX+24, panelY+252);
+  ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fillText(`${d.overlapDetails.length} overlapping categor${d.overlapDetails.length===1?'y':'ies'}`, beforeX+24, panelY+292);
+  if (idleStr) { ctx.fillText(`${idleStr} sitting idle`, beforeX+24, panelY+326); }
+
+  // Arrow
+  ctx.font = 'bold 54px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.textAlign = 'center';
+  ctx.fillText('→', SIZE/2, panelY + panelH/2 + 18);
+  ctx.textAlign = 'left';
+
+  // AFTER panel
+  ctx.fillStyle = 'rgba(34,197,94,0.12)';
+  _roundRect(ctx, afterX, panelY, panelW, panelH, 24);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(34,197,94,0.4)'; ctx.lineWidth = 1.5;
+  _roundRect(ctx, afterX, panelY, panelW, panelH, 24);
+  ctx.stroke();
+
+  ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = 'rgba(34,197,94,0.9)';
+  ctx.fillText('AFTER', afterX+24, panelY+44);
+
+  ctx.font = 'bold 86px sans-serif'; ctx.fillStyle = '#fff';
+  ctx.fillText(totalAfter, afterX+24, panelY+148);
+  ctx.font = '26px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillText('focused funds', afterX+24, panelY+186);
+
+  ctx.font = 'bold 36px sans-serif'; ctx.fillStyle = '#22C55E';
+  ctx.fillText('Complexity: LOW', afterX+24, panelY+252);
+  ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fillText(`${keepCount} funds earning their place`, afterX+24, panelY+292);
+  ctx.fillText(`${exitCount} flagged for exit`, afterX+24, panelY+326);
+
+  // ── Tagline ──
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(60, 600, SIZE-120, 1.5);
+
+  ctx.font = 'bold 38px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.fillText('Same money. Cleaner strategy.', SIZE/2, 668);
+  ctx.font = '26px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText('Got clarity in 2 minutes.', SIZE/2, 710);
+
+  // ── Stat pills row ──
+  const pills = [
+    { label: 'PCS Score', val: `${d.pcs}/100` },
+    { label: 'Funds Cleaned', val: `${totalBefore}→${totalAfter}` },
+    idleStr ? { label: 'Idle Found', val: idleStr } : null,
+    { label: 'Grade', val: `${grade} — ${gradeLabel[grade]}` },
+  ].filter(Boolean);
+
+  const pillW = (SIZE-120-(pills.length-1)*16)/pills.length;
+  pills.forEach((pill, i) => {
+    const px = 60 + i*(pillW+16);
+    const py = 760;
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    _roundRect(ctx, px, py, pillW, 88, 16); ctx.fill();
+    ctx.font = 'bold 28px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText(pill.val, px+pillW/2, py+40);
+    ctx.font = '20px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText(pill.label, px+pillW/2, py+68);
+  });
+  ctx.textAlign = 'left';
+
+  // ── Footer ──
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(60, 900, SIZE-120, 1);
+  ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.textAlign = 'center';
+  ctx.fillText('moneyfi.app · Your Money Command Centre', SIZE/2, 960);
+  ctx.fillText(new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}), SIZE/2, 998);
+  ctx.textAlign = 'left';
+
+  // ── Show preview ──
+  const preview = document.getElementById('clarity-share-preview');
+  if (preview) preview.style.display = '';
+
+  // Cache blob for sharing
+  canvas.toBlob(blob => { _shareCardBlob = blob; }, 'image/png');
+  showToast('🎴 Share card ready — save or send via WhatsApp!', 3000);
+}
+
+// Canvas roundRect helper (cross-browser)
+function _roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+function downloadShareCard() {
+  const canvas = document.getElementById('clarity-share-canvas');
+  if (!canvas) return;
+  const a = document.createElement('a');
+  a.download = `MoneyFi_Clarity_${new Date().toISOString().substring(0,10)}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  showToast('🖼️ Share card saved!');
+}
+
+function shareCardWhatsApp() {
+  // Web Share API — works on iOS Safari + Android Chrome
+  if (_shareCardBlob && navigator.share && navigator.canShare) {
+    const file = new File([_shareCardBlob], 'MoneyFi_Clarity.png', { type:'image/png' });
+    if (navigator.canShare({ files:[file] })) {
+      navigator.share({
+        title: 'My MoneyFi Portfolio Clarity Score',
+        text: `I just got a Portfolio Clarity Score of ${_computePCS().pcs}/100 on MoneyFi. Same money, cleaner strategy!`,
+        files: [file]
+      }).catch(() => {});
+      return;
+    }
+  }
+  // Fallback: open WhatsApp with text
+  const score = _computePCS().pcs;
+  const text = encodeURIComponent(`I just cleaned up my investment portfolio with MoneyFi! Portfolio Clarity Score: ${score}/100. Same money, cleaner strategy 🚀 moneyfi.app`);
+  window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// PORTFOLIO CLARITY ENGINE — Client-side, zero data ownership
+// PCS Score · Overlap Detection · KEEP/REVIEW/EXIT · Paused Triage
+// AMC Concentration · Goal Alignment · Tax Estimate
+// ══════════════════════════════════════════════════════════════════
+
+let _clarityFundFilter = 'all';
+let _clarityFundData   = [];   // cached scored fund list
+
+// ── SEBI Category → recommended max funds + min horizon ──────────────
+// ── Account types that are PROTECTED — never scored for EXIT ──────
+// Retirement, provident, gratuity = long-term locked. Not MF SIPs.
+const PROTECTED_TYPES = new Set([
+  'retirement','retirement_401k','retirement_roth','retirement_ira',
+  'epf','ppf','nps','hsa','college_529','ibond',
+  'education',  // education funds are goal-driven, not SIP candidates
+]);
+
+// ── Wallet/placeholder types — excluded from SIP overlap analysis ──
+// These are balance placeholders, not investable mutual funds
+const WALLET_TYPES = new Set([
+  'cash','checking','savings_acc','emergency',
+  'brokerage','brokerage_taxable','stocks_direct', // direct equity ≠ MF
+]);
+
+// ── Name patterns that indicate a protected/institutional account ──
+// Catches "PROVIDENT FUND", "GRATUITY", "SUPER ANNUATION", "PENSION" etc.
+function _isProtectedName(name) {
+  const n = (name||'').toLowerCase();
+  return /provident|gratuity|superannua|super annua|pension|epfo|gpf|nps tier|gratuity|pf balance/.test(n);
+}
+
+// ── Is this a wallet/placeholder rather than a real investable fund? ──
+function _isWalletAccount(a) {
+  if (WALLET_TYPES.has(a.type)) return true;
+  const n = (a.name||'').toLowerCase();
+  // Crypto wallets, stock brokerage wallets, placeholder accounts
+  return /crypto|bitcoin|ethereum|wallet|placeholder|stocks$/.test(n) &&
+         !(a.sebiCategory); // real MFs always have sebiCategory
+}
+
+const SEBI_CAT_META = {
+  // Large cap
+  'Large Cap Fund':        { max:2, minHorizonYrs:5,  assetRisk:'medium', label:'Large Cap' },
+  'Index Fund':            { max:2, minHorizonYrs:5,  assetRisk:'medium', label:'Index Fund' },
+  // Mid / Small
+  'Mid Cap Fund':          { max:2, minHorizonYrs:7,  assetRisk:'high',   label:'Mid Cap' },
+  'Small Cap Fund':        { max:1, minHorizonYrs:10, assetRisk:'very_high', label:'Small Cap' },
+  // Flexi / Multi
+  'Flexi Cap Fund':        { max:2, minHorizonYrs:5,  assetRisk:'medium', label:'Flexi Cap' },
+  'Multi Cap Fund':        { max:2, minHorizonYrs:5,  assetRisk:'medium', label:'Multi Cap' },
+  'Value Fund':            { max:1, minHorizonYrs:7,  assetRisk:'medium', label:'Value' },
+  'Contra Fund':           { max:1, minHorizonYrs:7,  assetRisk:'medium', label:'Contra' },
+  'Focused Fund':          { max:1, minHorizonYrs:5,  assetRisk:'medium', label:'Focused' },
+  'ELSS':                  { max:2, minHorizonYrs:3,  assetRisk:'medium', label:'ELSS' },
+  // Hybrid
+  'Aggressive Hybrid':     { max:2, minHorizonYrs:5,  assetRisk:'medium', label:'Aggressive Hybrid' },
+  'Balanced Hybrid':       { max:1, minHorizonYrs:3,  assetRisk:'low',    label:'Balanced Hybrid' },
+  'Conservative Hybrid':   { max:1, minHorizonYrs:2,  assetRisk:'low',    label:'Conservative Hybrid' },
+  'Dynamic Asset Alloc':   { max:2, minHorizonYrs:3,  assetRisk:'low',    label:'Dynamic AA' },
+  'Arbitrage Fund':        { max:1, minHorizonYrs:1,  assetRisk:'very_low', label:'Arbitrage' },
+  // Sectoral
+  'Sectoral/Thematic':     { max:2, minHorizonYrs:7,  assetRisk:'very_high', label:'Sectoral' },
+  'International Fund':    { max:2, minHorizonYrs:5,  assetRisk:'high',   label:'International' },
+  // Gold
+  'Gold/Metal Fund':       { max:1, minHorizonYrs:3,  assetRisk:'medium', label:'Gold' },
+  // Debt
+  'Liquid Fund':           { max:1, minHorizonYrs:0,  assetRisk:'very_low', label:'Liquid' },
+  'Overnight Fund':        { max:1, minHorizonYrs:0,  assetRisk:'very_low', label:'Overnight' },
+  'Ultra Short Duration':  { max:1, minHorizonYrs:0,  assetRisk:'very_low', label:'Ultra Short' },
+  'Short Duration Fund':   { max:1, minHorizonYrs:1,  assetRisk:'very_low', label:'Short Duration' },
+  'Medium Duration Fund':  { max:1, minHorizonYrs:2,  assetRisk:'low',    label:'Medium Duration' },
+  'Long Duration Fund':    { max:1, minHorizonYrs:5,  assetRisk:'medium', label:'Long Duration' },
+  'Gilt Fund':             { max:1, minHorizonYrs:3,  assetRisk:'low',    label:'Gilt' },
+  'Credit Risk Fund':      { max:1, minHorizonYrs:3,  assetRisk:'medium', label:'Credit Risk' },
+  'Corporate Bond Fund':   { max:1, minHorizonYrs:2,  assetRisk:'low',    label:'Corporate Bond' },
+};
+
+// ── Extract AMC name from fund name ────────────────────────────────
+function _extractAMC(name) {
+  const n = (name||'').toUpperCase();
+  const amcs = [
+    ['SBI','SBI'],['HDFC','HDFC'],['ICICI','ICICI Prudential'],
+    ['AXIS','Axis'],['KOTAK','Kotak'],['MIRAE','Mirae Asset'],
+    ['NIPPON','Nippon India'],['DSP','DSP'],['FRANKLIN','Franklin Templeton'],
+    ['UTI','UTI'],['TATA','Tata'],['ADITYA','Aditya Birla Sun Life'],
+    ['BIRLA','Aditya Birla Sun Life'],['SUNDARAM','Sundaram'],
+    ['MOTILAL','Motilal Oswal'],['INVESCO','Invesco'],['CANARA','Canara Robeco'],
+    ['BOI','BOI AXA'],['PGIM','PGIM India'],['WHITEOAK','WhiteOak'],
+    ['QUANT','Quant'],['PPFAS','PPFAS'],['PARAG','PPFAS'],
+    ['EDELWEISS','Edelweiss'],['NAVI','Navi'],['BANDHAN','Bandhan'],
+    ['IDFC','IDFC / Bandhan'],['BARODA','Baroda BNP'],
+    ['360 ONE','360 ONE'],['JIO','JioBlackRock'],['JIOBL','JioBlackRock'],
+    ['VANGUARD','Vanguard'],['FIDELITY','Fidelity'],['SCHWAB','Schwab'],
+  ];
+  for (const [key, label] of amcs) {
+    if (n.includes(key)) return label;
+  }
+  // Fallback: use first meaningful word, but catch institutional names
+  const n2 = (name||'').toLowerCase();
+  if (/provident|gratuity|superannua|pension|epfo/.test(n2)) return 'Institutional';
+  if (/crypto|bitcoin|ethereum/.test(n2)) return 'Crypto';
+  if (/zerodha|groww|upstox|kite|smallcase/.test(n2)) return 'Direct Equity';
+  const firstWord = (name||'').split(' ')[0];
+  return firstWord.length > 2 ? firstWord : 'Other';
+}
+
+// ── Core: score a single fund ───────────────────────────────────────
+function _scoreFund(a, catBest, sipMonths) {
+  const val  = nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
+  const cost = a.investedAmount != null
+    ? (nwConvert ? nwConvert(a.investedAmount, a.currency) : a.investedAmount) : null;
+  const pct  = cost && cost > 0 ? (val - cost) / cost * 100 : null;
+  const catKey = a.sebiCategory || a.type;
+  const bestPct = catBest[catKey];
+
+  // ── Start at neutral baseline ──
+  // Every fund gets a fair start. Score goes up for strengths, down for problems.
+  // A fund with good ROI and no SIP (direct equity, lump sum) should not be EXIT.
+  let score = 35;
+
+  // ── Performance: absolute ROI ──
+  if (pct != null) {
+    if (pct >= 50)       score += 25;
+    else if (pct >= 20)  score += 18;
+    else if (pct >= 5)   score += 10;
+    else if (pct >= 0)   score += 5;
+    else if (pct >= -10) score -= 5;
+    else                 score -= 15;
+  }
+
+  // ── Performance: vs category peers ──
+  if (pct != null && bestPct != null && bestPct > 0) {
+    if (pct >= bestPct * 0.9) score += 15;      // within 10% of category best
+    else if (pct >= bestPct * 0.6) score += 5;
+    else score -= 10;  // significantly underperforms peers
+  }
+
+  // ── SIP consistency ──
+  const consistency = sipMonths[a.id] || sipMonths[a.name] || 0;
+  if (consistency >= 70) score += 15;
+  else if (consistency >= 40) score += 8;
+
+  // ── Active vs paused ──
+  const now3mo = new Date(); now3mo.setMonth(now3mo.getMonth()-3);
+  const cutoff = now3mo.toISOString().substring(0,7);
+  const isActive = (a._lastTransactionDate||'') >= cutoff;
+  if (isActive && val > 500) score += 10;
+  else if (!isActive && val < 200) score -= 15;
+  else if (!isActive) score -= 3;
+
+  // ── Overlap penalty: ONLY penalise if there is a strictly better
+  //    fund in the same category AND this one underperforms it ──
+  const meta = SEBI_CAT_META[catKey];
+  if (meta && pct != null && bestPct != null && bestPct > 0 && pct < bestPct * 0.6) {
+    score -= 20;  // clearly the weaker duplicate
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+
+// ── Main PCS computation ───────────────────────────────────────────
+function _computePCS() {
+  const INV_TYPES = new Set(['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold',
+    'mf_index','brokerage','brokerage_taxable','stocks_direct','nps','ppf','epf',
+    'retirement','retirement_401k','retirement_roth','retirement_ira','hsa',
+    'college_529','ibond','investment','education','retirement']);
+  const allAccs  = (data._nwAccounts||[]).filter(a => INV_TYPES.has(a.type));
+  const withBal  = allAccs.filter(a => (a.balance||0) > 0);
+
+  // ── Separate scoreable funds from protected/wallet accounts ──
+  // Protected = retirement/provident/gratuity → shown in Retire tab, NOT EXIT
+  // Wallet    = crypto wallets, direct equity placeholders, cash
+  const scoreableAccs = withBal.filter(a =>
+    !PROTECTED_TYPES.has(a.type) &&
+    !_isWalletAccount(a) &&
+    !_isProtectedName(a.name)
+  );
+  const protectedAccs = withBal.filter(a =>
+    PROTECTED_TYPES.has(a.type) || _isProtectedName(a.name)
+  );
+
+  // Detect active/paused via last transaction date
+  const { fundMap } = _buildROIData();
+  const now3mo = new Date(); now3mo.setMonth(now3mo.getMonth()-3);
+  const cutoff3 = now3mo.toISOString().substring(0,7);
+
+  // Build last-transaction-date map per account name
+  const lastTxMap = {};
+  Object.entries(fundMap).forEach(([name, v]) => {
+    lastTxMap[name.toLowerCase().substring(0,15)] = v.lastDate || '';
+  });
+  withBal.forEach(a => {
+    const key = (a.name||'').toLowerCase().substring(0,15);
+    if (lastTxMap[key]) a._lastTransactionDate = lastTxMap[key];
+  });
+
+  // Separate active / paused
+  const activeAccs = scoreableAccs.filter(a => (a._lastTransactionDate||'') >= cutoff3);
+  const pausedAccs = scoreableAccs.filter(a => (a._lastTransactionDate||'') < cutoff3);
+
+  // ── Category overlap grouping ──
+  const catGroups = {};
+  scoreableAccs.forEach(a => {
+    const cat = a.sebiCategory || _typeToCat(a.type);
+    if (!cat) return;
+    if (!catGroups[cat]) catGroups[cat] = [];
+    catGroups[cat].push(a);
+  });
+
+  // ── Redundancy Penalty (overlapping category pairs) ──
+  let overlapPairs = 0;
+  const overlapDetails = [];
+  Object.entries(catGroups).forEach(([cat, accs]) => {
+    const meta = SEBI_CAT_META[cat];
+    const max  = meta ? meta.max : 2;
+    if (accs.length > max) {
+      overlapPairs += accs.length - max;
+      overlapDetails.push({ cat, accs, max, excess: accs.length - max });
+    }
+  });
+  const redundancyPenalty = Math.min(40, overlapPairs * 3);
+
+  // ── AMC Concentration Penalty ──
+  const amcGroups = {};
+  scoreableAccs.forEach(a => {
+    const amc = _extractAMC(a.name);
+    const val = nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0);
+    amcGroups[amc] = (amcGroups[amc]||0) + val;
+  });
+  const totalVal = withBal.reduce((s,a) => s + (nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0)), 0);
+  const amcEntries = Object.entries(amcGroups).sort((a,b)=>b[1]-a[1]);
+  const maxAmcPct  = totalVal > 0 && amcEntries.length ? (amcEntries[0][1]/totalVal*100) : 0;
+  const concentrationPenalty = Math.max(0, (maxAmcPct - 30) * 0.5);
+
+  // ── Drift Penalty (paused with meaningful value) ──
+  const pausedWithValue = pausedAccs.filter(a => {
+    const val = nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0);
+    return val > 100;
+  });
+  const driftPenalty = Math.min(35, pausedWithValue.length * 1.5);
+
+  // ── Goal Mismatch Penalty ──
+  const goals = getGoals();
+  let goalMismatches = 0;
+  const goalAlignDetails = [];
+  goals.forEach(g => {
+    if (!g.targetDate) return;
+    const yearsLeft = (new Date(g.targetDate) - new Date()) / (365.25*24*3600*1000);
+    if (yearsLeft <= 0) return;
+    const mappedAccIds = g.mappedAccounts || [];
+    mappedAccIds.forEach(accId => {
+      const acc = withBal.find(a => a.id === accId);
+      if (!acc) return;
+      const cat = acc.sebiCategory || _typeToCat(acc.type);
+      const meta = cat ? SEBI_CAT_META[cat] : null;
+      if (meta && meta.minHorizonYrs > yearsLeft) {
+        goalMismatches++;
+        goalAlignDetails.push({ goal:g, acc, cat, yearsLeft, needed:meta.minHorizonYrs });
+      }
+    });
+  });
+  const goalMismatchPenalty = Math.min(25, goalMismatches * 5);
+
+  const totalPenalty = redundancyPenalty + Math.round(concentrationPenalty) + Math.round(driftPenalty) + goalMismatchPenalty;
+  const pcs = Math.max(0, Math.min(100, Math.round(100 - totalPenalty)));
+
+  // ── Score each fund for KEEP/REVIEW/EXIT ──
+  // Build category best-performer map
+  const catBest = {};
+  scoreableAccs.forEach(a => {
+    const cat = a.sebiCategory || _typeToCat(a.type);
+    const val  = nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0);
+    const cost = a.investedAmount != null ? (nwConvert ? nwConvert(a.investedAmount,a.currency) : a.investedAmount) : null;
+    const pct  = cost && cost > 0 ? (val-cost)/cost*100 : null;
+    if (pct != null && cat) {
+      catBest[cat] = Math.max(catBest[cat]||0, pct);
+    }
+  });
+  // Build SIP consistency map
+  const sipMonths = {};
+  Object.entries(fundMap).forEach(([name,v]) => {
+    const now12=[]; for(let i=11;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);now12.push(d.toISOString().substring(0,7));}
+    const sipSet = new Set((v.sipDates||[]).map(d=>d.substring(0,7)));
+    const hits = now12.filter(m=>sipSet.has(m)).length;
+    sipMonths[name.toLowerCase().substring(0,15)] = Math.round(hits/12*100);
+  });
+
+  const scoredFunds = scoreableAccs.map(a => {
+    const s = _scoreFund(a, catBest, sipMonths);
+    const val  = nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0);
+    const cost = a.investedAmount!=null ? (nwConvert?nwConvert(a.investedAmount,a.currency):a.investedAmount) : null;
+    const pct  = cost&&cost>0 ? (val-cost)/cost*100 : null;
+    const cat  = a.sebiCategory || _typeToCat(a.type);
+    const verdict = s >= 60 ? 'keep' : s >= 30 ? 'review' : 'exit';
+    const amc  = _extractAMC(a.name);
+    return { a, score:s, verdict, val, cost, pct, cat, amc,
+             isActive:(a._lastTransactionDate||'')>=cutoff3 };
+  }).sort((a,b) => b.score - a.score);
+
+  // ── Idle capital total ──
+  const idleCapital = pausedWithValue.reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0)),0);
+
+  // ── Potential score improvement ──
+  const scoreAfterFixes = Math.min(100, pcs + Math.round(redundancyPenalty * 0.7) + Math.round(driftPenalty * 0.5));
+
+  return {
+    pcs, totalPenalty,
+    redundancyPenalty: Math.round(redundancyPenalty),
+    concentrationPenalty: Math.round(concentrationPenalty),
+    driftPenalty: Math.round(driftPenalty),
+    goalMismatchPenalty,
+    overlapDetails, goalAlignDetails,
+    catGroups, amcEntries, maxAmcPct, totalVal,
+    scoredFunds, pausedWithValue, idleCapital,
+    activeCount: activeAccs.length,
+    pausedCount: pausedAccs.length,
+    totalFunds:  scoreableAccs.length,
+    protectedCount: protectedAccs.length,
+    issuesCount: overlapDetails.length + (maxAmcPct>30?1:0) + goalMismatches,
+    scoreAfterFixes,
+  };
+}
+
+function _typeToCat(type) {
+  const m = {
+    mf_equity:'Large Cap Fund', mf_elss:'ELSS', mf_hybrid:'Aggressive Hybrid',
+    mf_gold:'Gold/Metal Fund', mf_debt:'Short Duration Fund', mf_index:'Index Fund',
+    brokerage:'International Fund', stocks_direct:'Large Cap Fund',
+  };
+  return m[type] || null;
+}
+
+// ── RENDER: full Clarity tab ────────────────────────────────────────
+
+function triageAction(cls, title) {
+  const messages = {
+    'triage-sleeping': '💡 To restart a SIP: open your broker or MF app, locate the fund, and set up a new SIP instruction. Your CAMS/Zerodha account will reflect it within 2–3 business days.',
+    'triage-idle':     '💡 To redeem: log in to your AMC or CAMS portal, select the fund, and place a redemption request. Proceeds typically credit within 3 business days for equity funds.',
+    'triage-taxsens':  '⏳ Wait until the 1-year holding mark before redeeming — this converts STCG (15%) to LTCG (10%) and could save you meaningful tax. Timing this right could save you thousands.',
+    'triage-noise':    '💡 For small balance cleanup: log in to your AMC portal and request full redemption. Many AMCs allow online redemption of small balances with just your folio number.',
+  };
+  const msg = messages[cls] || 'Please use your broker or AMC portal to take this action.';
+  showToast(msg, 6000);
+}
+
+function renderROIClarity() {
+  const sym = currentCurrency?.symbol || '₹';
+  const d = _computePCS();
+  _clarityFundData = d.scoredFunds;
+
+  // ── Inject snapshot card above the existing PCS panel ──────────────
+  const panel = document.getElementById('roi-panel-clarity');
+  if (panel) {
+    const existingSnap = panel.querySelector('.clarity-snapshot-card');
+    if (!existingSnap) {
+      const snapEl = document.createElement('div');
+      snapEl.className = 'clarity-snapshot-card';
+      panel.insertBefore(snapEl, panel.firstChild);
+    }
+    const snap = panel.querySelector('.clarity-snapshot-card');
+
+    const overlapCount  = d.overlapDetails.length;
+    const idleCount     = d.pausedWithValue.length;
+    const exitCount     = d.scoredFunds.filter(f => f.verdict === 'exit').length;
+    const reviewCount   = d.scoredFunds.filter(f => f.verdict === 'review').length;
+    const keepCount     = d.scoredFunds.filter(f => f.verdict === 'keep').length;
+    const amcTopName    = d.amcEntries[0]?.[0] || '';
+    const amcTopPct     = d.amcEntries[0] ? Math.round(d.amcEntries[0][1].pct) : 0;
+    const mismatchCount = d.goalAlignDetails.length;
+    const totalCost     = d.scoredFunds.reduce((s, f) => s + (f.cost || 0), 0);
+    const gainPct       = totalCost > 0 ? ((d.totalVal - totalCost) / totalCost * 100) : null;
+    const gainStr       = gainPct != null ? (gainPct >= 0 ? '+' : '') + gainPct.toFixed(1) + '%' : null;
+
+    const findings = [];
+    if (overlapCount > 0)  findings.push({ icon: '🔁', text: `${overlapCount} category overlap${overlapCount !== 1 ? 's' : ''} — similar funds doing the same job`, sev: 'warn' });
+    if (idleCount > 0)     findings.push({ icon: '💤', text: `${idleCount} paused fund${idleCount !== 1 ? 's' : ''} with ${sym + _fmtK(d.idleCapital)} sitting idle`, sev: 'warn' });
+    if (amcTopPct > 35)    findings.push({ icon: '🏦', text: `${amcTopPct}% of portfolio in ${amcTopName} — single fund-house concentration`, sev: 'warn' });
+    if (mismatchCount > 0) findings.push({ icon: '🎯', text: `${mismatchCount} fund${mismatchCount !== 1 ? 's' : ''} mismatched to your goal timelines`, sev: 'info' });
+    if (exitCount > 0)     findings.push({ icon: '🚪', text: `${exitCount} fund${exitCount !== 1 ? 's' : ''} recommended for exit or consolidation`, sev: 'bad' });
+    if (findings.length === 0) findings.push({ icon: '✅', text: 'No major issues — your portfolio looks clean', sev: 'ok' });
+
+    const sevCls = { ok: 'csf-ok', warn: 'csf-warn', bad: 'csf-bad', info: 'csf-info' };
+
+    snap.innerHTML = `
+      <div class="cs-eyebrow">YOUR PORTFOLIO AT A GLANCE</div>
+      <div class="cs-grid">
+        <div class="cs-stat"><div class="cs-val">${d.totalFunds}</div><div class="cs-lbl">Funds</div></div>
+        <div class="cs-stat"><div class="cs-val">${d.activeCount}</div><div class="cs-lbl">Active</div></div>
+        <div class="cs-stat"><div class="cs-val">${d.pausedCount}</div><div class="cs-lbl">Paused</div></div>
+        <div class="cs-stat"><div class="cs-val">${sym + _fmtK(d.totalVal)}</div><div class="cs-lbl">Invested</div></div>
+      </div>
+      ${gainStr ? `<div class="cs-gain">Total return: <span style="color:${gainPct >= 0 ? '#86EFAC' : '#FCA5A5'};font-size:1.1em;">${gainStr}</span> <span style="color:rgba(255,255,255,0.4);">on ${sym + _fmtK(totalCost)}</span></div>` : ''}
+      ${d.protectedCount > 0 ? `<div class="cs-prot">🛡️ ${d.protectedCount} retirement / provident account${d.protectedCount !== 1 ? 's' : ''} (Vanguard, EPF, Gratuity etc.) are in your <strong>Retire</strong> tab — excluded from consolidation advice.</div>` : ''}
+      <div class="cs-findings">
+        ${findings.map(f => `<div class="cs-finding ${sevCls[f.sev]}">${f.icon} ${f.text}</div>`).join('')}
+      </div>`;
+
+    // Hide PCS ring score number (we no longer show a grade)
+    const numEl = document.getElementById('pcs-score-num');
+    const grEl  = document.getElementById('pcs-grade-lbl');
+    const fill  = document.getElementById('pcs-ring-fill');
+    const badge = document.getElementById('pcs-grade-badge');
+    if (numEl) numEl.closest('.pcs-hero-card') && (numEl.closest('.pcs-hero-card').style.display = 'none');
+  }
+
+  // ── Stats strip ──
+  const _s = id => document.getElementById(id);
+  if (_s('pcs-funds-count'))  _s('pcs-funds-count').textContent  = d.totalFunds;
+  if (_s('pcs-issues-count')) _s('pcs-issues-count').textContent = d.issuesCount;
+  if (_s('pcs-idle-val'))     _s('pcs-idle-val').textContent     = d.idleCapital > 0 ? sym + _fmtK(d.idleCapital) : '—';
+
+  // ── Protected accounts note ──
+  const protNote = _s('pcs-protected-note');
+  const protText = _s('pcs-protected-text');
+  if (protNote && d.protectedCount > 0) {
+    protNote.style.display = 'flex';
+    if (protText) protText.textContent = `${d.protectedCount} retirement / provident account${d.protectedCount !== 1 ? 's' : ''} are in your Retire tab and excluded from consolidation advice.`;
+  }
+
+  // ── Grade badge (suppress score, show finding count instead) ──
+  const badge = document.getElementById('pcs-grade-badge');
+  if (badge) { badge.textContent = `${d.issuesCount} issue${d.issuesCount !== 1 ? 's' : ''}`; badge.className = `lab-card-badge ${d.issuesCount === 0 ? 'lab-badge-green' : d.issuesCount <= 2 ? 'lab-badge-warn' : 'lab-badge-red'}`; }
+
+  // ── Penalty breakdown ──
+  const penBody = _s('pcs-penalty-body');
+  if (penBody) {
+    const penalties = [
+      { icon: '🔁', label: 'Category Overlap',       pts: d.redundancyPenalty,    detail: d.redundancyPenalty === 0 ? 'No duplicate categories' : `${d.overlapDetails.length} categories over limit` },
+      { icon: '🏦', label: 'AMC Concentration',      pts: d.concentrationPenalty, detail: d.concentrationPenalty === 0 ? 'Well diversified' : `${d.amcEntries[0]?.[0] || ''} holds ${Math.round(d.maxAmcPct)}%` },
+      { icon: '💤', label: 'Paused Fund Drift',       pts: d.driftPenalty,         detail: d.driftPenalty === 0 ? 'No idle paused funds' : `${d.pausedWithValue.length} paused fund${d.pausedWithValue.length !== 1 ? 's' : ''} sitting idle` },
+      { icon: '🎯', label: 'Goal-Horizon Mismatch',  pts: d.goalMismatchPenalty,  detail: d.goalMismatchPenalty === 0 ? 'All funds match goal timelines' : `${d.goalAlignDetails.length} fund${d.goalAlignDetails.length !== 1 ? 's' : ''} mismatched` },
+    ];
+    penBody.innerHTML = penalties.map(p => {
+      const cls = p.pts === 0 ? 'pcs-penalty-ok' : p.pts <= 10 ? 'pcs-penalty-mid' : 'pcs-penalty-bad';
+      return `<div class="pcs-penalty-row">
+        <div class="pcs-penalty-icon">${p.icon}</div>
+        <div style="flex:1;">
+          <div class="pcs-penalty-label">${p.label}</div>
+          <div style="font-size:0.65em;font-weight:600;color:#9CA3AF;margin-top:1px;">${p.detail}</div>
+        </div>
+        <div class="pcs-penalty-pts ${cls}">${p.pts === 0 ? '✓' : p.pts + ' pts'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Category Overlap ──
+  _renderClarityOverlap(d, sym);
+  // ── Fund verdicts ──
+  filterClarityFunds(_clarityFundFilter);
+  // ── Paused fund triage ──
+  _renderClarityTriage(d, sym);
+  // ── AMC concentration ──
+  _renderClarityAMC(d, sym);
+  // ── Goal alignment ──
+  _renderClarityGoals(d, sym);
+  // ── Tax estimate ──
+  _renderClarityTax(d, sym);
+}
+
+
+function _renderClarityOverlap(d, sym) {
+  const card  = document.getElementById('clarity-overlap-card');
+  const body  = document.getElementById('clarity-overlap-body');
+  const badge = document.getElementById('clarity-overlap-badge');
+  if (!body) return;
+
+  if (!d.overlapDetails.length) {
+    card.style.display='';
+    badge.textContent='No Overlap';
+    badge.className='lab-card-badge lab-badge-green';
+    body.innerHTML=`<div style="font-size:0.78em;font-weight:700;color:#059669;text-align:center;padding:8px;">
+      ✅ Your portfolio has no duplicate SEBI categories. That's clean investing.
+    </div>`;
+    return;
+  }
+
+  badge.textContent = d.overlapDetails.length + ' overlapping';
+  badge.className = 'lab-card-badge lab-badge-warn';
+
+  body.innerHTML = d.overlapDetails.map(({ cat, accs, max, excess }) => {
+    const meta = SEBI_CAT_META[cat];
+    const fundList = accs.map(a => {
+      const val = nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);
+      const cost = a.investedAmount!=null?(nwConvert?nwConvert(a.investedAmount,a.currency):a.investedAmount):null;
+      const pct  = cost&&cost>0?(val-cost)/cost*100:null;
+      return `<span style="color:#374151;">${_cleanFundName(a.name)}</span>` +
+        (pct!=null?` <span style="color:${pct>=0?'#059669':'#DC2626'};font-size:0.9em;">(${pct>=0?'+':''}${pct.toFixed(0)}%)</span>`:'');
+    }).join(', ');
+    const tip = excess === 1
+      ? `You have ${accs.length} ${meta?.label||cat} funds — ${max} is enough. Exit the lowest-returning one.`
+      : `${accs.length} ${meta?.label||cat} funds are doing the same job. Consolidate to the top ${max}.`;
+    return `<div class="overlap-category-row">
+      <div class="overlap-cat-header">
+        <div class="overlap-cat-name">${cat}</div>
+        <div class="overlap-cat-count">${accs.length} funds · max ${max}</div>
+      </div>
+      <div class="overlap-cat-funds">${fundList}</div>
+      <div class="overlap-advisor-tip">💬 <span>${tip}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function filterClarityFunds(filter) {
+  _clarityFundFilter = filter;
+  const sym = currentCurrency?.symbol || '₹';
+  ['all','keep','review','exit'].forEach(f => {
+    const btn = document.getElementById('cfbtn-'+f);
+    if (btn) btn.classList.toggle('lab-sort-active', f===filter);
+  });
+  const el = document.getElementById('clarity-funds-list');
+  if (!el) return;
+
+  const funds = filter==='all' ? _clarityFundData : _clarityFundData.filter(f=>f.verdict===filter);
+  if (!funds.length) {
+    el.innerHTML=`<div class="lab-card" style="text-align:center;padding:20px;color:#9CA3AF;font-size:0.82em;font-weight:700;">
+      ${filter==='all'?'No investment accounts found. Add via Net Worth screen.':'No funds in this category — '+filter+' your score!'}
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = funds.map(({ a, score, verdict, val, cost, pct, cat, isActive }) => {
+    const tagCls  = `tag-${verdict}`;
+    const cardCls = `clarity-fund-${verdict}`;
+    const tagLbl  = verdict==='keep'?'✅ KEEP':verdict==='review'?'⚠️ REVIEW':'🚫 EXIT';
+    const reasonCls = `clarity-fund-reason-${verdict}`;
+
+    // Reason copy — advisor-grade language
+    let reason = '';
+    if (verdict==='keep') {
+      reason = pct!=null && pct>30
+        ? `This fund earns its place — ${pct.toFixed(0)}% return${isActive?' with an active SIP keeping compounding running':''}.`
+        : `Solid ${cat||'fund'} choice${isActive?' with consistent SIP activity':''}.`;
+    } else if (verdict==='review') {
+      if (!isActive && val>200) reason = `This fund has been paused. Restarting even a small SIP keeps the compounding clock ticking.`;
+      else if (pct!=null && pct<0)  reason = `Currently in the red — if your conviction is intact, averaging down via SIP accelerates recovery.`;
+      else reason = `Decent performer but ${!isActive?'paused':'could be stronger'}. Monitor or restart SIP.`;
+    } else {
+      // EXIT
+      if (cat) {
+        const betterFund = _clarityFundData.find(f=>f.verdict==='keep'&&f.cat===cat&&f.a.id!==a.id);
+        if (betterFund) {
+          reason = `A stronger option already exists in your portfolio: ${_cleanFundName(betterFund.a.name)} does the same job${betterFund.pct!=null&&pct!=null?' with '+(betterFund.pct-pct).toFixed(0)+'% better return':''}.`;
+        } else {
+          reason = `High overlap or low engagement. Consider redeeming and consolidating into your best-performing ${cat} fund.`;
+        }
+      } else {
+        reason = `Low score (${score}/100) — review if this fund is still aligned with your goals.`;
+      }
+    }
+
+    return `<div class="clarity-fund-card ${cardCls}">
+      <div class="clarity-fund-header">
+        <div class="clarity-fund-name">${_cleanFundName(a.name)}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+          <span class="clarity-fund-tag ${tagCls}">${tagLbl}</span>
+          <span class="clarity-fund-val">${sym}${Math.round(val).toLocaleString()}</span>
+        </div>
+      </div>
+      <div class="clarity-fund-reason ${reasonCls}">${reason}</div>
+      <div class="clarity-fund-meta">
+        <span>${cat||'—'} · Score ${score}/100</span>
+        <span style="color:${pct!=null?(pct>=0?'#059669':'#DC2626'):'#9CA3AF'};">${pct!=null?(pct>=0?'+':'')+pct.toFixed(1)+'%':'no cost basis'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _renderClarityTriage(d, sym) {
+  const label = document.getElementById('clarity-triage-label');
+  const body  = document.getElementById('clarity-triage-body');
+  if (!body) return;
+
+  // pausedWithValue is already filtered to scoreableAccs (no retirement/wallets)
+  const paused = d.pausedWithValue;
+  if (!paused.length) { if(label) label.style.display='none'; body.innerHTML=''; return; }
+  if (label) label.style.display='';
+
+  // Now — classify paused funds into 4 buckets
+  const now = new Date();
+  const oneYearAgo = new Date(now); oneYearAgo.setFullYear(oneYearAgo.getFullYear()-1);
+
+  const sleeping=[], idle=[], noise=[], taxSens=[];
+  paused.forEach(a => {
+    const val   = nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);
+    const cost  = a.investedAmount!=null?(nwConvert?nwConvert(a.investedAmount,a.currency):a.investedAmount):null;
+    const roi   = cost&&cost>0?(val-cost)/cost*100:null;
+    const lastD = a._lastTransactionDate ? new Date(a._lastTransactionDate+'-01') : null;
+    const isWithin1yr = lastD && lastD >= oneYearAgo;
+
+    if (isWithin1yr && val>100) taxSens.push({ a, val, roi });       // STCG risk
+    else if (val < 100) noise.push({ a, val, roi });                  // Noise
+    else if (roi!=null && roi > 0) sleeping.push({ a, val, roi });   // Still growing
+    else idle.push({ a, val, roi });                                   // Idle
+  });
+
+  const buckets = [
+    { list:sleeping, cls:'triage-sleeping', icon:'😴', title:'Sleeping Giants',
+      desc:`Paused but still growing — these funds are quietly compounding. Consider restarting SIPs.`,
+      cta:'Restart SIP', ctaFn:'null' },
+    { list:idle, cls:'triage-idle', icon:'💤', title:'Idle Capital',
+      desc:`Paused with flat or negative growth. Consider redeeming and redirecting to your KEEP funds.`,
+      cta:'Plan Redemption', ctaFn:'null' },
+    { list:taxSens, cls:'triage-taxsens', icon:'⏳', title:'Tax-Sensitive — Wait',
+      desc:`Exited within 12 months = STCG at 15%. Wait until 1-year mark before redeeming to save tax.`,
+      cta:'Set Reminder', ctaFn:'null' },
+    { list:noise, cls:'triage-noise', icon:'🗑️', title:'Noise — Quick Clean',
+      desc:`Under ${sym}100 — too small to matter. Redeem and simplify your portfolio count.`,
+      cta:'Quick Exit', ctaFn:'null' },
+  ];
+
+  body.innerHTML = buckets.filter(b=>b.list.length>0).map(b => {
+    const items = b.list.slice(0,5).map(({a,val,roi}) =>
+      `<div class="triage-fund-item">
+        <span>${_cleanFundName(a.name).substring(0,30)}</span>
+        <span>${sym}${Math.round(val).toLocaleString()}${roi!=null?' · '+(roi>=0?'+':'')+roi.toFixed(0)+'%':''}</span>
+      </div>`
+    ).join('');
+    const more = b.list.length>5 ? `<div style="font-size:0.65em;color:#9CA3AF;font-weight:600;margin-top:4px;">+${b.list.length-5} more</div>` : '';
+    return `<div class="triage-bucket ${b.cls}">
+      <div class="triage-header">
+        <div class="triage-title">${b.icon} ${b.title}</div>
+        <div class="triage-count">${b.list.length} fund${b.list.length!==1?'s':''}</div>
+      </div>
+      <div class="triage-desc">${b.desc}</div>
+      ${items}${more}
+      <button class="triage-cta" onclick="triageAction('${b.cls}', '${b.title}')">${b.cta} →</button>
+    </div>`;
+  }).join('');
+}
+
+function _renderClarityAMC(d, sym) {
+  const card  = document.getElementById('clarity-amc-card');
+  const body  = document.getElementById('clarity-amc-body');
+  const badge = document.getElementById('clarity-amc-badge');
+  if (!card||!body) return;
+  if (d.amcEntries.length < 2) { card.style.display='none'; return; }
+  card.style.display='';
+
+  const riskLevel = d.maxAmcPct>55?'High':d.maxAmcPct>30?'Review':'Healthy';
+  badge.textContent = riskLevel;
+  badge.className = `lab-card-badge ${riskLevel==='Healthy'?'lab-badge-green':riskLevel==='Review'?'lab-badge-warn':'lab-badge-red'}`;
+
+  const top5 = d.amcEntries.slice(0,6);
+  const COLS  = ['#4F46E5','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4'];
+
+  body.innerHTML = top5.map(([amc,val],i) => {
+    const pct = d.totalVal>0 ? (val/d.totalVal*100) : 0;
+    return `<div class="amc-bar-row">
+      <div class="amc-bar-label">
+        <span>${amc}</span>
+        <span style="color:${COLS[i%COLS.length]};">${pct.toFixed(1)}% · ${sym}${_fmtK(val)}</span>
+      </div>
+      <div class="amc-bar-track">
+        <div class="amc-bar-fill" style="width:${Math.min(100,pct)}%;background:${COLS[i%COLS.length]};"></div>
+      </div>
+    </div>`;
+  }).join('') + (d.maxAmcPct>30
+    ? `<div class="overlap-advisor-tip" style="margin-top:8px;">💬 <span>${Math.round(d.maxAmcPct)}% with ${d.amcEntries[0]?.[0]||'one AMC'} — a single regulatory event or fund manager exit could shake your confidence across multiple funds at once. Consider spreading across 3–4 AMCs.</span></div>`
+    : `<div style="font-size:0.72em;font-weight:700;color:#059669;margin-top:6px;">✅ Well diversified across fund houses — no single AMC dominates.</div>`
+  );
+}
+
+function _renderClarityGoals(d, sym) {
+  const card  = document.getElementById('clarity-goals-card');
+  const body  = document.getElementById('clarity-goals-body');
+  const badge = document.getElementById('clarity-goals-badge');
+  if (!card||!body) return;
+
+  const goals = getGoals().filter(g=>g.targetDate);
+  if (!goals.length) { card.style.display='none'; return; }
+  card.style.display='';
+
+  const withBal = (data._nwAccounts||[]).filter(a=>(a.balance||0)>0);
+  const mismatches = d.goalAlignDetails.length;
+  badge.textContent = mismatches>0 ? `${mismatches} mismatch${mismatches!==1?'es':''}` : 'All aligned';
+  badge.className = `lab-card-badge ${mismatches>0?'lab-badge-warn':'lab-badge-green'}`;
+
+  body.innerHTML = goals.slice(0,8).map(g => {
+    const yearsLeft = Math.max(0,(new Date(g.targetDate)-new Date())/(365.25*24*3600*1000));
+    const mappedAccs = (g.mappedAccounts||[]).map(id=>withBal.find(a=>a.id===id)).filter(Boolean);
+    let status='ok', statusLbl='On Track', detail='';
+
+    if (mappedAccs.length===0) {
+      status='warning'; statusLbl='No funds mapped';
+      detail='No investment accounts are linked to this goal. Map accounts via the Goals screen.';
+    } else {
+      const mismatched = d.goalAlignDetails.filter(gd=>gd.goal.id===g.id);
+      if (mismatched.length) {
+        status='danger'; statusLbl='Horizon Mismatch';
+        const m = mismatched[0];
+        detail=`${_cleanFundName(m.acc.name)} needs ${m.needed}+ years but this goal is in ${yearsLeft.toFixed(1)}y. Risk: cannot absorb a market drawdown before withdrawal.`;
+      } else {
+        const totalMapped = mappedAccs.reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0)),0);
+        const tgt = g.target ? (nwConvert?nwConvert(g.target,g.currency):g.target) : 0;
+        const pct = tgt>0 ? totalMapped/tgt*100 : null;
+        detail=`${mappedAccs.length} fund${mappedAccs.length!==1?'s':''} mapped · ${sym}${_fmtK(totalMapped)} allocated${pct!=null?' · '+pct.toFixed(0)+'% funded':''}`;
+      }
+    }
+
+    return `<div class="goal-align-card goal-align-${status}">
+      <div class="goal-align-header">
+        <div class="goal-align-name">${g.icon||'🎯'} ${g.name}</div>
+        <div class="goal-align-status">${statusLbl}</div>
+      </div>
+      <div class="goal-align-detail">${yearsLeft.toFixed(1)}y away · ${detail}</div>
+    </div>`;
+  }).join('');
+}
+
+function _renderClarityTax(d, sym) {
+  const card = document.getElementById('clarity-tax-card');
+  const body = document.getElementById('clarity-tax-body');
+  if (!card||!body) return;
+
+  // Only show for EXIT-tagged funds with cost basis and purchase date
+  const exitFunds = d.scoredFunds.filter(f=>f.verdict==='exit' && f.cost!=null && f.pct!=null && f.pct>0);
+  if (!exitFunds.length) { card.style.display='none'; return; }
+  card.style.display='';
+
+  const now = new Date();
+  let ltcgGain=0, stcgGain=0, ltcgTax=0, stcgTax=0;
+  const LTCG_EXEMPT = 100000; // ₹1L exemption (India)
+  const profile = getFHSProfile();
+  const isINR = (currentCurrency?.code||'INR')==='INR';
+
+  exitFunds.forEach(({ a, val, cost }) => {
+    const gain = val - cost;
+    if (gain <= 0) return;
+    // Use last transaction date as proxy for purchase date
+    const lastD = a._lastTransactionDate || '';
+    const purchaseD = lastD ? new Date(lastD+'-01') : null;
+    const heldYrs = purchaseD ? (now - purchaseD)/(365.25*24*3600*1000) : null;
+    if (heldYrs === null) { ltcgGain += gain; return; } // assume LTCG if unknown
+    if (heldYrs >= 1) ltcgGain += gain;
+    else stcgGain += gain;
+  });
+
+  if (isINR) {
+    const ltcgTaxable = Math.max(0, ltcgGain - LTCG_EXEMPT);
+    ltcgTax = Math.round(ltcgTaxable * 0.10);
+    stcgTax = Math.round(stcgGain * 0.15);
+  } else {
+    // USD: simplified — no ₹1L exemption
+    ltcgTax = Math.round(ltcgGain * 0.10);
+    stcgTax = Math.round(stcgGain * 0.15);
+  }
+
+  const totalTax = ltcgTax + stcgTax;
+  const totalGain = ltcgGain + stcgGain;
+
+  body.innerHTML = `
+    <div class="tax-row">
+      <div>
+        <div class="tax-row-label">Long-Term Gains (held &gt;1yr)</div>
+        <div class="tax-row-rate">${isINR?'10% LTCG above ₹1L exemption':'10% LTCG'}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="tax-row-val">${sym}${_fmtK(ltcgGain)}</div>
+        <div class="tax-row-rate">Tax ≈ ${sym}${_fmtK(ltcgTax)}</div>
+      </div>
+    </div>
+    <div class="tax-row">
+      <div>
+        <div class="tax-row-label">Short-Term Gains (held &lt;1yr)</div>
+        <div class="tax-row-rate">15% STCG — consider waiting for 1-yr mark</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="tax-row-val">${sym}${_fmtK(stcgGain)}</div>
+        <div class="tax-row-rate">Tax ≈ ${sym}${_fmtK(stcgTax)}</div>
+      </div>
+    </div>
+    <div class="tax-row" style="background:#FEF3C7;border-radius:8px;padding:8px;margin-top:4px;">
+      <div>
+        <div class="tax-row-label" style="color:#92400E;">Total Estimated Tax on EXIT funds</div>
+        ${stcgTax>0?`<div class="tax-row-rate" style="color:#D97706;">Tip: waiting for 1-yr mark saves ≈ ${sym}${_fmtK(stcgTax)} in STCG</div>`:''}
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:1em;font-weight:900;color:#92400E;">${sym}${_fmtK(totalTax)}</div>
+      </div>
+    </div>`;
+}
+
 
 function onRetireRateChange(val) {
   _roiRetireRate = parseFloat(val);
@@ -8946,7 +10981,7 @@ function renderROIScreen() {
   if (rateSlider) rateSlider.value = _roiSimRate;
   const rateBadge = document.getElementById('sim-rate-badge');
   if (rateBadge) rateBadge.textContent = _roiSimRate + '%';
-  switchROITab(_roiCurrentTab || 'story');
+  switchROITab(_roiCurrentTab || 'clarity');
 }
 
 // ── CORE DATA BUILDER (unchanged logic, same as v3.19.10) ──────────────
@@ -8961,11 +10996,55 @@ function _buildROIData() {
   const monthKeys  = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
   const monthlyTotals = {};
 
+  // ── Build valid fund name set from NW accounts ──────────────────────
+  // Only accounts with sebiCategory (real India MFs classified by CAMS/SEBI)
+  // OR US investable account types (brokerage, 401k, Roth, IRA, HSA, 529, iBond)
+  // This is the gate: if a transaction description doesn't match one of these,
+  // it's not a real investment fund — it's a transfer, gift, or expense.
+  const US_INVEST_TYPES = new Set([
+    'brokerage','brokerage_taxable','stocks_direct',
+    'retirement_401k','retirement_roth','retirement_ira',
+    'college_529','ibond','hsa',
+  ]);
+  const INDIA_MF_TYPES = new Set([
+    'mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','mf_index','nps','ppf','epf',
+  ]);
+
+  // validNWNames: fund names from accounts that are definitively real investments
+  const validNWAccounts = (data._nwAccounts||[]).filter(a =>
+    a.sebiCategory ||            // CAMS-imported India MF — has SEBI classification
+    INDIA_MF_TYPES.has(a.type) || // India fund type even if sebiCategory not yet set
+    US_INVEST_TYPES.has(a.type)  // US brokerage / retirement account
+  );
+  const validNWNames = new Set(validNWAccounts.map(a => (a.name||'').toLowerCase().substring(0,20)));
+
+  // Helper: does a transaction description match a known investment account?
+  function _isFundTx(tx) {
+    if (!tx.description) return false;
+    const desc = tx.description.toLowerCase();
+    // Direct match against known NW account names (first 20 chars)
+    for (const n of validNWNames) {
+      if (n.length > 4 && (desc.includes(n) || n.includes(desc.substring(0,20)))) return true;
+    }
+    // CAMS/BSE transaction patterns — always real MF transactions
+    if (/bse.*instalment|systematic.*purchase|nfo.*allot|sip.*registered|cams/i.test(tx.description)) return true;
+    // US brokerage patterns
+    if (/dividend reinvest|buy.*shares|market.*order|reinvest/i.test(tx.description)) return true;
+    return false;
+  }
+
   monthKeys.forEach(mk => {
-    const txList = [...(data[mk].investments||[]), ...(data[mk].expenses||[])
-      .filter(e => (e.category||'').toLowerCase().includes('mutual') ||
-                   (e.category||'').toLowerCase().includes('sip') ||
-                   (e.category||'').toLowerCase().includes('investment'))];
+    // Only investment-type transactions — zero expense leakage
+    // Additional gate: must match a known NW account OR be a recognised MF/brokerage pattern
+    const rawInv = (data[mk].investments||[]);
+    const txList = rawInv.filter(tx => {
+      // If we have validNWNames populated, require a match
+      if (validNWNames.size > 0) return _isFundTx(tx);
+      // Fallback for users with no NW accounts yet: include all investment txns
+      // but exclude obvious non-fund patterns (transfers to people, utilities etc.)
+      const desc = (tx.description||'').toLowerCase();
+      return !(/to [a-z]+ |neft|imps|upi.*[0-9]{10}|electricity|mobile|rent|salary/i.test(tx.description||''));
+    });
     txList.forEach(tx => {
       const amt = nwConvert ? nwConvert(Number(tx.amount||0), tx.currency) : Number(tx.amount||0);
       if (amt <= 0) return;
