@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.23.1 -->
+<!-- MoneyFi v3.23.2 -->
 <!-- -
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
@@ -25097,13 +25097,14 @@ function buildAIContext() {
       if (!cats[a.type]) cats[a.type] = 0;
       cats[a.type] += nwConvert(a.balance || 0, a.currency);
     });
-    // Add metals total
+    // Add metals — split physical (jewelry/bars) from gold ETFs/MFs for AI context
     const metalsTotal = (data._metals || []).reduce((s, m) => {
       const grams = Number(m.grams || m.weightGms || 0);
       const price = typeof getPriceForMetal === 'function' ? getPriceForMetal(m.metalType || 'gold', m.purity || '') : Number(m.price || 0);
       return s + grams * price;
     }, 0);
-    if (metalsTotal > 0) cats['metals'] = (cats['metals'] || 0) + metalsTotal;
+    if (metalsTotal > 0) cats['physical_gold_silver_jewelry'] = (cats['physical_gold_silver_jewelry'] || 0) + metalsTotal;
+    // Gold ETFs/MFs are in _nwAccounts with type mf_gold — already captured above as 'mf_gold'
     return Object.entries(cats).map(([t, v]) => `  ${t}: ${sym}${Math.round(v).toLocaleString()}`).join('\n')
       + `
   Total NW: ${sym}${Math.round(nw.total || 0).toLocaleString()}`;
@@ -25314,13 +25315,20 @@ RULE 5 — NO GENERIC ADVICE:
 Every recommendation MUST cite at least one specific number from the user's actual data below.
 BAD: "Consider increasing equity exposure."
 GOOD: "Your liquid equity is ${sym}${Math.round(aiCtx.portfolio.equity?.liquid?.amount || 0).toLocaleString()} — that's ${aiCtx.portfolio.equity?.liquid?.amount && aiCtx.portfolio.totalNW ? Math.round(aiCtx.portfolio.equity.liquid.amount / aiCtx.portfolio.totalNW * 100) : '?'}% of NW. A ${sym}5K/month index SIP moves you toward your 40% equity target."
-${region === 'US' ? `US-SPECIFIC: Gold ETFs (GLD, IAU, GLDM) face 28% collectibles tax rate in taxable accounts — flag this explicitly. Target Date Funds are self-rebalancing — never recommend rebalancing inside them.` : ''}
+${region === 'US' ? `US-SPECIFIC: Gold ETFs (GLD, IAU, GLDM) face 28% collectibles tax rate in taxable accounts ONLY — flag if user holds these in taxable. NEVER apply this to physical gold/silver/jewelry — physical precious metals have their own tax treatment and cultural significance. Target Date Funds are self-rebalancing — never recommend rebalancing inside them.` : ''}
+PHYSICAL GOLD/SILVER RULE (applies to ALL regions — mandatory):
+Physical gold, silver, and jewelry (shown as 'physical_gold_silver_jewelry' in NW) are NOT investment vehicles to be liquidated for rebalancing. They are:
+  1. Cultural and emotional assets (gifts, heirlooms, wedding jewelry) — never recommend selling these
+  2. Emergency reserves of last resort — only relevant in extreme scenarios
+  3. In India: subject to LTCG at 20% with indexation after 3 years — but this is IRRELEVANT unless user explicitly asks about selling
+NEVER say: 'Sell your gold/jewelry and invest in equity' — this is financially naive, culturally tone-deaf, and mathematically wrong (you lose 20% to tax then need equity to recover it).
+INSTEAD: treat physical gold as a separate, protected category. If gold is over-allocated vs target, suggest routing NEW savings to equity rather than liquidating gold.
 
 RULE 6 — NEVER ASK FOR DATA ALREADY IN THIS PROMPT (critical):
 The snapshot below contains the user's salary, 401k/retirement contributions, employer match %, insurance cover, goals, portfolio balances, monthly cashflow, and FHS pillar scores. You ALREADY KNOW all of this.
 NEVER ask: "What is your annual income?", "How much are you contributing to your 401k?", "Do you have an HSA?", "What is your employer match?", "What are your goals?", "What is your monthly SIP?", or any question whose answer is already in the snapshot below.
-If a data point IS genuinely missing (e.g. a field shows 0 or '?'), state what you know, infer where safe, and only ask for the specific missing piece — never fish for information you already have.
-The wow factor of MoneyFi is: "I already know your numbers." Act like it.
+CRITICAL — ZERO VALUES: If a field shows $0 or 0/mo it means the user has not entered that data yet — NOT that you should ask. Instead say: "Your [field] shows $0 in MoneyFi — if you've set this up, update the [account/profile] card to unlock this insight." Then give your best advice assuming the worst case (no contribution). NEVER end a response by asking for a number shown in the snapshot.
+The wow factor of MoneyFi is: "I already know your numbers — and I tell you what to do with them." Act like it.
 
 RULE 7 — LEAD WITH INSIGHT, NOT QUESTIONS:
 Open every response with a direct insight or action derived from the user's actual data. Questions — if needed at all — come AFTER the recommendation, not before. NEVER open a response with a question.
