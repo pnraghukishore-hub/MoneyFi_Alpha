@@ -1477,6 +1477,7 @@
     .triage-bucket {
       border-radius:15px; padding:12px 13px; margin-bottom:8px;
     }
+    .triage-disclaimer { font-size:.68em; font-weight:600; color:#6B7280; line-height:1.5; margin-top:10px; padding:8px 10px; background:#F9FAFB; border-radius:10px; border-left:3px solid #D1D5DB; }
     .triage-sleeping { background:#EFF6FF; border:1.5px solid #BFDBFE; }
     .triage-idle     { background:#FEF3C7; border:1.5px solid #FDE68A; }
     .triage-noise    { background:#F9FAFB; border:1.5px solid #E5E7EB; }
@@ -1676,6 +1677,13 @@
     .lab-funds-summary {
       display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:10px;
     }
+    .inv-group-tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+    #roi-funds-groups { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+    .inv-group-tile { background:#fff; border-radius:14px; padding:10px 8px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,.06); border:1.5px solid #F3F4F6; }
+    .inv-group-icon { font-size:1.3em; margin-bottom:3px; }
+    .inv-group-label { font-size:.55em; font-weight:900; text-transform:uppercase; letter-spacing:.5px; color:#9CA3AF; margin-bottom:4px; }
+    .inv-group-val { font-size:.8em; font-weight:800; color:#1E2A6E; }
+    .inv-group-roi { font-size:.75em; font-weight:900; margin-top:2px; }
     .lab-funds-stat {
       background:#fff; border-radius:12px; padding:10px 8px; text-align:center;
       box-shadow:0 1px 6px rgba(0,0,0,0.06);
@@ -2356,7 +2364,7 @@
     <div class="topbar-badge" id="topbar-month" style="cursor:default;">Feb 2026</div>
     <div class="topbar-icons">
       <div class="topbar-tray" id="topbar-tray">
-        <button class="topbar-icon-btn" onclick="goToScreen('roi')" title="ROI Growth Lab">📊</button>
+        <button class="topbar-icon-btn" onclick="goToScreen('roi')" title="Investment Growth Lab">🔬</button>
         <button class="topbar-icon-btn" onclick="goToScreen('metals')" title="Metals">🥇</button>
         <button class="topbar-icon-btn" onclick="switchScreen('import',null)" title="Import">📥</button>
         <button class="topbar-icon-btn" onclick="goToScreen('networth')" title="Net Worth">💎</button>
@@ -2905,6 +2913,9 @@
 
       <!-- Funds summary strip -->
       <div class="lab-funds-summary" id="roi-funds-summary"></div>
+
+      <!-- Asset-class ROI tiles -->
+      <div id="roi-funds-groups" style="display:none;"></div>
 
       <!-- Fund cards list -->
       <div id="roi-funds-list"></div>
@@ -9544,10 +9555,17 @@ function renderGoalOrchestration() {
     el.innerHTML = `<div class="lab-card" style="text-align:center;padding:24px;">
       <div style="font-size:2em;margin-bottom:8px;">🎯</div>
       <div style="font-weight:900;color:#1E2A6E;margin-bottom:6px;">No Goals Set Yet</div>
-      <div style="font-size:0.78em;color:#9CA3AF;font-weight:700;">Add goals via the Goals screen to see your funding plan here.</div>
+      <div style="font-size:0.78em;color:#9CA3AF;font-weight:700;margin-bottom:14px;">Set a goal and MoneyFi will map your SIPs to it automatically.</div>
+      <button onclick="openGoalSheet()" style="background:#1E2A6E;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:.8em;font-weight:800;cursor:pointer;width:100%;">+ Create Your First Goal</button>
     </div>`;
     return;
   }
+
+  // ── Add Goal CTA (always visible at top) ──────────────────────────
+  const addGoalBar = document.createElement('div');
+  addGoalBar.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:10px;';
+  addGoalBar.innerHTML = `<button onclick="openGoalSheet()" style="background:#1E2A6E;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:.72em;font-weight:800;cursor:pointer;">+ Add Goal</button>`;
+  el.appendChild(addGoalBar);
 
   // ── Conflict banner ──────────────────────────────────────────────
   const conflict = _detectGoalConflicts(goals, availableSurplus);
@@ -10512,8 +10530,21 @@ function renderROIClarity() {
   const d = _computePCS();
   _clarityFundData = d.scoredFunds;
 
-  // ── Inject snapshot card above the existing PCS panel ──────────────
+  // ── If no data yet, show placeholder and retry ──────────────────────
   const panel = document.getElementById('roi-panel-clarity');
+  if (!panel) return;
+  if (!d.totalFunds && !(data._nwAccounts||[]).length) {
+    const existingSnap2 = panel.querySelector('.clarity-snapshot-card');
+    if (!existingSnap2) {
+      const ph = document.createElement('div');
+      ph.className = 'clarity-snapshot-card';
+      ph.innerHTML = '<div class="cs-eyebrow">LOADING YOUR PORTFOLIO...</div><div style="color:rgba(255,255,255,.6);font-size:.8em;margin-top:8px;">Add accounts via Net Worth to see insights here.</div>';
+      panel.insertBefore(ph, panel.firstChild);
+    }
+    return;
+  }
+
+  // ── Inject snapshot card above the existing PCS panel ──────────────
   if (panel) {
     const existingSnap = panel.querySelector('.clarity-snapshot-card');
     if (!existingSnap) {
@@ -10531,8 +10562,13 @@ function renderROIClarity() {
     const amcTopName    = d.amcEntries[0]?.[0] || '';
     const amcTopPct     = d.amcEntries[0] ? Math.round(d.amcEntries[0][1].pct) : 0;
     const mismatchCount = d.goalAlignDetails.length;
+    // Scoreable funds only (excludes retirement/protected accounts) for value + gain
+    const scoreableVal  = d.scoredFunds.reduce((s, f) => s + (f.val || 0), 0);
     const totalCost     = d.scoredFunds.reduce((s, f) => s + (f.cost || 0), 0);
-    const gainPct       = totalCost > 0 ? ((d.totalVal - totalCost) / totalCost * 100) : null;
+    const fundsWithCost = d.scoredFunds.filter(f => f.cost > 0).length;
+    const costCoverage  = d.scoredFunds.length > 0 ? fundsWithCost / d.scoredFunds.length : 0;
+    // Only show gain% if we have cost data for >40% of funds — otherwise misleading
+    const gainPct       = (totalCost > 0 && costCoverage > 0.4) ? ((scoreableVal - totalCost) / totalCost * 100) : null;
     const gainStr       = gainPct != null ? (gainPct >= 0 ? '+' : '') + gainPct.toFixed(1) + '%' : null;
 
     const findings = [];
@@ -10551,9 +10587,9 @@ function renderROIClarity() {
         <div class="cs-stat"><div class="cs-val">${d.totalFunds}</div><div class="cs-lbl">Funds</div></div>
         <div class="cs-stat"><div class="cs-val">${d.activeCount}</div><div class="cs-lbl">Active</div></div>
         <div class="cs-stat"><div class="cs-val">${d.pausedCount}</div><div class="cs-lbl">Paused</div></div>
-        <div class="cs-stat"><div class="cs-val">${sym + _fmtK(d.totalVal)}</div><div class="cs-lbl">Invested</div></div>
+        <div class="cs-stat"><div class="cs-val">${sym + _fmtK(scoreableVal)}</div><div class="cs-lbl">Portfolio</div></div>
       </div>
-      ${gainStr ? `<div class="cs-gain">Total return: <span style="color:${gainPct >= 0 ? '#86EFAC' : '#FCA5A5'};font-size:1.1em;">${gainStr}</span> <span style="color:rgba(255,255,255,0.4);">on ${sym + _fmtK(totalCost)}</span></div>` : ''}
+      ${gainStr ? `<div class="cs-gain">Total return: <span style="color:${gainPct >= 0 ? '#86EFAC' : '#FCA5A5'};font-size:1.1em;">${gainStr}</span> <span style="color:rgba(255,255,255,0.4);">on ${sym + _fmtK(totalCost)} invested</span></div>` : ''}
       ${d.protectedCount > 0 ? `<div class="cs-prot">🛡️ ${d.protectedCount} retirement / provident account${d.protectedCount !== 1 ? 's' : ''} (Vanguard, EPF, Gratuity etc.) are in your <strong>Retire</strong> tab — excluded from consolidation advice.</div>` : ''}
       <div class="cs-findings">
         ${findings.map(f => `<div class="cs-finding ${sevCls[f.sev]}">${f.icon} ${f.text}</div>`).join('')}
@@ -10581,31 +10617,11 @@ function renderROIClarity() {
     if (protText) protText.textContent = `${d.protectedCount} retirement / provident account${d.protectedCount !== 1 ? 's' : ''} are in your Retire tab and excluded from consolidation advice.`;
   }
 
-  // ── Grade badge (suppress score, show finding count instead) ──
-  const badge = document.getElementById('pcs-grade-badge');
-  if (badge) { badge.textContent = `${d.issuesCount} issue${d.issuesCount !== 1 ? 's' : ''}`; badge.className = `lab-card-badge ${d.issuesCount === 0 ? 'lab-badge-green' : d.issuesCount <= 2 ? 'lab-badge-warn' : 'lab-badge-red'}`; }
-
-  // ── Penalty breakdown ──
-  const penBody = _s('pcs-penalty-body');
-  if (penBody) {
-    const penalties = [
-      { icon: '🔁', label: 'Category Overlap',       pts: d.redundancyPenalty,    detail: d.redundancyPenalty === 0 ? 'No duplicate categories' : `${d.overlapDetails.length} categories over limit` },
-      { icon: '🏦', label: 'AMC Concentration',      pts: d.concentrationPenalty, detail: d.concentrationPenalty === 0 ? 'Well diversified' : `${d.amcEntries[0]?.[0] || ''} holds ${Math.round(d.maxAmcPct)}%` },
-      { icon: '💤', label: 'Paused Fund Drift',       pts: d.driftPenalty,         detail: d.driftPenalty === 0 ? 'No idle paused funds' : `${d.pausedWithValue.length} paused fund${d.pausedWithValue.length !== 1 ? 's' : ''} sitting idle` },
-      { icon: '🎯', label: 'Goal-Horizon Mismatch',  pts: d.goalMismatchPenalty,  detail: d.goalMismatchPenalty === 0 ? 'All funds match goal timelines' : `${d.goalAlignDetails.length} fund${d.goalAlignDetails.length !== 1 ? 's' : ''} mismatched` },
-    ];
-    penBody.innerHTML = penalties.map(p => {
-      const cls = p.pts === 0 ? 'pcs-penalty-ok' : p.pts <= 10 ? 'pcs-penalty-mid' : 'pcs-penalty-bad';
-      return `<div class="pcs-penalty-row">
-        <div class="pcs-penalty-icon">${p.icon}</div>
-        <div style="flex:1;">
-          <div class="pcs-penalty-label">${p.label}</div>
-          <div style="font-size:0.65em;font-weight:600;color:#9CA3AF;margin-top:1px;">${p.detail}</div>
-        </div>
-        <div class="pcs-penalty-pts ${cls}">${p.pts === 0 ? '✓' : p.pts + ' pts'}</div>
-      </div>`;
-    }).join('');
-  }
+  // ── Hide the score/penalty breakdown card entirely (FHS handles scoring) ──
+  const penCard = _s('pcs-penalty-body')?.closest('.lab-card');
+  if (penCard) penCard.style.display = 'none';
+  const badgeEl = _s('pcs-grade-badge');
+  if (badgeEl) badgeEl.style.display = 'none';
 
   // ── Category Overlap ──
   _renderClarityOverlap(d, sym);
@@ -10766,10 +10782,12 @@ function _renderClarityTriage(d, sym) {
       cta:'Plan Redemption', ctaFn:'null' },
     { list:taxSens, cls:'triage-taxsens', icon:'⏳', title:'Tax-Sensitive — Wait',
       desc:`Exited within 12 months = STCG at 15%. Wait until 1-year mark before redeeming to save tax.`,
-      cta:'Set Reminder', ctaFn:'null' },
+      cta:'Set Reminder', ctaFn:'null',
+      ctaNote:'Wait until the 1-year holding mark before redeeming — this converts STCG (15%) to LTCG (10%) and could save meaningful tax.' },
     { list:noise, cls:'triage-noise', icon:'🗑️', title:'Noise — Quick Clean',
       desc:`Under ${sym}100 — too small to matter. Redeem and simplify your portfolio count.`,
-      cta:'Quick Exit', ctaFn:'null' },
+      cta:'Quick Exit', ctaFn:'null',
+      ctaNote:'Log in to your AMC portal and request full redemption. Most AMCs allow online redemption of small balances using just your folio number.' },
   ];
 
   body.innerHTML = buckets.filter(b=>b.list.length>0).map(b => {
@@ -17941,7 +17959,8 @@ function parseFidelityPositions(rawRows) {
     const row = rawRows[i];
     if (!row || !row[cols.symbol]) continue;
     const symbol = String(row[cols.symbol] || '').trim();
-    if (!symbol || symbol.toLowerCase() === 'symbol' || symbol === '--') continue;
+    const symLower = symbol.toLowerCase();
+    if (!symbol || symLower === 'symbol' || symbol === '--' || symLower.startsWith('subtotal') || symLower.startsWith('total') || symLower.startsWith('pending') || symLower.startsWith('account total') || symLower === 'n/a') continue;
 
     const accountName = cols.account >= 0 ? String(row[cols.account] || '').trim() : 'Brokerage';
     const description = cols.desc >= 0 ? String(row[cols.desc] || '').trim() : symbol;
