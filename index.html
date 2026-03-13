@@ -1333,6 +1333,33 @@
     /* ══ CLARITY TAB — PORTFOLIO CLARITY ENGINE ══ */
 
     /* PCS Score ring + animated count-up */
+
+    /* ── Clarity snapshot card ──────────────────────────────── */
+    .clarity-snapshot-card { background:var(--card-bg); border-radius:18px; padding:18px 16px 14px; margin-bottom:14px; border:1px solid var(--border-color); }
+    .clarity-snapshot-eyebrow { font-size:0.58em; font-weight:900; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-light); margin-bottom:10px; }
+    .clarity-snapshot-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+    .clarity-snap-stat { text-align:center; background:var(--bg-secondary); border-radius:10px; padding:10px 6px; }
+    .clarity-snap-val { font-size:1.4em; font-weight:900; color:var(--text-dark); line-height:1.1; }
+    .clarity-snap-lbl { font-size:0.6em; font-weight:700; color:var(--text-light); margin-top:3px; text-transform:uppercase; letter-spacing:0.5px; }
+    .clarity-findings-list { display:flex; flex-direction:column; gap:7px; }
+    .clarity-finding-row { display:flex; align-items:flex-start; gap:8px; padding:8px 10px; border-radius:10px; font-size:0.72em; font-weight:700; line-height:1.4; }
+    .clarity-finding-icon { font-size:1.1em; flex-shrink:0; margin-top:1px; }
+    .pcs-finding-ok   { background:#D1FAE5; color:#065F46; }
+    .pcs-finding-warn { background:#FEF3C7; color:#92400E; }
+    .pcs-finding-bad  { background:#FEE2E2; color:#991B1B; }
+    .pcs-finding-info { background:#EFF6FF; color:#1D4ED8; }
+
+    /* ── Section divider ────────────────────────────────────── */
+    .lab-section-divider { display:flex; align-items:center; gap:10px; margin:20px 0 12px; }
+    .lab-section-divider::before,.lab-section-divider::after { content:''; flex:1; height:1px; background:var(--border-color); }
+    .lab-section-divider span { font-size:0.65em; font-weight:900; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-light); white-space:nowrap; padding:0 4px; }
+
+    /* ── Plan section header ────────────────────────────────── */
+    .lab-plan-section-header { display:flex; align-items:flex-start; gap:12px; margin-bottom:12px; padding:12px 14px; background:var(--bg-secondary); border-radius:14px; }
+    .lab-plan-section-icon { font-size:1.4em; flex-shrink:0; }
+    .lab-plan-section-title { font-size:0.82em; font-weight:900; color:var(--text-dark); }
+    .lab-plan-section-sub { font-size:0.65em; font-weight:600; color:var(--text-light); margin-top:2px; line-height:1.4; }
+
     .pcs-ring-wrap {
       display:flex; flex-direction:column; align-items:center;
       padding:20px 0 10px;
@@ -2771,149 +2798,71 @@
   <div class="lab-hero">
     <div class="lab-hero-eyebrow">⚗️ Investment Growth Lab</div>
     <div class="lab-hero-title">Your Money Command Centre</div>
-    <div class="lab-hero-sub">Advisor-grade insights · Live experiments · What-if scenarios</div>
+    <div class="lab-hero-sub">Portfolio clarity · Investment tracking · Retirement planning · Goal simulation</div>
     <div class="lab-tabs" id="lab-tab-row">
-      <button class="lab-tab lab-tab-active" onclick="switchROITab('story')"  id="roi-tab-story">
-        <span class="lab-tab-icon">📊</span><span class="lab-tab-label">Overview</span>
+      <button class="lab-tab lab-tab-active" onclick="switchROITab('clarity')" id="roi-tab-clarity">
+        <span class="lab-tab-icon">🔍</span><span class="lab-tab-label">Clarity</span>
       </button>
-      <button class="lab-tab" onclick="switchROITab('funds')"  id="roi-tab-funds">
-        <span class="lab-tab-icon">💼</span><span class="lab-tab-label">Funds</span>
-      </button>
-      <button class="lab-tab" onclick="switchROITab('sip')"    id="roi-tab-sip">
-        <span class="lab-tab-icon">🔄</span><span class="lab-tab-label">SIPs</span>
+      <button class="lab-tab" onclick="switchROITab('investments')" id="roi-tab-investments">
+        <span class="lab-tab-icon">💼</span><span class="lab-tab-label">Investments</span>
       </button>
       <button class="lab-tab" onclick="switchROITab('retire')" id="roi-tab-retire">
         <span class="lab-tab-icon">🏦</span><span class="lab-tab-label">Retire</span>
       </button>
-      <button class="lab-tab" onclick="switchROITab('sim')"    id="roi-tab-sim">
-        <span class="lab-tab-icon">🎯</span><span class="lab-tab-label">What If</span>
-      </button>
-      <button class="lab-tab" id="roi-tab-clarity" onclick="switchROITab('clarity')">
-        <span class="lab-tab-icon">🔍</span><span class="lab-tab-label">Clarity</span>
-      </button>
-      <button class="lab-tab" id="roi-tab-goals" onclick="switchROITab('goals')">
-        <span class="lab-tab-icon">🎯</span><span class="lab-tab-label">Goals</span>
+      <button class="lab-tab" onclick="switchROITab('plan')" id="roi-tab-plan">
+        <span class="lab-tab-icon">🎯</span><span class="lab-tab-label">Plan</span>
       </button>
     </div>
   </div>
 
   <div class="lab-body">
 
-    <!-- ══ OVERVIEW TAB ══ -->
-    <div id="roi-panel-story">
+    <!-- ══ CLARITY TAB ══ -->
+    <div id="roi-panel-clarity">
+      <div id="clarity-body"></div>
+    </div>
 
-      <!-- Portfolio Scorecard -->
-      <div class="lab-scorecard">
-        <div class="lab-scorecard-eyebrow">TOTAL INVESTMENT PORTFOLIO</div>
-        <div class="lab-scorecard-value" id="roi-hero-value">—</div>
-        <div class="lab-scorecard-gain" id="roi-hero-gain">Import CAMS for full ROI picture</div>
-        <div class="lab-scorecard-grid">
-          <div class="lab-stat-pill">
-            <div class="lab-stat-label">INVESTED</div>
-            <div class="lab-stat-val" id="roi-hero-invested">—</div>
-          </div>
-          <div class="lab-stat-pill">
-            <div class="lab-stat-label">GAIN</div>
-            <div class="lab-stat-val" id="roi-hero-abs-gain">—</div>
-          </div>
-          <div class="lab-stat-pill lab-stat-accent">
-            <div class="lab-stat-label">RETURN</div>
-            <div class="lab-stat-val" id="roi-hero-pct">—</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Advisor Insight Banner -->
-      <div class="lab-insight-banner" id="roi-advisor-insight">
-        <div class="lab-insight-icon">💡</div>
-        <div class="lab-insight-text" id="roi-insight-text">Loading your portfolio insights...</div>
-      </div>
-
-      <!-- Wealth Growth Chart -->
-      <div class="lab-card">
-        <div class="lab-card-header">
-          <div class="lab-card-title">📈 Wealth Timeline</div>
-          <div class="lab-card-badge" id="roi-timeline-label">38 months</div>
-        </div>
-        <!-- Chart mode toggle -->
-        <div class="lab-chart-toggle">
-          <button class="lab-chart-btn lab-chart-btn-active" onclick="setTimelineMode('invested')" id="tl-btn-invested">Invested</button>
-          <button class="lab-chart-btn" onclick="setTimelineMode('monthly')" id="tl-btn-monthly">Monthly</button>
-        </div>
-        <canvas id="roi-timeline-canvas" height="130" style="width:100%;display:block;margin-top:6px;"></canvas>
-        <div id="roi-timeline-legend" style="margin-top:6px;"></div>
-      </div>
-
-      <!-- Allocation Breakdown -->
-      <div class="lab-card">
-        <div class="lab-card-header">
-          <div class="lab-card-title">🧩 Allocation Breakdown</div>
-          <div class="lab-card-badge" id="roi-alloc-accounts">— accounts</div>
-        </div>
-        <div style="display:flex;gap:14px;align-items:center;">
-          <canvas id="roi-donut-canvas" width="96" height="96" style="flex-shrink:0;"></canvas>
-          <div id="roi-donut-legend" style="flex:1;min-width:0;"></div>
-        </div>
-      </div>
-
-      <!-- Concentration Risk Card -->
-      <div class="lab-card" id="roi-concentration-card" style="display:none;">
-        <div class="lab-card-header">
-          <div class="lab-card-title">⚠️ Concentration Check</div>
-          <div class="lab-card-badge lab-badge-warn" id="roi-conc-badge">Review</div>
-        </div>
-        <div id="roi-concentration-body"></div>
-      </div>
-
-      <!-- XIRR Estimator (if enough data) -->
-      <div class="lab-card" id="roi-xirr-card" style="display:none;">
-        <div class="lab-card-header">
-          <div class="lab-card-title">📐 Estimated XIRR</div>
-          <div class="lab-card-badge lab-badge-green">Your real return rate</div>
-        </div>
-        <div id="roi-xirr-body"></div>
-      </div>
-
-    </div><!-- /story -->
-
-    <!-- ══ FUNDS TAB ══ -->
-    <div id="roi-panel-funds" style="display:none;">
+    <!-- ══ INVESTMENTS TAB ══ -->
+    <div id="roi-panel-investments" style="display:none;">
 
       <!-- Sort controls -->
       <div class="lab-sort-row">
         <button class="lab-sort-btn lab-sort-active" onclick="sortROIFunds('gain')"     id="rfbtn-gain">📈 Best ROI</button>
-        <button class="lab-sort-btn" onclick="sortROIFunds('value')"    id="rfbtn-value">💰 Highest Value</button>
-        <button class="lab-sort-btn" onclick="sortROIFunds('worst')"    id="rfbtn-worst">⚠️ Laggards</button>
-        <button class="lab-sort-btn" onclick="sortROIFunds('invested')" id="rfbtn-invested">📦 Most Invested</button>
+        <button class="lab-sort-btn" onclick="sortROIFunds('value')"  id="rfbtn-value">💰 Value</button>
+        <button class="lab-sort-btn" onclick="sortROIFunds('active')" id="rfbtn-active">🟢 Active</button>
+        <button class="lab-sort-btn" onclick="sortROIFunds('name')"   id="rfbtn-name">🔤 Name</button>
       </div>
 
       <!-- Funds summary strip -->
-      <div class="lab-funds-summary" id="roi-funds-summary"></div>
+      <div id="roi-funds-summary"></div>
 
-      <!-- Fund cards list -->
+      <!-- Funds list -->
       <div id="roi-funds-list"></div>
-    </div>
 
-    <!-- ══ SIPs TAB ══ -->
-    <div id="roi-panel-sip" style="display:none;">
+      <!-- SIP section divider -->
+      <div class="lab-section-divider">
+        <span>SIP Tracker</span>
+      </div>
 
       <!-- SIP hero -->
       <div class="lab-sip-hero">
         <div class="lab-sip-hero-label">COMMITTED MONTHLY SIP</div>
         <div class="lab-sip-hero-value" id="roi-sip-total">—</div>
-        <div class="lab-sip-hero-sub" id="roi-sip-subtitle">detecting from transaction history...</div>
+        <div class="lab-sip-hero-sub" id="roi-sip-subtitle">detecting active SIPs...</div>
       </div>
 
-      <!-- SIP Health Meter -->
-      <div class="lab-card" id="roi-sip-health-card">
-        <div class="lab-card-header">
-          <div class="lab-card-title">💪 SIP Discipline Score</div>
-          <div class="lab-card-badge lab-badge-green" id="roi-sip-score-badge">—</div>
+      <!-- SIP health card (built by _buildSIPHealthCard) -->
+      <div id="roi-sip-health-card">
+        <div class="lab-card">
+          <div class="lab-card-header">
+            <div class="lab-card-title">💪 SIP Discipline Score</div>
+            <div class="lab-card-badge lab-badge-green" id="roi-sip-score-badge">—</div>
+          </div>
+          <div id="roi-sip-health-body"></div>
         </div>
-        <div id="roi-sip-health-body"></div>
       </div>
 
-      <!-- Active SIPs -->
+      <!-- SIP lists -->
       <div id="roi-sip-list"></div>
 
     </div>
@@ -2957,180 +2906,69 @@
 
     </div>
 
-    <!-- ══ WHAT IF TAB ══ -->
-    <div id="roi-panel-sim" style="display:none;">
+    <!-- ══ PLAN TAB ══ -->
+    <div id="roi-panel-plan" style="display:none;">
+
+      <!-- Goals section -->
+      <div class="lab-plan-section-header">
+        <span class="lab-plan-section-icon">🎯</span>
+        <div>
+          <div class="lab-plan-section-title">Goal Tracker</div>
+          <div class="lab-plan-section-sub">Are your goals on track? How much SIP do you need?</div>
+        </div>
+      </div>
+      <div id="goal-orch-body"></div>
+
+      <!-- Lab simulator section divider -->
+      <div class="lab-section-divider" style="margin-top:24px;">
+        <span>Investment Simulator</span>
+      </div>
+      <div class="lab-plan-section-header">
+        <span class="lab-plan-section-icon">🔬</span>
+        <div>
+          <div class="lab-plan-section-title">What If Calculator</div>
+          <div class="lab-plan-section-sub">Project corpus growth · SIP boost · Lump sum · FIRE target</div>
+        </div>
+      </div>
 
       <!-- Scenario selector -->
       <div class="lab-scenario-row">
         <button class="lab-scenario-btn lab-scenario-active" onclick="setSimScenario('goal')"   id="sim-btn-goal">🎯 Goal</button>
         <button class="lab-scenario-btn" onclick="setSimScenario('boost')"  id="sim-btn-boost">🚀 SIP Boost</button>
-        <button class="lab-scenario-btn" onclick="setSimScenario('lumpsum')" id="sim-btn-lumpsum">💰 Lump Sum</button>
+        <button class="lab-scenario-btn" onclick="setSimScenario('lump')"   id="sim-btn-lump">💰 Lump Sum</button>
         <button class="lab-scenario-btn" onclick="setSimScenario('fire')"   id="sim-btn-fire">🔥 FIRE</button>
       </div>
 
-      <!-- Simulator inputs -->
-      <div class="lab-card">
-        <div class="lab-sim-inputs" id="lab-sim-inputs">
-          <!-- Dynamically filled per scenario -->
+      <!-- Rate slider -->
+      <div class="lab-card lab-card-slider" style="margin-bottom:10px;">
+        <div class="lab-card-header">
+          <div class="lab-card-title">📈 Assumed Annual Return</div>
+          <div class="lab-card-badge lab-badge-blue" id="sim-rate-badge">10%</div>
         </div>
+        <input type="range" class="lab-slider" id="sim-rate-slider" min="4" max="20" value="10"
+               oninput="document.getElementById('sim-rate-badge').textContent=this.value+'%'; renderROISimulator();">
+      </div>
 
-        <!-- Return rate slider (shared across scenarios) -->
-        <div style="margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div class="lab-input-label">Annual Return Rate</div>
-            <div class="lab-badge-blue lab-card-badge" id="sim-rate-badge">10%</div>
-          </div>
-          <input type="range" id="sim-rate-slider" min="5" max="18" step="0.5" value="10"
-            oninput="onSimRateChange(this.value)" class="lab-slider">
-          <div class="lab-slider-labels"><span>5%</span><span>18%</span></div>
-        </div>
+      <!-- Sim inputs -->
+      <div id="lab-sim-inputs"></div>
 
-        <div id="roi-simulator-result"></div>
+      <!-- Sim chart -->
+      <div style="position:relative;margin:16px 0 8px;">
+        <canvas id="roi-sim-chart" height="180"></canvas>
+      </div>
+
+      <!-- Sim result -->
+      <div id="roi-simulator-result"></div>
+
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="lab-sort-btn" onclick="initSimScenario()">↺ Reset</button>
+        <button class="lab-sort-btn lab-sort-active" id="sim-save-goal-btn"
+                style="display:none;" onclick="saveSimAsGoal()">➕ Save as Goal</button>
       </div>
 
     </div>
 
-
-
-    <!-- ══ GOALS ORCHESTRATION TAB ══ -->
-    <div id="roi-panel-goals" style="display:none;">
-      <div id="goal-orch-body"></div>
-    </div>
-
-
-    <!-- ══ CLARITY TAB ══ -->
-    <div id="roi-panel-clarity" style="display:none;">
-
-      <!-- PCS Hero Card -->
-      <div class="pcs-hero-card">
-        <div class="pcs-hero-eyebrow">Portfolio Clarity Engine</div>
-        <div class="pcs-hero-title">How clean and focused is your portfolio?</div>
-
-        <div class="pcs-ring-wrap">
-          <svg class="pcs-ring-svg" width="160" height="160" viewBox="0 0 160 160">
-            <circle class="pcs-ring-track" cx="80" cy="80" r="66"/>
-            <circle class="pcs-ring-fill" id="pcs-ring-fill" cx="80" cy="80" r="66"
-              stroke-dasharray="414.69" stroke-dashoffset="414.69" stroke="#22C55E"/>
-            <text class="pcs-score-num" id="pcs-score-num" x="80" y="72" fill="#fff">0</text>
-            <text class="pcs-grade-lbl" id="pcs-grade-lbl" x="80" y="98" fill="rgba(255,255,255,0.6)">CALCULATING</text>
-          </svg>
-        </div>
-
-        <div class="pcs-stat-row">
-          <div class="pcs-stat">
-            <div class="pcs-stat-val" id="pcs-funds-count">—</div>
-            <div class="pcs-stat-lbl">MF / SIP Funds</div>
-          </div>
-          <div class="pcs-stat">
-            <div class="pcs-stat-val" id="pcs-issues-count">—</div>
-            <div class="pcs-stat-lbl">Issues Found</div>
-          </div>
-          <div class="pcs-stat">
-            <div class="pcs-stat-val" id="pcs-idle-val">—</div>
-            <div class="pcs-stat-lbl">Idle Capital</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Score After Actions nudge -->
-      <div class="lab-insight-banner" id="pcs-action-nudge" style="display:none;">
-        <div class="lab-insight-icon">🚀</div>
-        <div class="lab-insight-text" id="pcs-action-text"></div>
-      </div>
-
-      <!-- Protected accounts note -->
-      <div id="pcs-protected-note" style="display:none;background:#EFF6FF;border-radius:12px;padding:10px 13px;margin-bottom:8px;font-size:0.72em;font-weight:700;color:#1D4ED8;display:flex;gap:7px;align-items:center;">
-        <span>🛡️</span>
-        <span id="pcs-protected-text"></span>
-      </div>
-
-      <!-- Export Actions Row -->
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <button onclick="generateClarityPDF()" style="flex:1;background:#1E2A6E;color:#fff;border:none;border-radius:14px;padding:11px 8px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
-          📄 CA Export PDF
-        </button>
-        <button onclick="generateBeforeAfterCard()" style="flex:1;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;border:none;border-radius:14px;padding:11px 8px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
-          🎴 Share Card
-        </button>
-      </div>
-
-      <!-- Share Card Preview (hidden until generated) -->
-      <div id="clarity-share-preview" style="display:none;margin-bottom:10px;">
-        <canvas id="clarity-share-canvas" style="width:100%;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.15);"></canvas>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button onclick="downloadShareCard()" style="flex:1;background:#22C55E;color:#fff;border:none;border-radius:12px;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.76em;cursor:pointer;">⬇️ Save Image</button>
-          <button onclick="shareCardWhatsApp()" style="flex:1;background:#25D366;color:#fff;border:none;border-radius:12px;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.76em;cursor:pointer;">💬 WhatsApp</button>
-        </div>
-      </div>
-
-      <!-- Penalty Breakdown -->
-      <div class="lab-card">
-        <div class="lab-card-header">
-          <div class="lab-card-title">🔍 Score Breakdown</div>
-          <div class="lab-card-badge" id="pcs-grade-badge">—</div>
-        </div>
-        <div id="pcs-penalty-body"></div>
-      </div>
-
-      <!-- Category Overlap -->
-      <div class="lab-card" id="clarity-overlap-card">
-        <div class="lab-card-header">
-          <div class="lab-card-title">🔁 Category Overlap</div>
-          <div class="lab-card-badge lab-badge-warn" id="clarity-overlap-badge">—</div>
-        </div>
-        <div id="clarity-overlap-body"></div>
-      </div>
-
-      <!-- KEEP / REVIEW / EXIT -->
-      <div class="lab-section-label">📋 Consolidation Advisor</div>
-      <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;">
-        <button class="lab-sort-btn lab-sort-active" onclick="filterClarityFunds('all')"   id="cfbtn-all">All</button>
-        <button class="lab-sort-btn" onclick="filterClarityFunds('keep')"  id="cfbtn-keep">✅ Keep</button>
-        <button class="lab-sort-btn" onclick="filterClarityFunds('review')" id="cfbtn-review">⚠️ Review</button>
-        <button class="lab-sort-btn" onclick="filterClarityFunds('exit')"  id="cfbtn-exit">🚫 Exit</button>
-      </div>
-      <div id="clarity-funds-list"></div>
-
-      <!-- Paused Fund Triage -->
-      <div class="lab-section-label" id="clarity-triage-label" style="display:none;">🗂️ Paused Fund Triage</div>
-      <div id="clarity-triage-body"></div>
-
-      <!-- AMC Concentration -->
-      <div class="lab-card" id="clarity-amc-card" style="display:none;">
-        <div class="lab-card-header">
-          <div class="lab-card-title">🏦 AMC Concentration</div>
-          <div class="lab-card-badge" id="clarity-amc-badge">—</div>
-        </div>
-        <div id="clarity-amc-body"></div>
-      </div>
-
-      <!-- Goal Alignment -->
-      <div class="lab-card" id="clarity-goals-card" style="display:none;">
-        <div class="lab-card-header">
-          <div class="lab-card-title">🎯 Goal Alignment</div>
-          <div class="lab-card-badge lab-badge-blue" id="clarity-goals-badge">—</div>
-        </div>
-        <div id="clarity-goals-body"></div>
-      </div>
-
-      <!-- Tax Estimate -->
-      <div class="lab-card" id="clarity-tax-card" style="display:none;">
-        <div class="lab-card-header">
-          <div class="lab-card-title">🧾 Tax Estimate on Exit</div>
-          <div class="lab-card-badge lab-badge-warn">Indicative only</div>
-        </div>
-        <div id="clarity-tax-body"></div>
-        <div style="font-size:0.62em;font-weight:600;color:#9CA3AF;margin-top:8px;line-height:1.5;">
-          Based on LTCG (10% above ₹1L, held &gt;1yr) and STCG (15%, held &lt;1yr) rules as of 2024. 
-          Verify with your CA for your specific situation. For NRI: DTAA implications apply separately.
-        </div>
-      </div>
-
-    </div><!-- /clarity -->
-
-
-  </div><!-- /lab-body -->
-</div>
+  </div>
 
 <!-- ══════════════ SETTINGS ══════════════ -->
 <div class="screen" id="screen-settings">
@@ -9313,40 +9151,18 @@ let _roiSimRate      = 10;
 let _roiTimelineMode = 'invested';
 
 function switchROITab(tab) {
-  if (tab === 'goals') {
-    ['story','funds','sip','retire','sim','clarity','goals'].forEach(t => {
-      const p = document.getElementById('roi-panel-'+t);
-      const b = document.getElementById('roi-tab-'+t);
-      if (p) p.style.display = t==='goals' ? '' : 'none';
-      if (b) b.classList.toggle('lab-tab-active', t==='goals');
-    });
-    _roiCurrentTab = 'goals';
-    renderGoalOrchestration();
-    return;
-  }
-  if (tab === 'clarity') {
-    ['story','funds','sip','retire','sim','clarity'].forEach(t => {
-      const p = document.getElementById('roi-panel-'+t);
-      const b = document.getElementById('roi-tab-'+t);
-      if (p) p.style.display = t==='clarity' ? '' : 'none';
-      if (b) b.classList.toggle('lab-tab-active', t==='clarity');
-    });
-    _roiCurrentTab = 'clarity';
-    renderROIClarity();
-    return;
-  }
-  _roiCurrentTab = tab;
-  ['story','funds','sip','retire','sim'].forEach(t => {
-    const btn = document.getElementById('roi-tab-' + t);
-    const panel = document.getElementById('roi-panel-' + t);
-    if (btn) btn.classList.toggle('lab-tab-active', t === tab);
-    if (panel) panel.style.display = (t === tab) ? '' : 'none';
+  const ALL_TABS = ['clarity','investments','retire','plan'];
+  ALL_TABS.forEach(t => {
+    const p = document.getElementById('roi-panel-' + t);
+    const b = document.getElementById('roi-tab-' + t);
+    if (p) p.style.display = (t === tab) ? '' : 'none';
+    if (b) b.classList.toggle('lab-tab-active', t === tab);
   });
-  if (tab === 'story')  renderROIStory();
-  if (tab === 'funds')  renderROIFunds(_roiFundSort);
-  if (tab === 'sip')    renderROISIPs();
-  if (tab === 'retire') { renderROIRetireSummary(); renderROIRetirementCards(); renderROIGapAnalysis(); }
-  if (tab === 'sim')    { initSimScenario(); renderROISimulator(); }
+  _roiCurrentTab = tab;
+  if (tab === 'clarity')     renderROIClarity();
+  if (tab === 'investments') { renderROIFunds(_roiFundSort); renderROISIPs(); }
+  if (tab === 'retire')      { renderROIRetireSummary(); renderROIRetirementCards(); renderROIGapAnalysis(); }
+  if (tab === 'plan')        { renderGoalOrchestration(); initSimScenario(); renderROISimulator(); }
 }
 
 function sortROIFunds(by) {
@@ -10471,104 +10287,127 @@ function renderROIClarity() {
   const d = _computePCS();
   _clarityFundData = d.scoredFunds;
 
-  // ── Animate PCS ring ──
-  const CIRCUMFERENCE = 414.69;
-  const fill  = document.getElementById('pcs-ring-fill');
-  const numEl = document.getElementById('pcs-score-num');
-  const grEl  = document.getElementById('pcs-grade-lbl');
+  const body = document.getElementById('clarity-body');
+  if (!body) return;
 
-  const grade = d.pcs>=85?'A':d.pcs>=70?'B':d.pcs>=50?'C':d.pcs>=30?'D':'F';
-  const gradeLabel = {A:'CLEAN',B:'GOOD',C:'FRAGMENTED',D:'OVERLAPPING',F:'CRITICAL'};
-  const gradeColor = {A:'#22C55E',B:'#14B8A6',C:'#F59E0B',D:'#F97316',F:'#EF4444'};
-  const col = gradeColor[grade];
+  // ── Findings summary for snapshot header ──
+  const overlapCount   = d.overlapDetails.length;
+  const idleCount      = d.pausedWithValue.length;
+  const idleVal        = d.idleCapital;
+  const exitCount      = d.scoredFunds.filter(f=>f.verdict==='exit').length;
+  const reviewCount    = d.scoredFunds.filter(f=>f.verdict==='review').length;
+  const keepCount      = d.scoredFunds.filter(f=>f.verdict==='keep').length;
+  const totalVal       = d.scoredFunds.reduce((s,f)=>s+(f.val||0),0);
+  const amcTopName     = d.amcEntries[0]?.[0] || '';
+  const amcTopPct      = d.amcEntries[0] ? Math.round(d.amcEntries[0][1].pct) : 0;
+  const mismatchCount  = d.goalAlignDetails.length;
 
-  // Animate count-up
-  if (fill) {
-    const offset = CIRCUMFERENCE * (1 - d.pcs/100);
-    fill.style.stroke = col;
-    fill.style.strokeDashoffset = offset;
-  }
-  if (numEl) {
-    let cur = 0;
-    const step = Math.ceil(d.pcs / 40);
-    const timer = setInterval(() => {
-      cur = Math.min(cur+step, d.pcs);
-      numEl.textContent = cur;
-      if (cur >= d.pcs) clearInterval(timer);
-    }, 35);
-  }
-  if (grEl) { grEl.textContent = grade + ' — ' + gradeLabel[grade]; grEl.style.fill = col; }
-
-  // ── Stats strip ──
-  const _s = id => document.getElementById(id);
-  if (_s('pcs-funds-count')) _s('pcs-funds-count').textContent = d.totalFunds;
-  if (_s('pcs-issues-count')) _s('pcs-issues-count').textContent = d.issuesCount;
-  if (_s('pcs-idle-val')) _s('pcs-idle-val').textContent = d.idleCapital>0 ? sym+_fmtK(d.idleCapital) : '—';
+  // ── Plain-language findings list ──
+  const findings = [];
+  if (overlapCount > 0)  findings.push({ icon:'🔁', text:`${overlapCount} category overlap${overlapCount!==1?'s':''} — similar funds doing the same job`, severity:'warn' });
+  if (idleCount > 0)     findings.push({ icon:'💤', text:`${idleCount} paused fund${idleCount!==1?'s':''} with ${sym+_fmtK(idleVal)} sitting idle`, severity:'warn' });
+  if (amcTopPct > 35)    findings.push({ icon:'🏦', text:`${amcTopPct}% of portfolio in ${amcTopName} — single fund-house concentration`, severity:'warn' });
+  if (mismatchCount > 0) findings.push({ icon:'🎯', text:`${mismatchCount} fund${mismatchCount!==1?'s':''} mismatched to your goal timelines`, severity:'info' });
+  if (exitCount > 0)     findings.push({ icon:'🚪', text:`${exitCount} fund${exitCount!==1?'s':''} recommended for exit or consolidation`, severity:'bad' });
+  if (findings.length === 0) findings.push({ icon:'✅', text:'No major issues found — your portfolio looks clean', severity:'ok' });
 
   // ── Protected accounts note ──
-  const protNote = _s('pcs-protected-note');
-  const protText = _s('pcs-protected-text');
-  if (protNote && protText && d.protectedCount > 0) {
-    protNote.style.display = 'flex';
-    protText.textContent = `${d.protectedCount} retirement / provident account${d.protectedCount!==1?'s':''} (Vanguard, EPF, Gratuity etc.) are protected — they appear in your Retire tab and are excluded from consolidation advice.`;
-  }
+  const protLine = d.protectedCount > 0
+    ? `<div style="background:var(--color-background-info);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:0.72em;font-weight:700;color:var(--color-text-info);display:flex;gap:8px;align-items:flex-start;">
+        <span>🛡️</span>
+        <span>${d.protectedCount} retirement / provident account${d.protectedCount!==1?'s':''} (Vanguard, EPF, Gratuity, Super Annuation etc.) are shown in your <strong>Retire</strong> tab and excluded from consolidation advice.</span>
+       </div>` : '';
 
-  // ── Action nudge ──
-  const nudge = _s('pcs-action-nudge');
-  const nudgeText = _s('pcs-action-text');
-  if (d.scoreAfterFixes > d.pcs + 5 && nudge && nudgeText) {
-    nudge.style.display = '';
-    nudgeText.textContent = `Taking recommended actions could lift your score from ${d.pcs} to ${d.scoreAfterFixes} — moving you from ${gradeLabel[grade]} to ${gradeLabel[d.scoreAfterFixes>=85?'A':d.scoreAfterFixes>=70?'B':d.scoreAfterFixes>=50?'C':'D']}. Start with the EXIT list.`;
-  }
+  // severity → CSS
+  const sevCls = { ok:'pcs-finding-ok', warn:'pcs-finding-warn', bad:'pcs-finding-bad', info:'pcs-finding-info' };
 
-  // ── Grade badge ──
-  const badge = _s('pcs-grade-badge');
-  if (badge) { badge.textContent = `Grade ${grade}`; badge.className = `lab-card-badge ${grade==='A'||grade==='B'?'lab-badge-green':grade==='C'?'lab-badge-warn':'lab-badge-red'}`; }
+  body.innerHTML = `
 
-  // ── Penalty breakdown ──
-  const penBody = _s('pcs-penalty-body');
-  if (penBody) {
-    const penalties = [
-      { icon:'🔁', label:'Category Overlap', pts:d.redundancyPenalty,
-        detail: d.redundancyPenalty===0 ? 'No duplicate categories' : `${d.overlapDetails.length} categories over recommended limit` },
-      { icon:'🏦', label:'AMC Concentration', pts:d.concentrationPenalty,
-        detail: d.concentrationPenalty===0 ? 'Well diversified across fund houses' : `${d.amcEntries[0]?.[0]||''} holds ${Math.round(d.maxAmcPct)}% of portfolio` },
-      { icon:'💤', label:'Paused Fund Drift', pts:d.driftPenalty,
-        detail: d.driftPenalty===0 ? 'No idle paused funds' : `${d.pausedWithValue.length} paused fund${d.pausedWithValue.length!==1?'s':''} with value sitting idle` },
-      { icon:'🎯', label:'Goal-Horizon Mismatch', pts:d.goalMismatchPenalty,
-        detail: d.goalMismatchPenalty===0 ? 'All mapped funds match goal timelines' : `${d.goalAlignDetails.length} fund${d.goalAlignDetails.length!==1?'s':''} mismatched to goal timeline` },
-    ];
-    penBody.innerHTML = penalties.map(p => {
-      const cls = p.pts===0 ? 'pcs-penalty-ok' : p.pts<=10 ? 'pcs-penalty-mid' : 'pcs-penalty-bad';
-      return `<div class="pcs-penalty-row">
-        <div class="pcs-penalty-icon">${p.icon}</div>
-        <div style="flex:1;">
-          <div class="pcs-penalty-label">${p.label}</div>
-          <div style="font-size:0.65em;font-weight:600;color:#9CA3AF;margin-top:1px;">${p.detail}</div>
+    ${protLine}
+
+    <!-- ── Portfolio Snapshot ── -->
+    <div class="clarity-snapshot-card">
+      <div class="clarity-snapshot-eyebrow">YOUR PORTFOLIO AT A GLANCE</div>
+      <div class="clarity-snapshot-grid">
+        <div class="clarity-snap-stat">
+          <div class="clarity-snap-val">${d.totalFunds}</div>
+          <div class="clarity-snap-lbl">MF / SIP funds</div>
         </div>
-        <div class="pcs-penalty-pts ${cls}">${p.pts===0?'✓ 0':'-'+p.pts} pts</div>
-      </div>`;
-    }).join('');
-  }
+        <div class="clarity-snap-stat">
+          <div class="clarity-snap-val">${d.activeAccs?.length ?? d.scoredFunds.filter(f=>f.isActive).length}</div>
+          <div class="clarity-snap-lbl">Active</div>
+        </div>
+        <div class="clarity-snap-stat">
+          <div class="clarity-snap-val">${d.pausedWithValue.length}</div>
+          <div class="clarity-snap-lbl">Paused</div>
+        </div>
+        <div class="clarity-snap-stat">
+          <div class="clarity-snap-val">${sym+_fmtK(totalVal)}</div>
+          <div class="clarity-snap-lbl">Total invested</div>
+        </div>
+      </div>
 
-  // ── Category Overlap ──
+      <!-- Findings list -->
+      <div class="clarity-findings-list">
+        ${findings.map(f => `
+          <div class="clarity-finding-row ${sevCls[f.severity]||''}">
+            <span class="clarity-finding-icon">${f.icon}</span>
+            <span class="clarity-finding-text">${f.text}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- ── Overlap ── -->
+    <div id="pcs-overlap-body"></div>
+
+    <!-- ── KEEP / REVIEW / EXIT ── -->
+    <div class="lab-card">
+      <div class="lab-card-header">
+        <div class="lab-card-title">📋 Fund Recommendations</div>
+        <div style="display:flex;gap:6px;">
+          <button class="tag-keep"   onclick="filterClarityFunds('keep')"   id="cf-btn-keep">✅ Keep ${keepCount}</button>
+          <button class="tag-review" onclick="filterClarityFunds('review')" id="cf-btn-review">⚠️ Review ${reviewCount}</button>
+          <button class="tag-exit"   onclick="filterClarityFunds('exit')"   id="cf-btn-exit">🚪 Exit ${exitCount}</button>
+        </div>
+      </div>
+      <div style="font-size:0.68em;font-weight:600;color:var(--text-light);margin-bottom:10px;line-height:1.5;">
+        Each fund is assessed on ROI vs category peers, SIP consistency, and overlap.
+        This is indicative only — verify with your CA before acting.
+      </div>
+      <div id="pcs-fund-list"></div>
+    </div>
+
+    <!-- ── Paused triage ── -->
+    <div id="pcs-triage-body"></div>
+
+    <!-- ── AMC concentration ── -->
+    <div id="pcs-amc-body"></div>
+
+    <!-- ── Goal alignment ── -->
+    <div id="pcs-goals-body"></div>
+
+    <!-- ── Tax estimate ── -->
+    <div id="pcs-tax-body"></div>
+
+    <!-- ── Export actions ── -->
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+      <button class="lab-sort-btn lab-sort-active" onclick="generateClarityPDF()">📄 Export Plan (PDF)</button>
+      <button class="lab-sort-btn" onclick="generateBeforeAfterCard()">📸 Before/After Card</button>
+    </div>
+    <div style="font-size:0.62em;font-weight:600;color:var(--text-light);margin-top:8px;line-height:1.6;padding:0 2px;">
+      ⚠️ Indicative only — not financial advice. All recommendations should be verified with your CA or SEBI-registered advisor before acting.
+    </div>
+  `;
+
+  // Render sub-sections into their placeholders
   _renderClarityOverlap(d, sym);
-
-  // ── Fund verdicts ──
   filterClarityFunds(_clarityFundFilter);
-
-  // ── Paused fund triage ──
   _renderClarityTriage(d, sym);
-
-  // ── AMC concentration ──
   _renderClarityAMC(d, sym);
-
-  // ── Goal alignment ──
   _renderClarityGoals(d, sym);
-
-  // ── Tax estimate ──
   _renderClarityTax(d, sym);
 }
+
 
 function _renderClarityOverlap(d, sym) {
   const card  = document.getElementById('clarity-overlap-card');
@@ -10929,7 +10768,7 @@ function renderROIScreen() {
   if (rateSlider) rateSlider.value = _roiSimRate;
   const rateBadge = document.getElementById('sim-rate-badge');
   if (rateBadge) rateBadge.textContent = _roiSimRate + '%';
-  switchROITab(_roiCurrentTab || 'story');
+  switchROITab(_roiCurrentTab || 'clarity');
 }
 
 // ── CORE DATA BUILDER (unchanged logic, same as v3.19.10) ──────────────
