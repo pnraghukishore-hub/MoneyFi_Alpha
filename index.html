@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.23.2 -->
+<!-- MoneyFi v3.23.4 -->
 <!-- -
-  MoneyFi — HiFi clarity for your financial life
+  MoneyFi — Hi
+CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
   ═══════════════════════════════════════════════
   Version  : 3.16.0
   Changes  : v3.15.0 — AI Quality Engine:
@@ -25045,8 +25046,22 @@ function buildAIContext() {
     const goals = data._goals || [];
     if (!goals.length) return '  No goals set yet';
     return goals.map(g => {
-      const pct = g.target > 0 ? Math.round((g.current||0)/g.target*100) : 0;
-      return `  ${g.name}: ${sym}${Math.round(g.current||0).toLocaleString()} / ${sym}${Math.round(g.target||0).toLocaleString()} (${pct}%) — target: ${g.targetDate || 'no date'}`;
+      const current = typeof computeGoalCurrent === 'function'
+        ? computeGoalCurrent(g.mappedAccounts||[], g.unit||'currency', g.goalType||'grow')
+        : (g.current || 0);
+      const target  = typeof goalTargetInDisplay === 'function' ? goalTargetInDisplay(g) : (g.target || 0);
+      const pct     = target > 0 ? Math.round(current / target * 100) : 0;
+      const yearsLeft = g.targetDate ? Math.max(0,(new Date(g.targetDate)-new Date())/(365.25*24*3600*1000)) : null;
+      const gap     = Math.max(0, target - current);
+      const rm      = 0.10/12;
+      const n       = yearsLeft ? yearsLeft*12 : 0;
+      const sipNeed = (gap>0 && n>0) ? Math.round(gap/((Math.pow(1+rm,n)-1)/rm)) : null;
+      const linked  = (g.mappedAccounts||[]).map(id=>{const a=(data._nwAccounts||[]).find(x=>x.id===id);return a?a.name:null;}).filter(Boolean);
+      return `  ${g.name}: funded=${sym}${Math.round(current).toLocaleString()} / target=${sym}${Math.round(target).toLocaleString()} (${pct}%)`
+        + (yearsLeft ? ` | yearsLeft=${yearsLeft.toFixed(1)}y` : '')
+        + (sipNeed   ? ` | sipNeeded=${sym}${sipNeed.toLocaleString()}/mo` : '')
+        + (linked.length ? ` | accounts=${linked.join(', ')}` : ' | accounts=NONE (needs mapping in Goals tab)')
+        + (g.targetDate ? ` | deadline=${g.targetDate}` : '');
     }).join('\n');
   })();
 
@@ -25172,8 +25187,18 @@ function buildAIContext() {
 
       // P1 — FIRE
       const fire = scoreFIRE(nwD, aggD, profile, cfg);
-      if (fire.status !== 'inactive') L.push(
-        `FIRE: corpus=${sym}${Math.round(fire.corpus).toLocaleString()} | target=${sym}${Math.round(fire.target).toLocaleString()} | gap=${sym}${Math.round(fire.gap||0).toLocaleString()} | annualExp=${sym}${Math.round(fire.annualExp).toLocaleString()} | SWR=${fire.targetSWR}% | multiple=${fire.fireMultiple}×`);
+      if (fire.status !== 'inactive') {
+        (() => {
+          const fireSIP = sav?.avgSav || 0;
+          const fireGap = fire.gap || 0;
+          const monthsToFire = (fireGap > 0 && fireSIP > 0)
+            ? Math.round(Math.log(1 + fireGap * (0.10/12) / fireSIP) / Math.log(1 + 0.10/12))
+            : null;
+          const yearsToFire = monthsToFire ? (monthsToFire/12).toFixed(1) : 'on track or no savings data';
+          const fireAccts = (fire.accounts||[]).map(a=>`${a.name}:${sym}${Math.round(a.val).toLocaleString()}`).join(', ');
+          L.push(`FIRE: corpus=${sym}${Math.round(fire.corpus).toLocaleString()} | target=${sym}${Math.round(fire.target).toLocaleString()} | gap=${sym}${Math.round(fireGap).toLocaleString()} | annualExp=${sym}${Math.round(fire.annualExp).toLocaleString()} | SWR=${fire.targetSWR}% | multiple=${fire.fireMultiple}× | yearsToFire=${yearsToFire} | accounts=${fireAccts||'none'}`);
+        })();
+      }
 
       // P2 — Retirement Track
       const ret = scoreRetirementTrack(nwD, aggD, profile, cfg);
@@ -25198,18 +25223,38 @@ function buildAIContext() {
 
       // P4 — Emergency Fund
       const emg = scoreEmergencyFund(nwD, aggD, profile, cfg);
-      if (emg.status !== 'inactive') L.push(
-        `EMERGENCY FUND: liquid=${sym}${Math.round(emg.liquidVal).toLocaleString()} | target=${sym}${Math.round(emg.targetAmt).toLocaleString()} | monthsCovered=${emg.monthsCovered.toFixed(1)} | targetMonths=${emg.emergencyTarget} | cashDragMonths=${emg.cashDragMonths.toFixed(1)}`);
+      if (emg.status !== 'inactive') {
+        (() => {
+          const emgGap = Math.max(0, (emg.targetAmt||0) - (emg.liquidVal||0));
+          const emgExtra = Math.max(0, (emg.liquidVal||0) - (emg.targetAmt||0));
+          L.push(`EMERGENCY FUND: liquid=${sym}${Math.round(emg.liquidVal).toLocaleString()} | target=${sym}${Math.round(emg.targetAmt).toLocaleString()} | monthsCovered=${emg.monthsCovered.toFixed(1)} | targetMonths=${emg.emergencyTarget} | monthlyExpenses=${sym}${Math.round(emg.monthlyExp||0).toLocaleString()}/mo | gap=${emgGap>0?sym+Math.round(emgGap).toLocaleString()+' short':'fully funded'} | cashDragMonths=${emg.cashDragMonths.toFixed(1)}${emg.cashDragMonths>12?' (EXCESS CASH — opportunity cost: redirect to investments)':''}`);
+        })();
+      }
 
       // P5 — Life Insurance
       const ins = scoreLifeInsurance(nwD, aggD, profile, cfg);
-      if (ins.status !== 'inactive') L.push(
-        `LIFE INSURANCE: cover=${sym}${Math.round(ins.cover||0).toLocaleString()} | target=${sym}${Math.round(ins.target||0).toLocaleString()} | annualIncome=${sym}${Math.round(ins.annualInc||0).toLocaleString()} | disabilityGap=${ins.disabilityGap||0}% | disabilityPenalty=${ins.disabilityPenalty||0}pts`);
+      if (ins.status !== 'inactive') {
+        (() => {
+          const insGap = Math.max(0, (ins.target||0) - (ins.cover||0));
+          const isUS5 = (profile?.region || 'IN') === 'US';
+          const premiumEst = insGap > 0 ? Math.round(insGap * (isUS5 ? 0.001 : 0.0005)) : 0;
+          L.push(`LIFE INSURANCE: cover=${sym}${Math.round(ins.cover||0).toLocaleString()} | target=${sym}${Math.round(ins.target||0).toLocaleString()} | gap=${insGap>0?sym+Math.round(insGap).toLocaleString()+' underinsured':'fully covered'} | annualIncome=${sym}${Math.round(ins.annualInc||0).toLocaleString()} | disabilityGap=${ins.disabilityGap||0}% | disabilityPenalty=${ins.disabilityPenalty||0}pts${premiumEst>0?' | estimatedAnnualPremiumToCloseGap='+sym+premiumEst.toLocaleString():''}`);
+        })();
+      }
 
       // P6 — Education Goal
       const edu = scoreEducationGoal(nwD, aggD, profile, cfg);
-      if (edu.status !== 'inactive') L.push(
-        `EDUCATION GOAL: saved=${sym}${Math.round(edu.eduCorpus||0).toLocaleString()} | target=${sym}${Math.round(edu.totalTarget||0).toLocaleString()} | kids=${edu.kids||0} | kidsAges=${(edu.kidsAges||[]).join(',')||'?'} | perKidTargets=${JSON.stringify(edu.eduTargets||[])}`);
+      if (edu.status !== 'inactive') {
+        (() => {
+          const edugap = Math.max(0,(edu.totalTarget||0)-(edu.eduCorpus||0));
+          const firstK = (edu.kidsBreakdown||[])[0];
+          const yrs = firstK?.yearsToCollege || 6;
+          const n2 = yrs*12; const rm2 = 0.10/12;
+          const sip2 = edugap>0&&n2>0 ? Math.round(edugap/((Math.pow(1+rm2,n2)-1)/rm2)) : 0;
+          const perKid = (edu.kidsBreakdown||[]).map(k=>`child-${k.age}yr needs ${sym}${Math.round(k.inflatedTarget).toLocaleString()} in ${k.yearsToCollege}y`).join(' | ');
+          L.push(`EDUCATION GOAL: saved=${sym}${Math.round(edu.eduCorpus||0).toLocaleString()} | inflatedTarget=${sym}${Math.round(edu.totalTarget||0).toLocaleString()} | gap=${sym}${Math.round(edugap).toLocaleString()} | sipNeeded=${sym}${sip2.toLocaleString()}/mo | ${perKid}`);
+        })();
+      }
 
       // P7 — Debt Service
       const dbt = scoreDebtService(nwD, aggD, profile, cfg);
@@ -25250,13 +25295,18 @@ function buildAIContext() {
 
       // P11 — Income Architecture
       const inc = scoreIncomeArchitecture(nwD, aggD, profile, cfg);
-      if (inc.status !== 'inactive') L.push(
-        `INCOME ARCHITECTURE: passivePct=${(inc.passivePct*100).toFixed(1)}% | incomeSources=${inc.sources} | growthRate=${(inc.growthRate*100).toFixed(1)}%/yr`);
+      if (inc.status !== 'inactive') {
+        (() => {
+          const passiveAmt = Math.round((inc.passivePct||0) * (aggD?.avgInc||0));
+          const incGrowthAmt = Math.round((inc.growthRate||0) * (aggD?.avgInc||0) * 12);
+          L.push(`INCOME ARCHITECTURE: passivePct=${(inc.passivePct*100).toFixed(1)}% | passiveAmt=${sym}${passiveAmt.toLocaleString()}/mo | incomeSources=${inc.sources} | growthRate=${(inc.growthRate*100).toFixed(1)}%/yr | growthAmt=${sym}${incGrowthAmt.toLocaleString()}/yr YoY increase${inc.passivePct < 0.05 ? ' | WARNING: <5% passive income — highly dependent on employment income' : ''}`);
+        })();
+      }
 
       // P12 — Tax Optimisation
       const tax = scoreTaxOptimization(nwD, aggD, profile, cfg);
       if (tax.status !== 'inactive') L.push(
-        `TAX OPTIMISATION: annualContrib=${sym}${Math.round(tax.annualContrib||0).toLocaleString()} | maxContrib=${sym}${Math.round(tax.maxContrib||0).toLocaleString()} | capacityLeft=${sym}${Math.round(tax.shelterCapacityLeft||0).toLocaleString()} | shelterUsed=${tax.shelterUtilPct||0}% | taxLeakAmt=${sym}${Math.round(tax.taxLeakAmt||0).toLocaleString()} | marginalRate=${tax.marginalRate||0}% | signals=${(tax.signals||[]).join(', ')}`);
+        `TAX OPTIMISATION: annualContrib=${sym}${Math.round(tax.annualContrib||0).toLocaleString()} | maxContrib=${sym}${Math.round(tax.maxContrib||0).toLocaleString()} | capacityLeft=${sym}${Math.round(tax.shelterCapacityLeft||0).toLocaleString()} | shelterUsed=${tax.shelterUtilPct||0}% | taxSavingsAvailable=${sym}${Math.round(tax.taxSavingsFromFilling||0).toLocaleString()} | taxLeakAmt=${sym}${Math.round(tax.taxLeakAmt||0).toLocaleString()} | marginalRate=${(tax.marginalRate||0)*100}% | signals=${(tax.signals||[]).join(', ')}`);
 
       // P13 — Behavioural Finance
       const beh = scoreBehaviouralFinance(nwD, aggD, profile, cfg);
@@ -25271,7 +25321,7 @@ function buildAIContext() {
       // P15 — Goal Sequencing
       const seq = scoreGoalSequencing(nwD, aggD, profile, cfg);
       if (seq.status !== 'inactive') L.push(
-        `GOAL SEQUENCING: sequencePenalty=${seq.sequencePenalty||0}pts | signals=${(seq.signals||[]).join(', ')}`);
+        `GOAL SEQUENCING: sequencePenalty=${seq.sequencePenalty||0}pts | emergency=${seq.emS||0}/25 | insurance=${seq.insS||0}/20 | debt=${seq.debtS||0}/20 | retirement=${seq.retS||0}/20 | education=${seq.eduS||0}/15 | signals=${(seq.signals||[]).join(', ')}`);  // NOTE: lower tiers block higher ones — if emergency<60, retirement score is capped
 
       return L.join('\n') || '  No pillar detail available';
     } catch(e) {
