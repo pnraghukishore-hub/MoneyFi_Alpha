@@ -1346,6 +1346,7 @@
     .cs-lbl { font-size:.58em; font-weight:700; color:rgba(255,255,255,.55); margin-top:3px; text-transform:uppercase; letter-spacing:.4px; }
     .cs-gain { text-align:center; font-size:.72em; font-weight:800; color:rgba(255,255,255,.6); margin-bottom:10px; }
     .cs-prot { font-size:.68em; font-weight:700; color:rgba(255,255,255,.75); background:rgba(255,255,255,.1); border-radius:10px; padding:8px 10px; margin-bottom:10px; line-height:1.4; }
+    .cs-disclaimer { font-size:.62em; font-weight:600; color:rgba(255,255,255,.45); text-align:center; margin-top:10px; line-height:1.45; padding:0 4px; }
     .cs-findings { display:flex; flex-direction:column; gap:6px; }
     .cs-finding { font-size:.71em; font-weight:700; padding:8px 11px; border-radius:11px; line-height:1.35; }
     .csf-ok   { background:rgba(255,255,255,.12); color:#86EFAC; }
@@ -9348,6 +9349,7 @@ function switchROITab(tab) {
     const p = document.getElementById('roi-panel-' + t);
     if (p) p.style.display = 'none';
   });
+  document.querySelectorAll('.lab-section-divider').forEach(d => d.style.display = 'none');
   ALL_TABS.forEach(t => {
     const b = document.getElementById('roi-tab-' + t);
     if (b) b.classList.toggle('lab-tab-active', t === tab);
@@ -9373,6 +9375,8 @@ function switchROITab(tab) {
       div.className = 'lab-inv-divider lab-section-divider';
       div.innerHTML = '<span>SIP Tracker</span>';
       sipPanel.parentNode.insertBefore(div, sipPanel);
+    } else if (sipPanel?.previousElementSibling?.classList.contains('lab-inv-divider')) {
+      sipPanel.previousElementSibling.style.display = '';
     }
     renderROIFunds(_roiFundSort);
     renderROISIPs();
@@ -9395,6 +9399,8 @@ function switchROITab(tab) {
       div.className = 'lab-plan-divider lab-section-divider';
       div.innerHTML = '<span>Investment Simulator</span>';
       simPanel.parentNode.insertBefore(div, simPanel);
+    } else if (simPanel?.previousElementSibling?.classList.contains('lab-plan-divider')) {
+      simPanel.previousElementSibling.style.display = '';
     }
     renderGoalOrchestration();
     initSimScenario(); renderROISimulator();
@@ -9560,12 +9566,6 @@ function renderGoalOrchestration() {
     </div>`;
     return;
   }
-
-  // ── Add Goal CTA (always visible at top) ──────────────────────────
-  const addGoalBar = document.createElement('div');
-  addGoalBar.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:10px;';
-  addGoalBar.innerHTML = `<button onclick="openGoalSheet()" style="background:#1E2A6E;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:.72em;font-weight:800;cursor:pointer;">+ Add Goal</button>`;
-  el.appendChild(addGoalBar);
 
   // ── Conflict banner ──────────────────────────────────────────────
   const conflict = _detectGoalConflicts(goals, availableSurplus);
@@ -9774,6 +9774,12 @@ function renderGoalOrchestration() {
 
     ${taxExitHTML}
   `;
+  // ── Add Goal button at top ──────────────────────────────────────
+  const addGoalBtn = document.createElement('button');
+  addGoalBtn.textContent = '+ Add Goal';
+  addGoalBtn.style.cssText = 'background:#1E2A6E;color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:.75em;font-weight:800;cursor:pointer;float:right;margin-bottom:8px;';
+  addGoalBtn.onclick = function() { openGoalSheet(); };
+  el.insertBefore(addGoalBtn, el.firstChild);
 }
 
 
@@ -10590,6 +10596,7 @@ function renderROIClarity() {
         <div class="cs-stat"><div class="cs-val">${sym + _fmtK(scoreableVal)}</div><div class="cs-lbl">Portfolio</div></div>
       </div>
       ${gainStr ? `<div class="cs-gain">Total return: <span style="color:${gainPct >= 0 ? '#86EFAC' : '#FCA5A5'};font-size:1.1em;">${gainStr}</span> <span style="color:rgba(255,255,255,0.4);">on ${sym + _fmtK(totalCost)} invested</span></div>` : ''}
+      <div class="cs-disclaimer">Portfolio value covers mutual funds &amp; equities only. Real estate, metals and retirement accounts are tracked separately in Net Worth.</div>
       ${d.protectedCount > 0 ? `<div class="cs-prot">🛡️ ${d.protectedCount} retirement / provident account${d.protectedCount !== 1 ? 's' : ''} (Vanguard, EPF, Gratuity etc.) are in your <strong>Retire</strong> tab — excluded from consolidation advice.</div>` : ''}
       <div class="cs-findings">
         ${findings.map(f => `<div class="cs-finding ${sevCls[f.sev]}">${f.icon} ${f.text}</div>`).join('')}
@@ -11503,6 +11510,36 @@ function renderROIFunds(sortBy) {
       <div class="lab-funds-stat-val">${s.val}</div>
       <div class="lab-funds-stat-sub" style="color:${s.sub.includes('+') ? '#059669' : '#9CA3AF'};">${s.sub}</div>
     </div>`).join('');
+  }
+
+  // ── Asset-class grouped ROI tiles ──────────────────────────────────
+  const GROUP_DEFS = [
+    { label:'Equity MF',  icon:'📈', types:new Set(['mf_equity','mf_elss','mf_hybrid','mf_index']) },
+    { label:'Gold',       icon:'🥇', types:new Set(['mf_gold']) },
+    { label:'Debt MF',    icon:'🏦', types:new Set(['mf_debt']) },
+    { label:'Retirement', icon:'🛡️', types:new Set(['retirement','retirement_401k','retirement_roth','retirement_ira','epf','ppf','nps','hsa']) },
+    { label:'Stocks',     icon:'📊', types:new Set(['brokerage','brokerage_taxable','stocks_direct']) },
+    { label:'Other',      icon:'📦', types:new Set(['investment','education','ibond','college_529']) },
+  ];
+  const groupRows = GROUP_DEFS.map(g => {
+    const gFunds = funds.filter(f => g.types.has(f.a.type));
+    if (!gFunds.length) return null;
+    const gVal  = gFunds.reduce((s,f) => s + f.val, 0);
+    const gCost = gFunds.reduce((s,f) => s + (f.cost || 0), 0);
+    const gPct  = gCost > 0 ? (gVal - gCost) / gCost * 100 : null;
+    const gStr  = gPct != null ? (gPct >= 0 ? '+' : '') + gPct.toFixed(1) + '%' : '—';
+    const gCol  = gPct == null ? '#9CA3AF' : gPct >= 0 ? '#059669' : '#DC2626';
+    return `<div class="inv-group-tile">
+      <div class="inv-group-icon">${g.icon}</div>
+      <div class="inv-group-label">${g.label}</div>
+      <div class="inv-group-val">${sym + _fmtK(gVal)}</div>
+      <div class="inv-group-roi" style="color:${gCol};">${gStr}</div>
+    </div>`;
+  }).filter(Boolean);
+  const groupEl = document.getElementById('roi-funds-groups');
+  if (groupEl) {
+    groupEl.style.display = groupRows.length ? '' : 'none';
+    groupEl.innerHTML = groupRows.join('');
   }
 
   el.innerHTML = funds.map(({ a, val, cost, gain, pct, sipInfo }) => {
