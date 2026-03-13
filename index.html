@@ -1833,6 +1833,16 @@
     .lab-sim-full { grid-column:1/-1; }
 
     /* Results */
+    .sim-save-goal-btn {
+      display:block; width:100%; margin-top:14px;
+      background:rgba(255,255,255,.18); color:#fff;
+      border:1.5px solid rgba(255,255,255,.4);
+      border-radius:12px; padding:11px 16px;
+      font-size:.78em; font-weight:800; cursor:pointer;
+      letter-spacing:.3px; transition:background .15s;
+    }
+    .sim-save-goal-btn:hover { background:rgba(255,255,255,.28); }
+
     .lab-result-hero {
       background:linear-gradient(135deg,#4F46E5,#7C3AED);
       border-radius:14px; padding:14px; margin-bottom:12px; color:#fff; text-align:center;
@@ -9810,11 +9820,6 @@ function renderGoalOrchestration() {
 
     ${taxExitHTML}
   `;
-  // ── Add Goal CTA — full-width button at bottom of section ──────────
-  const addGoalWrap = document.createElement('div');
-  addGoalWrap.style.cssText = 'margin-top:14px;';
-  addGoalWrap.innerHTML = `<button onclick="openGoalSheet()" style="width:100%;background:#1E2A6E;color:#fff;border:none;border-radius:14px;padding:14px 20px;font-size:.82em;font-weight:800;cursor:pointer;letter-spacing:.3px;">🎯 Add New Goal</button>`;
-  el.appendChild(addGoalWrap);
 }
 
 
@@ -12075,6 +12080,17 @@ function initSimScenario() {
   renderROISimulator();
 }
 
+function openGoalFromSim(prefill) {
+  // Open the goal sheet then pre-fill from simulator values
+  openGoalSheet();
+  if (prefill.name)    document.getElementById('gs-name').value   = prefill.name;
+  if (prefill.icon)    { document.getElementById('gs-icon').value = prefill.icon; renderGoalIconPicker(prefill.icon); }
+  if (prefill.target)  document.getElementById('gs-target').value = prefill.target;
+  if (prefill.date)    document.getElementById('gs-date').value   = prefill.date;
+  if (prefill.currency) document.getElementById('gs-currency').value = prefill.currency;
+  updateGoalPreview();
+}
+
 function renderROISimulator() {
   const sym = currentCurrency?.symbol || '₹';
   const el  = document.getElementById('roi-simulator-result');
@@ -12114,10 +12130,23 @@ function renderROISimulator() {
     if (target > 0 && m1 !== null) {
       const y1=Math.floor(m1/12), mo1=m1%12;
       const y2=m2!==null?Math.floor(m2/12):null, mo2=m2!==null?m2%12:null;
+      const targetDateISO = (() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() + m1);
+        return d.toISOString().substring(0,7) + '-01';
+      })();
+      const savePrefill = JSON.stringify({
+        name: 'My Goal — ' + sym + _fmtK(target),
+        icon: '🎯',
+        target: Math.round(target),
+        date: targetDateISO,
+        currency: currentCurrency?.code || 'USD'
+      }).replace(/'/g, '&#39;');
       html += `<div class="lab-result-hero">
         <div class="lab-result-label">🎯 TIME TO ${sym}${_fmtK(target)}</div>
         <div class="lab-result-value">${y1}y ${mo1>0?mo1+'m':''}</div>
         <div class="lab-result-sub">${extra>0&&m2!==null ? '🚀 With boost: '+y2+'y '+(mo2>0?mo2+'m':'')+' ('+Math.round((m1-(m2||m1))/12*10)/10+'y faster)' : 'Adjust inputs above'}</div>
+        <button class="sim-save-goal-btn" onclick='openGoalFromSim(${savePrefill})'>💾 Save as Goal →</button>
       </div>
       <div class="lab-compare-grid">
         <div class="lab-compare-box">
@@ -12219,6 +12248,11 @@ function renderROISimulator() {
       <div class="lab-result-value">${sym}${_fmtK(target)}</div>
       <div class="lab-result-sub">= 25× annual expenses (4% safe withdrawal rule)</div>
     </div>`;
+    if (m1 !== null) {
+      const fireDate = (() => { const d=new Date(); d.setMonth(d.getMonth()+m1); return d.toISOString().substring(0,7)+'-01'; })();
+      const firePrefill = JSON.stringify({ name:'FIRE Goal', icon:'🔥', target:Math.round(target), date:fireDate, currency:currentCurrency?.code||'USD' }).replace(/'/g,"&#39;");
+      html += `<button class="sim-save-goal-btn" style="margin:0 auto 12px;display:block;" onclick='openGoalFromSim(${firePrefill})'>💾 Save as Goal →</button>`;
+    }
     if (m1 !== null) {
       const y1 = Math.floor(m1/12), mo1 = m1%12;
       html += `<div class="lab-compare-grid">
