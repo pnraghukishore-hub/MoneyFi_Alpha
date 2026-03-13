@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.23.6 -->
+<!-- MoneyFi v3.24.0 -->
 <!-- -
   MoneyFi — Hi
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
@@ -16923,6 +16923,7 @@ function renderImportTabs() {
     { key:'given',      label:'🤝 Given',       always: true },
     { key:'metals',     label:'🥇 Metals',       always: true },
     { key:'realestate', label:'🏡 Real Estate',  always: true },
+    { key:'universal',   label:'🏦 Bank/CSV',       always: true },
   ];
 
   container.innerHTML = tabs
@@ -17225,6 +17226,347 @@ function handleNamedParserFile(input, parser) {
   if (file) processNamedParserFile(file, parser);
   input.value = '';
 }
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// UNIVERSAL BANK / GENERIC CSV IMPORTER
+// Works with any bank export: HDFC, ICICI, SBI, Chase, Amex, Monzo, etc.
+// Architecture: column-detection → user confirmation → parse → finishNamedParse
+// ══════════════════════════════════════════════════════════════════════════
+
+let _universalState = { rawRows: [], headers: [], records: [] };
+
+// ── Entry points ─────────────────────────────────────────────────────────
+function handleUniversalFile(input) {
+  const file = input.files[0];
+  if (file) _loadUniversalFile(file);
+  input.value = '';
+}
+function handleUniversalDrop(event) {
+  event.preventDefault();
+  document.getElementById('iuniversal-dropzone').classList.remove('dragover');
+  const file = event.dataTransfer.files[0];
+  if (file) _loadUniversalFile(file);
+}
+
+function _loadUniversalFile(file) {
+  showToast('🔍 Reading file…');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array', cellDates:true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rawRows = XLSX.utils.sheet_to_json(ws, { header:1, raw:false, dateNF:'yyyy-mm-dd' });
+      // Skip fully-empty leading rows (some banks have logo/address rows)
+      let startRow = 0;
+      while (startRow < rawRows.length && !rawRows[startRow].some(v => v && String(v).trim())) startRow++;
+      const headers = (rawRows[startRow] || []).map(h => String(h || '').trim());
+      const rows = rawRows.slice(startRow + 1).filter(r => r.some(v => v !== null && v !== undefined && String(v).trim()));
+      if (!headers.length) { showToast('❌ Could not read headers'); return; }
+      _universalState = { rawRows: rows, headers, records: [] };
+      _buildUniversalColMap(headers, rows);
+    } catch(err) { showToast('❌ ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Column auto-detection ─────────────────────────────────────────────────
+const U_COL_HINTS = {
+  date:        [/date/i, /dt$/i, /^date/i, /trans.*date/i, /value.*date/i, /posting/i],
+  description: [/desc/i, /narrat/i, /particular/i, /detail/i, /remarks/i, /memo/i, /payee/i, /reference/i],
+  amount:      [/amount/i, /amt/i, /^net$/i, /transaction.*amt/i, /^value$/i],
+  debit:       [/debit/i, /dr\b/i, /withdrawal/i, /paid/i, /expense/i],
+  credit:      [/credit/i, /cr\b/i, /deposit/i, /received/i],
+  balance:     [/balance/i, /running/i, /avail/i],
+  category:    [/categor/i, /type/i, /mode/i, /channel/i],
+};
+
+function _detectCol(headers, hints) {
+  for (const re of hints) {
+    const idx = headers.findIndex(h => re.test(h));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function _buildUniversalColMap(headers, rows) {
+  const detected = {
+    date:        _detectCol(headers, U_COL_HINTS.date),
+    description: _detectCol(headers, U_COL_HINTS.description),
+    amount:      _detectCol(headers, U_COL_HINTS.amount),
+    debit:       _detectCol(headers, U_COL_HINTS.debit),
+    credit:      _detectCol(headers, U_COL_HINTS.credit),
+    balance:     _detectCol(headers, U_COL_HINTS.balance),
+  };
+
+  // Auto-detect amount mode
+  const hasDebitCredit = detected.debit >= 0 && detected.credit >= 0;
+  const amtMode = document.getElementById('iuniversal-amt-mode');
+  if (hasDebitCredit) amtMode.value = 'debit_credit';
+  else amtMode.value = 'signed';
+
+  // Build column picker grid
+  const grid = document.getElementById('iuniversal-map-grid');
+  const fields = [
+    { key:'date',        label:'📅 Date column',        required:true  },
+    { key:'description', label:'📝 Description column', required:true  },
+    { key:'amount',      label:'💰 Amount column',      required:false },
+    { key:'debit',       label:'⬇️ Debit column',       required:false },
+    { key:'credit',      label:'⬆️ Credit column',      required:false },
+    { key:'balance',     label:'📊 Balance (optional)', required:false },
+  ];
+  const opts = ['— skip —', ...headers].map((h,i) =>
+    `<option value="${i-1}"${i===0?' selected':''}>${h}</option>`).join('');
+  const preOpts = (selIdx) => ['— skip —', ...headers].map((h,i) => {
+    const val = i - 1;
+    return `<option value="${val}"${val === selIdx?' selected':''}>${h}</option>`;
+  }).join('');
+
+  grid.innerHTML = fields.map(f => `
+    <div style="background:var(--bg-secondary);border-radius:8px;padding:8px 10px;">
+      <div style="font-size:0.68em;font-weight:800;color:var(--text-light);margin-bottom:4px;">${f.label}</div>
+      <select id="ucol-${f.key}" class="nw-sheet-select" style="font-size:0.78em;padding:6px;width:100%;">
+        ${preOpts(detected[f.key])}
+      </select>
+    </div>`).join('');
+
+  // Auto-detect date format from first data rows
+  const dateFmt = document.getElementById('iuniversal-date-fmt');
+  if (detected.date >= 0) {
+    const sample = rows.slice(0,5).map(r => String(r[detected.date] || '')).filter(Boolean);
+    dateFmt.value = _guessDateFormat(sample);
+  }
+
+  document.getElementById('iuniversal-map-section').style.display = 'block';
+  showToast(`✅ ${headers.length} columns detected — review mapping below`);
+}
+
+function _guessDateFormat(samples) {
+  for (const s of samples) {
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return 'ymd';
+    if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+      const parts = s.split('/');
+      return parseInt(parts[0]) > 12 ? 'dmy' : 'mdy';
+    }
+    if (/^\d{2}-[A-Za-z]{3}-\d{4}/.test(s)) return 'dmy_slash';
+    if (/^\d{2}\/\d{2}\/\d{2}$/.test(s)) return 'mdy';
+    if (/^\d{1,2}-\d{1,2}-\d{4}/.test(s)) {
+      const parts = s.split('-');
+      return parseInt(parts[0]) > 12 ? 'dmy' : 'mdy';
+    }
+  }
+  return 'auto';
+}
+
+// ── Parse with confirmed mapping ──────────────────────────────────────────
+function runUniversalParse() {
+  const colDate  = parseInt(document.getElementById('ucol-date').value);
+  const colDesc  = parseInt(document.getElementById('ucol-description').value);
+  const colAmt   = parseInt(document.getElementById('ucol-amount').value);
+  const colDr    = parseInt(document.getElementById('ucol-debit').value);
+  const colCr    = parseInt(document.getElementById('ucol-credit').value);
+  const amtMode  = document.getElementById('iuniversal-amt-mode').value;
+  const dateFmt  = document.getElementById('iuniversal-date-fmt').value;
+  const skipRaw  = document.getElementById('iuniversal-skip-words').value;
+  const skipWords = skipRaw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+  if (colDate < 0 || colDesc < 0) {
+    showToast('❌ Date and Description columns are required'); return;
+  }
+  if (amtMode === 'signed' && colAmt < 0) {
+    showToast('❌ Select an Amount column or switch to Debit+Credit mode'); return;
+  }
+  if (amtMode !== 'signed' && (colDr < 0 && colCr < 0)) {
+    showToast('❌ Select at least Debit or Credit column'); return;
+  }
+
+  const records = [];
+  const { rawRows } = _universalState;
+
+  for (const row of rawRows) {
+    const rawDate = String(row[colDate] || '').trim();
+    const desc    = String(row[colDesc] || '').trim();
+    if (!rawDate || !desc) continue;
+
+    // Skip rows matching user-defined keywords
+    const descLow = desc.toLowerCase();
+    if (skipWords.some(w => w && descLow.includes(w))) continue;
+    // Auto-skip obvious balance/summary rows
+    if (/^(opening|closing|total|sub.?total|balance b\/?[fd])/i.test(desc)) continue;
+
+    const date = _parseUniversalDate(rawDate, dateFmt);
+    if (!date) continue;
+
+    let amount = 0;
+    if (amtMode === 'signed') {
+      amount = _parseAmt(row[colAmt]);
+    } else if (amtMode === 'debit_credit') {
+      const dr = _parseAmt(row[colDr]);
+      const cr = _parseAmt(row[colCr]);
+      amount = cr > 0 ? cr : -Math.abs(dr);  // credit = income, debit = expense
+    } else {
+      const cr = _parseAmt(row[colCr]);
+      const dr = _parseAmt(row[colDr]);
+      amount = cr > 0 ? cr : -Math.abs(dr);
+    }
+    if (amount === 0) continue;
+
+    const type = amount > 0 ? 'income' : 'expense';
+    const category = _inferCategoryFromDesc(desc, amount);
+
+    records.push({
+      date,
+      description: desc,
+      amount: Math.abs(amount),
+      type,
+      category,
+      currency: currentCurrency?.code || 'USD',
+      source: 'universal_csv',
+      confidence: 'medium',
+    });
+  }
+
+  if (!records.length) { showToast('❌ No valid rows found — check column mapping'); return; }
+
+  _universalState.records = records;
+  _showUniversalReview(records);
+}
+
+function _parseAmt(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  const s = String(val).replace(/[,$₹£€\s]/g, '').replace(/\(([^)]+)\)/, '-$1');
+  return parseFloat(s) || 0;
+}
+
+function _parseUniversalDate(raw, fmt) {
+  if (!raw) return null;
+  const s = raw.trim();
+  try {
+    if (fmt === 'ymd' || /^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+    if (fmt === 'dmy' || (fmt === 'auto' && /^\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(s) && parseInt(s.substring(0,2)) > 12)) {
+      const [d,m,y] = s.split(/[\/\-]/);
+      return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    }
+    if (fmt === 'mdy' || /^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)) {
+      const [m,d,y] = s.split(/[\/\-]/);
+      return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    }
+    if (fmt === 'dmy_slash' || /^\d{2}-[A-Za-z]{3}-\d{4}/i.test(s)) {
+      return parseDateSafe ? parseDateSafe(s) : null;
+    }
+    // Fallback — parseDateFlexible
+    return typeof parseDateFlexible === 'function' ? parseDateFlexible(s) : null;
+  } catch(e) { return null; }
+}
+
+// ── Category inference from description ──────────────────────────────────
+const U_CAT_RULES = [
+  { cat:'food',        re:/swiggy|zomato|uber.?eat|domino|pizza|mcdonald|kfc|restaurant|cafe|food|grocery|bigbasket|blinkit|zepto|dunzo|instamart/i },
+  { cat:'transport',   re:/uber|ola|rapido|metro|irctc|railway|petrol|fuel|fastag|toll|parking|airline|spicejet|indigo|goair/i },
+  { cat:'shopping',    re:/amazon|flipkart|myntra|ajio|nykaa|meesho|shop|mall|retail|mart/i },
+  { cat:'utilities',   re:/electricity|water|gas|broadband|internet|airtel|jio|vi |vodafone|bsnl|bill|recharge|dth/i },
+  { cat:'health',      re:/hospital|clinic|doctor|pharmacy|medical|apollo|manipal|health|medicine|lab|diagnostic/i },
+  { cat:'education',   re:/school|college|university|tuition|course|udemy|coursera|fee/i },
+  { cat:'entertainment',re:/netflix|hotstar|prime|spotify|youtube|gaming|movie|theatre|concert|bookmyshow/i },
+  { cat:'transfer',    re:/neft|imps|rtgs|upi|transfer|sent to|received from|payment to|payment from/i },
+  { cat:'investment',  re:/mutual fund|sip|zerodha|groww|kuvera|coin|ipo|nse|bse|stock|demat|invest/i },
+  { cat:'salary',      re:/salary|payroll|employer|payslip|ctc|compensation/i },
+  { cat:'rent',        re:/rent|lease|landlord|housing/i },
+  { cat:'insurance',   re:/insurance|lic|premium|policy/i },
+  { cat:'atm',         re:/atm|cash withdrawal|cash deposit/i },
+];
+
+function _inferCategoryFromDesc(desc, amount) {
+  for (const rule of U_CAT_RULES) {
+    if (rule.re.test(desc)) return rule.cat;
+  }
+  return amount > 0 ? 'income' : 'expense';
+}
+
+// ── Review screen ─────────────────────────────────────────────────────────
+function _showUniversalReview(records) {
+  const dups = detectDuplicates(records);
+  const months = new Set(records.map(r => r.date.substring(0,7)));
+
+  document.getElementById('iuniversal-summary-grid').innerHTML =
+    `<div class="import-summary-box"><div class="isb-num">${records.length}</div><div class="isb-label">Transactions</div></div>` +
+    `<div class="import-summary-box"><div class="isb-num">${months.size}</div><div class="isb-label">Months</div></div>` +
+    `<div class="import-summary-box"><div class="isb-num">${dups.length}</div><div class="isb-label">Duplicates</div></div>` +
+    `<div class="import-summary-box"><div class="isb-num">${new Set(records.map(r=>r.category)).size}</div><div class="isb-label">Categories</div></div>`;
+
+  document.getElementById('iuniversal-summary-text').textContent =
+    `${records.length} transactions parsed · ${months.size} months · ${dups.length} possible duplicates flagged`;
+
+  if (dups.length) {
+    document.getElementById('iuniversal-dup-section').style.display = 'block';
+    document.getElementById('iuniversal-dup-list').innerHTML =
+      dups.slice(0,5).map(d =>
+        `<div style="font-size:0.75em;color:#DC2626;padding:3px 0;">${d.date} · ${d.description.substring(0,40)} · ${fmt(d.amount)}</div>`
+      ).join('') + (dups.length > 5 ? `<div style="font-size:0.72em;color:var(--text-light)">…and ${dups.length-5} more</div>` : '');
+  }
+
+  const preview = records.slice(0, 25);
+  document.getElementById('iuniversal-preview-table').innerHTML =
+    `<tr style="background:var(--bg-secondary);font-size:0.72em;font-weight:800;color:var(--text-light);">
+      <td style="padding:6px 8px;">DATE</td><td>DESCRIPTION</td><td>AMOUNT</td><td>TYPE</td><td>CATEGORY</td></tr>` +
+    preview.map(r =>
+      `<tr style="font-size:0.78em;border-bottom:1px solid var(--border);">
+        <td style="padding:5px 8px;white-space:nowrap;">${r.date}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.description.substring(0,45)}</td>
+        <td style="font-weight:800;color:${r.type==='income'?'#059669':'#DC2626'};">${r.type==='income'?'+':'−'}${fmt(r.amount)}</td>
+        <td><span style="font-size:0.85em;background:${r.type==='income'?'#ECFDF5':r.type==='investment'?'#EFF6FF':'#FEF2F2'};padding:2px 7px;border-radius:6px;">${r.type}</span></td>
+        <td style="font-size:0.85em;color:var(--text-light);">${r.category}</td>
+      </tr>`
+    ).join('') +
+    (records.length > 25 ? `<tr><td colspan="5" style="text-align:center;padding:8px;color:var(--text-light);font-size:0.78em;font-style:italic;">…and ${records.length-25} more rows</td></tr>` : '');
+
+  // Go to step 2
+  document.querySelectorAll('#isec-universal .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('iuniversal-step2').classList.add('active');
+  showToast(`✅ ${records.length} transactions ready to review`);
+}
+
+// ── Confirm import ────────────────────────────────────────────────────────
+function confirmUniversalImport() {
+  const records = _universalState.records;
+  if (!records.length) { showToast('Nothing to import'); return; }
+
+  const now = new Date();
+  let added = 0;
+
+  records.forEach(r => {
+    const mk = r.date.substring(0,7);
+    if (!data[mk]) data[mk] = { income:[], expenses:[], investments:[] };
+    const arr = r.type === 'income' ? data[mk].income
+              : r.type === 'investment' ? data[mk].investments
+              : data[mk].expenses;
+    arr.push({
+      id: `univ_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+      date: r.date,
+      description: r.description,
+      amount: r.amount,
+      currency: r.currency,
+      category: r.category,
+      type: r.type,
+      _source: 'universal_csv',
+    });
+    added++;
+  });
+
+  save();
+  showToast(`✅ ${added} transactions imported`);
+  resetUniversalImport();
+  setTimeout(() => switchScreen('tx', null), 800);
+}
+
+function resetUniversalImport() {
+  _universalState = { rawRows:[], headers:[], records:[] };
+  document.getElementById('iuniversal-map-section').style.display = 'none';
+  document.getElementById('iuniversal-dup-section').style.display = 'none';
+  document.querySelectorAll('#isec-universal .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('iuniversal-step1').classList.add('active');
+}
+
 
 function processNamedParserFile(file, parser) {
   const ext = file.name.split('.').pop().toLowerCase();
@@ -24508,6 +24850,100 @@ function scoreNWTrajectory(nw, profile) {
   <div style="padding:12px 16px 28px;border-top:1px solid #F0F0F0;">
     <button onclick="closeFHSPickerSheet()" style="width:100%;background:linear-gradient(135deg,#1E2A6E,#4338CA);color:white;border:none;border-radius:14px;padding:15px;font-size:0.95em;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;">Done</button>
   </div>
+</div>
+
+<!-- ── Universal Bank / Generic CSV Import ─────────────────────────── -->
+<div id="isec-universal" style="display:none;">
+
+  <!-- Step 1: Upload -->
+  <div class="import-step active" id="iuniversal-step1">
+    <div class="import-card">
+      <div class="import-card-title">🏦 Bank Statement / Generic CSV</div>
+      <div class="import-card-sub">Works with any bank or app: HDFC, ICICI, SBI, Axis, Chase, Amex, Monzo, etc. Upload a CSV or Excel export — MoneyFi auto-detects columns and maps them.</div>
+
+      <div class="import-drop-zone" id="iuniversal-dropzone"
+           onclick="document.getElementById('iuniversal-file').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleUniversalDrop(event)">
+        <div class="import-drop-icon">📂</div>
+        <div class="import-drop-text">Tap to choose bank CSV or Excel</div>
+        <div class="import-drop-sub">Any format · HDFC / ICICI / Chase / Amex / any bank</div>
+      </div>
+      <input type="file" id="iuniversal-file" accept=".csv,.xlsx,.xls"
+             style="display:none;" onchange="handleUniversalFile(this)">
+
+      <!-- Column mapping UI — shown after file loads -->
+      <div id="iuniversal-map-section" style="display:none;margin-top:16px;">
+        <div style="font-size:0.82em;font-weight:800;color:#1E2A6E;margin-bottom:10px;">
+          🔍 Column Mapping — confirm or adjust
+        </div>
+        <div id="iuniversal-map-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+          <div style="flex:1;">
+            <div style="font-size:0.75em;font-weight:700;color:var(--text-light);margin-bottom:4px;">AMOUNT TYPE</div>
+            <select id="iuniversal-amt-mode" class="nw-sheet-select" style="font-size:0.8em;padding:8px;">
+              <option value="signed">Single column — negative = debit</option>
+              <option value="debit_credit">Two columns — Debit + Credit</option>
+              <option value="credit_debit">Two columns — Credit + Debit</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:0.75em;font-weight:700;color:var(--text-light);margin-bottom:4px;">DATE FORMAT</div>
+            <select id="iuniversal-date-fmt" class="nw-sheet-select" style="font-size:0.8em;padding:8px;">
+              <option value="auto">Auto-detect</option>
+              <option value="dmy">DD/MM/YYYY</option>
+              <option value="mdy">MM/DD/YYYY (US)</option>
+              <option value="ymd">YYYY-MM-DD</option>
+              <option value="dmy_slash">DD-Mon-YYYY</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-size:0.75em;font-weight:700;color:var(--text-light);margin-bottom:4px;">SKIP ROWS containing</div>
+          <input id="iuniversal-skip-words" type="text" class="nw-sheet-input"
+                 placeholder="e.g. opening balance, total, closing"
+                 style="font-size:0.8em;padding:8px;">
+        </div>
+        <button onclick="runUniversalParse()"
+                style="margin-top:12px;width:100%;padding:12px;background:#1E2A6E;color:white;border:none;border-radius:10px;font-size:0.88em;font-weight:900;cursor:pointer;">
+          ✅ Parse with these settings
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Review -->
+  <div class="import-step" id="iuniversal-step2">
+    <div class="import-card">
+      <div class="import-card-title">Review — Bank CSV</div>
+      <div id="iuniversal-summary-grid" class="import-summary-grid"></div>
+      <div id="iuniversal-summary-text" style="font-size:0.75em;color:var(--text-light);margin:8px 0 12px;"></div>
+
+      <div id="iuniversal-dup-section" style="display:none;">
+        <div style="font-size:0.8em;font-weight:800;color:#DC2626;margin-bottom:6px;">⚠️ Possible Duplicates</div>
+        <div id="iuniversal-dup-list"></div>
+      </div>
+
+      <div style="overflow-x:auto;margin-top:8px;">
+        <table class="import-preview-table" style="width:100%;">
+          <tbody id="iuniversal-preview-table"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:14px;display:flex;gap:10px;">
+        <button onclick="confirmUniversalImport()"
+                style="flex:1;padding:13px;background:#059669;color:white;border:none;border-radius:12px;font-size:0.9em;font-weight:900;cursor:pointer;">
+          ✅ Import Transactions
+        </button>
+        <button onclick="resetUniversalImport()"
+                style="padding:13px 18px;background:var(--bg-secondary);color:var(--text-dark);border:1px solid var(--border);border-radius:12px;font-size:0.88em;font-weight:800;cursor:pointer;">
+          ↩ Back
+        </button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ── WHAT-IF SIMULATION ENGINE ──────────────────────────── -->
