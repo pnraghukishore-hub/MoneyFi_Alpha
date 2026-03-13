@@ -1659,6 +1659,14 @@
     }
 
     /* Sort row */
+
+    /* ── Investments sub-tabs ─────────────────────────────────────── */
+    .inv-sub-tabs { display:flex; gap:6px; margin-bottom:14px; }
+    .inv-sub-tab  { flex:1; padding:9px 10px; border:none; border-radius:12px;
+                    font-size:.72em; font-weight:800; cursor:pointer; letter-spacing:.3px;
+                    background:rgba(30,42,110,.08); color:#6B7280; transition:all .15s; }
+    .inv-sub-tab.inv-sub-active { background:#1E2A6E; color:#fff; box-shadow:0 2px 8px rgba(30,42,110,.25); }
+
     .lab-sort-row {
       display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:10px;
       scrollbar-width:none;
@@ -2904,22 +2912,32 @@
     <!-- ══ FUNDS TAB ══ -->
     <div id="roi-panel-funds" style="display:none;">
 
-      <!-- Sort controls -->
-      <div class="lab-sort-row">
-        <button class="lab-sort-btn lab-sort-active" onclick="sortROIFunds('gain')"     id="rfbtn-gain">📈 Best ROI</button>
-        <button class="lab-sort-btn" onclick="sortROIFunds('value')"    id="rfbtn-value">💰 Highest Value</button>
-        <button class="lab-sort-btn" onclick="sortROIFunds('worst')"    id="rfbtn-worst">⚠️ Laggards</button>
-        <button class="lab-sort-btn" onclick="sortROIFunds('invested')" id="rfbtn-invested">📦 Most Invested</button>
+      <!-- ── Investments sub-tab bar ── -->
+      <div class="inv-sub-tabs">
+        <button class="inv-sub-tab inv-sub-active" id="inv-stab-funds" onclick="switchInvTab('funds')">💼 Funds</button>
+        <button class="inv-sub-tab" id="inv-stab-sip" onclick="switchInvTab('sip')">🔄 SIP Tracker</button>
       </div>
 
-      <!-- Funds summary strip -->
-      <div class="lab-funds-summary" id="roi-funds-summary"></div>
+      <!-- ── Funds sub-panel ── -->
+      <div id="inv-sub-funds">
+        <!-- Sort controls -->
+        <div class="lab-sort-row">
+          <button class="lab-sort-btn lab-sort-active" onclick="sortROIFunds('gain')"     id="rfbtn-gain">📈 Best ROI</button>
+          <button class="lab-sort-btn" onclick="sortROIFunds('value')"    id="rfbtn-value">💰 Highest Value</button>
+          <button class="lab-sort-btn" onclick="sortROIFunds('worst')"    id="rfbtn-worst">⚠️ Laggards</button>
+          <button class="lab-sort-btn" onclick="sortROIFunds('invested')" id="rfbtn-invested">📦 Most Invested</button>
+        </div>
+        <!-- Funds summary strip -->
+        <div class="lab-funds-summary" id="roi-funds-summary"></div>
+        <!-- Asset-class ROI tiles -->
+        <div id="roi-funds-groups" style="display:none;"></div>
+        <!-- Fund cards list -->
+        <div id="roi-funds-list"></div>
+      </div>
 
-      <!-- Asset-class ROI tiles -->
-      <div id="roi-funds-groups" style="display:none;"></div>
+      <!-- ── SIP Tracker sub-panel ── -->
+      <div id="inv-sub-sip" style="display:none;"></div>
 
-      <!-- Fund cards list -->
-      <div id="roi-funds-list"></div>
     </div>
 
     <!-- ══ SIPs TAB ══ -->
@@ -9340,6 +9358,37 @@ let _roiRetireRate   = 10;
 let _roiSimRate      = 10;
 let _roiTimelineMode = 'invested';
 
+function switchInvTab(tab) {
+  const fundsEl = document.getElementById('inv-sub-funds');
+  const sipEl   = document.getElementById('inv-sub-sip');
+  const fBtn    = document.getElementById('inv-stab-funds');
+  const sBtn    = document.getElementById('inv-stab-sip');
+  if (fundsEl) fundsEl.style.display = tab === 'funds' ? '' : 'none';
+  if (sipEl)   sipEl.style.display   = tab === 'sip'   ? '' : 'none';
+  if (fBtn) fBtn.classList.toggle('inv-sub-active', tab === 'funds');
+  if (sBtn) sBtn.classList.toggle('inv-sub-active', tab === 'sip');
+  if (tab === 'sip' && sipEl) {
+    // Build a fresh SIP shell with the same IDs renderROISIPs() targets.
+    // Move the real roi-panel-sip off-screen so IDs don't collide.
+    const srcPanel = document.getElementById('roi-panel-sip');
+    if (srcPanel) { srcPanel.style.display = 'none'; srcPanel.id = 'roi-panel-sip-hidden'; }
+    sipEl.innerHTML = `
+      <div class="lab-sip-hero">
+        <div class="lab-sip-hero-label">COMMITTED MONTHLY SIP</div>
+        <div class="lab-sip-hero-value" id="roi-sip-total">—</div>
+        <div class="lab-sip-hero-sub"   id="roi-sip-subtitle">—</div>
+      </div>
+      <div id="roi-sip-health-body" style="display:none;"></div>
+      <div id="roi-sip-list"></div>`;
+    renderROISIPs();
+  }
+  if (tab === 'funds') {
+    // Restore original panel-sip id if it was renamed
+    const hidden = document.getElementById('roi-panel-sip-hidden');
+    if (hidden) hidden.id = 'roi-panel-sip';
+  }
+}
+
 function switchROITab(tab) {
   // All existing panel IDs — hide everything first
   const ALL_PANELS = ['story','funds','sip','retire','sim','clarity','goals'];
@@ -9363,23 +9412,10 @@ function switchROITab(tab) {
     renderROIClarity();
   }
   if (tab === 'investments') {
-    // funds + sip panels shown together, separated by a divider
-    ['funds','sip'].forEach(t => {
-      const p = document.getElementById('roi-panel-' + t);
-      if (p) p.style.display = '';
-    });
-    // Insert section divider between funds and sip if not already there
-    const sipPanel = document.getElementById('roi-panel-sip');
-    if (sipPanel && !sipPanel.previousElementSibling?.classList.contains('lab-inv-divider')) {
-      const div = document.createElement('div');
-      div.className = 'lab-inv-divider lab-section-divider';
-      div.innerHTML = '<span>SIP Tracker</span>';
-      sipPanel.parentNode.insertBefore(div, sipPanel);
-    } else if (sipPanel?.previousElementSibling?.classList.contains('lab-inv-divider')) {
-      sipPanel.previousElementSibling.style.display = '';
-    }
+    const p = document.getElementById('roi-panel-funds');
+    if (p) p.style.display = '';
+    switchInvTab('funds');   // default to Funds sub-tab
     renderROIFunds(_roiFundSort);
-    renderROISIPs();
   }
   if (tab === 'retire') {
     const p = document.getElementById('roi-panel-retire');
