@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.23.4 -->
+<!-- MoneyFi v3.23.6 -->
 <!-- -
   MoneyFi — Hi
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
@@ -20477,7 +20477,7 @@ const FHS_REGION = {
     educationInflation: 0.10,
     retirementMultiples: { 30: 1, 40: 3, 50: 6, 60: 10 },
     savingsExcellent: 0.30, savingsGood: 0.20, savingsFair: 0.10,
-    liquidTypes: ['checking','savings_acc','bonds_fd','cash'],
+    liquidTypes: ['checking','savings_acc','bonds_fd','cash','emergency','bank_fd'],
     retirementTypes: ['retirement','epf','ppf','nps'],
     dtiExcellent: 1.0, dtiGood: 2.5, dtiFair: 4.0,
     benchmarkSource: 'SEBI / NPS Trust / AMFI India',
@@ -20490,7 +20490,7 @@ const FHS_REGION = {
     educationInflation: 0.06,
     retirementMultiples: { 30: 1, 40: 3, 50: 6, 60: 8 },
     savingsExcellent: 0.20, savingsGood: 0.15, savingsFair: 0.08,
-    liquidTypes: ['checking','savings_acc','cash'],
+    liquidTypes: ['checking','savings_acc','cash','emergency','bank_checking_us'],
     retirementTypes: ['retirement','retirement_401k','retirement_roth','retirement_ira','hsa'],
     dtiExcellent: 0.5, dtiGood: 1.5, dtiFair: 3.0,
     benchmarkSource: 'Fidelity / CFP Board',
@@ -20821,7 +20821,7 @@ function scoreEducationGoal(nw, profile, cfg) {
 function scoreDebtService(nw, agg, profile) {
   if (!agg || agg.avgInc <= 0) return { score: 0, status: 'inactive', label: 'No income data', dti: 0 };
   // Monthly debt obligations from NW liabilities (loan monthly payments) + credit card min payments
-  const loanAccounts = (data._nwAccounts||[]).filter(a => a.type === 'loan');
+  const loanAccounts = (data._nwAccounts||[]).filter(a => a.type === 'loan' || a.type === 'other_liability');
   const ccAccounts   = (data._nwAccounts||[]).filter(a => a.type === 'credit_card');
   const monthlyDebt  = loanAccounts.reduce((s,a) => s + nwConvert(a.meta?.monthlyPayment||0,'USD'), 0)
                      + ccAccounts.reduce((s,a)  => s + nwConvert((a.balance||0)*0.02,'USD'), 0); // 2% min payment
@@ -20967,7 +20967,20 @@ function scoreTaxOptimization(agg, profile, cfg) {
   const isUS = (profile?.region || 'IN') === 'US';
   // Use taxBucket tags for precision — covers epf/ppf/nps/401k/roth/ira/elss
   const allTaxAccts = (data._nwAccounts||[]).filter(a => a.balance > 0);
-  const getTaxBucket = a => a.taxBucket || NW_TYPE_META[a.type]?.taxBucket || 'taxable';
+  const getTaxBucket = a => {
+    if (a.taxBucket) return a.taxBucket;
+    if (NW_TYPE_META[a.type]?.taxBucket) return NW_TYPE_META[a.type].taxBucket;
+    const sub = (a.meta?.subtype || a.subtype || '').toLowerCase();
+    const nm  = (a.name || '').toLowerCase();
+    if (sub.includes('roth') || nm.includes('roth')) return 'tax_free';
+    if (sub.includes('401k') || sub.includes('403b') || nm.includes('401k') || nm.includes('403b')) return 'tax_deferred';
+    if (sub.includes('ira') || nm.includes('traditional ira')) return 'tax_deferred';
+    if (sub.includes('hsa') || nm.includes('hsa')) return 'tax_free';
+    if (a.type === 'retirement') return 'tax_deferred';
+    if (a.type === 'education') return 'tax_free_edu';
+    if (a.type === 'emergency') return 'taxable';
+    return 'taxable';
+  };
   const retAccounts  = allTaxAccts.filter(a => ['tax_deferred','tax_free','elss_80c'].includes(getTaxBucket(a)));
   const brokerAccts  = allTaxAccts.filter(a => getTaxBucket(a) === 'taxable');
   const bondAccts    = allTaxAccts.filter(a => {
@@ -24945,6 +24958,20 @@ const NW_TYPE_META = {
   bank_fd:           { taxBucket:'taxable',       liquidity:'low'     },
   realestate_primary:{ taxBucket:'taxable',       liquidity:'very_low'},
   realestate_rental: { taxBucket:'taxable',       liquidity:'very_low'},
+  // Generic / manually-added account types
+  retirement:        { taxBucket:'tax_deferred',  liquidity:'locked'  },
+  checking:          { taxBucket:'taxable',        liquidity:'instant' },
+  savings_acc:       { taxBucket:'taxable',        liquidity:'instant' },
+  cash:              { taxBucket:'taxable',        liquidity:'instant' },
+  brokerage:         { taxBucket:'taxable',        liquidity:'high'    },
+  bonds_fd:          { taxBucket:'taxable',        liquidity:'low'     },
+  education:         { taxBucket:'tax_free_edu',   liquidity:'restricted'},
+  emergency:         { taxBucket:'taxable',        liquidity:'instant' },
+  metals:            { taxBucket:'taxable',        liquidity:'low'     },
+  realestate:        { taxBucket:'taxable',        liquidity:'very_low'},
+  credit_card:       { taxBucket:'taxable',        liquidity:'instant' },  // liability
+  loan:              { taxBucket:'taxable',        liquidity:'locked'  },  // liability
+  other_liability:   { taxBucket:'taxable',        liquidity:'locked'  },  // liability
   // US
   retirement_401k:   { taxBucket:'tax_deferred',  liquidity:'locked'  },
   retirement_roth:   { taxBucket:'tax_free',      liquidity:'medium'  },
@@ -25210,7 +25237,10 @@ function buildAIContext() {
           const monthly = a.monthlyContrib || 0;
           const annual  = monthly * 12;
           const pctSal  = annualInc4ret > 0 ? (annual / annualInc4ret * 100).toFixed(1) : null;
-          return `    ${a.name}: balance=${sym}${Math.round(a.val).toLocaleString()} | monthlyContrib=${sym}${Math.round(monthly).toLocaleString()}/mo (annual ${sym}${Math.round(annual).toLocaleString()}${pctSal ? ', '+pctSal+'% of salary' : ''})`;
+          const sub4 = a.meta?.subtype || a.subtype || '';
+          const subtypeLbl = sub4 ? ` [${sub4.toUpperCase()}]` : '';
+          const zeroWarn = monthly === 0 ? ' ← $0: update NW account card if you contribute' : '';
+          return `    ${a.name}${subtypeLbl}: balance=${sym}${Math.round(a.val).toLocaleString()} | monthlyContrib=${sym}${Math.round(monthly).toLocaleString()}/mo (annual ${sym}${Math.round(annual).toLocaleString()}${pctSal ? ', '+pctSal+'% of salary' : ''})${zeroWarn}`;
         }).join('\n');
         L.push(
           `RETIREMENT TRACK:\n  corpus=${sym}${Math.round(ret.corpus).toLocaleString()} | target=${sym}${Math.round(ret.target).toLocaleString()} | gap=${sym}${Math.round(gap).toLocaleString()}\n  totalMonthlyContrib=${sym}${Math.round(ret.totalMonthlyContrib||0).toLocaleString()}/mo | totalAnnualContrib=${sym}${Math.round(ret.totalAnnualContrib||0).toLocaleString()}/yr\n  projectedAtRetirement=${sym}${ret.projectedCorpus.toLocaleString()} | yearsLeft=${ret.yearsLeft} | annualIncome=${sym}${Math.round(ret.annualIncome).toLocaleString()}\n  multiple=${ret.multiple}× | employerMatch=${ret.employerMatchPct}% | matchGapMonthly=${sym}${Math.round(ret.matchGapMonthly||0).toLocaleString()}/mo\n  ACCOUNTS:\n${retAcctLines}`);
