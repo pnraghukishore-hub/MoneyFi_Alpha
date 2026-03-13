@@ -9774,12 +9774,11 @@ function renderGoalOrchestration() {
 
     ${taxExitHTML}
   `;
-  // ── Add Goal button at top ──────────────────────────────────────
-  const addGoalBtn = document.createElement('button');
-  addGoalBtn.textContent = '+ Add Goal';
-  addGoalBtn.style.cssText = 'background:#1E2A6E;color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:.75em;font-weight:800;cursor:pointer;float:right;margin-bottom:8px;';
-  addGoalBtn.onclick = function() { openGoalSheet(); };
-  el.insertBefore(addGoalBtn, el.firstChild);
+  // ── Add Goal CTA — full-width button at bottom of section ──────────
+  const addGoalWrap = document.createElement('div');
+  addGoalWrap.style.cssText = 'margin-top:14px;';
+  addGoalWrap.innerHTML = `<button onclick="openGoalSheet()" style="width:100%;background:#1E2A6E;color:#fff;border:none;border-radius:14px;padding:14px 20px;font-size:.82em;font-weight:800;cursor:pointer;letter-spacing:.3px;">🎯 Add New Goal</button>`;
+  el.appendChild(addGoalWrap);
 }
 
 
@@ -11457,7 +11456,8 @@ function renderROIFunds(sortBy) {
   const INV_TYPES = new Set(['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold',
     'mf_index','brokerage','brokerage_taxable','stocks_direct','nps','ppf','epf',
     'retirement','retirement_401k','retirement_roth','retirement_ira','hsa','college_529',
-    'ibond','investment','education']);
+    'ibond','investment','education',
+    'bank_fd','savings_acc','cash','checking','bank_checking_us','fd']);
   const accounts = (data._nwAccounts||[]).filter(a => INV_TYPES.has(a.type) && a.balance > 0);
   if (!accounts.length) {
     el.innerHTML = '<div class="lab-card" style="text-align:center;padding:32px 16px;"><div style="font-size:2em;margin-bottom:8px;">💼</div><div style="font-size:0.85em;font-weight:700;color:#9CA3AF;">Import CAMS or add NW accounts to see fund-by-fund analysis</div></div>';
@@ -11516,10 +11516,11 @@ function renderROIFunds(sortBy) {
   const GROUP_DEFS = [
     { label:'Equity MF',  icon:'📈', types:new Set(['mf_equity','mf_elss','mf_hybrid','mf_index']) },
     { label:'Gold',       icon:'🥇', types:new Set(['mf_gold']) },
-    { label:'Debt MF',    icon:'🏦', types:new Set(['mf_debt']) },
+    { label:'Debt & FD',  icon:'🏦', types:new Set(['mf_debt','bank_fd','savings_acc','fd','ibond','bank_checking_us']) },
     { label:'Retirement', icon:'🛡️', types:new Set(['retirement','retirement_401k','retirement_roth','retirement_ira','epf','ppf','nps','hsa']) },
     { label:'Stocks',     icon:'📊', types:new Set(['brokerage','brokerage_taxable','stocks_direct']) },
-    { label:'Other',      icon:'📦', types:new Set(['investment','education','ibond','college_529']) },
+    { label:'Cash',       icon:'💵', types:new Set(['cash','checking']) },
+    { label:'Other',      icon:'📦', types:new Set(['investment','education','college_529']) },
   ];
   const groupRows = GROUP_DEFS.map(g => {
     const gFunds = funds.filter(f => g.types.has(f.a.type));
