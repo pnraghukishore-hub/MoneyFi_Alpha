@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.8 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.9 · Built 2026-03</div>
   </div>
 
 
@@ -8546,7 +8546,7 @@ function _buildROIData() {
   // All investment-type NW accounts
   const INV_TYPES = new Set(['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold',
     'mf_index','brokerage','brokerage_taxable','stocks_direct','nps','ppf','epf',
-    'retirement','retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','investment']);
+    'retirement','retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','investment','education']);
   const nwAccounts = (data._nwAccounts||[]).filter(a => INV_TYPES.has(a.type) && a.balance > 0);
 
   // Aggregate all investment transactions grouped by fund name
@@ -8842,7 +8842,7 @@ function renderROIFunds(sortBy) {
 
   const INV_TYPES = new Set(['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold',
     'mf_index','brokerage','brokerage_taxable','stocks_direct','nps','ppf','epf',
-    'retirement','retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','investment']);
+    'retirement','retirement_401k','retirement_roth','retirement_ira','hsa','college_529','ibond','investment','education']);
   const accounts = (data._nwAccounts||[]).filter(a => INV_TYPES.has(a.type) && a.balance > 0);
 
   if (!accounts.length) {
@@ -9052,7 +9052,7 @@ function renderROIRetirementCards() {
   el.innerHTML = retAccounts.map(a => {
     const bal = nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
     const projected = bal * Math.pow(1 + annReturn/100, yearsLeft);
-    const monthlyContrib = a._monthlyTotal || 1000;
+    const monthlyContrib = nwConvert ? nwConvert(a._monthlyTotal || 0, a.currency) || 1000 : (a._monthlyTotal || 1000);
     let projWithSIP = bal;
     for (let i=0; i<yearsLeft*12; i++) projWithSIP = projWithSIP*(1+r)+monthlyContrib;
     const extra = projWithSIP - projected;
@@ -12157,6 +12157,18 @@ function buildAccountMetaLine(acc) {
     }
   }
 
+  // Education fund — show ROI % like brokerage/MF if investedAmount known
+  if (acc.type === 'education' && acc.investedAmount) {
+    const roi = acc.balance && acc.investedAmount
+      ? ((Number(acc.balance) - Number(acc.investedAmount)) / Number(acc.investedAmount) * 100)
+      : null;
+    if (roi != null && !isNaN(roi)) {
+      const sign = roi >= 0 ? '▲' : '▼';
+      parts.push(sign + ' ' + Math.abs(roi).toFixed(1) + '% ROI');
+    }
+    if (acc.expectedReturn) parts.push('Target: ' + acc.expectedReturn + '% p.a.');
+    if (acc._monthlyTotal) parts.push(fmt(acc._monthlyTotal) + '/mo');
+  }
   // Zerodha direct equity — show stock count + P&L hint
   if (acc.type === 'stocks_direct' && acc.meta && acc.meta.stockCount) {
     parts.push(acc.meta.stockCount + ' stocks');
@@ -13320,24 +13332,38 @@ function _buildACGeoPickers(type, existing) {
     container.querySelectorAll('[data-drilldown]').forEach(function(row) {
       if (row._drilldownAttached) return;
       row._drilldownAttached = true;
-      var tapStartX = 0, tapStartY = 0, tapStartTime = 0;
+      // Suppress iOS long-press text selection on drilldown rows
+      row.style.webkitUserSelect = 'none';
+      row.style.userSelect = 'none';
+      row.style.webkitTouchCallout = 'none';
+      var tapStartX = 0, tapStartY = 0, tapStartTime = 0, longPressTimer = null, _cancelled = false;
       row.addEventListener('touchstart', function(e) {
         tapStartX = e.touches[0].clientX;
         tapStartY = e.touches[0].clientY;
         tapStartTime = Date.now();
+        _cancelled = false;
+        // Cancel tap if touch is held more than 350ms (before iOS long-press fires at ~500ms)
+        longPressTimer = setTimeout(function() { _cancelled = true; }, 350);
+        e.preventDefault(); // prevents iOS text-selection & callout on long-press
+      }, { passive: false });
+      row.addEventListener('touchmove', function(e) {
+        // Any movement cancels the tap
+        clearTimeout(longPressTimer);
+        _cancelled = true;
       }, { passive: true });
       row.addEventListener('touchend', function(e) {
+        clearTimeout(longPressTimer);
+        if (_cancelled) return;
         var dx = Math.abs(e.changedTouches[0].clientX - tapStartX);
         var dy = Math.abs(e.changedTouches[0].clientY - tapStartY);
         var dt = Date.now() - tapStartTime;
-        // Treat as tap: minimal movement + under 500ms (not a long-press)
-        if (dx < 12 && dy < 12 && dt < 500) {
-          e.preventDefault();
+        // Treat as tap: minimal movement + under 350ms
+        if (dx < 12 && dy < 12 && dt < 350) {
           e.stopPropagation();
           var accId = row.getAttribute('data-drilldown');
           if (accId) { setTimeout(function(){ openZerodhaSheet(accId); }, 10); }
         }
-      }, { passive: false });
+      }, { passive: true });
       // Also handle mouse click for desktop testing
       row.addEventListener('click', function() {
         var accId = row.getAttribute('data-drilldown');
@@ -14883,13 +14909,13 @@ function parseFidelityPositions(rawRows) {
 
   for (let i = 0; i < Math.min(rawRows.length, 15); i++) {
     const row = rawRows[i].map(c => String(c || '').trim().toLowerCase());
-    if (row.some(c => c.includes('symbol')) && row.some(c => c.includes('current value') || c.includes('market value'))) {
+    if (row.some(c => c.includes('symbol')) && row.some(c => c.includes('current value') || c.includes('market value') || c.includes('ending value'))) {
       headerIdx = i;
       const find = (kws) => row.findIndex(c => kws.some(k => c.includes(k)));
       cols.account  = find(['account name','account']);
       cols.symbol   = find(['symbol']);
       cols.desc     = find(['description']);
-      cols.curVal   = find(['current value','market value']);
+      cols.curVal   = find(['ending value','current value','market value']);
       cols.costBasis= find(['cost basis total','cost basis']);
       cols.qty      = find(['quantity']);
       break;
