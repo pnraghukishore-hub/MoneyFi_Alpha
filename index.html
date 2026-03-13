@@ -10944,11 +10944,55 @@ function _buildROIData() {
   const monthKeys  = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
   const monthlyTotals = {};
 
+  // ── Build valid fund name set from NW accounts ──────────────────────
+  // Only accounts with sebiCategory (real India MFs classified by CAMS/SEBI)
+  // OR US investable account types (brokerage, 401k, Roth, IRA, HSA, 529, iBond)
+  // This is the gate: if a transaction description doesn't match one of these,
+  // it's not a real investment fund — it's a transfer, gift, or expense.
+  const US_INVEST_TYPES = new Set([
+    'brokerage','brokerage_taxable','stocks_direct',
+    'retirement_401k','retirement_roth','retirement_ira',
+    'college_529','ibond','hsa',
+  ]);
+  const INDIA_MF_TYPES = new Set([
+    'mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','mf_index','nps','ppf','epf',
+  ]);
+
+  // validNWNames: fund names from accounts that are definitively real investments
+  const validNWAccounts = (data._nwAccounts||[]).filter(a =>
+    a.sebiCategory ||            // CAMS-imported India MF — has SEBI classification
+    INDIA_MF_TYPES.has(a.type) || // India fund type even if sebiCategory not yet set
+    US_INVEST_TYPES.has(a.type)  // US brokerage / retirement account
+  );
+  const validNWNames = new Set(validNWAccounts.map(a => (a.name||'').toLowerCase().substring(0,20)));
+
+  // Helper: does a transaction description match a known investment account?
+  function _isFundTx(tx) {
+    if (!tx.description) return false;
+    const desc = tx.description.toLowerCase();
+    // Direct match against known NW account names (first 20 chars)
+    for (const n of validNWNames) {
+      if (n.length > 4 && (desc.includes(n) || n.includes(desc.substring(0,20)))) return true;
+    }
+    // CAMS/BSE transaction patterns — always real MF transactions
+    if (/bse.*instalment|systematic.*purchase|nfo.*allot|sip.*registered|cams/i.test(tx.description)) return true;
+    // US brokerage patterns
+    if (/dividend reinvest|buy.*shares|market.*order|reinvest/i.test(tx.description)) return true;
+    return false;
+  }
+
   monthKeys.forEach(mk => {
-    const txList = [...(data[mk].investments||[]), ...(data[mk].expenses||[])
-      .filter(e => (e.category||'').toLowerCase().includes('mutual') ||
-                   (e.category||'').toLowerCase().includes('sip') ||
-                   (e.category||'').toLowerCase().includes('investment'))];
+    // Only investment-type transactions — zero expense leakage
+    // Additional gate: must match a known NW account OR be a recognised MF/brokerage pattern
+    const rawInv = (data[mk].investments||[]);
+    const txList = rawInv.filter(tx => {
+      // If we have validNWNames populated, require a match
+      if (validNWNames.size > 0) return _isFundTx(tx);
+      // Fallback for users with no NW accounts yet: include all investment txns
+      // but exclude obvious non-fund patterns (transfers to people, utilities etc.)
+      const desc = (tx.description||'').toLowerCase();
+      return !(/to [a-z]+ |neft|imps|upi.*[0-9]{10}|electricity|mobile|rent|salary/i.test(tx.description||''));
+    });
     txList.forEach(tx => {
       const amt = nwConvert ? nwConvert(Number(tx.amount||0), tx.currency) : Number(tx.amount||0);
       if (amt <= 0) return;
