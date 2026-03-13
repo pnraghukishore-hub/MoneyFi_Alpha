@@ -2575,7 +2575,7 @@
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
-    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.9 · Built 2026-03</div>
+    <div style="font-size:0.68em;color:var(--text-light);font-weight:600;text-align:center;width:100%;" id="settings-version-footer">MoneyFi · v3.19.10 · Built 2026-03</div>
   </div>
 
 
@@ -11948,7 +11948,7 @@ function renderNetWorth() {
         const wrapClass = (acc._imported && !acc._isREImport) ? '' : 'nw-swipe-wrap';
         const hasDrillDown = acc.meta && acc.meta.holdings && acc.meta.holdings.length > 0 &&
           (acc.type === 'stocks_direct' || (acc.meta && acc.meta.holdingType === 'us_brokerage'));
-        const rowClickAttr = hasDrillDown ? `data-drilldown="${acc.id}" title="Tap to see holdings" style="cursor:pointer;"` : '';
+        const rowClickAttr = hasDrillDown ? `data-drilldown="${acc.id}" onclick="toggleHoldingsExpand('${acc.id}')" style="cursor:pointer;"` : '';
         return `<div class="${wrapClass}">
           ${swipeActions}
           <div class="nw-account-row" ${rowClickAttr}>
@@ -12177,7 +12177,7 @@ function buildAccountMetaLine(acc) {
       const sign = pnl >= 0 ? '▲' : '▼';
       parts.push(sign + ' ' + fmt(Math.abs(pnl)) + ' P&L');
     }
-    parts.push('Tap to see holdings →');
+    parts.push('<span class="holdings-chevron">▶</span> Tap to expand');
   }
   if (acc._imported) parts.push('📥 imported');
   return parts.join(' · ');
@@ -13051,8 +13051,8 @@ function _nwsBuildForm(type, existing, m) {
       <div class="nw-sheet-field"><div class="nws-section-label">Currency</div><select class="nw-sheet-select" id="nws-currency">${currOpts}</select></div>
       ${(type === 'checking' || type === 'savings_acc' || type === 'credit_card') ? `<div class="nw-sheet-field"><div class="nws-section-label">Account # (Last 4)</div><input class="nw-sheet-input" id="nws-acct4" type="text" maxlength="4" placeholder="1234" value="${m.last4||''}"></div>` : ''}
     </div>` : ''}`}
-    ${extraFields}
     ${_buildACGeoPickers(type, existing)}
+    ${extraFields}
     <div class="nw-sheet-field">
       <div class="nws-section-label">Notes</div>
       <input class="nw-sheet-input" id="nws-notes" type="text" placeholder="Optional" value="${m.notes||''}">
@@ -13328,47 +13328,12 @@ function _buildACGeoPickers(type, existing) {
       : document;
     container.querySelectorAll('.swipe-wrap, .nw-swipe-wrap').forEach(attachSwipe);
 
-    // Attach tap listeners to drill-down rows (NW account rows with data-drilldown attr)
+    // Drilldown rows use inline onclick="toggleHoldingsExpand(id)" — no touch listener needed
+    // Suppress text selection on drilldown rows (iOS UX polish)
     container.querySelectorAll('[data-drilldown]').forEach(function(row) {
-      if (row._drilldownAttached) return;
-      row._drilldownAttached = true;
-      // Suppress iOS long-press text selection on drilldown rows
       row.style.webkitUserSelect = 'none';
       row.style.userSelect = 'none';
       row.style.webkitTouchCallout = 'none';
-      var tapStartX = 0, tapStartY = 0, tapStartTime = 0, longPressTimer = null, _cancelled = false;
-      row.addEventListener('touchstart', function(e) {
-        tapStartX = e.touches[0].clientX;
-        tapStartY = e.touches[0].clientY;
-        tapStartTime = Date.now();
-        _cancelled = false;
-        // Cancel tap if touch is held more than 350ms (before iOS long-press fires at ~500ms)
-        longPressTimer = setTimeout(function() { _cancelled = true; }, 350);
-        e.preventDefault(); // prevents iOS text-selection & callout on long-press
-      }, { passive: false });
-      row.addEventListener('touchmove', function(e) {
-        // Any movement cancels the tap
-        clearTimeout(longPressTimer);
-        _cancelled = true;
-      }, { passive: true });
-      row.addEventListener('touchend', function(e) {
-        clearTimeout(longPressTimer);
-        if (_cancelled) return;
-        var dx = Math.abs(e.changedTouches[0].clientX - tapStartX);
-        var dy = Math.abs(e.changedTouches[0].clientY - tapStartY);
-        var dt = Date.now() - tapStartTime;
-        // Treat as tap: minimal movement + under 350ms
-        if (dx < 12 && dy < 12 && dt < 350) {
-          e.stopPropagation();
-          var accId = row.getAttribute('data-drilldown');
-          if (accId) { setTimeout(function(){ openZerodhaSheet(accId); }, 10); }
-        }
-      }, { passive: true });
-      // Also handle mouse click for desktop testing
-      row.addEventListener('click', function() {
-        var accId = row.getAttribute('data-drilldown');
-        if (accId) openZerodhaSheet(accId);
-      });
     });
   };
 
@@ -13403,6 +13368,72 @@ var _zhFiltered = [];   // after search filter
 var _zhSortKey  = 'val';
 var _zhTotal    = 0;
 var _zhIsUS     = false; // true for US brokerage accounts
+
+function toggleHoldingsExpand(accId) {
+  // Inline expand/collapse of holdings — works reliably on iOS without long-press issues
+  const existingPanel = document.getElementById('holdings-panel-' + accId);
+  if (existingPanel) {
+    // Toggle collapse
+    if (existingPanel.style.display === 'none') {
+      existingPanel.style.display = 'block';
+      const chevEl = document.querySelector('[data-drilldown="' + accId + '"] .holdings-chevron');
+      if (chevEl) chevEl.textContent = '▼';
+    } else {
+      existingPanel.style.display = 'none';
+      const chevEl = document.querySelector('[data-drilldown="' + accId + '"] .holdings-chevron');
+      if (chevEl) chevEl.textContent = '▶';
+    }
+    return;
+  }
+  // Build the inline panel
+  const acc = (data._nwAccounts||[]).find(a => a.id === accId);
+  if (!acc || !acc.meta || !acc.meta.holdings || !acc.meta.holdings.length) {
+    openZerodhaSheet(accId); // fallback to sheet if no inline data
+    return;
+  }
+  const holdings = acc.meta.holdings;
+  const sym = currentCurrency?.symbol || '₹';
+  const panel = document.createElement('div');
+  panel.id = 'holdings-panel-' + accId;
+  panel.style.cssText = 'padding:10px 0 6px;border-top:1px solid #F0F0F0;margin-top:6px;';
+  const totalVal = holdings.reduce((s,h) => s + (h.curVal||0), 0);
+  const totalPnl = holdings.reduce((s,h) => s + (h.pnl||0), 0);
+  const pnlColor = totalPnl >= 0 ? '#059669' : '#DC2626';
+  const pnlSign = totalPnl >= 0 ? '▲' : '▼';
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+    + '<div style="font-size:0.72em;font-weight:900;color:var(--text-dark);">' + holdings.length + ' HOLDINGS</div>'
+    + '<div style="font-size:0.72em;font-weight:800;color:' + pnlColor + ';">' + pnlSign + ' ' + sym + Math.abs(Math.round(totalPnl)).toLocaleString() + ' P&amp;L</div>'
+    + '</div>';
+  // Show top holdings (max 8, sorted by value)
+  const sorted = [...holdings].sort((a,b) => (b.curVal||0) - (a.curVal||0));
+  const show = sorted.slice(0, 8);
+  show.forEach(h => {
+    const pnl = h.pnl != null ? h.pnl : null;
+    const pColor = pnl == null ? '#888' : (pnl >= 0 ? '#059669' : '#DC2626');
+    const pSign = pnl == null ? '' : (pnl >= 0 ? '▲' : '▼');
+    const pText = pnl == null ? '' : (pSign + ' ' + sym + Math.abs(Math.round(pnl)).toLocaleString());
+    const pct = totalVal > 0 ? ((h.curVal||0)/totalVal*100).toFixed(0) : 0;
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #F8F8F8;">'
+      + '<div><div style="font-size:0.75em;font-weight:800;color:var(--text-dark);">' + (h.symbol||h.name||'') + '</div>'
+      + '<div style="font-size:0.62em;color:var(--text-light);font-weight:600;">' + pct + '% of portfolio</div></div>'
+      + '<div style="text-align:right;"><div style="font-size:0.75em;font-weight:800;color:var(--text-dark);">' + sym + Math.round(h.curVal||0).toLocaleString() + '</div>'
+      + '<div style="font-size:0.62em;font-weight:700;color:' + pColor + ';">' + pText + '</div></div>'
+      + '</div>';
+  });
+  if (holdings.length > 8) {
+    html += '<div style="text-align:center;padding:6px 0;font-size:0.68em;font-weight:700;color:var(--text-light);">+ ' + (holdings.length - 8) + ' more — tap Score tab for full breakdown</div>';
+  }
+  panel.innerHTML = html;
+  // Insert panel after the account row inside the swipe-wrap
+  const row = document.querySelector('[data-drilldown="' + accId + '"]');
+  if (row) {
+    const wrap = row.closest('.nw-swipe-wrap') || row.parentElement;
+    wrap.appendChild(panel);
+    // Update chevron
+    const chevEl = row.querySelector('.holdings-chevron');
+    if (chevEl) chevEl.textContent = '▼';
+  }
+}
 
 function openZerodhaSheet(accId) {
   const acc = (data._nwAccounts || []).find(a => a.id === accId);
