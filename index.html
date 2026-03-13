@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.23.0 -->
+<!-- MoneyFi v3.23.1 -->
 <!-- -
   MoneyFi — HiFi clarity for your financial life
   ═══════════════════════════════════════════════
@@ -25179,8 +25179,13 @@ function buildAIContext() {
       if (ret.status !== 'inactive') {
         const gap = Math.max(0, ret.target - ret.corpus);
         // Per-account breakdown so AI knows each account's contribution
-        const retAcctLines = (ret.accounts||[]).map(a =>
-          `    ${a.name}: balance=${sym}${Math.round(a.val).toLocaleString()} | monthlyContrib=${sym}${Math.round(a.monthlyContrib||0).toLocaleString()}/mo`).join('\n');
+        const annualInc4ret = (profile?.annualCompensation||0) + (profile?.spouseIncome||0);
+        const retAcctLines = (ret.accounts||[]).map(a => {
+          const monthly = a.monthlyContrib || 0;
+          const annual  = monthly * 12;
+          const pctSal  = annualInc4ret > 0 ? (annual / annualInc4ret * 100).toFixed(1) : null;
+          return `    ${a.name}: balance=${sym}${Math.round(a.val).toLocaleString()} | monthlyContrib=${sym}${Math.round(monthly).toLocaleString()}/mo (annual ${sym}${Math.round(annual).toLocaleString()}${pctSal ? ', '+pctSal+'% of salary' : ''})`;
+        }).join('\n');
         L.push(
           `RETIREMENT TRACK:\n  corpus=${sym}${Math.round(ret.corpus).toLocaleString()} | target=${sym}${Math.round(ret.target).toLocaleString()} | gap=${sym}${Math.round(gap).toLocaleString()}\n  totalMonthlyContrib=${sym}${Math.round(ret.totalMonthlyContrib||0).toLocaleString()}/mo | totalAnnualContrib=${sym}${Math.round(ret.totalAnnualContrib||0).toLocaleString()}/yr\n  projectedAtRetirement=${sym}${ret.projectedCorpus.toLocaleString()} | yearsLeft=${ret.yearsLeft} | annualIncome=${sym}${Math.round(ret.annualIncome).toLocaleString()}\n  multiple=${ret.multiple}× | employerMatch=${ret.employerMatchPct}% | matchGapMonthly=${sym}${Math.round(ret.matchGapMonthly||0).toLocaleString()}/mo\n  ACCOUNTS:\n${retAcctLines}`);
       }
@@ -25310,6 +25315,17 @@ Every recommendation MUST cite at least one specific number from the user's actu
 BAD: "Consider increasing equity exposure."
 GOOD: "Your liquid equity is ${sym}${Math.round(aiCtx.portfolio.equity?.liquid?.amount || 0).toLocaleString()} — that's ${aiCtx.portfolio.equity?.liquid?.amount && aiCtx.portfolio.totalNW ? Math.round(aiCtx.portfolio.equity.liquid.amount / aiCtx.portfolio.totalNW * 100) : '?'}% of NW. A ${sym}5K/month index SIP moves you toward your 40% equity target."
 ${region === 'US' ? `US-SPECIFIC: Gold ETFs (GLD, IAU, GLDM) face 28% collectibles tax rate in taxable accounts — flag this explicitly. Target Date Funds are self-rebalancing — never recommend rebalancing inside them.` : ''}
+
+RULE 6 — NEVER ASK FOR DATA ALREADY IN THIS PROMPT (critical):
+The snapshot below contains the user's salary, 401k/retirement contributions, employer match %, insurance cover, goals, portfolio balances, monthly cashflow, and FHS pillar scores. You ALREADY KNOW all of this.
+NEVER ask: "What is your annual income?", "How much are you contributing to your 401k?", "Do you have an HSA?", "What is your employer match?", "What are your goals?", "What is your monthly SIP?", or any question whose answer is already in the snapshot below.
+If a data point IS genuinely missing (e.g. a field shows 0 or '?'), state what you know, infer where safe, and only ask for the specific missing piece — never fish for information you already have.
+The wow factor of MoneyFi is: "I already know your numbers." Act like it.
+
+RULE 7 — LEAD WITH INSIGHT, NOT QUESTIONS:
+Open every response with a direct insight or action derived from the user's actual data. Questions — if needed at all — come AFTER the recommendation, not before. NEVER open a response with a question.
+BAD: "Can you tell me more about your goals?"
+GOOD: "Your 401k contribution is ${sym}${Math.round(aiCtx.portfolio.byTaxBucket?.tax_deferred||0).toLocaleString()} — at your ${(profile?.employerMatchPct||0)}% employer match you're capturing the full match ✓. Your next lever is the IRA gap."
 
 PORTFOLIO INTELLIGENCE (derived from import data):
 Tax buckets: taxable=${sym}${Math.round(aiCtx.portfolio.byTaxBucket?.taxable||0).toLocaleString()} | tax_deferred=${sym}${Math.round(aiCtx.portfolio.byTaxBucket?.tax_deferred||0).toLocaleString()} | tax_free=${sym}${Math.round(aiCtx.portfolio.byTaxBucket?.tax_free||0).toLocaleString()}${region==='IN'?' | elss_80c='+sym+Math.round(aiCtx.portfolio.byTaxBucket?.elss_80c||0).toLocaleString():''}
