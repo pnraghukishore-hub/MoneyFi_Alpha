@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.26.3 -->
+<!-- MoneyFi v3.26.4 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -1769,26 +1769,6 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   transition: background 0.15s;
 }
 .lab-holdings-row:active { background: #E0E7FF; }
-.clarity-section-body {
-  overflow: hidden;
-  transition: max-height 0.3s ease, opacity 0.3s ease;
-  max-height: 9999px;
-  opacity: 1;
-}
-.clarity-section-body.collapsed {
-  max-height: 0 !important;
-  opacity: 0;
-}
-.clarity-chevron {
-  font-size: 0.75em;
-  color: #9CA3AF;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 6px;
-  transition: transform 0.25s;
-  user-select: none;
-}
-.clarity-chevron.collapsed { transform: rotate(-90deg); }
 .lab-fund-advisor { 
       font-size:0.67em; font-weight:700; color:#7C3AED;
       background:#F5F3FF; border-radius:8px; padding:5px 8px; margin-top:6px;
@@ -3266,26 +3246,17 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       </div>
 
       <!-- Category Overlap -->
-            </div><!-- /cs-body-consol -->
-
       <div class="lab-card" id="clarity-overlap-card">
         <div class="lab-card-header">
           <div class="lab-card-title">🔁 Category Overlap</div>
           <div class="lab-card-badge lab-badge-warn" id="clarity-overlap-badge">—</div>
-        <span class="clarity-chevron" id="cs-chev-clarity-overlap" onclick="toggleClaritySection('clarity-overlap')" title="Collapse">▼</span>
         </div>
-      </div><!-- /cs-body-clarity-overlap -->
-        <div id="cs-body-clarity-overlap" class="clarity-section-body"><div id="clarity-overlap-body"></div>
+        <div id="clarity-overlap-body"></div>
       </div>
 
       <!-- KEEP / REVIEW / EXIT -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <div class="lab-section-label" style="margin-bottom:0;">📋 Consolidation Advisor</div>
-        <span class="clarity-chevron" id="cs-chev-consol"
-          onclick="toggleClaritySection('consol')" title="Collapse section">▼</span>
-      </div>
-      <div id="cs-body-consol" class="clarity-section-body">
-      <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;">
+      <div class="lab-section-label">📋 Consolidation Advisor</div>
+      <div id="clarity-filter-row" style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;">
         <button class="lab-sort-btn lab-sort-active" onclick="filterClarityFunds('all')"   id="cfbtn-all">All</button>
         <button class="lab-sort-btn" onclick="filterClarityFunds('keep')"  id="cfbtn-keep">✅ Keep</button>
         <button class="lab-sort-btn" onclick="filterClarityFunds('review')" id="cfbtn-review">⚠️ Review</button>
@@ -3302,10 +3273,8 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div class="lab-card-header">
           <div class="lab-card-title">🏦 AMC Concentration</div>
           <div class="lab-card-badge" id="clarity-amc-badge">—</div>
-        <span class="clarity-chevron" id="cs-chev-clarity-amc" onclick="toggleClaritySection('clarity-amc')" title="Collapse">▼</span>
         </div>
-      </div><!-- /cs-body-clarity-amc -->
-        <div id="cs-body-clarity-amc" class="clarity-section-body"><div id="clarity-amc-body"></div>
+        <div id="clarity-amc-body"></div>
       </div>
 
       <!-- Goal Alignment -->
@@ -3313,10 +3282,8 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div class="lab-card-header">
           <div class="lab-card-title">🎯 Goal Alignment</div>
           <div class="lab-card-badge lab-badge-blue" id="clarity-goals-badge">—</div>
-        <span class="clarity-chevron" id="cs-chev-clarity-goals" onclick="toggleClaritySection('clarity-goals')" title="Collapse">▼</span>
         </div>
-      </div><!-- /cs-body-clarity-goals -->
-        <div id="cs-body-clarity-goals" class="clarity-section-body"><div id="clarity-goals-body"></div>
+        <div id="clarity-goals-body"></div>
       </div>
 
       <!-- Tax Estimate -->
@@ -3324,10 +3291,8 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div class="lab-card-header">
           <div class="lab-card-title">🧾 Tax Estimate on Exit</div>
           <div class="lab-card-badge lab-badge-warn">Indicative only</div>
-        <span class="clarity-chevron" id="cs-chev-clarity-tax" onclick="toggleClaritySection('clarity-tax')" title="Collapse">▼</span>
         </div>
-      </div><!-- /cs-body-clarity-tax -->
-        <div id="cs-body-clarity-tax" class="clarity-section-body"><div id="clarity-tax-body"></div>
+        <div id="clarity-tax-body"></div>
         <div style="font-size:0.62em;font-weight:600;color:#9CA3AF;margin-top:8px;line-height:1.5;">
           Based on LTCG (10% above ₹1L, held &gt;1yr) and STCG (15%, held &lt;1yr) rules as of 2024. 
           Verify with your CA for your specific situation. For NRI: DTAA implications apply separately.
@@ -3339,10 +3304,8 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div class="lab-card-header">
           <div class="lab-card-title">🛡️ Insurance Gap Check</div>
           <span class="lab-card-badge" id="ins-gap-badge">—</span>
-        <span class="clarity-chevron" id="cs-chev-ins-gap" onclick="toggleClaritySection('ins-gap')" title="Collapse">▼</span>
         </div>
-      </div><!-- /cs-body-ins-gap -->
-        <div id="cs-body-ins-gap" class="clarity-section-body"><div id="ins-gap-body"></div>
+        <div id="ins-gap-body"></div>
       </div>
 
     </div><!-- /clarity -->
@@ -10993,6 +10956,29 @@ function renderROIClarity() {
   // ── Tax estimate ──
   _renderClarityTax(d, sym);
   _renderInsuranceGap();
+  // Inject collapse chevrons into each section card
+  _addClarityChevron('clarity-overlap-card', 'clarity-overlap-body');
+  _addClarityChevron('clarity-amc-card', 'clarity-amc-body');
+  _addClarityChevron('clarity-goals-card', 'clarity-goals-body');
+  _addClarityChevron('clarity-tax-card', 'clarity-tax-body');
+  _addClarityChevron('ins-gap-card', 'ins-gap-body');
+  // Consolidation Advisor section collapse
+  (function() {
+    const lbl = document.querySelector('.lab-section-label');
+    if (!lbl || lbl.dataset.chevronAdded) return;
+    lbl.dataset.chevronAdded = '1';
+    lbl.style.display = 'flex';
+    lbl.style.justifyContent = 'space-between';
+    lbl.style.alignItems = 'center';
+    const chev = document.createElement('span');
+    chev.className = 'clar-chev';
+    chev.textContent = '▼';
+    chev.style.cssText = 'font-size:.7em;color:#9CA3AF;cursor:pointer;padding:2px 8px;transition:transform .25s;';
+    chev.onclick = function(e) { e.stopPropagation(); _toggleConsolidationAdvisor(chev); };
+    lbl.onclick = function() { _toggleConsolidationAdvisor(chev); };
+    lbl.style.cursor = 'pointer';
+    lbl.appendChild(chev);
+  })();
 }
 
 
@@ -11333,16 +11319,50 @@ function _renderInsuranceGap() {
     <div style="font-size:.6em;color:#9CA3AF;margin-top:8px;text-align:center;">⚖️ Based on ${isUS?'DIME method':'HLV/IRDAI guidelines'} · Not financial advice</div>`;
 }
 
-// ── Clarity section collapse / expand ────────────────────────────────
-const _claritySectionState = {};  // id → collapsed (bool)
-function toggleClaritySection(sectionId) {
-  const body   = document.getElementById('cs-body-' + sectionId);
-  const chev   = document.getElementById('cs-chev-' + sectionId);
+// ── Clarity collapse/expand — pure JS, chevrons injected after render ──
+const _clarityCollapsed = {};
+
+function _addClarityChevron(cardId, bodyId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  const hdr  = card.querySelector('.lab-card-header');
+  if (!hdr || hdr.querySelector('.clar-chev')) return;
+  const chev = document.createElement('span');
+  chev.className = 'clar-chev';
+  chev.textContent = '▼';
+  chev.style.cssText = 'font-size:.7em;color:#9CA3AF;cursor:pointer;padding:2px 8px;' +
+    'border-radius:6px;transition:transform .25s ease;user-select:none;margin-left:auto;flex-shrink:0;';
+  chev.onclick = function(e) { e.stopPropagation(); _toggleClarityBody(bodyId, chev); };
+  hdr.style.cursor = 'pointer';
+  hdr.onclick = function() { _toggleClarityBody(bodyId, chev); };
+  hdr.style.display = 'flex';
+  hdr.style.alignItems = 'center';
+  hdr.appendChild(chev);
+}
+
+function _toggleClarityBody(bodyId, chevEl) {
+  const body = document.getElementById(bodyId);
   if (!body) return;
-  const now = !_claritySectionState[sectionId];
-  _claritySectionState[sectionId] = now;
-  body.classList.toggle('collapsed', now);
-  if (chev) chev.classList.toggle('collapsed', now);
+  const nowCollapsed = (_clarityCollapsed[bodyId] !== true);
+  _clarityCollapsed[bodyId] = nowCollapsed;
+  body.style.maxHeight   = nowCollapsed ? '0'     : '';
+  body.style.overflow    = nowCollapsed ? 'hidden' : '';
+  body.style.opacity     = nowCollapsed ? '0'     : '';
+  body.style.marginTop   = nowCollapsed ? '0'     : '';
+  body.style.paddingTop  = nowCollapsed ? '0'     : '';
+  if (chevEl) chevEl.style.transform = nowCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
+// Also handle Consolidation Advisor section (label + fund list, not a lab-card)
+function _toggleConsolidationAdvisor(chevEl) {
+  const ids = ['roi-funds-list','clarity-filter-row','clarity-triage-section'];
+  const nowCollapsed = (_clarityCollapsed['consol'] !== true);
+  _clarityCollapsed['consol'] = nowCollapsed;
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.maxHeight = nowCollapsed ? '0' : ''; el.style.overflow = nowCollapsed ? 'hidden' : ''; el.style.opacity = nowCollapsed ? '0' : ''; }
+  });
+  if (chevEl) chevEl.style.transform = nowCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
 }
 
 function _renderClarityTax(d, sym) {
@@ -26715,7 +26735,7 @@ function renderFHSInsights(fhs) {
 
 // G1: Portfolio Health Score (0-100)
 // Measures diversification quality across asset classes, concentration risk
-// scorePortfolioHealth defined in main script block
+// scorePortfolioHealth defined in Script 0
 
 function scoreGoalSequencing(pillarResults, profile) {
   if (!pillarResults) return { score: 0, status: 'inactive', label: 'Compute other pillars first' };
