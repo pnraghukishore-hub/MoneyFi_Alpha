@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.26.6 -->
+<!-- MoneyFi v4.0.0 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -3097,7 +3097,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       <div style="display:flex;align-items:center;justify-content:space-between;background:#F0FDF4;border-radius:12px;padding:9px 12px;margin-bottom:10px;">
         <div>
           <div style="font-size:.75em;font-weight:900;color:#065F46;">💹 Show in Today's Money</div>
-          <div style="font-size:.65em;font-weight:700;color:#6B7280;" id="retire-inflation-label">Inflation: 6% p.a. (India default)</div>
+          <div style="font-size:.65em;font-weight:700;color:#6B7280;" id="retire-inflation-label">Inflation: — p.a.</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <label style="position:relative;display:inline-block;width:42px;height:24px;">
@@ -4918,6 +4918,79 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 </div>
 
 <!-- ── Universal Bank / Generic CSV Import ─────────────────────────── -->
+<!-- ══ SMS IMPORT ══ -->
+<div class="import-section" id="isec-sms">
+
+  <!-- Step 1: Paste -->
+  <div class="import-step active" id="isms-step1">
+    <div class="import-card">
+      <div class="import-card-title">📱 SMS Bank Alerts</div>
+      <div class="import-card-sub">Paste bank SMS messages below — one per line or in bulk. Works with HDFC, ICICI, SBI, Axis, Kotak, IndusInd (India) and Chase, Amex, Bank of America (US). MoneyFi reads only the text you paste — nothing is sent anywhere.</div>
+
+      <textarea id="isms-paste-area"
+        style="width:100%;min-height:160px;border:1.5px solid #E8E8E8;border-radius:12px;padding:12px;font-family:Nunito,sans-serif;font-size:0.82em;font-weight:600;color:#374151;resize:vertical;box-sizing:border-box;margin-top:10px;outline:none;line-height:1.6;"
+        placeholder="Paste SMS messages here…
+
+Example:
+Dear Customer, Rs.4,250.00 debited from a/c **1234 on 14-Mar-26 to VPA swiggy@icici. Avl bal Rs.18,420.50 -ICICI Bank
+Your a/c XX5678 is credited with Rs.25,000.00 on 14/03/2026 by NEFT-HDFC0001234. Avl Bal:INR 43420.50"></textarea>
+
+      <!-- Sample loader for testing -->
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <button onclick="loadSMSSample('IN')" style="background:#F0F4FF;border:none;border-radius:8px;padding:6px 12px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:800;color:#4F46E5;cursor:pointer;">📋 Load India samples</button>
+        <button onclick="loadSMSSample('US')" style="background:#F0FDF4;border:none;border-radius:8px;padding:6px 12px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:800;color:#059669;cursor:pointer;">📋 Load US samples</button>
+        <button onclick="document.getElementById('isms-paste-area').value=''" style="background:#FFF1F2;border:none;border-radius:8px;padding:6px 12px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:800;color:#EF4444;cursor:pointer;">✕ Clear</button>
+      </div>
+
+      <button onclick="runSMSParse()"
+        style="margin-top:14px;width:100%;padding:14px;background:#1E2A6E;color:white;border:none;border-radius:12px;font-family:Nunito,sans-serif;font-size:0.92em;font-weight:900;cursor:pointer;">
+        🔍 Parse SMS Messages
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 2: Review table -->
+  <div class="import-step" id="isms-step2">
+    <div class="import-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="import-card-title" style="margin:0;" id="isms-review-title">SMS Transactions Found</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="smsBulkSelect(true)"  style="background:#ECFDF5;border:none;border-radius:8px;padding:5px 10px;font-family:Nunito,sans-serif;font-size:0.7em;font-weight:800;color:#059669;cursor:pointer;">✅ All</button>
+          <button onclick="smsBulkSelect(false)" style="background:#FFF1F2;border:none;border-radius:8px;padding:5px 10px;font-family:Nunito,sans-serif;font-size:0.7em;font-weight:800;color:#EF4444;cursor:pointer;">✕ None</button>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div id="isms-stats-bar" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;"></div>
+
+      <!-- Skipped SMS notice -->
+      <div id="isms-skipped-wrap" style="display:none;margin-bottom:10px;background:#FFFBEB;border-radius:10px;padding:8px 12px;">
+        <div style="font-size:0.72em;font-weight:800;color:#92400E;" id="isms-skipped-msg"></div>
+      </div>
+
+      <div style="overflow-x:auto;max-height:360px;overflow-y:auto;">
+        <table class="import-preview-table" id="isms-review-table" style="width:100%;"></table>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="import-btn secondary" onclick="resetSMSImport()">← Back</button>
+        <button class="import-btn" onclick="confirmSMSImport()" style="flex:2;background:#10B981;color:white;" id="isms-confirm-btn">✅ Import Selected</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Done -->
+  <div class="import-step" id="isms-step3">
+    <div class="import-card" style="text-align:center;padding:28px 20px;">
+      <div style="font-size:2.4em;margin-bottom:8px;">🎉</div>
+      <div class="import-card-title" id="isms-done-title">Import Complete!</div>
+      <div class="import-card-sub" id="isms-done-sub" style="margin-top:6px;"></div>
+      <button onclick="resetSMSImport()" class="import-btn" style="margin-top:20px;width:100%;">📱 Parse More SMS</button>
+    </div>
+  </div>
+
+</div>
+
 <div class="import-section" id="isec-universal">
 
   <!-- Step 1: Upload -->
@@ -5169,7 +5242,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">Enter 0 if none. Enter total sum assured across all term policies.</div>
       </div>
       <div class="fhs-onboard-field">
-        <div class="fhs-onboard-label">Employer disability cover</div>
+        <div class="fhs-onboard-label">Health / medical insurance cover <span style="font-weight:600;color:var(--text-light);text-transform:none;letter-spacing:0;">(total family floater cover)</span></div>
+        <input class="fhs-onboard-input" type="number" id="fhsob-health-cover" placeholder="e.g. 500000 (IN) or 20000 (US)">
+        <div style="font-size:0.7em;color:var(--text-light);margin-top:3px;">India: ₹5L–10L per person recommended · US: $10K+ per person. Enter total family floater amount.</div>
+      </div>
         <select class="fhs-onboard-input" id="fhsob-disability">
           <option value="0">None — no employer disability plan</option>
           <option value="40">40% of salary covered</option>
@@ -9735,6 +9811,7 @@ function switchROITab(tab) {
     const p = document.getElementById('roi-panel-retire');
     if (p) p.style.display = '';
     renderROIRetireSummary(); renderROIRetirementCards(); renderROIGapAnalysis();
+    _syncRetireInflationLabel();
   }
   if (tab === 'plan') {
     // goals + sim panels shown together
@@ -10321,168 +10398,252 @@ function generateBeforeAfterCard() {
   const gradeLabel = {A:'Clean & Focused',B:'Good Shape',C:'Fragmented',D:'Overlapping',F:'Critical'};
   const gradeColor = {A:'#22C55E',B:'#14B8A6',C:'#F59E0B',D:'#F97316',F:'#EF4444'};
 
-  const exitCount   = _clarityFundData.filter(f=>f.verdict==='exit').length;
-  const keepCount   = _clarityFundData.filter(f=>f.verdict==='keep').length;
+  const exitCount   = (_clarityFundData||[]).filter(f=>f.verdict==='exit').length;
+  const keepCount   = (_clarityFundData||[]).filter(f=>f.verdict==='keep').length;
   const totalBefore = d.totalFunds;
   const totalAfter  = totalBefore - exitCount;
   const idleStr     = d.idleCapital > 0 ? sym + _fmtK(d.idleCapital) : null;
 
-  // Build canvas
+  // ── Enrich: top winning fund (keep verdict, highest pct gain) ──
+  const topWinner = (_clarityFundData||[])
+    .filter(f => f.verdict==='keep' && f.pct != null && f.pct > 0)
+    .sort((a,b) => b.pct - a.pct)[0];
+  const topWinnerStr = topWinner
+    ? `${topWinner.name.substring(0,22).trim()}… +${topWinner.pct.toFixed(0)}%`
+    : null;
+
+  // ── Enrich: goals count ──
+  const goalsTotal   = (data._goals||[]).length;
+  const goalsFunded  = (data._goals||[]).filter(g => {
+    if (!g.mappedAccounts?.length) return false;
+    const cur = typeof computeGoalCurrent==='function' ? computeGoalCurrent(g.mappedAccounts, g.unit, g.goalType) : 0;
+    return cur > 0 && g.target > 0 && (cur/g.target) >= 0.1;
+  }).length;
+
+  // ── Enrich: portfolio value ──
+  const totalNW = (data._nwAccounts||[]).reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0)),0);
+
+  // ── Enrich: action line ──
+  const actionLine = exitCount > 0
+    ? `Exit ${exitCount} fund${exitCount>1?'s':''} → reinvest into your top ${keepCount} performers`
+    : keepCount > 0
+      ? `Your ${keepCount} focused fund${keepCount>1?'s are':' is'} already earning their place`
+      : 'Review your portfolio for consolidation opportunities';
+
+  // ── Build canvas ──
   const canvas = document.getElementById('clarity-share-canvas');
   if (!canvas) return;
 
-  const SIZE = 1080;
-  canvas.width  = SIZE;
-  canvas.height = SIZE;
+  const W = 1080, H = 1350;   // portrait 4:5 — better for stories & WhatsApp
+  canvas.width  = W;
+  canvas.height = H;
   canvas.style.maxWidth = '100%';
 
   const ctx = canvas.getContext('2d');
 
-  // ── Background gradient ──
-  const bg = ctx.createLinearGradient(0, 0, SIZE, SIZE);
-  bg.addColorStop(0, '#0F172A');
-  bg.addColorStop(1, '#1E2A6E');
+  // ── Background: deep navy with diagonal accent ──
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#0B1120');
+  bg.addColorStop(0.55, '#1A2456');
+  bg.addColorStop(1, '#0F1A3A');
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, SIZE, SIZE);
+  ctx.fillRect(0, 0, W, H);
 
-  // ── Subtle grid lines ──
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-  ctx.lineWidth = 1;
-  for (let i=0; i<SIZE; i+=60) {
-    ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,SIZE); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(SIZE,i); ctx.stroke();
+  // Subtle dot-grid texture
+  ctx.fillStyle = 'rgba(255,255,255,0.025)';
+  for (let x=40; x<W; x+=48) for (let y=40; y<H; y+=48) {
+    ctx.beginPath(); ctx.arc(x,y,1.5,0,Math.PI*2); ctx.fill();
   }
 
-  // ── Logo / brand top ──
-  ctx.font = 'bold 42px sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.fillText('MoneyFi', 60, 90);
-  ctx.font = '26px sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  // Accent diagonal stripe (top-right corner)
+  ctx.save();
+  const stripe = ctx.createLinearGradient(W-300,0,W,300);
+  stripe.addColorStop(0,'rgba(124,58,237,0.18)');
+  stripe.addColorStop(1,'rgba(79,70,229,0)');
+  ctx.fillStyle = stripe;
+  ctx.beginPath(); ctx.moveTo(W-320,0); ctx.lineTo(W,0); ctx.lineTo(W,320); ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // ── HEADER BAND ──
+  // Logo mark — coloured pill
+  const logoGrad = ctx.createLinearGradient(60,52,240,88);
+  logoGrad.addColorStop(0,'#7C3AED'); logoGrad.addColorStop(1,'#4F46E5');
+  ctx.fillStyle = logoGrad;
+  _roundRect(ctx, 60, 52, 178, 44, 22); ctx.fill();
+  ctx.font = 'bold 26px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.fillText('MoneyFi', 149, 80);
+  ctx.textAlign = 'left';
+
+  ctx.font = '800 22px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.fillText('Portfolio Clarity Report', 60, 128);
 
-  // ── PCS Score circle (top right) ──
-  const cx = SIZE-160, cy = 100, r = 75;
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
-  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fill();
-  // Arc fill
-  ctx.beginPath();
-  ctx.arc(cx, cy, r-8, -Math.PI/2, -Math.PI/2 + (Math.PI*2*(d.pcs/100)), false);
-  ctx.strokeStyle = gradeColor[grade]; ctx.lineWidth = 12; ctx.lineCap = 'round';
-  ctx.stroke();
-  ctx.font = 'bold 46px sans-serif'; ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
-  ctx.fillText(d.pcs, cx, cy+8);
-  ctx.font = 'bold 20px sans-serif'; ctx.fillStyle = gradeColor[grade];
-  ctx.fillText('Grade '+grade, cx, cy+38);
+  // Date top-right
+  const dateStr = new Date().toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'numeric'});
+  ctx.font = '700 20px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.textAlign = 'right';
+  ctx.fillText(dateStr, W-60, 80);
   ctx.textAlign = 'left';
 
-  // ── Divider ──
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillRect(60, 180, SIZE-120, 1.5);
+  // ── PCS SCORE HERO ──
+  const scY = 188;
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  _roundRect(ctx, 60, scY, W-120, 170, 24); ctx.fill();
 
-  // ── BEFORE / AFTER panels ──
-  const panelY = 210, panelH = 360;
-  const panelW = (SIZE-160) / 2;
-  const beforeX = 60, afterX = beforeX + panelW + 40;
+  // Score circle
+  const cx = 155, cy = scY+85, rOuter = 65;
+  ctx.beginPath(); ctx.arc(cx, cy, rOuter, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fill();
+  // Track
+  ctx.beginPath(); ctx.arc(cx, cy, rOuter-10, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 12; ctx.stroke();
+  // Score arc
+  ctx.beginPath();
+  ctx.arc(cx, cy, rOuter-10, -Math.PI/2, -Math.PI/2+(Math.PI*2*(d.pcs/100)), false);
+  ctx.strokeStyle = gradeColor[grade]; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.font = 'bold 48px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.fillText(d.pcs, cx, cy+10);
+  ctx.font = 'bold 17px sans-serif'; ctx.fillStyle = gradeColor[grade];
+  ctx.fillText('/100', cx, cy+34);
+  ctx.textAlign = 'left';
 
-  // BEFORE panel
-  ctx.fillStyle = 'rgba(239,68,68,0.12)';
-  _roundRect(ctx, beforeX, panelY, panelW, panelH, 24);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(239,68,68,0.4)'; ctx.lineWidth = 1.5;
-  _roundRect(ctx, beforeX, panelY, panelW, panelH, 24);
-  ctx.stroke();
+  // Score label
+  ctx.font = 'bold 38px sans-serif'; ctx.fillStyle = '#fff';
+  ctx.fillText('Portfolio Clarity Score', 244, scY+62);
+  ctx.font = 'bold 28px sans-serif'; ctx.fillStyle = gradeColor[grade];
+  ctx.fillText(`Grade ${grade} — ${gradeLabel[grade]}`, 244, scY+100);
+  if (totalNW > 0) {
+    ctx.font = '700 22px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText(`Portfolio: ${sym}${_fmtK(totalNW)}`, 244, scY+136);
+  }
 
-  ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = 'rgba(239,68,68,0.9)';
-  ctx.fillText('BEFORE', beforeX+24, panelY+44);
+  // ── DIVIDER ──
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.fillRect(60, 384, W-120, 1);
 
-  ctx.font = 'bold 86px sans-serif'; ctx.fillStyle = '#fff';
-  ctx.fillText(totalBefore, beforeX+24, panelY+148);
-  ctx.font = '26px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.fillText('total funds', beforeX+24, panelY+186);
+  // ── BEFORE / AFTER PANELS ──
+  const panelY = 404, panelH = 310;
+  const panelW = (W-160)/2;
+  const bX = 60, aX = bX+panelW+40;
 
-  ctx.font = 'bold 36px sans-serif'; ctx.fillStyle = '#EF4444';
-  ctx.fillText('Complexity: HIGH', beforeX+24, panelY+252);
-  ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.fillText(`${d.overlapDetails.length} overlapping categor${d.overlapDetails.length===1?'y':'ies'}`, beforeX+24, panelY+292);
-  if (idleStr) { ctx.fillText(`${idleStr} sitting idle`, beforeX+24, panelY+326); }
+  // BEFORE
+  ctx.fillStyle = 'rgba(239,68,68,0.10)';
+  _roundRect(ctx,bX,panelY,panelW,panelH,20); ctx.fill();
+  ctx.strokeStyle='rgba(239,68,68,0.35)'; ctx.lineWidth=1.5;
+  _roundRect(ctx,bX,panelY,panelW,panelH,20); ctx.stroke();
+
+  ctx.font='bold 20px sans-serif'; ctx.fillStyle='rgba(239,68,68,0.85)';
+  ctx.fillText('BEFORE',bX+22,panelY+38);
+  ctx.font='bold 96px sans-serif'; ctx.fillStyle='#fff';
+  ctx.fillText(totalBefore,bX+22,panelY+148);
+  ctx.font='700 24px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.fillText('total funds',bX+22,panelY+182);
+  ctx.font='bold 28px sans-serif'; ctx.fillStyle='#EF4444';
+  ctx.fillText('Complexity: HIGH',bX+22,panelY+230);
+  ctx.font='700 21px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.38)';
+  ctx.fillText(`${d.overlapDetails.length} overlapping categor${d.overlapDetails.length===1?'y':'ies'}`,bX+22,panelY+264);
+  if (idleStr) { ctx.fillText(`${idleStr} idle cash`,bX+22,panelY+290); }
 
   // Arrow
-  ctx.font = 'bold 54px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.textAlign = 'center';
-  ctx.fillText('→', SIZE/2, panelY + panelH/2 + 18);
-  ctx.textAlign = 'left';
+  ctx.font='bold 48px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.25)';
+  ctx.textAlign='center'; ctx.fillText('→', W/2, panelY+panelH/2+16); ctx.textAlign='left';
 
-  // AFTER panel
-  ctx.fillStyle = 'rgba(34,197,94,0.12)';
-  _roundRect(ctx, afterX, panelY, panelW, panelH, 24);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(34,197,94,0.4)'; ctx.lineWidth = 1.5;
-  _roundRect(ctx, afterX, panelY, panelW, panelH, 24);
-  ctx.stroke();
+  // AFTER
+  ctx.fillStyle='rgba(34,197,94,0.10)';
+  _roundRect(ctx,aX,panelY,panelW,panelH,20); ctx.fill();
+  ctx.strokeStyle='rgba(34,197,94,0.35)'; ctx.lineWidth=1.5;
+  _roundRect(ctx,aX,panelY,panelW,panelH,20); ctx.stroke();
 
-  ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = 'rgba(34,197,94,0.9)';
-  ctx.fillText('AFTER', afterX+24, panelY+44);
+  ctx.font='bold 20px sans-serif'; ctx.fillStyle='rgba(34,197,94,0.85)';
+  ctx.fillText('AFTER',aX+22,panelY+38);
+  ctx.font='bold 96px sans-serif'; ctx.fillStyle='#fff';
+  ctx.fillText(totalAfter,aX+22,panelY+148);
+  ctx.font='700 24px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.fillText('focused funds',aX+22,panelY+182);
+  ctx.font='bold 28px sans-serif'; ctx.fillStyle='#22C55E';
+  ctx.fillText('Complexity: LOW',aX+22,panelY+230);
+  ctx.font='700 21px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.38)';
+  ctx.fillText(`${keepCount} fund${keepCount!==1?'s':''} earning their place`,aX+22,panelY+264);
+  ctx.fillText(`${exitCount} flagged for exit`,aX+22,panelY+290);
 
-  ctx.font = 'bold 86px sans-serif'; ctx.fillStyle = '#fff';
-  ctx.fillText(totalAfter, afterX+24, panelY+148);
-  ctx.font = '26px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.fillText('focused funds', afterX+24, panelY+186);
+  // ── ACTION LINE ──
+  const actY = panelY+panelH+28;
+  const actGrad = ctx.createLinearGradient(60,actY,W-60,actY+70);
+  actGrad.addColorStop(0,'rgba(124,58,237,0.22)'); actGrad.addColorStop(1,'rgba(79,70,229,0.22)');
+  ctx.fillStyle = actGrad;
+  _roundRect(ctx,60,actY,W-120,70,16); ctx.fill();
+  ctx.strokeStyle='rgba(124,58,237,0.4)'; ctx.lineWidth=1;
+  _roundRect(ctx,60,actY,W-120,70,16); ctx.stroke();
+  ctx.font='bold 24px sans-serif'; ctx.fillStyle='#C4B5FD'; ctx.textAlign='center';
+  ctx.fillText('⚡  '+actionLine, W/2, actY+43);
+  ctx.textAlign='left';
 
-  ctx.font = 'bold 36px sans-serif'; ctx.fillStyle = '#22C55E';
-  ctx.fillText('Complexity: LOW', afterX+24, panelY+252);
-  ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.fillText(`${keepCount} funds earning their place`, afterX+24, panelY+292);
-  ctx.fillText(`${exitCount} flagged for exit`, afterX+24, panelY+326);
+  // ── INSIGHTS ROW ──
+  const insY = actY+98;
+  ctx.font='800 19px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.fillText('YOUR HIGHLIGHTS', 60, insY);
 
-  // ── Tagline ──
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillRect(60, 600, SIZE-120, 1.5);
+  const insights = [
+    topWinnerStr ? { icon:'🏆', label:'Top Keeper', val: topWinnerStr } : null,
+    idleStr      ? { icon:'💤', label:'Idle Capital', val: idleStr+' found' } : null,
+    goalsTotal>0 ? { icon:'🎯', label:'Goals Funded', val: `${goalsFunded}/${goalsTotal} on track` } : null,
+    d.overlapDetails.length>0 ? { icon:'🔁', label:'Overlaps', val:`${d.overlapDetails.length} categor${d.overlapDetails.length===1?'y':'ies'} to fix`} : { icon:'✅', label:'No Overlap', val:'Portfolio clean' },
+  ].filter(Boolean).slice(0,3);
 
-  ctx.font = 'bold 38px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-  ctx.fillText('Same money. Cleaner strategy.', SIZE/2, 668);
-  ctx.font = '26px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.45)';
-  ctx.fillText('Got clarity in 2 minutes.', SIZE/2, 710);
-
-  // ── Stat pills row ──
-  const pills = [
-    { label: 'PCS Score', val: `${d.pcs}/100` },
-    { label: 'Funds Cleaned', val: `${totalBefore}→${totalAfter}` },
-    idleStr ? { label: 'Idle Found', val: idleStr } : null,
-    { label: 'Grade', val: `${grade} — ${gradeLabel[grade]}` },
-  ].filter(Boolean);
-
-  const pillW = (SIZE-120-(pills.length-1)*16)/pills.length;
-  pills.forEach((pill, i) => {
-    const px = 60 + i*(pillW+16);
-    const py = 760;
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    _roundRect(ctx, px, py, pillW, 88, 16); ctx.fill();
-    ctx.font = 'bold 28px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-    ctx.fillText(pill.val, px+pillW/2, py+40);
-    ctx.font = '20px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.fillText(pill.label, px+pillW/2, py+68);
+  const iW = (W-120-(insights.length-1)*16)/insights.length;
+  insights.forEach((ins,i)=>{
+    const ix = 60+i*(iW+16), iy = insY+16;
+    ctx.fillStyle='rgba(255,255,255,0.06)';
+    _roundRect(ctx,ix,iy,iW,108,16); ctx.fill();
+    ctx.font='34px sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center';
+    ctx.fillText(ins.icon, ix+iW/2, iy+46);
+    ctx.font='bold 22px sans-serif'; ctx.fillStyle='#fff';
+    // Truncate val if needed
+    const valStr = ins.val.length>18 ? ins.val.substring(0,17)+'…' : ins.val;
+    ctx.fillText(valStr, ix+iW/2, iy+76);
+    ctx.font='700 17px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.fillText(ins.label, ix+iW/2, iy+98);
+    ctx.textAlign='left';
   });
-  ctx.textAlign = 'left';
 
-  // ── Footer ──
-  ctx.fillStyle = 'rgba(255,255,255,0.08)';
-  ctx.fillRect(60, 900, SIZE-120, 1);
-  ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.textAlign = 'center';
-  ctx.fillText('moneyfi.app · Your Money Command Centre', SIZE/2, 960);
-  ctx.fillText(new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}), SIZE/2, 998);
-  ctx.textAlign = 'left';
+  // ── TAGLINE ──
+  const tagY = insY + 148;
+  ctx.fillStyle='rgba(255,255,255,0.08)'; ctx.fillRect(60,tagY,W-120,1);
+  ctx.font='bold 36px sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center';
+  ctx.fillText('Same money. Smarter strategy.', W/2, tagY+54);
+  ctx.font='700 23px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.fillText('Clarity over complexity — always.', W/2, tagY+86);
+
+  // ── CTA BAND ──
+  const ctaY = tagY+114;
+  const ctaGrad = ctx.createLinearGradient(60,ctaY,W-60,ctaY+72);
+  ctaGrad.addColorStop(0,'rgba(34,197,94,0.15)'); ctaGrad.addColorStop(1,'rgba(16,185,129,0.15)');
+  ctx.fillStyle=ctaGrad;
+  _roundRect(ctx,60,ctaY,W-120,72,18); ctx.fill();
+  ctx.strokeStyle='rgba(34,197,94,0.3)'; ctx.lineWidth=1;
+  _roundRect(ctx,60,ctaY,W-120,72,18); ctx.stroke();
+  ctx.font='bold 24px sans-serif'; ctx.fillStyle='#6EE7B7'; ctx.textAlign='center';
+  ctx.fillText('Get your free Clarity Score at moneyfi.app', W/2, ctaY+28);
+  ctx.font='700 19px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.fillText('Free · No account needed · 2 minutes', W/2, ctaY+53);
+  ctx.textAlign='left';
+
+  // ── FOOTER ──
+  const ftY = ctaY+100;
+  ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.fillRect(60,ftY,W-120,1);
+  ctx.font='700 19px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.22)'; ctx.textAlign='center';
+  ctx.fillText('MoneyFi · Your Money Command Centre · moneyfi.app', W/2, ftY+34);
+  ctx.fillText('Indicative only — not financial advice', W/2, ftY+58);
+  ctx.textAlign='left';
 
   // ── Show preview ──
   const preview = document.getElementById('clarity-share-preview');
   if (preview) preview.style.display = '';
 
-  // Cache blob for sharing
   canvas.toBlob(blob => { _shareCardBlob = blob; }, 'image/png');
   showToast('🎴 Share card ready — save or send via WhatsApp!', 3000);
 }
+
+
 
 // Canvas roundRect helper (cross-browser)
 function _roundRect(ctx, x, y, w, h, r) {
@@ -11320,7 +11481,7 @@ function _renderInsuranceGap() {
         </div>
         ${healthCover>0?bar(healthRatio,healthCol):''}
         <div style="font-size:.62em;color:#6B7280;">${isUS?'$10K/person':'₹5L–10L/person'} · ${fam} family member${fam!==1?'s':''}</div>
-        ${healthGap>0&&healthCover>0?`<div style="margin-top:8px;padding:8px;background:#FEF3C7;border-radius:8px;font-size:.72em;font-weight:700;color:#92400E;">⚠️ Increase by ${sym}${Math.round(healthGap).toLocaleString()}</div>`:healthCover>0?`<div style="margin-top:8px;padding:8px;background:#ECFDF5;border-radius:8px;font-size:.72em;font-weight:700;color:#065F46;">✅ Health cover adequate</div>`:''}
+        ${healthGap>0&&healthCover>0?`<div style="margin-top:8px;padding:8px;background:#FEF3C7;border-radius:8px;font-size:.72em;font-weight:700;color:#92400E;">⚠️ Increase by ${sym}${Math.round(healthGap).toLocaleString()}</div>`:healthCover>0?`<div style="margin-top:8px;padding:8px;background:#ECFDF5;border-radius:8px;font-size:.72em;font-weight:700;color:#065F46;">✅ Health cover adequate</div>`:`<div style="margin-top:8px;padding:8px 10px;background:#FFF7ED;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;"><span style="font-size:.72em;font-weight:700;color:#92400E;">⚠️ Add your health cover to check if you're protected</span><button onclick="openFHSOnboard()" style="flex-shrink:0;background:#F97316;color:#fff;border:none;border-radius:8px;padding:5px 10px;font-family:Nunito,sans-serif;font-size:.68em;font-weight:900;cursor:pointer;">Add in Profile →</button></div>`}
       </div>
     </div>
     ${crit&&termSt==='critical'?`<div style="padding:10px;background:#FFF1F2;border-left:3px solid #DC2626;border-radius:0 8px 8px 0;font-size:.74em;font-weight:700;color:#9F1239;line-height:1.5;">🚨 <strong>Term insurance is your most urgent financial gap</strong> — more urgent than any investment optimisation.</div>`:''}
@@ -13388,14 +13549,7 @@ function onRetireRealToggle() {
   if (thumb) thumb.style.left = window._showRealValue ? '21px' : '3px';
   if (badge) badge.textContent = window._showRealValue ? 'Real ₹' : 'Nominal';
   if (wrap)  wrap.style.display = window._showRealValue ? '' : 'none';
-  const inf = _getRetireInflationRate();
-  const lbl = document.getElementById('retire-inflation-label');
-  if (lbl) {
-    const region = getFHSProfile()?.region || 'IN';
-    lbl.textContent = window._showRealValue
-      ? `Deflating at ${inf}% p.a. — values in today's purchasing power`
-      : `Inflation: ${inf}% p.a. (${region === 'US' ? 'US' : 'India'} default)`;
-  }
+  _syncRetireInflationLabel();
   renderROIRetireSummary();
   renderROIRetirementCards();
   renderROIGapAnalysis();
@@ -13405,8 +13559,7 @@ function onRetireInflationRateChange(val) {
   window._retireInflation = parseFloat(val);
   const badge = document.getElementById('retire-inf-rate-badge');
   if (badge) badge.textContent = parseFloat(val).toFixed(1) + '%';
-  const lbl = document.getElementById('retire-inflation-label');
-  if (lbl && window._showRealValue) lbl.textContent = `Deflating at ${val}% p.a. — values in today's purchasing power`;
+  _syncRetireInflationLabel();
   renderROIRetireSummary();
   renderROIRetirementCards();
   renderROIGapAnalysis();
@@ -13417,6 +13570,25 @@ function _retireRealAdj(nominalVal, years) {
   if (!window._showRealValue) return nominalVal;
   const inf = _getRetireInflationRate() / 100;
   return nominalVal / Math.pow(1 + inf, years);
+}
+
+function _syncRetireInflationLabel() {
+  const lbl    = document.getElementById('retire-inflation-label');
+  const slider = document.getElementById('retire-inflation-rate-slider');
+  const badge  = document.getElementById('retire-inf-rate-badge');
+  const region = getFHSProfile()?.region || 'IN';
+  const inf    = _getRetireInflationRate();
+  const regionLabel = region === 'US' ? 'US (CPI ~3%)' : region === 'IN' ? 'India (RBI target ~6%)' : 'Default';
+  if (slider && !window._retireInflation) {
+    // Set slider default to region rate
+    slider.value = inf;
+    if (badge) badge.textContent = inf + '%';
+  }
+  if (lbl) {
+    lbl.textContent = window._showRealValue
+      ? `Deflating at ${_getRetireInflationRate()}% p.a. — values in today's purchasing power`
+      : `Inflation: ${inf}% p.a. · ${regionLabel}`;
+  }
 }
 
 function renderROIRetireSummary() {
@@ -18759,6 +18931,377 @@ let importState = {
 };
 
 // ── Region-aware import tabs renderer ────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+// SMS IMPORT MODULE
+// parseBankSMS(text) → canonical ImportRecord[]
+// Covers: HDFC, ICICI, SBI, Axis, Kotak, IndusInd (India RBI format)
+//         Chase, Amex, Bank of America (US)
+// Zero server calls — 100% client-side regex
+// ══════════════════════════════════════════════════════════════════════
+
+let _smsImportRecords = []; // parsed records for current session
+
+// ── Sample SMS for testing ──────────────────────────────────────────
+function loadSMSSample(region) {
+  const samples = {
+    IN: [
+      'Dear Customer, Rs.4,250.00 debited from a/c **1234 on 14-Mar-26 to VPA swiggy@icici. Avl bal Rs.18,420.50 -ICICI Bank',
+      'Your a/c XX5678 is credited with Rs.25,000.00 on 14/03/2026 by NEFT-SBIN0001234. Avl Bal:INR 43420.50 -SBI',
+      'HDFC Bank: Rs.1,899.00 debited from a/c **9012 on 13-03-26. Info: Amazon. Avl Bal: Rs.52,340.00',
+      'INR 599.00 debited from Axis Bank a/c XX3456 on 13/03/2026. Merchant: Netflix. Available Balance: INR 12,450.00',
+      'Rs.15,000.00 transferred from your Kotak a/c XX7890 on 14-Mar-2026 to VPA friend@upi. Bal: Rs.8,200.00',
+      'Your SBI a/c **2345 credited Rs.8,500.00 on 12/03/26. Ref: salary. Avl Bal Rs.28,500.00',
+      'Spent Rs.2,340.00 on your HDFC Credit Card XX6789 at Zomato on 14-03-2026. Available credit: Rs.94,560.00',
+    ].join('\n'),
+    US: [
+      'Chase: A $89.99 transaction was made at Amazon.com on 03/14/2026. Acct ending 4321.',
+      'Your Bank of America account ending in 5678 was credited $2,500.00 on 03/14/26. Ref: Payroll.',
+      'Amex Alert: $156.47 charge at Whole Foods Market on Mar 14, 2026 on card ending 9012.',
+      'Chase: $45.00 withdrawal from your checking account ending 4321 on 03/13/2026 at Shell Station.',
+      'BofA: $1,200.00 was transferred to your savings account ending 8765 on 03/14/2026.',
+    ].join('\n'),
+  };
+  const el = document.getElementById('isms-paste-area');
+  if (el) el.value = (el.value ? el.value + '\n' : '') + (samples[region] || '');
+}
+
+// ── Core parser ─────────────────────────────────────────────────────
+function parseBankSMS(rawText) {
+  if (!rawText || !rawText.trim()) return [];
+  const records = [];
+
+  // Split into individual messages — blank line OR line starting with a bank name / date pattern
+  const lines = rawText.split(/\n/).map(l => l.trim()).filter(Boolean);
+  // Group: accumulate lines until we hit a new SMS (heuristic: line with amount pattern starts new msg)
+  const messages = [];
+  let cur = '';
+  for (const line of lines) {
+    // A line that looks like a fresh SMS: contains currency amount AND (debit/credit/spent/charged)
+    const looksNew = /(?:rs\.?|inr|usd|\$|₹)\s*[\d,]+/i.test(line) ||
+                     /(?:debited|credited|charged|spent|withdrawn|transferred|transaction)/i.test(line);
+    if (cur && looksNew && cur.length > 20) {
+      messages.push(cur.trim());
+      cur = line;
+    } else {
+      cur = cur ? cur + ' ' + line : line;
+    }
+  }
+  if (cur.trim()) messages.push(cur.trim());
+
+  for (const msg of messages) {
+    const rec = _parseSingleSMS(msg);
+    if (rec) records.push(rec);
+  }
+  return records;
+}
+
+function _parseSingleSMS(msg) {
+  if (!msg || msg.length < 10) return null;
+
+  // ── Amount ──
+  // Matches: Rs.4,250.00 / Rs 4250 / INR 4,250 / $89.99 / USD 100
+  const amtRx = /(?:rs\.?\s*|inr\s*|usd\s*|\$\s*|₹\s*)([\d,]+(?:\.\d{1,2})?)/i;
+  const amtMatch = msg.match(amtRx);
+  if (!amtMatch) return null;
+  const amount = parseFloat(amtMatch[1].replace(/,/g, ''));
+  if (!amount || amount <= 0) return null;
+
+  // ── Currency ──
+  const isUSD = /\$|usd|USD|\bchase\b|\bamex\b|\bbank of america\b|\bbofA\b/i.test(msg);
+  const currency = isUSD ? 'USD' : 'INR';
+
+  // ── Type (debit / credit) ──
+  const debitRx  = /\b(debit(?:ed)?|spent|withdraw[na]?l?|charged?|payment\s+of|paid|transfer(?:red)?\s+(?:from|to\s+(?!your)))\b/i;
+  const creditRx = /\b(credit(?:ed)?|received|deposit(?:ed)?|refund(?:ed)?|transfer(?:red)?\s+to\s+your|salary|payroll|neft\s+credit|imps\s+credit)\b/i;
+  const isDebit  = debitRx.test(msg);
+  const isCredit = creditRx.test(msg);
+  // Default to debit if ambiguous (most alerts are spend alerts)
+  const txType = isCredit && !isDebit ? 'income' : 'expense';
+
+  // ── Date ──
+  let date = new Date();
+  const datePatterns = [
+    // 14-Mar-26, 14-Mar-2026
+    { rx: /(\d{1,2})[-\/\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\/\s](\d{2,4})/i,
+      parse: m => new Date(`${m[2]} ${m[1]} ${m[3].length===2?'20'+m[3]:m[3]}`) },
+    // 14/03/2026 or 14-03-2026
+    { rx: /(\d{2})[-\/](\d{2})[-\/](\d{4})/,
+      parse: m => new Date(`${m[3]}-${m[2]}-${m[1]}`) },
+    // 03/14/2026 (US format — month first)
+    { rx: /(\d{2})\/(\d{2})\/(\d{4})/,
+      parse: m => {
+        // Heuristic: if first group > 12, it's DD/MM; else assume MM/DD for US
+        const d1 = parseInt(m[1]), d2 = parseInt(m[2]);
+        return d1 > 12 ? new Date(`${m[3]}-${m[2]}-${m[1]}`) : new Date(`${m[3]}-${m[1]}-${m[2]}`);
+      }},
+    // Mar 14, 2026
+    { rx: /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s+(\d{4})/i,
+      parse: m => new Date(`${m[1]} ${m[2]} ${m[3]}`) },
+  ];
+  for (const dp of datePatterns) {
+    const m = msg.match(dp.rx);
+    if (m) { const d = dp.parse(m); if (!isNaN(d)) { date = d; break; } }
+  }
+  const dateStr = date.toISOString().substring(0, 10);
+
+  // ── Bank name ──
+  const bankMap = [
+    [/\bhdfc\b/i,       'HDFC Bank'],
+    [/\bicici\b/i,      'ICICI Bank'],
+    [/\bsbi\b|\bstate bank\b/i, 'SBI'],
+    [/\baxis\s*bank\b/i,'Axis Bank'],
+    [/\bkotak\b/i,      'Kotak Bank'],
+    [/\bindusind\b/i,   'IndusInd Bank'],
+    [/\byes\s*bank\b/i, 'Yes Bank'],
+    [/\bchase\b/i,      'Chase'],
+    [/\bamex\b|\bamerican express\b/i, 'Amex'],
+    [/\bbank of america\b|\bbofA\b/i,  'Bank of America'],
+    [/\bcitibank\b|\bciti\b/i,         'Citibank'],
+  ];
+  let bank = 'Bank';
+  for (const [rx, name] of bankMap) { if (rx.test(msg)) { bank = name; break; } }
+
+  // ── Account last-4 ──
+  const acctMatch = msg.match(/(?:a\/c|acc(?:ount)?|card|acct)[\s#*Xx]*(?:[Xx*]{2,4})?(\d{4})\b/i);
+  const last4 = acctMatch ? acctMatch[1] : null;
+
+  // ── Merchant / payee ──
+  // Priority: "at <merchant>", "to VPA <upi>", "Info: <merchant>", "Merchant: <merchant>"
+  let merchant = '';
+  const merchantPatterns = [
+    /\bat\s+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,30}?)(?:\s+on|\s+for|\.|,|$)/i,
+    /\bmerchant[:\s]+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,25}?)(?:\.|,|$)/i,
+    /\binfo[:\s]+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,25}?)(?:\.|,|\s+avl|$)/i,
+    /\bto\s+(?:vpa\s+)?([a-z0-9._%+\-]{3,30}@[a-z]{2,15})\b/i, // UPI handle
+    /\bpayee[:\s]+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,25}?)(?:\.|,|$)/i,
+    /\bby\s+(?:neft|imps|upi)[-\s]?([A-Za-z0-9]{4,20})\b/i,
+    /\bref(?:erence)?[:\s#]+([A-Za-z0-9 ]{3,20}?)(?:\.|,|\s+avl|$)/i,
+  ];
+  for (const rx of merchantPatterns) {
+    const m = msg.match(rx);
+    if (m && m[1]) { merchant = m[1].trim(); break; }
+  }
+  if (!merchant) {
+    // Fallback: extract from "transferred to <name>" or "from <name>"
+    const fallback = msg.match(/\b(?:to|from)\s+([A-Z][A-Za-z ]{2,20}?)(?:\s+a\/c|\s+account|\.|,|$)/);
+    if (fallback) merchant = fallback[1].trim();
+  }
+
+  // ── Auto-category ──
+  const catMap = [
+    [/swiggy|zomato|domino|pizza|food|restaurant|cafe|starbucks|mcdonald|kfc|subway/i, 'Food & Dining'],
+    [/amazon|flipkart|myntra|ajio|meesho|nykaa|shopping|market|store|mall/i,           'Shopping'],
+    [/uber|ola|rapido|taxi|cab|metro|bus|train|irctc|makemytrip|goibibo|airlines?/i,   'Transport'],
+    [/netflix|spotify|hotstar|prime|disney|youtube|zee5|subscription/i,                 'Subscriptions'],
+    [/hospital|pharma|medical|apollo|fortis|dr\.|clinic|health/i,                       'Healthcare'],
+    [/electricity|water|gas|utility|bsnl|jio|airtel|bill|recharge/i,                    'Utilities'],
+    [/salary|payroll|credited.*salary|sal\b/i,                                           'Salary'],
+    [/neft|imps|upi|transfer/i,                                                          'Transfer'],
+    [/emi|loan|mortgage|hdfc.*emi|icici.*emi/i,                                          'Loan/EMI'],
+    [/atm|cash|withdraw/i,                                                               'Cash Withdrawal'],
+    [/invest|mutual fund|mf|zerodha|groww|coin|sip/i,                                   'Investment'],
+    [/rent|housing|pg\b|flat/i,                                                          'Rent/Housing'],
+  ];
+  let category = txType === 'income' ? 'Other Income' : 'Other Expense';
+  for (const [rx, cat] of catMap) {
+    if (rx.test(msg) || (merchant && rx.test(merchant))) { category = cat; break; }
+  }
+  // Income overrides
+  if (txType === 'income' && /salary|payroll/i.test(msg)) category = 'Salary';
+  if (txType === 'income' && /refund/i.test(msg)) category = 'Refund';
+
+  const description = merchant || (last4 ? `${bank} ••${last4}` : bank);
+
+  return {
+    date: dateStr,
+    description,
+    merchant,
+    amount,
+    currency,
+    type: txType,
+    category,
+    bank,
+    last4,
+    _selected: true,      // default: selected for import
+    _raw: msg.substring(0, 120),
+  };
+}
+
+// ── UI functions ────────────────────────────────────────────────────
+function resetSMSImport() {
+  _smsImportRecords = [];
+  document.querySelectorAll('#isec-sms .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('isms-step1').classList.add('active');
+  const ta = document.getElementById('isms-paste-area');
+  if (ta) ta.value = '';
+}
+
+function runSMSParse() {
+  const raw = document.getElementById('isms-paste-area')?.value || '';
+  if (!raw.trim()) { showToast('⚠️ Paste some SMS messages first', 2000); return; }
+
+  _smsImportRecords = parseBankSMS(raw);
+  const parsed    = _smsImportRecords.length;
+  const rawLines  = raw.split('\n').filter(l => l.trim()).length;
+  const skipped   = Math.max(0, rawLines - parsed);
+
+  if (parsed === 0) {
+    showToast('⚠️ No transactions found — try the sample SMS to test', 3000);
+    return;
+  }
+
+  _renderSMSReviewTable();
+
+  // Stats bar
+  const debits  = _smsImportRecords.filter(r => r.type === 'expense');
+  const credits = _smsImportRecords.filter(r => r.type === 'income');
+  const sym     = currentCurrency?.symbol || '₹';
+  const totalD  = debits.reduce((s,r)  => s + (r.currency === currentCurrency?.code ? r.amount : r.amount), 0);
+  const totalC  = credits.reduce((s,r) => s + r.amount, 0);
+  const statsEl = document.getElementById('isms-stats-bar');
+  if (statsEl) {
+    statsEl.innerHTML = [
+      `<span style="background:#ECFDF5;color:#065F46;border-radius:8px;padding:4px 10px;font-size:.72em;font-weight:800;">✅ ${parsed} parsed</span>`,
+      debits.length  ? `<span style="background:#FEF2F2;color:#991B1B;border-radius:8px;padding:4px 10px;font-size:.72em;font-weight:800;">💸 ${debits.length} debits</span>` : '',
+      credits.length ? `<span style="background:#EFF6FF;color:#1E40AF;border-radius:8px;padding:4px 10px;font-size:.72em;font-weight:800;">💰 ${credits.length} credits</span>` : '',
+      skipped        ? `<span style="background:#FFFBEB;color:#92400E;border-radius:8px;padding:4px 10px;font-size:.72em;font-weight:800;">⚠️ ${skipped} skipped</span>` : '',
+    ].filter(Boolean).join('');
+  }
+
+  const skippedWrap = document.getElementById('isms-skipped-wrap');
+  const skippedMsg  = document.getElementById('isms-skipped-msg');
+  if (skippedWrap && skippedMsg) {
+    if (skipped > 0) {
+      skippedMsg.textContent = `${skipped} line${skipped>1?'s':''} couldn\'t be parsed — they may be OTP messages, promotional SMS, or unsupported formats.`;
+      skippedWrap.style.display = '';
+    } else {
+      skippedWrap.style.display = 'none';
+    }
+  }
+
+  document.getElementById('isms-review-title').textContent = `${parsed} Transaction${parsed!==1?'s':''} Found`;
+  _updateSMSConfirmBtn();
+
+  document.querySelectorAll('#isec-sms .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('isms-step2').classList.add('active');
+}
+
+function _renderSMSReviewTable() {
+  const tbl = document.getElementById('isms-review-table');
+  if (!tbl) return;
+  const sym = currentCurrency?.symbol || '₹';
+
+  tbl.innerHTML = `
+    <thead>
+      <tr>
+        <th style="width:32px;"></th>
+        <th>Date</th>
+        <th>Merchant / Description</th>
+        <th>Category</th>
+        <th style="text-align:right;">Amount</th>
+        <th>Type</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${_smsImportRecords.map((r, i) => `
+        <tr style="opacity:${r._selected?1:0.4};">
+          <td><input type="checkbox" ${r._selected?'checked':''} onchange="_smsTxToggle(${i},this.checked)" style="width:16px;height:16px;cursor:pointer;"></td>
+          <td style="white-space:nowrap;">${r.date}</td>
+          <td>
+            <div style="font-weight:800;font-size:0.82em;color:#1E2A6E;">${r.description||'—'}</div>
+            <div style="font-size:0.65em;color:#9CA3AF;">${r.bank}${r.last4?' ••'+r.last4:''}</div>
+          </td>
+          <td>
+            <select onchange="_smsCatChange(${i},this.value)"
+              style="border:1px solid #E5E7EB;border-radius:6px;padding:3px 6px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:700;max-width:120px;">
+              ${_getSMSCategoryOptions(r.category)}
+            </select>
+          </td>
+          <td style="text-align:right;font-weight:900;color:${r.type==='expense'?'#DC2626':'#059669'};">
+            ${r.type==='expense'?'−':'+'}${r.currency==='USD'?'$':'₹'}${r.amount.toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2})}
+          </td>
+          <td>
+            <select onchange="_smsTxTypeChange(${i},this.value)"
+              style="border:1px solid #E5E7EB;border-radius:6px;padding:3px 6px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:700;">
+              <option value="expense" ${r.type==='expense'?'selected':''}>💸 Expense</option>
+              <option value="income"  ${r.type==='income' ?'selected':''}>💰 Income</option>
+            </select>
+          </td>
+        </tr>
+      `).join('')}
+    </tbody>`;
+}
+
+function _getSMSCategoryOptions(selected) {
+  const cats = [
+    'Food & Dining','Shopping','Transport','Subscriptions','Healthcare',
+    'Utilities','Salary','Transfer','Loan/EMI','Cash Withdrawal',
+    'Investment','Rent/Housing','Refund','Other Expense','Other Income',
+  ];
+  return cats.map(c => `<option value="${c}" ${c===selected?'selected':''}>${c}</option>`).join('');
+}
+
+function _smsTxToggle(i, checked) {
+  if (_smsImportRecords[i]) _smsImportRecords[i]._selected = checked;
+  const rows = document.querySelectorAll('#isms-review-table tbody tr');
+  if (rows[i]) rows[i].style.opacity = checked ? 1 : 0.4;
+  _updateSMSConfirmBtn();
+}
+
+function _smsCatChange(i, val) {
+  if (_smsImportRecords[i]) _smsImportRecords[i].category = val;
+}
+
+function _smsTxTypeChange(i, val) {
+  if (_smsImportRecords[i]) _smsImportRecords[i].type = val;
+}
+
+function smsBulkSelect(state) {
+  _smsImportRecords.forEach((r,i) => { r._selected = state; });
+  _renderSMSReviewTable();
+  _updateSMSConfirmBtn();
+}
+
+function _updateSMSConfirmBtn() {
+  const count = _smsImportRecords.filter(r => r._selected).length;
+  const btn = document.getElementById('isms-confirm-btn');
+  if (btn) btn.textContent = `✅ Import ${count} Transaction${count!==1?'s':''}`;
+}
+
+function confirmSMSImport() {
+  const selected = _smsImportRecords.filter(r => r._selected);
+  if (!selected.length) { showToast('⚠️ Select at least one transaction', 2000); return; }
+
+  let imported = 0;
+  const typeMap = { expense: 'expenses', income: 'income', investment: 'investments' };
+
+  selected.forEach(r => {
+    const month = r.date.substring(0, 7); // YYYY-MM
+    ensureMonth(month);
+    const listKey = typeMap[r.type] || 'expenses';
+    const entry = {
+      date:        r.date,
+      category:    r.category,
+      amount:      r.amount,
+      description: r.description || r.bank,
+      currency:    r.currency || currentCurrency?.code || 'INR',
+      _source:     'sms',
+    };
+    data[month][listKey].push(entry);
+    imported++;
+  });
+
+  save();
+  renderHome();
+
+  const months = new Set(selected.map(r => r.date.substring(0,7))).size;
+  document.getElementById('isms-done-title').textContent = `Import Complete! 🎉`;
+  document.getElementById('isms-done-sub').textContent   = `${imported} transaction${imported!==1?'s':''} imported across ${months} month${months!==1?'s':''}`;
+  document.querySelectorAll('#isec-sms .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('isms-step3').classList.add('active');
+  showToast(`✅ ${imported} SMS transactions imported!`, 3000);
+}
+
 function renderImportTabs() {
   const container = document.getElementById('import-tabs-container');
   if (!container) return;
@@ -18801,6 +19344,7 @@ function renderImportTabs() {
     { key:'metals',     label:'🥇 Metals',       always: true },
     { key:'realestate', label:'🏡 Real Estate',  always: true },
     { key:'universal',   label:'🏦 Bank/CSV',       always: true },
+    { key:'sms',         label:'📱 SMS',             always: true },
   ];
 
   container.innerHTML = tabs
@@ -18831,6 +19375,7 @@ function setImportTab(tab, el) {
   if (tab === 'fidelity')  resetNamedParser('fidelity');
   if (tab === 'schwab')    resetNamedParser('schwab');
   if (tab === 'robinhood') resetNamedParser('robinhood');
+  if (tab === 'sms')       resetSMSImport();
 }
 
 function handleImportDrop(event, type) {
@@ -24260,6 +24805,7 @@ function openFHSOnboard() {
     if (document.getElementById('fhsob-disability')) document.getElementById('fhsob-disability').value = p.disabilityCoverPct ?? 60;
     if (document.getElementById('fhsob-match')) document.getElementById('fhsob-match').value = p.employerMatchPct || 0;
     document.getElementById('fhsob-insurance').value = p.insuranceCover ?? '';
+    if (document.getElementById('fhsob-health-cover')) document.getElementById('fhsob-health-cover').value = p.healthCover ?? '';
     document.getElementById('fhsob-compensation').value = p.annualCompensation || '';
     document.getElementById('fhsob-married').value = p.maritalStatus || (p.spouseIncome > 0 ? 'married' : 'single');
     if (document.getElementById('fhsob-employment-type')) document.getElementById('fhsob-employment-type').value = p.employmentType || 'w2';
@@ -24648,6 +25194,7 @@ function saveFHSProfile() {
     pensionAge: (() => { const v = document.getElementById('fhsob-pension-age')?.value; return v !== '' && v !== undefined ? parseInt(v) : (existing?.pensionAge ?? null); })(),
     dependentMonthly: (() => { const v = document.getElementById('fhsob-dep-amount')?.value; return v !== '' ? parseFloat(v) || 0 : (existing?.dependentMonthly || 0); })(),
     dependentYears: (() => { const v = document.getElementById('fhsob-dep-years')?.value; return v !== '' ? parseInt(v) || 0 : (existing?.dependentYears || 0); })(),
+    healthCover: (() => { const v = document.getElementById('fhsob-health-cover')?.value; return v !== '' && v !== undefined ? parseFloat(v) || 0 : (existing?.healthCover ?? 0); })(),
     accountOverrides: existing?.accountOverrides || {},
     riskProfile:      existing?.riskProfile      ?? null,
     behaviourProfile: existing?.behaviourProfile ?? null,
