@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.26.4 -->
+<!-- MoneyFi v3.26.5 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -12870,26 +12870,63 @@ function renderRebalancingAdvisor() {
 
   // ── Source note ────────────────────────────────────────────────────
   const sourceNote = age
-    ? `Suggested target for age ${age} based on SEBI moderate allocation model`
-    : 'Set your age in FHS Setup for personalised target suggestion';
+    ? `Age-${age} suggestion (SEBI moderate model) — adjust sliders to your comfort`
+    : 'Set your age in FHS Setup for a personalised target suggestion';
+
+  // Build FHS retirement context for the explanation card
+  const retireFHSNote = (() => {
+    const inc = (profile?.annualCompensation||0) + (profile?.spouseIncome||0);
+    const retMult = age < 35 ? 1 : age < 40 ? 2 : age < 45 ? 3 : age < 50 ? 4 : age < 55 ? 5 : 6;
+    const retTarget = inc * retMult;
+    const retActual = byAC.retirement;
+    if (!inc || !retActual) return '';
+    const gap = retTarget - retActual;
+    const pct = Math.round(retActual / retTarget * 100);
+    return gap > 0
+      ? `Your retirement corpus is ${sym}${Math.round(retActual).toLocaleString()} — `
+        + `${pct}% of the ${retMult}× income milestone for age ${age||'?'}. `
+        + `FHS tracks this separately as a retirement readiness score.`
+      : `Your retirement corpus meets the ${retMult}× income milestone for age ${age||'?'}. ✅`;
+  })();
 
   el.innerHTML = `
+    <!-- What does this screen do? -->
+    <div style="background:#F0F4FF;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
+      <div style="font-size:.75em;font-weight:900;color:#1E2A6E;margin-bottom:4px;">📖 What is Rebalancing?</div>
+      <div style="font-size:.72em;color:#374151;line-height:1.6;">
+        Rebalancing ensures your <strong>mix of asset classes</strong> (equity, debt, gold etc.)
+        matches your target. Over time markets move — equity may grow to 82% when your target
+        is 65%. Rebalancing brings it back. It is about <strong>allocation discipline</strong>,
+        not about whether you have enough saved.
+      </div>
+      ${retireFHSNote ? `<div style="margin-top:8px;padding:7px 10px;background:white;
+        border-radius:8px;font-size:.7em;color:#4B5563;font-weight:600;line-height:1.5;">
+        🏛️ <strong>vs FHS Retirement Score:</strong> ${retireFHSNote}
+        Those are two different questions — this screen only answers the mix question.
+      </div>` : ''}
+    </div>
+
     <!-- Current vs Target summary strip -->
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:14px;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px;">
       ${Object.keys(assetMeta).map(k => {
         const m = assetMeta[k];
         const cPct = cur[k]||0;
         const tPct = tgt[k]||0;
-        const col = Math.abs(cPct-tPct)<5?'#059669':Math.abs(cPct-tPct)<15?'#D97706':'#DC2626';
-        return `<div style="text-align:center;background:#F8FAFF;border-radius:8px;padding:6px 2px;">
-          <div style="font-size:.8em;">${m.icon}</div>
-          <div style="font-size:.7em;font-weight:900;color:#1E2A6E;">${cPct}%</div>
-          <div style="font-size:.55em;color:${col};font-weight:800;">${cPct===tPct?'✓':cPct>tPct?'▲':'▼'} ${tPct}%</div>
+        const gap  = cPct - tPct;
+        const col  = Math.abs(gap)<5?'#059669':Math.abs(gap)<15?'#D97706':'#DC2626';
+        const status = Math.abs(gap)<5 ? '✅ On target'
+          : gap > 0 ? `▲ ${gap}% over` : `▼ ${Math.abs(gap)}% under`;
+        return `<div style="background:#F8FAFF;border-radius:10px;padding:8px 6px;text-align:center;">
+          <div style="font-size:.9em;margin-bottom:2px;">${m.icon}</div>
+          <div style="font-size:.68em;font-weight:900;color:#374151;margin-bottom:1px;">${m.label}</div>
+          <div style="font-size:.82em;font-weight:900;color:#1E2A6E;">${cPct}%</div>
+          <div style="font-size:.62em;font-weight:800;color:#9CA3AF;">target ${tPct}%</div>
+          <div style="font-size:.6em;font-weight:800;color:${col};margin-top:2px;">${status}</div>
         </div>`;
       }).join('')}
     </div>
-    <div style="font-size:.6em;color:#6B7280;text-align:center;margin-bottom:12px;">
-      Current % · ${sourceNote}
+    <div style="font-size:.62em;color:#6B7280;text-align:center;margin-bottom:12px;">
+      ${sourceNote}
     </div>
 
     <!-- Sliders -->
@@ -17021,7 +17058,7 @@ function renderNWDonut(nw) {
           var geo = e[0]; var val = e[1];
           var geoPct = s.val > 0 ? (val / s.val * 100).toFixed(0) : '0';
           var geoMeta = GEOGRAPHY_META[geo] || { flag: '🌐', label: geo };
-          return '<span style="font-size:0.65em;font-weight:700;color:var(--text-light);">' + geoMeta.flag + geoPct + '%</span>';
+          return '<span style="font-size:0.65em;font-weight:700;color:var(--text-light);">' + geoMeta.flag + ' ' + geoMeta.label + ' ' + geoPct + '%</span>';
         }).join('<span style="color:#DDD;font-size:0.65em;"> · </span>');
       }
       return '<div style="margin-bottom:9px;">'
