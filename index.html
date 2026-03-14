@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.25.1 -->
+<!-- MoneyFi v3.25.2 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -16004,42 +16004,7 @@ function renderNetWorth() {
   if (snaps.length >= 1) {
     chartCard.style.display = '';
     if (snapCountEl) snapCountEl.textContent = snaps.length + ' Snapshot' + (snaps.length !== 1 ? 's' : '');
-    // Trend line chart
-    const canvasId = 'nw-trend-chart';
-    if (charts[canvasId]) { charts[canvasId].destroy(); delete charts[canvasId]; }
-    const ctx = document.getElementById(canvasId);
-    if (ctx && snaps.length >= 2) {
-      charts[canvasId] = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: snaps.map(s => {
-            const d = new Date(s.date+'T00:00:00');
-            return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-          }),
-          datasets: [{
-            data: snaps.map(s => snapValue(s)),
-            borderColor: '#C8900A',
-            backgroundColor: 'rgba(245,200,66,0.12)',
-            borderWidth: 2.5,
-            pointRadius: 5,
-            pointBackgroundColor: '#F5C842',
-            pointBorderColor: 'white',
-            pointBorderWidth: 2,
-            fill: true,
-            tension: 0.35
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt(c.raw) } } },
-          scales: {
-            x: { grid: { display: false }, ticks: { font: { size: 9, family:'Nunito', weight:'700' }, color:'#9AA0B2' } },
-            y: { display: false }
-          }
-        }
-      });
-    }
-    renderMonthlyIntelligence();
+        renderMonthlyIntelligence();
   } else {
     const intCard = document.getElementById('nw-intelligence-card');
     if (intCard) intCard.style.display = 'none';
@@ -16666,8 +16631,10 @@ function renderMonthlyIntelligence() {
 
   const chartEl = document.getElementById('nw-trend-chart');
   if (chartEl && typeof Chart !== 'undefined') {
+    // Destroy via both tracking methods to handle all cases
     const existing = Chart.getChart(chartEl);
     if (existing) existing.destroy();
+    if (charts && charts['nw-trend-chart']) { try { charts['nw-trend-chart'].destroy(); } catch(e) {} delete charts['nw-trend-chart']; }
     const labels = snaps.map(s => _snapMonthLabel(s, 'axis'));
     const values = snaps.map(s => snapValue(s));
     const minVal = Math.min(...values);
