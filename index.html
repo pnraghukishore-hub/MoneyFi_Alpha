@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.26.5 -->
+<!-- MoneyFi v3.26.6 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -3093,6 +3093,36 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     <!-- ══ RETIRE TAB ══ -->
     <div id="roi-panel-retire" style="display:none;">
 
+      <!-- Inflation toggle -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:#F0FDF4;border-radius:12px;padding:9px 12px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:.75em;font-weight:900;color:#065F46;">💹 Show in Today's Money</div>
+          <div style="font-size:.65em;font-weight:700;color:#6B7280;" id="retire-inflation-label">Inflation: 6% p.a. (India default)</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="position:relative;display:inline-block;width:42px;height:24px;">
+            <input type="checkbox" id="retire-real-toggle" onchange="onRetireRealToggle()"
+              style="opacity:0;width:0;height:0;position:absolute;">
+            <span id="retire-real-track" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#D1D5DB;border-radius:24px;transition:.3s;">
+              <span id="retire-real-thumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;"></span>
+            </span>
+          </label>
+          <span style="font-size:.65em;font-weight:800;color:#374151;" id="retire-real-badge">Nominal</span>
+        </div>
+      </div>
+
+      <!-- Inflation rate slider (visible only when toggle is on) -->
+      <div id="retire-inflation-slider-wrap" style="display:none;background:#ECFDF5;border-radius:10px;padding:9px 12px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="font-size:.72em;font-weight:800;color:#065F46;">Expected Inflation Rate</div>
+          <div style="font-size:.72em;font-weight:900;color:#059669;" id="retire-inf-rate-badge">6%</div>
+        </div>
+        <input type="range" id="retire-inflation-rate-slider" min="2" max="12" step="0.5" value="6"
+          class="lab-slider"
+          oninput="onRetireInflationRateChange(this.value)">
+        <div class="lab-slider-labels"><span>2% (Low)</span><span>12% (High)</span></div>
+      </div>
+
       <!-- Corpus Summary -->
       <div id="roi-retire-summary" style="margin-bottom:12px;"></div>
 
@@ -3139,6 +3169,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <button class="lab-scenario-btn" onclick="setSimScenario('lumpsum')" id="sim-btn-lumpsum">💰 Lump Sum</button>
         <button class="lab-scenario-btn" onclick="setSimScenario('fire')"   id="sim-btn-fire">🔥 FIRE</button>
         <button class="lab-scenario-btn" onclick="setSimScenario('crash')" id="sim-btn-crash">💥 Crash</button>
+        <button class="lab-scenario-btn" onclick="setSimScenario('loan')"  id="sim-btn-loan">💳 Loan</button>
       </div>
 
       <!-- Simulator inputs -->
@@ -11387,7 +11418,7 @@ function onSimRateChange(val) {
 
 function setSimScenario(scenario) {
   _roiSimScenario = scenario;
-  ['goal','boost','lumpsum','fire','crash'].forEach(s => {
+  ['goal','boost','lumpsum','fire','crash','loan'].forEach(s => {
     const btn = document.getElementById('sim-btn-'+s);
     if (btn) btn.classList.toggle('lab-scenario-active', s === scenario);
   });
@@ -13336,6 +13367,58 @@ function _buildSIPHealthCard(active, paused, totalSIP) {
 }
 
 // ── RETIRE TAB ──────────────────────────────────────────────────────
+// ── INFLATION-ADJUSTED RETIRE TOGGLE ─────────────────────────────────────
+window._showRealValue   = false;   // session-only, not persisted
+window._retireInflation = null;    // null = auto from region
+
+function _getRetireInflationRate() {
+  if (window._retireInflation !== null) return window._retireInflation;
+  const region = getFHSProfile()?.region || 'IN';
+  return region === 'US' ? 3 : 6;
+}
+
+function onRetireRealToggle() {
+  const cb = document.getElementById('retire-real-toggle');
+  window._showRealValue = cb ? cb.checked : false;
+  const track = document.getElementById('retire-real-track');
+  const thumb = document.getElementById('retire-real-thumb');
+  const badge = document.getElementById('retire-real-badge');
+  const wrap  = document.getElementById('retire-inflation-slider-wrap');
+  if (track) track.style.background = window._showRealValue ? '#059669' : '#D1D5DB';
+  if (thumb) thumb.style.left = window._showRealValue ? '21px' : '3px';
+  if (badge) badge.textContent = window._showRealValue ? 'Real ₹' : 'Nominal';
+  if (wrap)  wrap.style.display = window._showRealValue ? '' : 'none';
+  const inf = _getRetireInflationRate();
+  const lbl = document.getElementById('retire-inflation-label');
+  if (lbl) {
+    const region = getFHSProfile()?.region || 'IN';
+    lbl.textContent = window._showRealValue
+      ? `Deflating at ${inf}% p.a. — values in today's purchasing power`
+      : `Inflation: ${inf}% p.a. (${region === 'US' ? 'US' : 'India'} default)`;
+  }
+  renderROIRetireSummary();
+  renderROIRetirementCards();
+  renderROIGapAnalysis();
+}
+
+function onRetireInflationRateChange(val) {
+  window._retireInflation = parseFloat(val);
+  const badge = document.getElementById('retire-inf-rate-badge');
+  if (badge) badge.textContent = parseFloat(val).toFixed(1) + '%';
+  const lbl = document.getElementById('retire-inflation-label');
+  if (lbl && window._showRealValue) lbl.textContent = `Deflating at ${val}% p.a. — values in today's purchasing power`;
+  renderROIRetireSummary();
+  renderROIRetirementCards();
+  renderROIGapAnalysis();
+}
+
+// Helper: apply real-value transform if toggle is on
+function _retireRealAdj(nominalVal, years) {
+  if (!window._showRealValue) return nominalVal;
+  const inf = _getRetireInflationRate() / 100;
+  return nominalVal / Math.pow(1 + inf, years);
+}
+
 function renderROIRetireSummary() {
   const sym = currentCurrency?.symbol || '₹';
   const el  = document.getElementById('roi-retire-summary');
@@ -13350,13 +13433,15 @@ function renderROIRetireSummary() {
   if (!totalRet) { el.innerHTML = ''; return; }
   const r = _roiRetireRate;
   const projected = totalRet * Math.pow(1 + r/100, yearsLeft);
+  const projDisplay = _retireRealAdj(projected, yearsLeft);
   const totalInvAll = (data._nwAccounts||[]).reduce((s,a) => s + (nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0)), 0);
   const retirePct = totalInvAll > 0 ? (totalRet / totalInvAll * 100) : 0;
+  const realNote = window._showRealValue ? ` <span style="font-size:.75em;color:#059669;">(today's ₹)</span>` : '';
 
   el.innerHTML = `<div class="lab-retire-hero">
     <div class="lab-retire-eyebrow">RETIREMENT CORPUS TODAY</div>
     <div class="lab-retire-corpus">${sym}${Math.round(totalRet).toLocaleString()}</div>
-    <div class="lab-retire-proj">→ Grows to <b>${sym}${Math.round(projected).toLocaleString()}</b> by age ${retAge} at ${r}% p.a.</div>
+    <div class="lab-retire-proj">→ Grows to <b>${sym}${Math.round(projDisplay).toLocaleString()}</b>${realNote} by age ${retAge} at ${r}% p.a.</div>
     <div class="lab-retire-sub">${retAccs.length} retirement account${retAccs.length!==1?'s':''} · ${yearsLeft}y to retirement · ${retirePct.toFixed(0)}% of total portfolio</div>
   </div>`;
 }
@@ -13387,8 +13472,12 @@ function renderROIGapAnalysis() {
   const annualExp  = monthlyExp * 12;
   const corpusNeeded = annualExp > 0 ? annualExp * 25 : 0;
   const projected  = totalRet * Math.pow(1 + r/100, yearsLeft);
+  const projDisplay = _retireRealAdj(projected, yearsLeft);
+  const corpusNeededDisplay = window._showRealValue && corpusNeeded > 0
+    ? _retireRealAdj(corpusNeeded, yearsLeft) : corpusNeeded;
   const gap = corpusNeeded > 0 ? corpusNeeded - projected : 0;
   const onTrack = gap <= 0;
+  const realSuffix = window._showRealValue ? " (today's ₹)" : '';
 
   // Monthly SIP needed to fill gap
   let sipNeeded = 0;
@@ -13409,12 +13498,12 @@ function renderROIGapAnalysis() {
   gapBody.innerHTML = `
     <div class="lab-gap-strip">
       <div class="lab-gap-box">
-        <div class="lab-gap-box-label">PROJECTED AT ${retAge}</div>
-        <div class="lab-gap-box-val" style="color:#1E2A6E;">${sym}${_fmtK(projected)}</div>
+        <div class="lab-gap-box-label">PROJECTED AT ${retAge}${realSuffix}</div>
+        <div class="lab-gap-box-val" style="color:#1E2A6E;">${sym}${_fmtK(projDisplay)}</div>
       </div>
       <div class="lab-gap-box">
-        <div class="lab-gap-box-label">${corpusNeeded > 0 ? 'NEEDED (25× RULE)' : 'TARGET (MANUAL)'}</div>
-        <div class="lab-gap-box-val" style="color:${onTrack?'#059669':'#D97706'};">${corpusNeeded > 0 ? sym+_fmtK(corpusNeeded) : 'Add expenses'}</div>
+        <div class="lab-gap-box-label">${corpusNeeded > 0 ? 'NEEDED (25× RULE)'+realSuffix : 'TARGET (MANUAL)'}</div>
+        <div class="lab-gap-box-val" style="color:${onTrack?'#059669':'#D97706'};">${corpusNeeded > 0 ? sym+_fmtK(corpusNeededDisplay) : 'Add expenses'}</div>
       </div>
     </div>
     ${corpusNeeded > 0 ? `<div style="height:8px;background:#F3F4F6;border-radius:6px;overflow:hidden;margin-bottom:8px;">
@@ -13443,6 +13532,10 @@ function renderROIRetirementCards() {
     el.innerHTML = '<div class="lab-card" style="text-align:center;padding:16px;"><div style="font-size:0.82em;font-weight:700;color:#9CA3AF;">No retirement accounts yet.<br>Import EPF / NPS / 401k or add manually.</div></div>';
     return;
   }
+  const realNote = window._showRealValue ? ` <span style="font-size:.75em;font-weight:700;color:#059669;">(today's ₹)</span>` : '';
+  const retireLabel = window._showRealValue ? `AT ${retAge} · TODAY'S ₹` : `AT ${retAge} NO SIP`;
+  const sipLabel    = window._showRealValue ? `+SIP · TODAY'S ₹` : `+SIP`;
+
   el.innerHTML = retAccs.map(a => {
     const bal = nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
     const projected = bal * Math.pow(1 + r/100, yearsLeft);
@@ -13450,6 +13543,10 @@ function renderROIRetirementCards() {
     let projWithSIP = bal;
     for (let i=0; i<yearsLeft*12; i++) projWithSIP = projWithSIP*(1+rm)+monthlyContrib;
     const extra = projWithSIP - projected;
+    // Real-value display
+    const projDisp       = _retireRealAdj(projected, yearsLeft);
+    const projWithSIPDisp = _retireRealAdj(projWithSIP, yearsLeft);
+    const extraDisp      = projWithSIPDisp - projDisp;
 
     return `<div class="lab-retire-card">
       <div class="lab-retire-card-header">
@@ -13461,16 +13558,16 @@ function renderROIRetirementCards() {
       </div>
       <div class="lab-retire-grid">
         <div class="lab-retire-box">
-          <div class="lab-retire-box-label">AT ${retAge} NO SIP</div>
-          <div class="lab-retire-box-val">${sym}${Math.round(projected).toLocaleString()}</div>
+          <div class="lab-retire-box-label">${retireLabel}</div>
+          <div class="lab-retire-box-val">${sym}${Math.round(projDisp).toLocaleString()}</div>
         </div>
         <div class="lab-retire-box lab-retire-box-accent">
-          <div class="lab-retire-box-label" style="color:#047857;">+${sym}${Math.round(monthlyContrib).toLocaleString()}/MO SIP</div>
-          <div class="lab-retire-box-val">${sym}${Math.round(projWithSIP).toLocaleString()}</div>
-          <div class="lab-retire-box-sub">🚀 +${sym}${_fmtK(extra)} extra</div>
+          <div class="lab-retire-box-label" style="color:#047857;">+${sym}${Math.round(monthlyContrib).toLocaleString()}/MO ${sipLabel}</div>
+          <div class="lab-retire-box-val">${sym}${Math.round(projWithSIPDisp).toLocaleString()}</div>
+          <div class="lab-retire-box-sub">🚀 +${sym}${_fmtK(extraDisp)} extra</div>
         </div>
       </div>
-      <div class="lab-retire-tip">💡 Adding ${sym}${Math.round(monthlyContrib).toLocaleString()}/mo = ${sym}${_fmtK(extra)} more at retirement</div>
+      <div class="lab-retire-tip">💡 Adding ${sym}${Math.round(monthlyContrib).toLocaleString()}/mo = ${sym}${_fmtK(extraDisp)} more at retirement${window._showRealValue?' (in today\'s money)':''}</div>
     </div>`;
   }).join('');
 }
@@ -13632,6 +13729,41 @@ function initSimScenario() {
         </div>
       </div>`;
     window._crashPreset = window._crashPreset || 'mild';
+  } else if (s === 'loan') {
+    // Pre-fill from scoreDebtService data
+    const loanAccs = (data._nwAccounts||[]).filter(a => a.type === 'loan' || a.type === 'other_liability');
+    const totalLoanBal = loanAccs.reduce((sum,a) => sum + (nwConvert ? nwConvert(Math.abs(a.balance||0), a.currency) : Math.abs(a.balance||0)), 0);
+    const totalMonthlyPayment = loanAccs.reduce((sum,a) => sum + (nwConvert ? nwConvert(a.meta?.monthlyPayment||0, 'USD') : (a.meta?.monthlyPayment||0)), 0);
+    const agg2 = typeof getFHSMonthlyAggregates === 'function' ? getFHSMonthlyAggregates(6, getFHSProfile()) : null;
+    const monthlyInc = agg2?.avgInc || 0;
+    const suggestSurplus = Math.max(0, Math.round(monthlyInc * 0.2));
+    inputsEl.innerHTML = `
+      <div class="lab-input-row">
+        <div class="lab-input-label">Outstanding Loan Balance</div>
+        <input class="lab-input" type="number" id="sim-loan-balance" oninput="renderROISimulator()"
+          value="${Math.round(totalLoanBal)||''}" placeholder="2500000">
+      </div>
+      <div class="lab-input-row" style="margin-top:8px;">
+        <div class="lab-input-label">Loan Interest Rate (% p.a.)</div>
+        <input class="lab-input" type="number" id="sim-loan-rate" oninput="renderROISimulator()"
+          value="8.5" placeholder="8.5" step="0.1">
+      </div>
+      <div class="lab-input-row" style="margin-top:8px;">
+        <div class="lab-input-label">Years Remaining</div>
+        <input class="lab-input" type="number" id="sim-loan-years" oninput="renderROISimulator()"
+          value="10" placeholder="10">
+      </div>
+      <div class="lab-input-row" style="margin-top:8px;">
+        <div class="lab-input-label">Monthly Surplus to Deploy</div>
+        <input class="lab-input" type="number" id="sim-loan-surplus" oninput="renderROISimulator()"
+          value="${suggestSurplus||Math.round(totalMonthlyPayment)||''}" placeholder="10000">
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;background:#F0FDF4;border-radius:10px;padding:8px 10px;">
+        <input type="checkbox" id="sim-loan-sec24" onchange="renderROISimulator()" style="width:16px;height:16px;cursor:pointer;">
+        <label for="sim-loan-sec24" style="font-size:.72em;font-weight:800;color:#065F46;cursor:pointer;">
+          Section 24 deduction (₹2L home loan interest — NRI eligible)
+        </label>
+      </div>`;
   }
   renderROISimulator();
 }
@@ -13832,6 +13964,131 @@ function renderROISimulator() {
       html += `<div style="text-align:center;color:#9CA3AF;font-size:0.8em;padding:16px;">Enter portfolio and SIP details to calculate FIRE timeline.</div>`;
     }
   }
+  if (s === 'loan') {
+    const sym2 = currentCurrency?.symbol || '₹';
+    const outstanding = parseFloat(document.getElementById('sim-loan-balance')?.value) || 0;
+    const loanRate    = parseFloat(document.getElementById('sim-loan-rate')?.value) || 8.5;
+    const yearsLeft   = parseFloat(document.getElementById('sim-loan-years')?.value) || 10;
+    const surplus     = parseFloat(document.getElementById('sim-loan-surplus')?.value) || 0;
+    const hasSec24    = document.getElementById('sim-loan-sec24')?.checked || false;
+    const investRate  = _roiSimRate; // shared rate slider
+    const resultEl    = document.getElementById('roi-simulator-result');
+
+    if (!outstanding) {
+      if (resultEl) resultEl.innerHTML = '<div style="text-align:center;padding:20px;color:#9CA3AF;font-size:.82em;">Enter your outstanding loan balance above.</div>';
+      return;
+    }
+
+    const loanRateM = loanRate / 100 / 12;
+    const n = Math.round(yearsLeft * 12);
+
+    // Standard EMI on remaining loan (amortised)
+    const emi = loanRateM > 0
+      ? outstanding * loanRateM * Math.pow(1+loanRateM, n) / (Math.pow(1+loanRateM, n) - 1)
+      : outstanding / n;
+    const totalInterestPayable = emi * n - outstanding;
+
+    // Scenario A: Prepay surplus each month → interest saved
+    // Simulate amortisation with extra monthly payment
+    let balA = outstanding;
+    let totalInterestPaid = 0;
+    let monthsToPayoff = 0;
+    const extraPayment = surplus;
+    for (let mo = 1; mo <= n * 2 && balA > 0; mo++) {
+      const interestThisMo = balA * loanRateM;
+      const principalThisMo = Math.min(balA, emi - interestThisMo + extraPayment);
+      totalInterestPaid += interestThisMo;
+      balA -= principalThisMo;
+      if (balA <= 0) { monthsToPayoff = mo; break; }
+    }
+    const interestSaved = Math.round(totalInterestPayable - totalInterestPaid);
+    const monthsShaved  = n - (monthsToPayoff || n);
+    const loanFreeDate  = (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() + (monthsToPayoff || n));
+      return d.toLocaleDateString('en-US', { month:'short', year:'numeric' });
+    })();
+
+    // Scenario B: Invest surplus instead
+    const invRateM = investRate / 100 / 12;
+    let corpus = 0;
+    for (let mo = 0; mo < n; mo++) corpus = corpus * (1 + invRateM) + surplus;
+    const netInvestGain = Math.round(corpus - surplus * n); // gain over principal invested
+
+    // Break-even: what invest rate equals the loan rate after-tax?
+    // If Section 24: effective loan cost = loanRate - (2L × 30% tax bracket / outstanding)
+    // Simplified: break-even invest rate = loan rate (pre-tax) or adjusted for Sec 24
+    const sec24Benefit = hasSec24 ? Math.min(200000, totalInterestPayable) * 0.30 : 0;
+    const effectiveLoanCost = loanRate - (hasSec24 && outstanding > 0 ? (sec24Benefit / (outstanding * yearsLeft) * 100) : 0);
+    const breakEvenRate = Math.max(0, effectiveLoanCost).toFixed(1);
+
+    const shouldInvest = investRate > effectiveLoanCost + 1;
+    const verdict = shouldInvest
+      ? `Invest the surplus — your expected ${investRate}% return beats the ${breakEvenRate}% effective loan cost.`
+      : `Prepay the loan — locking in ${breakEvenRate}% risk-free beats uncertain market returns right now.`;
+
+    if (resultEl) resultEl.innerHTML = `
+      <div style="text-align:center;padding:9px 12px;background:${shouldInvest?'#EFF6FF':'#FFFBEB'};border-radius:10px;
+        margin-bottom:12px;font-size:.78em;font-weight:800;color:${shouldInvest?'#1D4ED8':'#92400E'};line-height:1.5;">
+        💡 ${verdict}
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="background:#FEF2F2;border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-size:.6em;font-weight:800;color:#9CA3AF;text-transform:uppercase;">Interest Saved</div>
+          <div style="font-size:.95em;font-weight:900;color:#DC2626;">${sym2}${_fmtK(Math.max(0,interestSaved))}</div>
+          <div style="font-size:.6em;color:#9CA3AF;">by prepaying</div>
+        </div>
+        <div style="background:#ECFDF5;border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-size:.6em;font-weight:800;color:#9CA3AF;text-transform:uppercase;">Invest Corpus</div>
+          <div style="font-size:.95em;font-weight:900;color:#059669;">${sym2}${_fmtK(Math.round(corpus))}</div>
+          <div style="font-size:.6em;color:#9CA3AF;">at ${investRate}% CAGR</div>
+        </div>
+      </div>
+
+      ${surplus > 0 ? `<div style="background:#F0F4FF;border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+        <div style="font-size:.72em;font-weight:900;color:#1E2A6E;margin-bottom:8px;">Prepay Route</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:.7em;font-weight:700;color:#374151;">Loan-free date</span>
+          <span style="font-size:.7em;font-weight:900;color:#4F46E5;">${loanFreeDate}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:.7em;font-weight:700;color:#374151;">Months shaved off</span>
+          <span style="font-size:.7em;font-weight:900;color:#059669;">${monthsShaved} months</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:.7em;font-weight:700;color:#374151;">Guaranteed saving</span>
+          <span style="font-size:.7em;font-weight:900;color:#DC2626;">${sym2}${_fmtK(Math.max(0,interestSaved))}</span>
+        </div>
+      </div>` : ''}
+
+      <div style="background:#F5F3FF;border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+        <div style="font-size:.72em;font-weight:900;color:#5B21B6;margin-bottom:6px;">Break-even Analysis</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:.7em;font-weight:700;color:#374151;">Loan rate</span>
+          <span style="font-size:.7em;font-weight:900;color:#7C3AED;">${loanRate}% p.a.</span>
+        </div>
+        ${hasSec24 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:.7em;font-weight:700;color:#374151;">Sec 24 benefit</span>
+          <span style="font-size:.7em;font-weight:900;color:#059669;">−${sym2}${_fmtK(sec24Benefit)} saved</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:.7em;font-weight:700;color:#374151;">Effective cost</span>
+          <span style="font-size:.7em;font-weight:900;color:#7C3AED;">${breakEvenRate}% effective</span>
+        </div>` : ''}
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:.7em;font-weight:700;color:#374151;">Your invest rate</span>
+          <span style="font-size:.7em;font-weight:900;color:${shouldInvest?'#059669':'#D97706'};">${investRate}% CAGR</span>
+        </div>
+        <div style="font-size:.65em;font-weight:700;color:#7C3AED;margin-top:6px;border-top:1px solid #DDD6FE;padding-top:6px;">
+          ⚡ You need >${breakEvenRate}% returns for investing to beat prepaying
+        </div>
+      </div>
+
+      <div style="font-size:.6em;color:#9CA3AF;text-align:center;">Returns at ${investRate}% CAGR (use rate slider above) · Not a prediction · Consult your CA</div>`;
+    return;
+  }
+
   if (s === 'crash') {
     const sym2 = currentCurrency?.symbol || '₹';
     const portfolio = parseFloat(document.getElementById('sim-crash-portfolio')?.value) || 0;
