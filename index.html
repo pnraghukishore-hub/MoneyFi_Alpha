@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.24.7 -->
+<!-- MoneyFi v3.24.8 -->
 <!-- -
   MoneyFi — Hi
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
@@ -11822,6 +11822,135 @@ function toggleLabHoldings(accId, rowEl) {
 let _equityLedgerSort = 'value'; // current sort mode
 
 // ── SECTOR colour palette ─────────────────────────────────────────────
+
+// ══ Sector Intelligence ═══════════════════════════════════════════════
+// Normalises variant sector names from different brokers/sources
+// AND provides symbol→sector fallback for Kite Holdings (no sector column)
+
+const SECTOR_NORMALISE = {
+  // Technology variants
+  'IT':                       'SOFTWARE SERVICES',
+  'TECHNOLOGY':               'SOFTWARE SERVICES',
+  'INFORMATION TECHNOLOGY':   'SOFTWARE SERVICES',
+  'IT SERVICES':              'SOFTWARE SERVICES',
+  // Banking/Finance variants
+  'BANKING':                  'FINANCIAL SERVICES',
+  'BANKS':                    'FINANCIAL SERVICES',
+  'FINANCE':                  'FINANCIAL SERVICES',
+  'NBFC':                     'FINANCIAL SERVICES',
+  'INSURANCE':                'FINANCIAL SERVICES',
+  'CAPITAL MARKETS':          'FINANCIAL SERVICES',
+  // Healthcare variants
+  'HEALTHCARE':               'PHARMACEUTICALS',
+  'PHARMA':                   'PHARMACEUTICALS',
+  'HOSPITAL':                 'PHARMACEUTICALS',
+  // Energy variants
+  'OIL & GAS':                'ENERGY',
+  'POWER':                    'ENERGY',
+  'UTILITIES':                'ENERGY',
+  'OIL AND GAS':              'ENERGY',
+  // Infra / Engineering
+  'INFRASTRUCTURE':           'ENGINEERING & CAPITAL GOODS',
+  'CAPITAL GOODS':            'ENGINEERING & CAPITAL GOODS',
+  'INDUSTRIALS':              'ENGINEERING & CAPITAL GOODS',
+  'ENGINEERING':              'ENGINEERING & CAPITAL GOODS',
+  // Consumer
+  'CONSUMER STAPLES':         'FMCG',
+  'CONSUMER GOODS':           'FMCG',
+  'FOOD & BEVERAGES':         'FMCG',
+  // Materials
+  'MATERIALS':                'METALS & MINING',
+  'MINING':                   'METALS & MINING',
+  'STEEL':                    'METALS & MINING',
+  // Auto
+  'AUTOMOBILE':               'AUTO ANCILLARY',
+  'AUTO':                     'AUTO ANCILLARY',
+  'AUTOMOTIVE':               'AUTO ANCILLARY',
+};
+
+// Symbol → sector for top NSE stocks (Kite CSV has no sector column)
+const NSE_SYMBOL_SECTOR = {
+  // DEFENCE
+  'BDL':'DEFENCE','BEL':'DEFENCE','HAL':'DEFENCE','MFSL':'DEFENCE','PARAS':'DEFENCE',
+  'DATAPATTNS':'DEFENCE','GRSE':'DEFENCE','COCHINSHIP':'DEFENCE','MAZAGON':'DEFENCE',
+  // BANKING & FINANCIAL SERVICES  
+  'HDFCBANK':'FINANCIAL SERVICES','ICICIBANK':'FINANCIAL SERVICES',
+  'SBIN':'FINANCIAL SERVICES','AXISBANK':'FINANCIAL SERVICES',
+  'KOTAKBANK':'FINANCIAL SERVICES','INDUSINDBK':'FINANCIAL SERVICES',
+  'BANDHANBNK':'FINANCIAL SERVICES','FEDERALBNK':'FINANCIAL SERVICES',
+  'PNB':'FINANCIAL SERVICES','BANKBARODA':'FINANCIAL SERVICES',
+  'BAJFINANCE':'FINANCIAL SERVICES','BAJAJFINSV':'FINANCIAL SERVICES',
+  'HDFCLIFE':'FINANCIAL SERVICES','SBILIFE':'FINANCIAL SERVICES',
+  'ICICIGI':'FINANCIAL SERVICES','LICI':'FINANCIAL SERVICES',
+  // IT / SOFTWARE
+  'TCS':'SOFTWARE SERVICES','INFY':'SOFTWARE SERVICES',
+  'WIPRO':'SOFTWARE SERVICES','HCLTECH':'SOFTWARE SERVICES',
+  'TECHM':'SOFTWARE SERVICES','LTI':'SOFTWARE SERVICES',
+  'LTIM':'SOFTWARE SERVICES','MPHASIS':'SOFTWARE SERVICES',
+  'COFORGE':'SOFTWARE SERVICES','PERSISTENT':'SOFTWARE SERVICES',
+  // ENERGY
+  'RELIANCE':'ENERGY','ONGC':'ENERGY','IOC':'ENERGY','BPCL':'ENERGY',
+  'GAIL':'ENERGY','POWERGRID':'ENERGY','NTPC':'ENERGY','ADANIPOWER':'ENERGY',
+  'TATAPOWER':'ENERGY','TORNTPOWER':'ENERGY','CESC':'ENERGY',
+  // FMCG
+  'HINDUNILVR':'FMCG','ITC':'FMCG','NESTLEIND':'FMCG','BRITANNIA':'FMCG',
+  'DABUR':'FMCG','MARICO':'FMCG','COLPAL':'FMCG','GODREJCP':'FMCG',
+  'TATACONSUM':'FMCG','EMAMILTD':'FMCG','VBL':'FMCG',
+  // AUTO
+  'MARUTI':'AUTO ANCILLARY','TATAMOTORS':'AUTO ANCILLARY','M&M':'AUTO ANCILLARY',
+  'HEROMOTOCO':'AUTO ANCILLARY','BAJAJ-AUTO':'AUTO ANCILLARY','EICHERMOT':'AUTO ANCILLARY',
+  'ASHOKLEY':'AUTO ANCILLARY','TVSMOTOR':'AUTO ANCILLARY','BOSCHLTD':'AUTO ANCILLARY',
+  'MOTHERSON':'AUTO ANCILLARY','MRF':'AUTO ANCILLARY',
+  // PHARMACEUTICALS
+  'SUNPHARMA':'PHARMACEUTICALS','DRREDDY':'PHARMACEUTICALS','CIPLA':'PHARMACEUTICALS',
+  'DIVISLAB':'PHARMACEUTICALS','BIOCON':'PHARMACEUTICALS','LUPIN':'PHARMACEUTICALS',
+  'AUROPHARMA':'PHARMACEUTICALS','TORNTPHARM':'PHARMACEUTICALS','APOLLOHOSP':'PHARMACEUTICALS',
+  'MAXHEALTH':'PHARMACEUTICALS','FORTIS':'PHARMACEUTICALS',
+  // ENGINEERING & CAPITAL GOODS
+  'LT':'ENGINEERING & CAPITAL GOODS','SIEMENS':'ENGINEERING & CAPITAL GOODS',
+  'ABB':'ENGINEERING & CAPITAL GOODS','BHEL':'ENGINEERING & CAPITAL GOODS',
+  'THERMAX':'ENGINEERING & CAPITAL GOODS','CUMMINSIND':'ENGINEERING & CAPITAL GOODS',
+  'VOLTAS':'CONSUMER DURABLES','HAVELLS':'CONSUMER DURABLES','CROMPTON':'CONSUMER DURABLES',
+  // METALS & MINING
+  'TATASTEEL':'METALS & MINING','JSWSTEEL':'METALS & MINING','HINDALCO':'METALS & MINING',
+  'VEDL':'METALS & MINING','SAIL':'METALS & MINING','NMDC':'METALS & MINING',
+  'COALINDIA':'METALS & MINING','APLAPOLLO':'METALS & MINING',
+  // TELECOM
+  'BHARTIARTL':'TELECOM','IDEA':'TELECOM','INDUSTOWER':'TELECOM',
+  // REAL ESTATE
+  'DLF':'REAL ESTATE','GODREJPROP':'REAL ESTATE','PRESTIGE':'REAL ESTATE',
+  'OBEROIRLTY':'REAL ESTATE','LODHA':'REAL ESTATE','BRIGADE':'REAL ESTATE',
+  'PHOENIXLTD':'REAL ESTATE',
+  // CHEMICALS
+  'PIDILITIND':'CHEMICALS','ASIANPAINT':'CHEMICALS','BERGER':'CHEMICALS',
+  'ATUL':'CHEMICALS','FINEORG':'CHEMICALS','NAVINFLUOR':'CHEMICALS',
+  // ETFs — common Zerodha ETF symbols
+  'GOLDBEES':'ETF','GOLDBEES-E':'ETF','NIFTYBEES':'ETF','BANKBEES':'ETF',
+  'SILVERBEES':'ETF','JUNIORBEES':'ETF','LIQUIDBEES':'ETF','PHARMABEES':'ETF',
+  'ITBEES':'ETF','CPSEETF':'ETF','TOP100CASE':'ETF','MOM100':'ETF',
+  'NIFTY1INDA':'ETF','MIDCAPETF':'ETF','PSUBNKBEES':'ETF',
+  // US stocks (for Fidelity/Schwab)
+  'AAPL':'SOFTWARE SERVICES','MSFT':'SOFTWARE SERVICES','GOOGL':'SOFTWARE SERVICES',
+  'AMZN':'SOFTWARE SERVICES','META':'SOFTWARE SERVICES','NVDA':'SOFTWARE SERVICES',
+  'TSLA':'AUTO ANCILLARY','JPM':'FINANCIAL SERVICES','BAC':'FINANCIAL SERVICES',
+  'WFC':'FINANCIAL SERVICES','XOM':'ENERGY','CVX':'ENERGY',
+  'JNJ':'PHARMACEUTICALS','PFE':'PHARMACEUTICALS','UNH':'PHARMACEUTICALS',
+};
+
+function _resolveSector(symbol, rawSector) {
+  // 1. If sector already known and not OTHERS → normalise and return
+  if (rawSector && rawSector.toUpperCase() !== 'OTHERS' && rawSector.trim() !== '') {
+    const upper = rawSector.toUpperCase().trim();
+    return SECTOR_NORMALISE[upper] || upper;
+  }
+  // 2. Symbol lookup
+  const sym = (symbol || '').toUpperCase().trim().replace(/^(NSE:|BSE:)/, '');
+  if (NSE_SYMBOL_SECTOR[sym]) return NSE_SYMBOL_SECTOR[sym];
+  // 3. Pattern-based ETF detection
+  if (/BEES$|BEES-[A-Z]$|ETF$|INDEX|CASE$|INDA$/.test(sym)) return 'ETF';
+  return 'OTHERS';
+}
+
 const SECTOR_COLORS = {
   'DEFENCE':                  '#6366F1',
   'ENERGY':                   '#F59E0B',
@@ -11855,15 +11984,18 @@ function buildUnifiedEquityLedger() {
 
   const map = {}; // symbol → consolidated entry
   dematAccounts.forEach(account => {
+    const acctCur = account.currency || 'INR'; // INR for Zerodha, USD for Fidelity/Schwab
     (account.meta.holdings || []).forEach(h => {
       const key = (h.symbol || '').toUpperCase().trim();
       if (!key) return;
+      // Resolve sector: from holding tag first, then symbol lookup, then OTHERS
+      const resolvedSector = _resolveSector(h.symbol, h.sector);
       if (!map[key]) {
         map[key] = {
           symbol:   h.symbol,
-          sector:   h.sector || 'OTHERS',
+          sector:   resolvedSector,
           totalQty: 0,
-          totalVal: 0,
+          totalVal: 0,  // always in display currency
           totalPnl: 0,
           totalCost:0,
           accounts: [],
@@ -11871,9 +12003,11 @@ function buildUnifiedEquityLedger() {
         };
       }
       const qty    = Number(h.qty    || 0);
-      const curVal = Number(h.curVal || 0);
-      const pnl    = Number(h.pnl    || 0);
-      const cost   = h.avgCost && h.qty ? Number(h.avgCost) * qty : 0;
+      // Convert all monetary values to display currency
+      const curVal = nwConvert ? nwConvert(Number(h.curVal || 0), acctCur) : Number(h.curVal || 0);
+      const pnl    = nwConvert ? nwConvert(Number(h.pnl    || 0), acctCur) : Number(h.pnl    || 0);
+      const rawCost = h.avgCost && qty ? Number(h.avgCost) * qty : 0;
+      const cost   = nwConvert ? nwConvert(rawCost, acctCur) : rawCost;
       map[key].totalQty  += qty;
       map[key].totalVal  += curVal;
       map[key].totalPnl  += pnl;
