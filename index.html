@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.24.0 -->
+<!-- MoneyFi v3.24.1 -->
 <!-- -
   MoneyFi — Hi
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
@@ -10794,6 +10794,16 @@ function filterClarityFunds(filter) {
   }).join('');
 }
 
+function _triageGuidance(cls) {
+  const g = {
+    'triage-sleeping': 'To restart a SIP: open your broker or AMC app and set up a new SIP mandate. Changes reflect in CAMS within 2-3 business days.',
+    'triage-idle':     'To redeem: log in to your AMC or CAMS portal and place a redemption request. Equity fund proceeds credit in 3 business days.',
+    'triage-taxsens':  'Wait until the 1-year holding mark before redeeming. This converts STCG (15%) to LTCG (10%) and could save meaningful tax.',
+    'triage-noise':    'Log in to your AMC portal and request full redemption. Most AMCs allow small-balance redemptions online using your folio number.',
+  };
+  return g[cls] || 'Log in to your AMC or broker portal to take action on these funds.';
+}
+
 function _renderClarityTriage(d, sym) {
   const label = document.getElementById('clarity-triage-label');
   const body  = document.getElementById('clarity-triage-body');
@@ -10854,7 +10864,9 @@ function _renderClarityTriage(d, sym) {
       </div>
       <div class="triage-desc">${b.desc}</div>
       ${items}${more}
-      <button class="triage-cta" onclick="triageAction('${b.cls}', '${b.title}')">${b.cta} →</button>
+      <div style="font-size:0.72em;font-weight:700;color:#6B7280;margin-top:10px;line-height:1.6;background:var(--bg-secondary);border-radius:8px;padding:8px 10px;">
+        💡 ${b.ctaNote || _triageGuidance(b.cls)}
+      </div>
     </div>`;
   }).join('');
 }
@@ -16057,11 +16069,16 @@ function _nwsBuildForm(type, existing, m) {
         + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Your monthly ' + epfLabel + ' contribution</div>'
         + '</div></div>';
     } else {
-      // type === 'retirement': add just the interest rate field (contrib fields added below by retirement block)
-      extraFields += '<div class="nw-sheet-field"><div class="nw-sheet-label">Provisional Interest Rate % p.a.</div>'
+      // type === 'retirement': add rate + monthly contribution fields
+      extraFields += '<div class="nw-sheet-row">'
+        + '<div class="nw-sheet-field"><div class="nw-sheet-label">Provisional Interest Rate % p.a.</div>'
         + '<input class="nw-sheet-input" id="nws-expected-return" type="number" placeholder="' + defaultRate + '" step="0.01" value="' + (m.expectedReturn||'') + '">'
         + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">EPF/PPF/NPS declared rate — used for ROI projections in Growth Lab</div>'
-        + '</div>';
+        + '</div>'
+        + '<div class="nw-sheet-field"><div class="nw-sheet-label">Monthly Contribution</div>'
+        + '<input class="nw-sheet-input" id="nws-monthly-contrib" type="number" placeholder="0" step="1" value="' + (m.monthlyContribution||'') + '">'
+        + '<div style="font-size:0.68em;color:var(--text-light);margin-top:3px;">Your regular monthly contribution</div>'
+        + '</div></div>';
     }
   }
   if (type === 'credit_card') {
