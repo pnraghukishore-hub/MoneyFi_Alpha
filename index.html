@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.24.3 -->
+<!-- MoneyFi v3.24.4 -->
 <!-- -
   MoneyFi — Hi
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
@@ -1726,8 +1726,6 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     .lab-fund-footer { display:flex; justify-content:space-between; font-size:0.65em; font-weight:700; color:#9CA3AF; }
     .nw-drilldown-wrap {
   position: relative;
-  border-radius: 12px;
-  overflow: hidden;
   margin-bottom: 4px;
 }
 .lab-holdings-row {
@@ -4780,6 +4778,101 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     <button onclick="saveAccount()" style="width:100%;background:var(--yellow);border:none;border-radius:var(--radius-sm);padding:16px;font-family:Nunito;font-weight:900;color:var(--text-dark);cursor:pointer;margin-top:8px;">Save Account</button>
   </div>
 </div>
+
+<!-- ── Universal Bank / Generic CSV Import ─────────────────────────── -->
+<div class="import-section" id="isec-universal">
+
+  <!-- Step 1: Upload -->
+  <div class="import-step active" id="iuniversal-step1">
+    <div class="import-card">
+      <div class="import-card-title">🏦 Bank Statement / Generic CSV</div>
+      <div class="import-card-sub">Works with any bank or app: HDFC, ICICI, SBI, Axis, Chase, Amex, Monzo, etc. Upload a CSV or Excel export — MoneyFi auto-detects columns and maps them.</div>
+
+      <div class="import-drop-zone" id="iuniversal-dropzone"
+           onclick="document.getElementById('iuniversal-file').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleUniversalDrop(event)">
+        <div class="import-drop-icon">📂</div>
+        <div class="import-drop-text">Tap to choose bank CSV or Excel</div>
+        <div class="import-drop-sub">Any format · HDFC / ICICI / Chase / Amex / any bank</div>
+      </div>
+      <input type="file" id="iuniversal-file" accept=".csv,.xlsx,.xls"
+             style="display:none;" onchange="handleUniversalFile(this)">
+
+      <!-- Column mapping UI — shown after file loads -->
+      <div id="iuniversal-map-section" style="display:none;margin-top:16px;">
+        <div style="font-size:0.82em;font-weight:800;color:#1E2A6E;margin-bottom:10px;">
+          🔍 Column Mapping — confirm or adjust
+        </div>
+        <div id="iuniversal-map-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+          <div style="flex:1;">
+            <div style="font-size:0.75em;font-weight:700;color:var(--text-light);margin-bottom:4px;">AMOUNT TYPE</div>
+            <select id="iuniversal-amt-mode" class="nw-sheet-select" style="font-size:0.8em;padding:8px;">
+              <option value="signed">Single column — negative = debit</option>
+              <option value="debit_credit">Two columns — Debit + Credit</option>
+              <option value="credit_debit">Two columns — Credit + Debit</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:0.75em;font-weight:700;color:var(--text-light);margin-bottom:4px;">DATE FORMAT</div>
+            <select id="iuniversal-date-fmt" class="nw-sheet-select" style="font-size:0.8em;padding:8px;">
+              <option value="auto">Auto-detect</option>
+              <option value="dmy">DD/MM/YYYY</option>
+              <option value="mdy">MM/DD/YYYY (US)</option>
+              <option value="ymd">YYYY-MM-DD</option>
+              <option value="dmy_slash">DD-Mon-YYYY</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-size:0.75em;font-weight:700;color:var(--text-light);margin-bottom:4px;">SKIP ROWS containing</div>
+          <input id="iuniversal-skip-words" type="text" class="nw-sheet-input"
+                 placeholder="e.g. opening balance, total, closing"
+                 style="font-size:0.8em;padding:8px;">
+        </div>
+        <button onclick="runUniversalParse()"
+                style="margin-top:12px;margin-bottom:80px;width:100%;padding:14px;background:#1E2A6E;color:white;border:none;border-radius:10px;font-size:0.88em;font-weight:900;cursor:pointer;">
+          ✅ Parse with these settings
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Review -->
+  <div class="import-step" id="iuniversal-step2">
+    <div class="import-card">
+      <div class="import-card-title">Review — Bank CSV</div>
+      <div id="iuniversal-summary-grid" class="import-summary-grid"></div>
+      <div id="iuniversal-summary-text" style="font-size:0.75em;color:var(--text-light);margin:8px 0 12px;"></div>
+
+      <div id="iuniversal-dup-section" style="display:none;">
+        <div style="font-size:0.8em;font-weight:800;color:#DC2626;margin-bottom:6px;">⚠️ Possible Duplicates</div>
+        <div id="iuniversal-dup-list"></div>
+      </div>
+
+      <div style="overflow-x:auto;margin-top:8px;">
+        <table class="import-preview-table" style="width:100%;">
+          <tbody id="iuniversal-preview-table"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:14px;display:flex;gap:10px;">
+        <button onclick="confirmUniversalImport()"
+                style="flex:1;padding:13px;background:#059669;color:white;border:none;border-radius:12px;font-size:0.9em;font-weight:900;cursor:pointer;">
+          ✅ Import Transactions
+        </button>
+        <button onclick="resetUniversalImport()"
+                style="padding:13px 18px;background:var(--bg-secondary);color:var(--text-dark);border:1px solid var(--border);border-radius:12px;font-size:0.88em;font-weight:800;cursor:pointer;">
+          ↩ Back
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
 
 <!-- ── Metal Price Bottom Sheet ─────────────────────────── -->
 <div id="metal-price-sheet-backdrop" onclick="closeMetalPriceSheet()"
@@ -11079,7 +11172,14 @@ function renderROIScreen() {
   if (rateSlider) rateSlider.value = _roiSimRate;
   const rateBadge = document.getElementById('sim-rate-badge');
   if (rateBadge) rateBadge.textContent = _roiSimRate + '%';
-  switchROITab(_roiCurrentTab || 'clarity');
+  // Always default to clarity tab so Lab never opens blank
+  const tab = _roiCurrentTab || 'clarity';
+  switchROITab(tab);
+  // Force-render clarity if panel is still empty (first open)
+  const clarityPanel = document.getElementById('roi-panel-clarity');
+  if (clarityPanel && !clarityPanel.innerHTML.trim()) {
+    try { renderROIClarity(); } catch(e) {}
+  }
 }
 
 // ── CORE DATA BUILDER (unchanged logic, same as v3.19.10) ──────────────
@@ -15198,11 +15298,11 @@ function renderNetWorth() {
               <span class="swipe-btn-icon">🗑️</span>Delete
             </button>
           </div>`;
-        // Drilldown accounts need a container even if imported (for panel insertion)
-        const wrapClass = hasDrillDown ? 'nw-drilldown-wrap'
-          : (acc._imported && !acc._isREImport) ? '' : 'nw-swipe-wrap';
+        // hasDrillDown MUST be declared before wrapClass (avoids temporal dead zone)
         const hasDrillDown = acc.meta && acc.meta.holdings && acc.meta.holdings.length > 0 &&
           (acc.type === 'stocks_direct' || (acc.meta && acc.meta.holdingType === 'us_brokerage'));
+        const wrapClass = hasDrillDown ? 'nw-drilldown-wrap'
+          : (acc._imported && !acc._isREImport) ? '' : 'nw-swipe-wrap';
         const rowClickAttr = hasDrillDown ? `data-drilldown="${acc.id}" onclick="toggleHoldingsExpand('${acc.id}')" style="cursor:pointer;"` : '';
         return `<div class="${wrapClass}">
           ${swipeActions}
@@ -25004,99 +25104,6 @@ function scoreNWTrajectory(nw, profile) {
   </div>
 </div>
 
-<!-- ── Universal Bank / Generic CSV Import ─────────────────────────── -->
-<div class="import-section" id="isec-universal">
-
-  <!-- Step 1: Upload -->
-  <div class="import-step active" id="iuniversal-step1">
-    <div class="import-card">
-      <div class="import-card-title">🏦 Bank Statement / Generic CSV</div>
-      <div class="import-card-sub">Works with any bank or app: HDFC, ICICI, SBI, Axis, Chase, Amex, Monzo, etc. Upload a CSV or Excel export — MoneyFi auto-detects columns and maps them.</div>
-
-      <div class="import-drop-zone" id="iuniversal-dropzone"
-           onclick="document.getElementById('iuniversal-file').click()"
-           ondragover="event.preventDefault();this.classList.add('dragover')"
-           ondragleave="this.classList.remove('dragover')"
-           ondrop="handleUniversalDrop(event)">
-        <div class="import-drop-icon">📂</div>
-        <div class="import-drop-text">Tap to choose bank CSV or Excel</div>
-        <div class="import-drop-sub">Any format · HDFC / ICICI / Chase / Amex / any bank</div>
-      </div>
-      <input type="file" id="iuniversal-file" accept=".csv,.xlsx,.xls"
-             style="display:none;" onchange="handleUniversalFile(this)">
-
-      <!-- Column mapping UI — shown after file loads -->
-      <div id="iuniversal-map-section" style="display:none;margin-top:16px;">
-        <div style="font-size:0.82em;font-weight:800;color:#1E2A6E;margin-bottom:10px;">
-          🔍 Column Mapping — confirm or adjust
-        </div>
-        <div id="iuniversal-map-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
-        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
-          <div style="flex:1;">
-            <div style="font-size:0.75em;font-weight:700;color:var(--text-light);margin-bottom:4px;">AMOUNT TYPE</div>
-            <select id="iuniversal-amt-mode" class="nw-sheet-select" style="font-size:0.8em;padding:8px;">
-              <option value="signed">Single column — negative = debit</option>
-              <option value="debit_credit">Two columns — Debit + Credit</option>
-              <option value="credit_debit">Two columns — Credit + Debit</option>
-            </select>
-          </div>
-          <div style="flex:1;">
-            <div style="font-size:0.75em;font-weight:700;color:var(--text-light);margin-bottom:4px;">DATE FORMAT</div>
-            <select id="iuniversal-date-fmt" class="nw-sheet-select" style="font-size:0.8em;padding:8px;">
-              <option value="auto">Auto-detect</option>
-              <option value="dmy">DD/MM/YYYY</option>
-              <option value="mdy">MM/DD/YYYY (US)</option>
-              <option value="ymd">YYYY-MM-DD</option>
-              <option value="dmy_slash">DD-Mon-YYYY</option>
-            </select>
-          </div>
-        </div>
-        <div style="margin-top:10px;">
-          <div style="font-size:0.75em;font-weight:700;color:var(--text-light);margin-bottom:4px;">SKIP ROWS containing</div>
-          <input id="iuniversal-skip-words" type="text" class="nw-sheet-input"
-                 placeholder="e.g. opening balance, total, closing"
-                 style="font-size:0.8em;padding:8px;">
-        </div>
-        <button onclick="runUniversalParse()"
-                style="margin-top:12px;width:100%;padding:12px;background:#1E2A6E;color:white;border:none;border-radius:10px;font-size:0.88em;font-weight:900;cursor:pointer;">
-          ✅ Parse with these settings
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Step 2: Review -->
-  <div class="import-step" id="iuniversal-step2">
-    <div class="import-card">
-      <div class="import-card-title">Review — Bank CSV</div>
-      <div id="iuniversal-summary-grid" class="import-summary-grid"></div>
-      <div id="iuniversal-summary-text" style="font-size:0.75em;color:var(--text-light);margin:8px 0 12px;"></div>
-
-      <div id="iuniversal-dup-section" style="display:none;">
-        <div style="font-size:0.8em;font-weight:800;color:#DC2626;margin-bottom:6px;">⚠️ Possible Duplicates</div>
-        <div id="iuniversal-dup-list"></div>
-      </div>
-
-      <div style="overflow-x:auto;margin-top:8px;">
-        <table class="import-preview-table" style="width:100%;">
-          <tbody id="iuniversal-preview-table"></tbody>
-        </table>
-      </div>
-
-      <div style="margin-top:14px;display:flex;gap:10px;">
-        <button onclick="confirmUniversalImport()"
-                style="flex:1;padding:13px;background:#059669;color:white;border:none;border-radius:12px;font-size:0.9em;font-weight:900;cursor:pointer;">
-          ✅ Import Transactions
-        </button>
-        <button onclick="resetUniversalImport()"
-                style="padding:13px 18px;background:var(--bg-secondary);color:var(--text-dark);border:1px solid var(--border);border-radius:12px;font-size:0.88em;font-weight:800;cursor:pointer;">
-          ↩ Back
-        </button>
-      </div>
-    </div>
-  </div>
-
-</div>
 
 <!-- ── WHAT-IF SIMULATION ENGINE ──────────────────────────── -->
 <div class="wi-overlay" id="wi-overlay" onclick="closeWhatIf()"></div>
