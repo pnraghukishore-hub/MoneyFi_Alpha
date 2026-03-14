@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.26.4 -->
+<!-- MoneyFi v3.26.3 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -3256,7 +3256,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
       <!-- KEEP / REVIEW / EXIT -->
       <div class="lab-section-label">📋 Consolidation Advisor</div>
-      <div id="clarity-filter-row" style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;">
+      <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;">
         <button class="lab-sort-btn lab-sort-active" onclick="filterClarityFunds('all')"   id="cfbtn-all">All</button>
         <button class="lab-sort-btn" onclick="filterClarityFunds('keep')"  id="cfbtn-keep">✅ Keep</button>
         <button class="lab-sort-btn" onclick="filterClarityFunds('review')" id="cfbtn-review">⚠️ Review</button>
@@ -10956,29 +10956,6 @@ function renderROIClarity() {
   // ── Tax estimate ──
   _renderClarityTax(d, sym);
   _renderInsuranceGap();
-  // Inject collapse chevrons into each section card
-  _addClarityChevron('clarity-overlap-card', 'clarity-overlap-body');
-  _addClarityChevron('clarity-amc-card', 'clarity-amc-body');
-  _addClarityChevron('clarity-goals-card', 'clarity-goals-body');
-  _addClarityChevron('clarity-tax-card', 'clarity-tax-body');
-  _addClarityChevron('ins-gap-card', 'ins-gap-body');
-  // Consolidation Advisor section collapse
-  (function() {
-    const lbl = document.querySelector('.lab-section-label');
-    if (!lbl || lbl.dataset.chevronAdded) return;
-    lbl.dataset.chevronAdded = '1';
-    lbl.style.display = 'flex';
-    lbl.style.justifyContent = 'space-between';
-    lbl.style.alignItems = 'center';
-    const chev = document.createElement('span');
-    chev.className = 'clar-chev';
-    chev.textContent = '▼';
-    chev.style.cssText = 'font-size:.7em;color:#9CA3AF;cursor:pointer;padding:2px 8px;transition:transform .25s;';
-    chev.onclick = function(e) { e.stopPropagation(); _toggleConsolidationAdvisor(chev); };
-    lbl.onclick = function() { _toggleConsolidationAdvisor(chev); };
-    lbl.style.cursor = 'pointer';
-    lbl.appendChild(chev);
-  })();
 }
 
 
@@ -11318,53 +11295,6 @@ function _renderInsuranceGap() {
     ${crit&&termSt==='critical'?`<div style="padding:10px;background:#FFF1F2;border-left:3px solid #DC2626;border-radius:0 8px 8px 0;font-size:.74em;font-weight:700;color:#9F1239;line-height:1.5;">🚨 <strong>Term insurance is your most urgent financial gap</strong> — more urgent than any investment optimisation.</div>`:''}
     <div style="font-size:.6em;color:#9CA3AF;margin-top:8px;text-align:center;">⚖️ Based on ${isUS?'DIME method':'HLV/IRDAI guidelines'} · Not financial advice</div>`;
 }
-
-// ── Clarity collapse/expand — pure JS, chevrons injected after render ──
-const _clarityCollapsed = {};
-
-function _addClarityChevron(cardId, bodyId) {
-  const card = document.getElementById(cardId);
-  if (!card) return;
-  const hdr  = card.querySelector('.lab-card-header');
-  if (!hdr || hdr.querySelector('.clar-chev')) return;
-  const chev = document.createElement('span');
-  chev.className = 'clar-chev';
-  chev.textContent = '▼';
-  chev.style.cssText = 'font-size:.7em;color:#9CA3AF;cursor:pointer;padding:2px 8px;' +
-    'border-radius:6px;transition:transform .25s ease;user-select:none;margin-left:auto;flex-shrink:0;';
-  chev.onclick = function(e) { e.stopPropagation(); _toggleClarityBody(bodyId, chev); };
-  hdr.style.cursor = 'pointer';
-  hdr.onclick = function() { _toggleClarityBody(bodyId, chev); };
-  hdr.style.display = 'flex';
-  hdr.style.alignItems = 'center';
-  hdr.appendChild(chev);
-}
-
-function _toggleClarityBody(bodyId, chevEl) {
-  const body = document.getElementById(bodyId);
-  if (!body) return;
-  const nowCollapsed = (_clarityCollapsed[bodyId] !== true);
-  _clarityCollapsed[bodyId] = nowCollapsed;
-  body.style.maxHeight   = nowCollapsed ? '0'     : '';
-  body.style.overflow    = nowCollapsed ? 'hidden' : '';
-  body.style.opacity     = nowCollapsed ? '0'     : '';
-  body.style.marginTop   = nowCollapsed ? '0'     : '';
-  body.style.paddingTop  = nowCollapsed ? '0'     : '';
-  if (chevEl) chevEl.style.transform = nowCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-}
-
-// Also handle Consolidation Advisor section (label + fund list, not a lab-card)
-function _toggleConsolidationAdvisor(chevEl) {
-  const ids = ['roi-funds-list','clarity-filter-row','clarity-triage-section'];
-  const nowCollapsed = (_clarityCollapsed['consol'] !== true);
-  _clarityCollapsed['consol'] = nowCollapsed;
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.style.maxHeight = nowCollapsed ? '0' : ''; el.style.overflow = nowCollapsed ? 'hidden' : ''; el.style.opacity = nowCollapsed ? '0' : ''; }
-  });
-  if (chevEl) chevEl.style.transform = nowCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-}
-
 function _renderClarityTax(d, sym) {
   const card = document.getElementById('clarity-tax-card');
   const body = document.getElementById('clarity-tax-body');
@@ -12782,10 +12712,26 @@ function renderRebalancingAdvisor() {
   const age     = profile?.age || null;
   const cfg     = FHS_REGION[region] || FHS_REGION.IN;
 
-  // ── Get current allocation from scorePortfolioHealth ──────────────
-  const nwD = computeNetWorth ? computeNetWorth() : null;
-  const port = scorePortfolioHealth(nwD, profile);
-  const total = port.totalPortfolio || 0;
+  // ── Compute current allocation directly from NW accounts ────────────
+  // (avoids scorePortfolioHealth version conflicts between script blocks)
+  const allAccts = (data._nwAccounts || []).filter(a => (a.balance||0) > 0 && !a.meta?.isLiability);
+  const byAC = { equity:0, debt:0, gold:0, realestate:0, cash:0 };
+  allAccts.forEach(a => {
+    const val = nwConvert ? nwConvert(a.balance||0, a.currency||'USD') : (a.balance||0);
+    const ac  = a.assetClass || (typeof inferAssetClass === 'function' ? inferAssetClass(a) : null);
+    if      (ac === 'equity' || ['mf_equity','mf_elss','mf_hybrid','mf_index',
+              'brokerage','brokerage_taxable','stocks_direct',
+              'retirement_401k','retirement_roth','retirement_ira','hsa',
+              'nps','epf','ppf','retirement'].includes(a.type)) byAC.equity     += val;
+    else if (ac === 'debt'  || ['mf_debt','bonds_fd','bank_fd','ibond',
+              'college_529'].includes(a.type))                   byAC.debt       += val;
+    else if (ac === 'gold'  || ['mf_gold','metals'].includes(a.type))    byAC.gold       += val;
+    else if (ac === 'realestate' || a.type === 'realestate')     byAC.realestate += val;
+    else if (['checking','savings_acc','bank_checking_us',
+              'cash','emergency'].includes(a.type))              byAC.cash       += val;
+    // credit_card, loan, other_liability excluded (liabilities)
+  });
+  const total = Object.values(byAC).reduce((s,v) => s+v, 0);
 
   if (total <= 0) {
     el.innerHTML = `<div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.82em;line-height:1.6;">
@@ -12796,11 +12742,11 @@ function renderRebalancingAdvisor() {
 
   // Current % by asset class
   const cur = {
-    equity:    total > 0 ? Math.round((port.eqAmt||0)  / total * 100) : 0,
-    debt:      total > 0 ? Math.round((port.dbAmt||0)  / total * 100) : 0,
-    gold:      total > 0 ? Math.round((port.auAmt||0)  / total * 100) : 0,
-    realestate:total > 0 ? Math.round((port.reAmt||0)  / total * 100) : 0,
-    cash:      total > 0 ? Math.round((port.caAmt||0)  / total * 100) : 0,
+    equity:     Math.round(byAC.equity     / total * 100),
+    debt:       Math.round(byAC.debt       / total * 100),
+    gold:       Math.round(byAC.gold       / total * 100),
+    realestate: Math.round(byAC.realestate / total * 100),
+    cash:       Math.round(byAC.cash       / total * 100),
   };
 
   // Target — use saved or suggest from age
@@ -12856,7 +12802,7 @@ function renderRebalancingAdvisor() {
         oninput="document.getElementById('rebal-tgt-lbl-${k}').textContent=this.value+'%';_rebalSaveTarget('${k}',this.value)">
       <div style="display:flex;justify-content:space-between;font-size:.6em;color:#9CA3AF;margin-top:1px;">
         <span>You: <strong style="color:${m.col};">${cPct}%</strong>
-          (${sym}${Math.round((port[k==='equity'?'eqAmt':k==='debt'?'dbAmt':k==='gold'?'auAmt':k==='realestate'?'reAmt':'caAmt']||0)).toLocaleString()})</span>
+          (${sym}${Math.round(byAC[k]||0).toLocaleString()})</span>
         <span>Target: <strong>${tPct}%</strong></span>
       </div>
     </div>`;
@@ -26735,8 +26681,78 @@ function renderFHSInsights(fhs) {
 
 // G1: Portfolio Health Score (0-100)
 // Measures diversification quality across asset classes, concentration risk
-// scorePortfolioHealth defined in Script 0
+function scorePortfolioHealth(nw, profile) {
+  const byType = nw.byType || {};
+  const total  = nw.totalAssets || 0;
+  if (total <= 0) return { score: 0, status: 'inactive', label: 'No Net Worth data yet' };
 
+  const age   = profile?.age || 35;
+  const isUS  = (profile?.region || 'IN') === 'US';
+
+  // Asset class values (display currency)
+  const equity  = (byType.brokerage?.total || 0) + (byType.retirement?.total || 0);
+  const fixed   = (byType.bonds_fd?.total || 0);
+  const gold    = (byType.metals?.total || 0);
+  const re      = (byType.realestate?.total || 0);
+  const cash    = (byType.savings_acc?.total || 0) + (byType.checking?.total || 0) + (byType.cash?.total || 0);
+
+  // Age-adjusted target allocation
+  // Rule of 110: equity % = 110 - age; rest in fixed/gold/RE/cash
+  const equityTarget = Math.max(0.30, Math.min(0.80, (110 - age) / 100));
+  const fixedTarget  = 0.15;
+  const goldTarget   = 0.10;
+  const reTarget     = 0.15;
+  const cashTarget   = Math.max(0.05, 1 - equityTarget - fixedTarget - goldTarget - reTarget);
+
+  const equityPct = equity / total;
+  const fixedPct  = fixed  / total;
+  const goldPct   = gold   / total;
+  const rePct     = re     / total;
+  const cashPct   = cash   / total;
+
+  // Diversification score: penalize deviation from target using mean absolute error
+  const deviations = [
+    Math.abs(equityPct - equityTarget),
+    Math.abs(fixedPct  - fixedTarget),
+    Math.abs(goldPct   - goldTarget),
+    Math.abs(cashPct   - cashTarget),
+  ];
+  const mae = deviations.reduce((s,d) => s+d, 0) / deviations.length;
+  // mae=0 → score 80, mae=0.5+ → score 0
+  const diversScore = Math.round(Math.max(0, 80 - mae * 160));
+
+  // Concentration penalty: any single NW account > 40% of total assets = risky
+  const allAccs = Object.values(byType).flatMap(g => g.accounts || []);
+  const maxAcct = allAccs.reduce((mx,a) => Math.max(mx, a._val||0), 0);
+  const concentrationPct = maxAcct / total;
+  let concentrationPenalty = 0;
+  const concSignals = [];
+  if (concentrationPct > 0.60) { concentrationPenalty = 20; concSignals.push(`Concentration risk: one asset is ${(concentrationPct*100).toFixed(0)}% of NW`); }
+  else if (concentrationPct > 0.40) { concentrationPenalty = 10; concSignals.push(`Mild concentration: one asset is ${(concentrationPct*100).toFixed(0)}% of NW`); }
+
+  // Asset class count bonus (up to +20)
+  const assetClassCount = [equity>0, fixed>0, gold>0, re>0, cash>0].filter(Boolean).length;
+  const diversityBonus = Math.min(20, assetClassCount * 4);
+
+  const score = fhsClamp(diversScore + diversityBonus - concentrationPenalty, 0, 100);
+
+  return {
+    score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
+    equityPct: +(equityPct*100).toFixed(1), fixedPct: +(fixedPct*100).toFixed(1),
+    goldPct: +(goldPct*100).toFixed(1), rePct: +(rePct*100).toFixed(1), cashPct: +(cashPct*100).toFixed(1),
+    equityTarget: +(equityTarget*100).toFixed(0),
+    assetClassCount, concentrationPct: +(concentrationPct*100).toFixed(1),
+    concentrationPenalty, diversityBonus, diversScore,
+    concSignals, age,
+    calc: `Diversification ${diversScore} + Variety bonus ${diversityBonus} − Concentration ${concentrationPenalty} = ${score}`,
+    benchmarkIN: `Age-adjusted targets: Equity ${(equityTarget*100).toFixed(0)}% · Fixed 15% · Gold 10% · RE 15% · Cash ${(cashTarget*100).toFixed(0)}%`,
+    benchmarkSource: 'Rule of 110 · Vanguard Target Date · SEBI Asset Allocation Guidelines',
+    label: score >= 70 ? `Well-diversified across ${assetClassCount} asset classes` : `${assetClassCount} asset classes — target ${equityTarget*100|0}% equity at age ${age}`,
+  };
+}
+
+// G2: Goal Sequencing Score (0-100)
+// Measures whether goals are funded in the right priority order
 function scoreGoalSequencing(pillarResults, profile) {
   if (!pillarResults) return { score: 0, status: 'inactive', label: 'Compute other pillars first' };
 
