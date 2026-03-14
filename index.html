@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.26.1 -->
+<!-- MoneyFi v3.26.2 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -9862,7 +9862,6 @@ function renderGoalOrchestration() {
   const monthlyExpense = agg?.avgExp  || 0;
   const currentSIPAmt  = (() => {
     const { fundMap } = _buildROIData();
-  const _peerMap = _buildFundPeerMap(accounts, fundMap);
     const now3mo = new Date(); now3mo.setMonth(now3mo.getMonth()-3);
     const cut = now3mo.toISOString().substring(0,7);
     let total = 0;
@@ -12715,8 +12714,7 @@ function renderRebalancingAdvisor() {
 
   // ── Get current allocation from scorePortfolioHealth ──────────────
   const nwD = computeNetWorth ? computeNetWorth() : null;
-  const aggD = getFHSMonthlyAggregates ? getFHSMonthlyAggregates(6, profile) : null;
-  const port = scorePortfolioHealth(nwD, aggD, profile, cfg);
+  const port = scorePortfolioHealth(nwD, profile);
   const total = port.totalPortfolio || 0;
 
   if (total <= 0) {
@@ -12922,6 +12920,7 @@ function renderROIFunds(sortBy) {
   }
 
   const { fundMap } = _buildROIData();
+  const _peerMap = _buildFundPeerMap(accounts, fundMap);
 
   const TYPE_COLOR = {
     mf_equity:'#4F46E5', mf_gold:'#D97706', mf_elss:'#7C3AED', mf_debt:'#06B6D4',
