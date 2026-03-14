@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.26.2 -->
+<!-- MoneyFi v3.26.3 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -1769,6 +1769,26 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   transition: background 0.15s;
 }
 .lab-holdings-row:active { background: #E0E7FF; }
+.clarity-section-body {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: 9999px;
+  opacity: 1;
+}
+.clarity-section-body.collapsed {
+  max-height: 0 !important;
+  opacity: 0;
+}
+.clarity-chevron {
+  font-size: 0.75em;
+  color: #9CA3AF;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: transform 0.25s;
+  user-select: none;
+}
+.clarity-chevron.collapsed { transform: rotate(-90deg); }
 .lab-fund-advisor { 
       font-size:0.67em; font-weight:700; color:#7C3AED;
       background:#F5F3FF; border-radius:8px; padding:5px 8px; margin-top:6px;
@@ -3246,16 +3266,25 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       </div>
 
       <!-- Category Overlap -->
+            </div><!-- /cs-body-consol -->
+
       <div class="lab-card" id="clarity-overlap-card">
         <div class="lab-card-header">
           <div class="lab-card-title">🔁 Category Overlap</div>
           <div class="lab-card-badge lab-badge-warn" id="clarity-overlap-badge">—</div>
+        <span class="clarity-chevron" id="cs-chev-clarity-overlap" onclick="toggleClaritySection('clarity-overlap')" title="Collapse">▼</span>
         </div>
-        <div id="clarity-overlap-body"></div>
+      </div><!-- /cs-body-clarity-overlap -->
+        <div id="cs-body-clarity-overlap" class="clarity-section-body"><div id="clarity-overlap-body"></div>
       </div>
 
       <!-- KEEP / REVIEW / EXIT -->
-      <div class="lab-section-label">📋 Consolidation Advisor</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div class="lab-section-label" style="margin-bottom:0;">📋 Consolidation Advisor</div>
+        <span class="clarity-chevron" id="cs-chev-consol"
+          onclick="toggleClaritySection('consol')" title="Collapse section">▼</span>
+      </div>
+      <div id="cs-body-consol" class="clarity-section-body">
       <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;">
         <button class="lab-sort-btn lab-sort-active" onclick="filterClarityFunds('all')"   id="cfbtn-all">All</button>
         <button class="lab-sort-btn" onclick="filterClarityFunds('keep')"  id="cfbtn-keep">✅ Keep</button>
@@ -3273,8 +3302,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div class="lab-card-header">
           <div class="lab-card-title">🏦 AMC Concentration</div>
           <div class="lab-card-badge" id="clarity-amc-badge">—</div>
+        <span class="clarity-chevron" id="cs-chev-clarity-amc" onclick="toggleClaritySection('clarity-amc')" title="Collapse">▼</span>
         </div>
-        <div id="clarity-amc-body"></div>
+      </div><!-- /cs-body-clarity-amc -->
+        <div id="cs-body-clarity-amc" class="clarity-section-body"><div id="clarity-amc-body"></div>
       </div>
 
       <!-- Goal Alignment -->
@@ -3282,8 +3313,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div class="lab-card-header">
           <div class="lab-card-title">🎯 Goal Alignment</div>
           <div class="lab-card-badge lab-badge-blue" id="clarity-goals-badge">—</div>
+        <span class="clarity-chevron" id="cs-chev-clarity-goals" onclick="toggleClaritySection('clarity-goals')" title="Collapse">▼</span>
         </div>
-        <div id="clarity-goals-body"></div>
+      </div><!-- /cs-body-clarity-goals -->
+        <div id="cs-body-clarity-goals" class="clarity-section-body"><div id="clarity-goals-body"></div>
       </div>
 
       <!-- Tax Estimate -->
@@ -3291,8 +3324,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div class="lab-card-header">
           <div class="lab-card-title">🧾 Tax Estimate on Exit</div>
           <div class="lab-card-badge lab-badge-warn">Indicative only</div>
+        <span class="clarity-chevron" id="cs-chev-clarity-tax" onclick="toggleClaritySection('clarity-tax')" title="Collapse">▼</span>
         </div>
-        <div id="clarity-tax-body"></div>
+      </div><!-- /cs-body-clarity-tax -->
+        <div id="cs-body-clarity-tax" class="clarity-section-body"><div id="clarity-tax-body"></div>
         <div style="font-size:0.62em;font-weight:600;color:#9CA3AF;margin-top:8px;line-height:1.5;">
           Based on LTCG (10% above ₹1L, held &gt;1yr) and STCG (15%, held &lt;1yr) rules as of 2024. 
           Verify with your CA for your specific situation. For NRI: DTAA implications apply separately.
@@ -3304,8 +3339,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div class="lab-card-header">
           <div class="lab-card-title">🛡️ Insurance Gap Check</div>
           <span class="lab-card-badge" id="ins-gap-badge">—</span>
+        <span class="clarity-chevron" id="cs-chev-ins-gap" onclick="toggleClaritySection('ins-gap')" title="Collapse">▼</span>
         </div>
-        <div id="ins-gap-body"></div>
+      </div><!-- /cs-body-ins-gap -->
+        <div id="cs-body-ins-gap" class="clarity-section-body"><div id="ins-gap-body"></div>
       </div>
 
     </div><!-- /clarity -->
@@ -11295,6 +11332,19 @@ function _renderInsuranceGap() {
     ${crit&&termSt==='critical'?`<div style="padding:10px;background:#FFF1F2;border-left:3px solid #DC2626;border-radius:0 8px 8px 0;font-size:.74em;font-weight:700;color:#9F1239;line-height:1.5;">🚨 <strong>Term insurance is your most urgent financial gap</strong> — more urgent than any investment optimisation.</div>`:''}
     <div style="font-size:.6em;color:#9CA3AF;margin-top:8px;text-align:center;">⚖️ Based on ${isUS?'DIME method':'HLV/IRDAI guidelines'} · Not financial advice</div>`;
 }
+
+// ── Clarity section collapse / expand ────────────────────────────────
+const _claritySectionState = {};  // id → collapsed (bool)
+function toggleClaritySection(sectionId) {
+  const body   = document.getElementById('cs-body-' + sectionId);
+  const chev   = document.getElementById('cs-chev-' + sectionId);
+  if (!body) return;
+  const now = !_claritySectionState[sectionId];
+  _claritySectionState[sectionId] = now;
+  body.classList.toggle('collapsed', now);
+  if (chev) chev.classList.toggle('collapsed', now);
+}
+
 function _renderClarityTax(d, sym) {
   const card = document.getElementById('clarity-tax-card');
   const body = document.getElementById('clarity-tax-body');
@@ -26665,78 +26715,8 @@ function renderFHSInsights(fhs) {
 
 // G1: Portfolio Health Score (0-100)
 // Measures diversification quality across asset classes, concentration risk
-function scorePortfolioHealth(nw, profile) {
-  const byType = nw.byType || {};
-  const total  = nw.totalAssets || 0;
-  if (total <= 0) return { score: 0, status: 'inactive', label: 'No Net Worth data yet' };
+// scorePortfolioHealth defined in main script block
 
-  const age   = profile?.age || 35;
-  const isUS  = (profile?.region || 'IN') === 'US';
-
-  // Asset class values (display currency)
-  const equity  = (byType.brokerage?.total || 0) + (byType.retirement?.total || 0);
-  const fixed   = (byType.bonds_fd?.total || 0);
-  const gold    = (byType.metals?.total || 0);
-  const re      = (byType.realestate?.total || 0);
-  const cash    = (byType.savings_acc?.total || 0) + (byType.checking?.total || 0) + (byType.cash?.total || 0);
-
-  // Age-adjusted target allocation
-  // Rule of 110: equity % = 110 - age; rest in fixed/gold/RE/cash
-  const equityTarget = Math.max(0.30, Math.min(0.80, (110 - age) / 100));
-  const fixedTarget  = 0.15;
-  const goldTarget   = 0.10;
-  const reTarget     = 0.15;
-  const cashTarget   = Math.max(0.05, 1 - equityTarget - fixedTarget - goldTarget - reTarget);
-
-  const equityPct = equity / total;
-  const fixedPct  = fixed  / total;
-  const goldPct   = gold   / total;
-  const rePct     = re     / total;
-  const cashPct   = cash   / total;
-
-  // Diversification score: penalize deviation from target using mean absolute error
-  const deviations = [
-    Math.abs(equityPct - equityTarget),
-    Math.abs(fixedPct  - fixedTarget),
-    Math.abs(goldPct   - goldTarget),
-    Math.abs(cashPct   - cashTarget),
-  ];
-  const mae = deviations.reduce((s,d) => s+d, 0) / deviations.length;
-  // mae=0 → score 80, mae=0.5+ → score 0
-  const diversScore = Math.round(Math.max(0, 80 - mae * 160));
-
-  // Concentration penalty: any single NW account > 40% of total assets = risky
-  const allAccs = Object.values(byType).flatMap(g => g.accounts || []);
-  const maxAcct = allAccs.reduce((mx,a) => Math.max(mx, a._val||0), 0);
-  const concentrationPct = maxAcct / total;
-  let concentrationPenalty = 0;
-  const concSignals = [];
-  if (concentrationPct > 0.60) { concentrationPenalty = 20; concSignals.push(`Concentration risk: one asset is ${(concentrationPct*100).toFixed(0)}% of NW`); }
-  else if (concentrationPct > 0.40) { concentrationPenalty = 10; concSignals.push(`Mild concentration: one asset is ${(concentrationPct*100).toFixed(0)}% of NW`); }
-
-  // Asset class count bonus (up to +20)
-  const assetClassCount = [equity>0, fixed>0, gold>0, re>0, cash>0].filter(Boolean).length;
-  const diversityBonus = Math.min(20, assetClassCount * 4);
-
-  const score = fhsClamp(diversScore + diversityBonus - concentrationPenalty, 0, 100);
-
-  return {
-    score, status: score >= 70 ? 'good' : score >= 40 ? 'fair' : 'poor',
-    equityPct: +(equityPct*100).toFixed(1), fixedPct: +(fixedPct*100).toFixed(1),
-    goldPct: +(goldPct*100).toFixed(1), rePct: +(rePct*100).toFixed(1), cashPct: +(cashPct*100).toFixed(1),
-    equityTarget: +(equityTarget*100).toFixed(0),
-    assetClassCount, concentrationPct: +(concentrationPct*100).toFixed(1),
-    concentrationPenalty, diversityBonus, diversScore,
-    concSignals, age,
-    calc: `Diversification ${diversScore} + Variety bonus ${diversityBonus} − Concentration ${concentrationPenalty} = ${score}`,
-    benchmarkIN: `Age-adjusted targets: Equity ${(equityTarget*100).toFixed(0)}% · Fixed 15% · Gold 10% · RE 15% · Cash ${(cashTarget*100).toFixed(0)}%`,
-    benchmarkSource: 'Rule of 110 · Vanguard Target Date · SEBI Asset Allocation Guidelines',
-    label: score >= 70 ? `Well-diversified across ${assetClassCount} asset classes` : `${assetClassCount} asset classes — target ${equityTarget*100|0}% equity at age ${age}`,
-  };
-}
-
-// G2: Goal Sequencing Score (0-100)
-// Measures whether goals are funded in the right priority order
 function scoreGoalSequencing(pillarResults, profile) {
   if (!pillarResults) return { score: 0, status: 'inactive', label: 'Compute other pillars first' };
 
