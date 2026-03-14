@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.0.1 -->
+<!-- MoneyFi v4.0.2 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -4854,75 +4854,6 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
   </div>
 </div>
-
-<!-- EDIT BUDGET POPUP (bottom sheet) -->
-<div class="edit-budget-popup" id="edit-budget-popup">
-  <div class="popup-backdrop" onclick="closeEditBudgetPopup()"></div>
-  <div class="edit-budget-sheet">
-    <div class="ebp-handle"></div>
-    <div class="ebp-title" id="ebp-title">📋 Budget Settings</div>
-    <div class="ebp-emoji-row" id="ebp-emoji-row"></div>
-    <div class="ebp-field">
-      <label>Category Name</label>
-      <input type="text" id="ebp-name" placeholder="e.g. Groceries, Pottery Class">
-    </div>
-    <div class="ebp-field">
-      <label>Type</label>
-      <select id="ebp-type">
-        <option value="expense">💸 Expense Budget</option>
-        <option value="savings">💰 Savings Goal</option>
-      </select>
-    </div>
-    <div class="ebp-field">
-      <label>Monthly Budget / Goal Amount ($)</label>
-      <input type="number" id="ebp-amount" placeholder="0.00" step="0.01" min="0">
-    </div>
-    <div class="ebp-field" id="ebp-linked-cats-field">
-      <label id="ebp-linked-cats-label">Linked Transaction Categories</label>
-      <div id="ebp-linked-cats-hint" style="font-size:0.72em;color:var(--text-light);font-weight:600;margin-bottom:6px;"></div>
-      <!-- Selected chips -->
-      <div id="ebp-linked-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:0;"></div>
-      <!-- Search input -->
-      <div style="position:relative;">
-        <input type="text" id="ebp-linked-search"
-          placeholder="Type to search categories..."
-          autocomplete="off"
-          oninput="filterLinkedCatSuggestions(this.value)"
-          onfocus="filterLinkedCatSuggestions(this.value)"
-          style="width:100%;background:#F8F8F8;border:1.5px solid #EEE;border-radius:10px;padding:10px 12px;font-family:inherit;font-weight:700;font-size:0.88em;color:var(--text-dark);outline:none;box-sizing:border-box;">
-        <!-- Suggestions dropdown -->
-        <div id="ebp-linked-suggestions" style="
-          display:none;position:absolute;top:100%;left:0;right:0;z-index:999;
-          background:white;border:1.5px solid #EEE;border-radius:10px;
-          box-shadow:0 8px 24px rgba(0,0,0,0.1);max-height:180px;overflow-y:auto;margin-top:4px;
-        "></div>
-      </div>
-      <!-- Hidden input carries the actual comma-separated value for save logic -->
-      <input type="hidden" id="ebp-linked-cats">
-    </div>
-    <div class="ebp-actions">
-      <button class="ebp-save-btn" onclick="saveEditedBudget()">✅ Save</button>
-      <button class="ebp-del-btn" id="ebp-del-btn" onclick="deleteEditedBudget()" style="display:none;">🗑️</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ MODALS ══ -->
-<div class="modal-overlay" id="add-account-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Add Account</div>
-      <button class="modal-close" onclick="closeModal('add-account-modal')">✕</button>
-    </div>
-    <div class="add-form">
-      <div class="form-row"><span class="form-label">Name</span><input type="text" class="form-input" id="acc-name-input" placeholder="Account name"></div>
-      <div class="form-row"><span class="form-label">Type</span><select class="form-select" id="acc-type-input"><option>Debit</option><option>Credit</option><option>Cash</option><option>Investment</option></select></div>
-      <div class="form-row" style="border-bottom:none;"><span class="form-label">Balance</span><input type="number" class="form-input" id="acc-balance-input" placeholder="0"></div>
-    </div>
-    <button onclick="saveAccount()" style="width:100%;background:var(--yellow);border:none;border-radius:var(--radius-sm);padding:16px;font-family:Nunito;font-weight:900;color:var(--text-dark);cursor:pointer;margin-top:8px;">Save Account</button>
-  </div>
-</div>
-
 <!-- ── Universal Bank / Generic CSV Import ─────────────────────────── -->
 <!-- ══ SMS IMPORT ══ -->
 <div class="import-section" id="isec-sms">
@@ -5117,6 +5048,76 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     </div>
   </div>
 
+</div>
+
+
+
+<!-- EDIT BUDGET POPUP (bottom sheet) -->
+<div class="edit-budget-popup" id="edit-budget-popup">
+  <div class="popup-backdrop" onclick="closeEditBudgetPopup()"></div>
+  <div class="edit-budget-sheet">
+    <div class="ebp-handle"></div>
+    <div class="ebp-title" id="ebp-title">📋 Budget Settings</div>
+    <div class="ebp-emoji-row" id="ebp-emoji-row"></div>
+    <div class="ebp-field">
+      <label>Category Name</label>
+      <input type="text" id="ebp-name" placeholder="e.g. Groceries, Pottery Class">
+    </div>
+    <div class="ebp-field">
+      <label>Type</label>
+      <select id="ebp-type">
+        <option value="expense">💸 Expense Budget</option>
+        <option value="savings">💰 Savings Goal</option>
+      </select>
+    </div>
+    <div class="ebp-field">
+      <label>Monthly Budget / Goal Amount ($)</label>
+      <input type="number" id="ebp-amount" placeholder="0.00" step="0.01" min="0">
+    </div>
+    <div class="ebp-field" id="ebp-linked-cats-field">
+      <label id="ebp-linked-cats-label">Linked Transaction Categories</label>
+      <div id="ebp-linked-cats-hint" style="font-size:0.72em;color:var(--text-light);font-weight:600;margin-bottom:6px;"></div>
+      <!-- Selected chips -->
+      <div id="ebp-linked-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:0;"></div>
+      <!-- Search input -->
+      <div style="position:relative;">
+        <input type="text" id="ebp-linked-search"
+          placeholder="Type to search categories..."
+          autocomplete="off"
+          oninput="filterLinkedCatSuggestions(this.value)"
+          onfocus="filterLinkedCatSuggestions(this.value)"
+          style="width:100%;background:#F8F8F8;border:1.5px solid #EEE;border-radius:10px;padding:10px 12px;font-family:inherit;font-weight:700;font-size:0.88em;color:var(--text-dark);outline:none;box-sizing:border-box;">
+        <!-- Suggestions dropdown -->
+        <div id="ebp-linked-suggestions" style="
+          display:none;position:absolute;top:100%;left:0;right:0;z-index:999;
+          background:white;border:1.5px solid #EEE;border-radius:10px;
+          box-shadow:0 8px 24px rgba(0,0,0,0.1);max-height:180px;overflow-y:auto;margin-top:4px;
+        "></div>
+      </div>
+      <!-- Hidden input carries the actual comma-separated value for save logic -->
+      <input type="hidden" id="ebp-linked-cats">
+    </div>
+    <div class="ebp-actions">
+      <button class="ebp-save-btn" onclick="saveEditedBudget()">✅ Save</button>
+      <button class="ebp-del-btn" id="ebp-del-btn" onclick="deleteEditedBudget()" style="display:none;">🗑️</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODALS ══ -->
+<div class="modal-overlay" id="add-account-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Account</div>
+      <button class="modal-close" onclick="closeModal('add-account-modal')">✕</button>
+    </div>
+    <div class="add-form">
+      <div class="form-row"><span class="form-label">Name</span><input type="text" class="form-input" id="acc-name-input" placeholder="Account name"></div>
+      <div class="form-row"><span class="form-label">Type</span><select class="form-select" id="acc-type-input"><option>Debit</option><option>Credit</option><option>Cash</option><option>Investment</option></select></div>
+      <div class="form-row" style="border-bottom:none;"><span class="form-label">Balance</span><input type="number" class="form-input" id="acc-balance-input" placeholder="0"></div>
+    </div>
+    <button onclick="saveAccount()" style="width:100%;background:var(--yellow);border:none;border-radius:var(--radius-sm);padding:16px;font-family:Nunito;font-weight:900;color:var(--text-dark);cursor:pointer;margin-top:8px;">Save Account</button>
+  </div>
 </div>
 
 
@@ -16420,8 +16421,8 @@ function openFabMenu() {
   document.getElementById('fab-add-btn').classList.add('open');
   document.getElementById('fab-backdrop').classList.add('open');
   // Stagger items in reverse so bottom item appears first
-  ['fmi-expense','fmi-income','fmi-investment'].forEach((id, i) => {
-    setTimeout(() => document.getElementById(id).classList.add('visible'), i * 40);
+  ['fmi-expense','fmi-income','fmi-investment','fmi-sms'].forEach((id, i) => {
+    setTimeout(() => document.getElementById(id)?.classList.add('visible'), i * 40);
   });
   // Push AI FAB above the expanded menu
   const aiFab = document.getElementById('ai-fab');
