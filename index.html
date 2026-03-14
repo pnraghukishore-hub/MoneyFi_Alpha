@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.0.0 -->
+<!-- MoneyFi v4.0.1 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -441,9 +441,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     .fab-menu { position: fixed; bottom: 138px; right: 16px; display: flex; flex-direction: column; gap: 10px; z-index: 199; pointer-events: none; }
     .fab-menu-item { display: flex; align-items: center; gap: 10px; justify-content: flex-end; opacity: 0; transform: translateY(16px) scale(0.9); transition: opacity 0.2s, transform 0.2s; pointer-events: none; }
     .fab-menu-item.visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: all; }
-    .fab-menu-item:nth-child(1).visible { transition-delay: 0.05s; }
-    .fab-menu-item:nth-child(2).visible { transition-delay: 0.02s; }
-    .fab-menu-item:nth-child(3).visible { transition-delay: 0s; }
+    .fab-menu-item:nth-child(1).visible { transition-delay: 0.08s; }
+    .fab-menu-item:nth-child(2).visible { transition-delay: 0.05s; }
+    .fab-menu-item:nth-child(3).visible { transition-delay: 0.02s; }
+    .fab-menu-item:nth-child(4).visible { transition-delay: 0s; }
     .fab-menu-label { background: var(--white); color: var(--text-dark); font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.82em; padding: 6px 12px; border-radius: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.12); white-space: nowrap; }
     .fab-menu-btn { width: 44px; height: 44px; border-radius: 50%; border: none; font-size: 1.2em; cursor: pointer; box-shadow: 0 3px 12px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     /* Backdrop */
@@ -2429,14 +2430,9 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <div style="display:flex;align-items:center;gap:8px;">
     <div class="topbar-badge" id="topbar-month" style="cursor:default;">Feb 2026</div>
     <div class="topbar-icons">
-      <div class="topbar-tray" id="topbar-tray">
-        <button class="topbar-icon-btn" onclick="goToScreen('roi')" title="Investment Growth Lab">🔬</button>
-        <button class="topbar-icon-btn" onclick="goToScreen('metals')" title="Metals">🥇</button>
-        <button class="topbar-icon-btn" onclick="switchScreen('import',null)" title="Import">📥</button>
-        <button class="topbar-icon-btn" onclick="goToScreen('networth')" title="Net Worth">💎</button>
-        <button class="topbar-icon-btn" onclick="goToScreen('settings')" title="Settings">⚙️</button>
-      </div>
-      <button class="topbar-toggle" id="topbar-toggle-btn" onclick="toggleTopbarTray()" title="Quick access">✦</button>
+      <button class="topbar-icon-btn" onclick="goToScreen('roi')"      title="Investment Growth Lab">🔬</button>
+      <button class="topbar-icon-btn" onclick="goToScreen('metals')"   title="Metals">🥇</button>
+      <button class="topbar-icon-btn" onclick="goToScreen('settings')" title="Settings">⚙️</button>
     </div>
   </div>
 </div>
@@ -3520,6 +3516,12 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <div style="background:white;border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
     <div style="font-size:0.65em;font-weight:900;color:#888;text-transform:uppercase;letter-spacing:0.8px;padding:12px 16px 6px;">Data Management</div>
 
+    <div onclick="switchScreen('import',null)" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
+      <div style="width:36px;height:36px;background:#EDE9FE;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">📥</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Import Hub</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">CAMS · Zerodha · EPF · Bank CSV · SMS</div></div>
+      <span style="color:#CCC;font-size:0.85em;">›</span>
+    </div>
+
     <div onclick="downloadBackup()" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
       <div style="width:36px;height:36px;background:#EFF6FF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">💾</div>
       <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Backup Data</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">Download full JSON backup</div></div>
@@ -3616,6 +3618,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
 <!-- FAB LAUNCHER MENU -->
 <div class="fab-menu" id="fab-menu">
+  <div class="fab-menu-item" id="fmi-sms">
+    <div class="fab-menu-label">📱 SMS Import</div>
+    <button class="fab-menu-btn" style="background:#4F46E5;color:white;" onclick="closeFabMenu();switchScreen('import',null);setTimeout(()=>{const t=document.querySelector('.import-tab[onclick*=\'sms\']');if(t)t.click();},300);">📱</button>
+  </div>
   <div class="fab-menu-item" id="fmi-investment">
     <div class="fab-menu-label">📈 Investment</div>
     <button class="fab-menu-btn" style="background:#7C3AED;color:white;" onclick="closeFabMenu();openQuickAdd('investment',null)">📈</button>
@@ -4925,25 +4931,20 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <div class="import-step active" id="isms-step1">
     <div class="import-card">
       <div class="import-card-title">📱 SMS Bank Alerts</div>
-      <div class="import-card-sub">Paste bank SMS messages below — one per line or in bulk. Works with HDFC, ICICI, SBI, Axis, Kotak, IndusInd (India) and Chase, Amex, Bank of America (US). MoneyFi reads only the text you paste — nothing is sent anywhere.</div>
+      <div class="import-card-sub">Paste bank SMS messages below. Works with HDFC, ICICI, SBI, Axis, Kotak (India) and Chase, Amex, BofA (US). Nothing is sent anywhere.</div>
 
       <textarea id="isms-paste-area"
-        style="width:100%;min-height:160px;border:1.5px solid #E8E8E8;border-radius:12px;padding:12px;font-family:Nunito,sans-serif;font-size:0.82em;font-weight:600;color:#374151;resize:vertical;box-sizing:border-box;margin-top:10px;outline:none;line-height:1.6;"
-        placeholder="Paste SMS messages here…
+        style="width:100%;min-height:120px;max-height:220px;border:1.5px solid #E8E8E8;border-radius:12px;padding:12px;font-family:Nunito,sans-serif;font-size:0.82em;font-weight:600;color:#374151;resize:vertical;box-sizing:border-box;margin-top:10px;outline:none;line-height:1.6;"
+        placeholder="Paste SMS messages here…&#10;&#10;Example:&#10;Rs.4,250.00 debited from a/c **1234 on 14-Mar-26 to VPA swiggy@icici -ICICI Bank&#10;Your a/c XX5678 credited Rs.25,000.00 on 14/03/2026 by NEFT -SBI"></textarea>
 
-Example:
-Dear Customer, Rs.4,250.00 debited from a/c **1234 on 14-Mar-26 to VPA swiggy@icici. Avl bal Rs.18,420.50 -ICICI Bank
-Your a/c XX5678 is credited with Rs.25,000.00 on 14/03/2026 by NEFT-HDFC0001234. Avl Bal:INR 43420.50"></textarea>
-
-      <!-- Sample loader for testing -->
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-        <button onclick="loadSMSSample('IN')" style="background:#F0F4FF;border:none;border-radius:8px;padding:6px 12px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:800;color:#4F46E5;cursor:pointer;">📋 Load India samples</button>
-        <button onclick="loadSMSSample('US')" style="background:#F0FDF4;border:none;border-radius:8px;padding:6px 12px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:800;color:#059669;cursor:pointer;">📋 Load US samples</button>
+        <button onclick="loadSMSSample('IN')" style="background:#F0F4FF;border:none;border-radius:8px;padding:6px 12px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:800;color:#4F46E5;cursor:pointer;">📋 India samples</button>
+        <button onclick="loadSMSSample('US')" style="background:#F0FDF4;border:none;border-radius:8px;padding:6px 12px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:800;color:#059669;cursor:pointer;">📋 US samples</button>
         <button onclick="document.getElementById('isms-paste-area').value=''" style="background:#FFF1F2;border:none;border-radius:8px;padding:6px 12px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:800;color:#EF4444;cursor:pointer;">✕ Clear</button>
       </div>
 
       <button onclick="runSMSParse()"
-        style="margin-top:14px;width:100%;padding:14px;background:#1E2A6E;color:white;border:none;border-radius:12px;font-family:Nunito,sans-serif;font-size:0.92em;font-weight:900;cursor:pointer;">
+        style="margin-top:12px;width:100%;padding:14px;background:#1E2A6E;color:white;border:none;border-radius:12px;font-family:Nunito,sans-serif;font-size:0.92em;font-weight:900;cursor:pointer;">
         🔍 Parse SMS Messages
       </button>
     </div>
@@ -10409,7 +10410,7 @@ function generateBeforeAfterCard() {
     .filter(f => f.verdict==='keep' && f.pct != null && f.pct > 0)
     .sort((a,b) => b.pct - a.pct)[0];
   const topWinnerStr = topWinner
-    ? `${topWinner.name.substring(0,22).trim()}… +${topWinner.pct.toFixed(0)}%`
+    ? `${(topWinner.a?.name||'').substring(0,22).trim()}… +${topWinner.pct.toFixed(0)}%`
     : null;
 
   // ── Enrich: goals count ──
