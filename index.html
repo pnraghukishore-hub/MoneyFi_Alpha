@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.26.3 -->
+<!-- MoneyFi v3.26.4 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -12673,32 +12673,36 @@ function _fundBenchmarkRow(a, pct, peerMap) {
 
 // Age-based target allocation suggestions (SEBI moderate model adjusted for NRI)
 function _rebalSuggestedTarget(age, region) {
-  const isUS = region === 'US';
-  if (!age) return { equity:60, debt:25, gold:10, realestate:0, cash:5 };
-  // Glide path: aggressive young → conservative near retirement
-  if (age < 30) return { equity:80, debt:10, gold:5,  realestate:0, cash:5  };
-  if (age < 35) return { equity:75, debt:12, gold:7,  realestate:0, cash:6  };
-  if (age < 40) return { equity:70, debt:15, gold:8,  realestate:2, cash:5  };
-  if (age < 45) return { equity:65, debt:20, gold:8,  realestate:2, cash:5  };
-  if (age < 50) return { equity:55, debt:28, gold:8,  realestate:4, cash:5  };
-  if (age < 55) return { equity:45, debt:35, gold:8,  realestate:7, cash:5  };
-  if (age < 60) return { equity:35, debt:42, gold:8,  realestate:10, cash:5 };
-  return              { equity:25, debt:50, gold:8,  realestate:12, cash:5 };
+  // 6-bucket targets (must sum to 100): equity, debt, gold, realestate, retirement, cash
+  if (!age) return { equity:30, debt:15, gold:8,  realestate:5, retirement:37, cash:5 };
+  if (age < 30) return { equity:50, debt:8,  gold:5,  realestate:0,  retirement:32, cash:5 };
+  if (age < 35) return { equity:45, debt:10, gold:7,  realestate:0,  retirement:33, cash:5 };
+  if (age < 40) return { equity:35, debt:12, gold:8,  realestate:2,  retirement:38, cash:5 };
+  if (age < 45) return { equity:30, debt:15, gold:8,  realestate:2,  retirement:40, cash:5 };
+  if (age < 50) return { equity:25, debt:20, gold:8,  realestate:4,  retirement:38, cash:5 };
+  if (age < 55) return { equity:20, debt:25, gold:8,  realestate:7,  retirement:35, cash:5 };
+  if (age < 60) return { equity:15, debt:30, gold:8,  realestate:10, retirement:32, cash:5 };
+  return              { equity:10, debt:35, gold:8,  realestate:12, retirement:30, cash:5 };
 }
 
+let _rebalSaveTimer = null;
 function _rebalSaveTarget(key, val) {
   if (!data._targetAllocation) data._targetAllocation = {};
   data._targetAllocation[key] = Math.max(0, Math.min(100, Number(val)||0));
-  // Normalise to 100
+  // Update total % counter immediately (no lag)
   const t = data._targetAllocation;
-  const sum = (t.equity||0)+(t.debt||0)+(t.gold||0)+(t.realestate||0)+(t.cash||0);
+  const sum = (t.equity||0)+(t.debt||0)+(t.gold||0)+(t.realestate||0)+(t.retirement||0)+(t.cash||0);
   const pctEl = document.getElementById('rebal-total-pct');
   if (pctEl) {
     pctEl.textContent = sum + '%';
     pctEl.style.color = Math.abs(sum-100) <= 1 ? '#059669' : '#DC2626';
   }
-  save();
-  renderRebalancingAdvisor();
+  // Debounce: save + re-render only after 600ms of no slider movement
+  clearTimeout(_rebalSaveTimer);
+  _rebalSaveTimer = setTimeout(() => {
+    save();
+    renderRebalancingAdvisor();
+  }, 600);
 }
 
 function renderRebalancingAdvisor() {
@@ -12712,24 +12716,22 @@ function renderRebalancingAdvisor() {
   const age     = profile?.age || null;
   const cfg     = FHS_REGION[region] || FHS_REGION.IN;
 
-  // ── Compute current allocation directly from NW accounts ────────────
-  // (avoids scorePortfolioHealth version conflicts between script blocks)
+  // ── Compute current allocation using ASSET_CLASS_MAP (same as NW card) ──
   const allAccts = (data._nwAccounts || []).filter(a => (a.balance||0) > 0 && !a.meta?.isLiability);
-  const byAC = { equity:0, debt:0, gold:0, realestate:0, cash:0 };
+  const byAC = { equity:0, debt:0, gold:0, realestate:0, retirement:0, cash:0 };
   allAccts.forEach(a => {
     const val = nwConvert ? nwConvert(a.balance||0, a.currency||'USD') : (a.balance||0);
-    const ac  = a.assetClass || (typeof inferAssetClass === 'function' ? inferAssetClass(a) : null);
-    if      (ac === 'equity' || ['mf_equity','mf_elss','mf_hybrid','mf_index',
-              'brokerage','brokerage_taxable','stocks_direct',
-              'retirement_401k','retirement_roth','retirement_ira','hsa',
-              'nps','epf','ppf','retirement'].includes(a.type)) byAC.equity     += val;
-    else if (ac === 'debt'  || ['mf_debt','bonds_fd','bank_fd','ibond',
-              'college_529'].includes(a.type))                   byAC.debt       += val;
-    else if (ac === 'gold'  || ['mf_gold','metals'].includes(a.type))    byAC.gold       += val;
-    else if (ac === 'realestate' || a.type === 'realestate')     byAC.realestate += val;
-    else if (['checking','savings_acc','bank_checking_us',
-              'cash','emergency'].includes(a.type))              byAC.cash       += val;
-    // credit_card, loan, other_liability excluded (liabilities)
+    // Use ASSET_CLASS_MAP (authoritative) then fall back to inferAssetClass
+    const rawAC = (typeof ASSET_CLASS_MAP !== 'undefined' ? ASSET_CLASS_MAP[a.type] : null)
+      || (typeof inferAssetClass === 'function' ? inferAssetClass(a).toUpperCase() : 'OTHER');
+    const ac = rawAC.toLowerCase();
+    if      (ac === 'equity')     byAC.equity     += val;
+    else if (ac === 'debt')       byAC.debt       += val;
+    else if (ac === 'gold')       byAC.gold       += val;
+    else if (ac === 'real_estate' || ac === 'realestate') byAC.realestate += val;
+    else if (ac === 'retirement') byAC.retirement += val;
+    else if (ac === 'cash')       byAC.cash       += val;
+    // credit_card, loan, other_liability skipped (isLiability filter above)
   });
   const total = Object.values(byAC).reduce((s,v) => s+v, 0);
 
@@ -12746,6 +12748,7 @@ function renderRebalancingAdvisor() {
     debt:       Math.round(byAC.debt       / total * 100),
     gold:       Math.round(byAC.gold       / total * 100),
     realestate: Math.round(byAC.realestate / total * 100),
+    retirement: Math.round(byAC.retirement / total * 100),
     cash:       Math.round(byAC.cash       / total * 100),
   };
 
@@ -12775,11 +12778,12 @@ function renderRebalancingAdvisor() {
     debt:       { label:'Debt/FI',      icon:'🏦', col:'#06B6D4' },
     gold:       { label:'Gold',         icon:'🥇', col:'#D97706' },
     realestate: { label:'Real Estate',  icon:'🏡', col:'#F97316' },
-    cash:       { label:'Cash/FD',      icon:'💵', col:'#10B981' },
+    retirement: { label:'Retirement',   icon:'🏛️', col:'#7C3AED' },
+    cash:       { label:'Cash/Liquid',  icon:'💵', col:'#10B981' },
   };
 
   // ── Target allocation sliders ──────────────────────────────────────
-  const tgtSum = (tgt.equity||0)+(tgt.debt||0)+(tgt.gold||0)+(tgt.realestate||0)+(tgt.cash||0);
+  const tgtSum = (tgt.equity||0)+(tgt.debt||0)+(tgt.gold||0)+(tgt.realestate||0)+(tgt.retirement||0)+(tgt.cash||0);
 
   const sliderRows = Object.keys(assetMeta).map(k => {
     const m    = assetMeta[k];
