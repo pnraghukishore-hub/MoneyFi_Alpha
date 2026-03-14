@@ -2943,8 +2943,62 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
       <!-- ── Investments sub-tab bar ── -->
       <div class="inv-sub-tabs">
-        <button class="inv-sub-tab inv-sub-active" id="inv-stab-funds" onclick="switchInvTab('funds')">💼 Funds</button>
-        <button class="inv-sub-tab" id="inv-stab-sip" onclick="switchInvTab('sip')">🔄 SIP Tracker</button>
+        <button class="inv-sub-tab inv-sub-active" id="inv-stab-funds"  onclick="switchInvTab('funds')">💼 Funds</button>
+        <button class="inv-sub-tab" id="inv-stab-sip"    onclick="switchInvTab('sip')">🔄 SIP Tracker</button>
+        <button class="inv-sub-tab" id="inv-stab-equity" onclick="switchInvTab('equity')">📊 Equity</button>
+      </div>
+
+      <!-- ── Equity Intelligence sub-panel ── -->
+      <div id="inv-sub-equity" style="display:none;">
+
+        <!-- Concentration Score Card -->
+        <div class="lab-card" id="eq-concentration-card">
+          <div class="lab-card-header">
+            <div class="lab-card-title">📊 Cross-Portfolio Concentration</div>
+            <div class="lab-card-badge lab-badge-green" id="eq-conc-badge">—</div>
+          </div>
+          <div id="eq-concentration-body"></div>
+        </div>
+
+        <!-- Sector Allocation Donut -->
+        <div class="lab-card" id="eq-sector-card">
+          <div class="lab-card-header">
+            <div class="lab-card-title">🧩 Sector Allocation — All Accounts</div>
+            <div class="lab-card-badge lab-badge-blue" id="eq-sector-badge">—</div>
+          </div>
+          <div id="eq-sector-body">
+            <div style="display:flex;gap:14px;align-items:center;padding:8px 0;">
+              <canvas id="eq-sector-canvas" width="110" height="110" style="flex-shrink:0;"></canvas>
+              <div id="eq-sector-legend" style="flex:1;min-width:0;"></div>
+            </div>
+            <div id="eq-sector-nudge" style="margin-top:6px;"></div>
+          </div>
+        </div>
+
+        <!-- Duplicate Holdings Alert -->
+        <div class="lab-card" id="eq-dupes-card" style="display:none;">
+          <div class="lab-card-header">
+            <div class="lab-card-title">⚠️ Same Stock, Multiple Accounts</div>
+            <div class="lab-card-badge lab-badge-warn" id="eq-dupes-badge">—</div>
+          </div>
+          <div id="eq-dupes-body"></div>
+        </div>
+
+        <!-- Unified Stock Ledger -->
+        <div class="lab-card" id="eq-ledger-card">
+          <div class="lab-card-header">
+            <div class="lab-card-title">📋 Consolidated Stock Ledger</div>
+            <div class="lab-card-badge lab-badge-blue" id="eq-ledger-badge">—</div>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+            <button class="lab-sort-btn lab-sort-active" id="eqbtn-value"  onclick="sortEquityLedger('value')">💰 Value</button>
+            <button class="lab-sort-btn" id="eqbtn-pnl"    onclick="sortEquityLedger('pnl')">📈 P&L</button>
+            <button class="lab-sort-btn" id="eqbtn-sector" onclick="sortEquityLedger('sector')">🏭 Sector</button>
+            <button class="lab-sort-btn" id="eqbtn-name"   onclick="sortEquityLedger('name')">🔤 Name</button>
+          </div>
+          <div id="eq-ledger-body"></div>
+        </div>
+
       </div>
 
       <!-- ── Funds sub-panel ── -->
@@ -9521,14 +9575,21 @@ let _roiSimRate      = 10;
 let _roiTimelineMode = 'invested';
 
 function switchInvTab(tab) {
-  const fundsEl = document.getElementById('inv-sub-funds');
-  const sipEl   = document.getElementById('inv-sub-sip');
-  const fBtn    = document.getElementById('inv-stab-funds');
-  const sBtn    = document.getElementById('inv-stab-sip');
-  if (fundsEl) fundsEl.style.display = tab === 'funds' ? '' : 'none';
-  if (sipEl)   sipEl.style.display   = tab === 'sip'   ? '' : 'none';
+  const fundsEl   = document.getElementById('inv-sub-funds');
+  const sipEl     = document.getElementById('inv-sub-sip');
+  const equityEl  = document.getElementById('inv-sub-equity');
+  const fBtn      = document.getElementById('inv-stab-funds');
+  const sBtn      = document.getElementById('inv-stab-sip');
+  const eBtn      = document.getElementById('inv-stab-equity');
+  if (fundsEl)  fundsEl.style.display  = tab === 'funds'  ? '' : 'none';
+  if (sipEl)    sipEl.style.display    = tab === 'sip'    ? '' : 'none';
+  if (equityEl) equityEl.style.display = tab === 'equity' ? '' : 'none';
   if (fBtn) fBtn.classList.toggle('inv-sub-active', tab === 'funds');
   if (sBtn) sBtn.classList.toggle('inv-sub-active', tab === 'sip');
+  if (eBtn) eBtn.classList.toggle('inv-sub-active', tab === 'equity');
+  if (tab === 'equity') {
+    renderEquityConcentration();
+  }
   if (tab === 'sip' && sipEl) {
     // Build a fresh SIP shell with the same IDs renderROISIPs() targets.
     // Move the real roi-panel-sip off-screen so IDs don't collide.
@@ -11750,6 +11811,417 @@ function toggleLabHoldings(accId, rowEl) {
   panel.style.display = 'block';
   if (chevEl) chevEl.textContent = '▼';
 }
+
+
+// ══════════════════════════════════════════════════════════════════════
+// EQUITY INTELLIGENCE ENGINE — Cross-Portfolio Concentration Analysis
+// Consolidates holdings from ALL stocks_direct NW accounts, computes
+// sector concentration, detects duplicate positions, renders unified ledger.
+// ══════════════════════════════════════════════════════════════════════
+
+let _equityLedgerSort = 'value'; // current sort mode
+
+// ── SECTOR colour palette ─────────────────────────────────────────────
+const SECTOR_COLORS = {
+  'DEFENCE':                  '#6366F1',
+  'ENERGY':                   '#F59E0B',
+  'FINANCIAL SERVICES':       '#10B981',
+  'SOFTWARE SERVICES':        '#3B82F6',
+  'ETF':                      '#8B5CF6',
+  'ENGINEERING & CAPITAL GOODS':'#EC4899',
+  'AUTO ANCILLARY':           '#14B8A6',
+  'REAL ESTATE':              '#F97316',
+  'PHARMACEUTICALS':          '#06B6D4',
+  'FMCG':                     '#84CC16',
+  'METALS & MINING':          '#A78BFA',
+  'TELECOM':                  '#FB923C',
+  'CEMENT':                   '#94A3B8',
+  'CONSUMER DURABLES':        '#F43F5E',
+  'CHEMICALS':                '#22D3EE',
+  'OTHERS':                   '#9CA3AF',
+};
+
+function _sectorColor(sector) {
+  const s = (sector || 'OTHERS').toUpperCase().trim();
+  return SECTOR_COLORS[s] || SECTOR_COLORS['OTHERS'];
+}
+
+// ── Build the unified ledger from all stocks_direct accounts ──────────
+function buildUnifiedEquityLedger() {
+  const dematAccounts = (data._nwAccounts || [])
+    .filter(a => a.type === 'stocks_direct' && a.meta && a.meta.holdings && a.meta.holdings.length > 0);
+
+  if (dematAccounts.length === 0) return { stocks: [], totalVal: 0, totalPnl: 0, accountCount: 0 };
+
+  const map = {}; // symbol → consolidated entry
+  dematAccounts.forEach(account => {
+    (account.meta.holdings || []).forEach(h => {
+      const key = (h.symbol || '').toUpperCase().trim();
+      if (!key) return;
+      if (!map[key]) {
+        map[key] = {
+          symbol:   h.symbol,
+          sector:   h.sector || 'OTHERS',
+          totalQty: 0,
+          totalVal: 0,
+          totalPnl: 0,
+          totalCost:0,
+          accounts: [],
+          accountDetails: [],
+        };
+      }
+      const qty    = Number(h.qty    || 0);
+      const curVal = Number(h.curVal || 0);
+      const pnl    = Number(h.pnl    || 0);
+      const cost   = h.avgCost && h.qty ? Number(h.avgCost) * qty : 0;
+      map[key].totalQty  += qty;
+      map[key].totalVal  += curVal;
+      map[key].totalPnl  += pnl;
+      map[key].totalCost += cost;
+      if (!map[key].accounts.includes(account.name)) {
+        map[key].accounts.push(account.name);
+      }
+      map[key].accountDetails.push({
+        accountName: account.name,
+        qty, curVal, pnl,
+      });
+    });
+  });
+
+  const stocks    = Object.values(map);
+  const totalVal  = stocks.reduce((s, st) => s + st.totalVal, 0);
+  const totalPnl  = stocks.reduce((s, st) => s + st.totalPnl, 0);
+  const totalCost = stocks.reduce((s, st) => s + st.totalCost, 0);
+
+  return { stocks, totalVal, totalPnl, totalCost, accountCount: dematAccounts.length, accounts: dematAccounts };
+}
+
+// ── Compute HHI concentration score from sector weights ──────────────
+function _computeHHI(sectorGroups, totalVal) {
+  if (totalVal <= 0) return 0;
+  return Object.values(sectorGroups).reduce((s, v) => {
+    const w = v / totalVal;
+    return s + w * w;
+  }, 0);
+}
+
+// ── Main render entry point ───────────────────────────────────────────
+function renderEquityConcentration() {
+  const sym = currentCurrency?.symbol || '₹';
+  const ledger = buildUnifiedEquityLedger();
+
+  if (ledger.stocks.length === 0) {
+    // No demat accounts with holdings
+    document.getElementById('eq-concentration-body').innerHTML =
+      `<div style="text-align:center;padding:20px 10px;color:#9CA3AF;font-size:0.82em;line-height:1.5;">
+        No direct equity holdings found.<br>Import your Zerodha, Angel One, or any broker holdings<br>to see cross-portfolio concentration analysis.
+      </div>`;
+    document.getElementById('eq-conc-badge').textContent = 'No Data';
+    document.getElementById('eq-sector-card').style.display = 'none';
+    document.getElementById('eq-dupes-card').style.display  = 'none';
+    document.getElementById('eq-ledger-card').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('eq-sector-card').style.display  = '';
+  document.getElementById('eq-ledger-card').style.display  = '';
+
+  _renderConcentrationCard(ledger, sym);
+  _renderSectorDonut(ledger, sym);
+  _renderDuplicatesCard(ledger, sym);
+  _renderUnifiedLedger(ledger, sym, _equityLedgerSort);
+}
+
+// ── 1. Concentration Score Card ───────────────────────────────────────
+function _renderConcentrationCard(ledger, sym) {
+  const { stocks, totalVal, totalPnl, totalCost, accountCount } = ledger;
+
+  // Build sector groups
+  const sectorGroups = {};
+  stocks.forEach(s => {
+    const sec = (s.sector || 'OTHERS').toUpperCase().trim();
+    sectorGroups[sec] = (sectorGroups[sec] || 0) + s.totalVal;
+  });
+  const sortedSectors = Object.entries(sectorGroups).sort((a,b) => b[1]-a[1]);
+  const topSector     = sortedSectors[0];
+  const topSectorPct  = totalVal > 0 ? (topSector[1] / totalVal * 100) : 0;
+  const hhi           = _computeHHI(sectorGroups, totalVal);
+
+  // HHI risk bands
+  let hhiLabel, hhiColor, badgeText, badgeCls;
+  if (hhi >= 0.18) {
+    hhiLabel = 'Highly Concentrated'; hhiColor = '#DC2626'; badgeText = 'Concentrated'; badgeCls = 'lab-badge-red';
+  } else if (hhi >= 0.10) {
+    hhiLabel = 'Moderately Concentrated'; hhiColor = '#D97706'; badgeText = 'Moderate'; badgeCls = 'lab-badge-warn';
+  } else {
+    hhiLabel = 'Well Diversified'; hhiColor = '#059669'; badgeText = 'Diversified'; badgeCls = 'lab-badge-green';
+  }
+
+  // Top sector risk message
+  let sectorMsg = '';
+  if (topSectorPct >= 35) {
+    sectorMsg = `⚠️ <strong>${topSector[0]}</strong> is ${topSectorPct.toFixed(0)}% of your equity — a single budget cycle, regulation change, or sector rotation moves <strong>${sym}${_fmtK(topSector[1])}</strong> of your portfolio together. Consider distributing into at least one uncorrelated sector.`;
+  } else if (topSectorPct >= 25) {
+    sectorMsg = `💡 <strong>${topSector[0]}</strong> at ${topSectorPct.toFixed(0)}% is a meaningful tilt. Monitor quarterly — not a risk today, but worth watching as it approaches 35%.`;
+  } else {
+    sectorMsg = `✅ No single sector dominates. Your equity is spread across ${sortedSectors.length} sectors — this is healthy diversification.`;
+  }
+
+  const dupes = stocks.filter(s => s.accounts.length > 1);
+  const pnlColor = totalPnl >= 0 ? '#059669' : '#DC2626';
+  const pnlSign  = totalPnl >= 0 ? '▲' : '▼';
+  const totalRoi = totalCost > 0 ? ((totalVal - totalCost) / totalCost * 100).toFixed(1) : null;
+
+  const badge = document.getElementById('eq-conc-badge');
+  badge.textContent = badgeText;
+  badge.className   = 'lab-card-badge ' + badgeCls;
+
+  document.getElementById('eq-concentration-body').innerHTML = `
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+      <div style="text-align:center;background:#F8FAFF;border-radius:10px;padding:10px 6px;">
+        <div style="font-size:1.15em;font-weight:900;color:#1E2A6E;">${stocks.length}</div>
+        <div style="font-size:0.6em;font-weight:800;color:#6B7280;text-transform:uppercase;margin-top:2px;">Stocks</div>
+      </div>
+      <div style="text-align:center;background:#F8FAFF;border-radius:10px;padding:10px 6px;">
+        <div style="font-size:1.15em;font-weight:900;color:#1E2A6E;">${accountCount}</div>
+        <div style="font-size:0.6em;font-weight:800;color:#6B7280;text-transform:uppercase;margin-top:2px;">Accounts</div>
+      </div>
+      <div style="text-align:center;background:#F8FAFF;border-radius:10px;padding:10px 6px;">
+        <div style="font-size:1.15em;font-weight:900;color:#1E2A6E;">${sortedSectors.length}</div>
+        <div style="font-size:0.6em;font-weight:800;color:#6B7280;text-transform:uppercase;margin-top:2px;">Sectors</div>
+      </div>
+      <div style="text-align:center;background:#F8FAFF;border-radius:10px;padding:10px 6px;">
+        <div style="font-size:1.15em;font-weight:900;color:${dupes.length>0?'#D97706':'#059669'};">${dupes.length}</div>
+        <div style="font-size:0.6em;font-weight:800;color:#6B7280;text-transform:uppercase;margin-top:2px;">Duplicates</div>
+      </div>
+    </div>
+
+    <!-- P&L strip -->
+    ${totalCost > 0 ? `<div style="display:flex;justify-content:space-between;align-items:center;background:#F0F4FF;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:0.68em;font-weight:800;color:#6B7280;text-transform:uppercase;">Total Equity Value</div>
+        <div style="font-size:1.05em;font-weight:900;color:#1E2A6E;">${sym}${Math.round(totalVal).toLocaleString()}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:0.68em;font-weight:800;color:#6B7280;text-transform:uppercase;">Unrealized P&L</div>
+        <div style="font-size:1.05em;font-weight:900;color:${pnlColor};">${pnlSign} ${sym}${Math.abs(Math.round(totalPnl)).toLocaleString()}${totalRoi ? ' (' + (totalPnl >= 0 ? '+' : '') + totalRoi + '%)' : ''}</div>
+      </div>
+    </div>` : ''}
+
+    <!-- HHI meter -->
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+        <div style="font-size:0.72em;font-weight:800;color:#374151;">HHI Concentration Index</div>
+        <div style="font-size:0.72em;font-weight:900;color:${hhiColor};">${hhiLabel} · ${hhi.toFixed(3)}</div>
+      </div>
+      <div style="background:#F0F0F0;border-radius:6px;height:8px;overflow:hidden;">
+        <div style="height:100%;border-radius:6px;background:${hhiColor};width:${Math.min(hhi/0.30*100,100).toFixed(0)}%;transition:width 0.8s;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.58em;color:#9CA3AF;margin-top:3px;font-weight:600;">
+        <span>0.00 Diversified</span><span>0.10 Moderate</span><span>0.18+ Concentrated</span>
+      </div>
+    </div>
+
+    <!-- Risk narrative -->
+    <div style="font-size:0.76em;font-weight:600;color:#374151;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;padding:9px 11px;line-height:1.5;">${sectorMsg}</div>`;
+}
+
+// ── 2. Sector Donut ───────────────────────────────────────────────────
+function _renderSectorDonut(ledger, sym) {
+  const { stocks, totalVal } = ledger;
+  const badge = document.getElementById('eq-sector-badge');
+
+  // Aggregate by sector
+  const sectorMap = {};
+  stocks.forEach(s => {
+    const sec = (s.sector || 'OTHERS').toUpperCase().trim();
+    sectorMap[sec] = (sectorMap[sec] || 0) + s.totalVal;
+  });
+  const sorted = Object.entries(sectorMap).sort((a,b) => b[1]-a[1]);
+  badge.textContent = sorted.length + ' sectors';
+
+  // Draw canvas donut
+  const canvas = document.getElementById('eq-sector-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const SIZE = 110;
+  canvas.width  = SIZE * dpr; canvas.height = SIZE * dpr;
+  canvas.style.width = SIZE + 'px'; canvas.style.height = SIZE + 'px';
+  ctx.scale(dpr, dpr);
+
+  const cx = SIZE / 2, cy = SIZE / 2, R = 48, r = 28;
+  let angle = -Math.PI / 2;
+
+  sorted.forEach(([sector, val]) => {
+    const slice = (val / totalVal) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, angle, angle + slice);
+    ctx.closePath();
+    ctx.fillStyle = _sectorColor(sector);
+    ctx.fill();
+    angle += slice;
+  });
+  // Donut hole
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  // Centre label
+  ctx.fillStyle = '#1E2A6E';
+  ctx.font = `bold ${sorted.length > 9 ? 9 : 10}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(sorted.length + ' sectors', cx, cy);
+
+  // Legend
+  const legendEl = document.getElementById('eq-sector-legend');
+  legendEl.innerHTML = sorted.slice(0, 8).map(([sec, val]) => {
+    const pct = (val / totalVal * 100).toFixed(1);
+    const col = _sectorColor(sec);
+    // Sector risk flag
+    const flag = parseFloat(pct) >= 35 ? ' 🔴' : parseFloat(pct) >= 25 ? ' 🟡' : '';
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+      <div style="width:9px;height:9px;border-radius:2px;background:${col};flex-shrink:0;"></div>
+      <div style="font-size:0.68em;font-weight:800;color:#374151;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sec}${flag}</div>
+      <div style="font-size:0.68em;font-weight:900;color:#6B7280;flex-shrink:0;">${pct}%</div>
+    </div>`;
+  }).join('') + (sorted.length > 8 ? `<div style="font-size:0.62em;color:#9CA3AF;margin-top:3px;">+${sorted.length-8} more</div>` : '');
+
+  // Sector nudge
+  const nudgeEl = document.getElementById('eq-sector-nudge');
+  const riskySecors = sorted.filter(([,v]) => (v/totalVal) >= 0.25);
+  if (riskySecors.length > 0) {
+    nudgeEl.innerHTML = riskySecors.map(([sec, val]) => {
+      const pct = (val/totalVal*100).toFixed(0);
+      const col = _sectorColor(sec);
+      const risk = pct >= 35 ? 'Concentrated — consider diversifying away from this sector' : 'Significant tilt — watch quarterly';
+      return `<div style="display:flex;gap:8px;align-items:flex-start;background:#FFF7ED;border-left:3px solid ${col};border-radius:0 8px 8px 0;padding:8px 10px;margin-bottom:6px;">
+        <div style="width:10px;height:10px;border-radius:3px;background:${col};flex-shrink:0;margin-top:3px;"></div>
+        <div style="font-size:0.72em;font-weight:700;color:#374151;line-height:1.4;"><strong>${sec} ${pct}%</strong> — ${risk}</div>
+      </div>`;
+    }).join('');
+  } else {
+    nudgeEl.innerHTML = `<div style="font-size:0.72em;font-weight:700;color:#059669;background:#ECFDF5;border-radius:8px;padding:7px 10px;">✅ No single sector exceeds 25% — your sector allocation is healthy.</div>`;
+  }
+}
+
+// ── 3. Duplicate Holdings Card ────────────────────────────────────────
+function _renderDuplicatesCard(ledger, sym) {
+  const dupes = ledger.stocks.filter(s => s.accounts.length > 1);
+  const card  = document.getElementById('eq-dupes-card');
+  const badge = document.getElementById('eq-dupes-badge');
+  const body  = document.getElementById('eq-dupes-body');
+  if (!card) return;
+
+  if (dupes.length === 0) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = '';
+  badge.textContent  = dupes.length + ' stock' + (dupes.length > 1 ? 's' : '');
+
+  body.innerHTML = `
+    <div style="font-size:0.75em;font-weight:600;color:#374151;margin-bottom:10px;line-height:1.4;">
+      These stocks appear in multiple accounts. This doubles your bet — and creates complexity during tax-loss harvesting (which lot do you sell?).
+    </div>` +
+    dupes.sort((a,b) => b.totalVal - a.totalVal).map(s => {
+      const pnlCol  = s.totalPnl >= 0 ? '#059669' : '#DC2626';
+      const pnlSign = s.totalPnl >= 0 ? '▲' : '▼';
+      return `<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-size:0.88em;font-weight:900;color:#1E2A6E;">${s.symbol}</div>
+          <div style="font-size:0.88em;font-weight:900;">${sym}${Math.round(s.totalVal).toLocaleString()}
+            <span style="font-size:0.8em;font-weight:700;color:${pnlCol};"> ${pnlSign} ${sym}${Math.abs(Math.round(s.totalPnl)).toLocaleString()}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          ${s.accountDetails.map(d => `
+            <div style="display:flex;justify-content:space-between;font-size:0.70em;font-weight:700;color:#6B7280;">
+              <span>📁 ${d.accountName}</span>
+              <span>${d.qty} units · ${sym}${Math.round(d.curVal).toLocaleString()}</span>
+            </div>`).join('')}
+        </div>
+        <div style="margin-top:7px;font-size:0.66em;font-weight:700;color:#92400E;background:#FEF3C7;border-radius:6px;padding:5px 8px;">
+          💡 Total: ${s.totalQty} units across ${s.accounts.length} accounts. Consider consolidating to simplify tracking and avoid unintended over-exposure.
+        </div>
+      </div>`;
+    }).join('');
+}
+
+// ── 4. Unified Stock Ledger ───────────────────────────────────────────
+let _equityLedgerData = null;
+
+function sortEquityLedger(by) {
+  _equityLedgerSort = by;
+  ['value','pnl','sector','name'].forEach(k => {
+    const btn = document.getElementById('eqbtn-' + k);
+    if (btn) btn.classList.toggle('lab-sort-active', k === by);
+  });
+  if (_equityLedgerData) {
+    _renderUnifiedLedger(_equityLedgerData, currentCurrency?.symbol || '₹', by);
+  }
+}
+
+function _renderUnifiedLedger(ledger, sym, sortBy) {
+  _equityLedgerData = ledger;
+  const body   = document.getElementById('eq-ledger-body');
+  const badge  = document.getElementById('eq-ledger-badge');
+  if (!body) return;
+
+  const { stocks, totalVal, accountCount } = ledger;
+  badge.textContent = stocks.length + ' stocks · ' + accountCount + ' accounts';
+
+  // Sort
+  const sorted = [...stocks].sort((a, b) => {
+    if (sortBy === 'pnl')    return b.totalPnl - a.totalPnl;
+    if (sortBy === 'sector') return (a.sector || '').localeCompare(b.sector || '');
+    if (sortBy === 'name')   return a.symbol.localeCompare(b.symbol);
+    return b.totalVal - a.totalVal; // default: value
+  });
+
+  body.innerHTML = sorted.map(s => {
+    const pct      = totalVal > 0 ? (s.totalVal / totalVal * 100) : 0;
+    const pnlCol   = s.totalPnl >= 0 ? '#059669' : '#DC2626';
+    const pnlSign  = s.totalPnl >= 0 ? '▲' : '▼';
+    const sColor   = _sectorColor(s.sector);
+    const dupeFlag = s.accounts.length > 1
+      ? `<span style="font-size:0.58em;font-weight:800;background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;margin-left:4px;">${s.accounts.length} accounts</span>`
+      : '';
+    const costRoi  = s.totalCost > 0
+      ? ((s.totalVal - s.totalCost) / s.totalCost * 100).toFixed(1)
+      : null;
+
+    return `<div style="padding:8px 4px;border-bottom:1px solid #F0F0F0;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:0.82em;font-weight:900;color:#1E2A6E;display:flex;align-items:center;flex-wrap:wrap;gap:3px;">
+            ${s.symbol}${dupeFlag}
+          </div>
+          <div style="font-size:0.62em;font-weight:700;color:#6B7280;margin-top:2px;display:flex;align-items:center;gap:5px;">
+            <span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${sColor};flex-shrink:0;"></span>
+            ${s.sector || 'OTHERS'} · ${s.totalQty} units
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:10px;">
+          <div style="font-size:0.84em;font-weight:900;">${sym}${Math.round(s.totalVal).toLocaleString()}</div>
+          ${s.totalPnl !== 0
+            ? `<div style="font-size:0.68em;font-weight:700;color:${pnlCol};">${pnlSign} ${sym}${Math.abs(Math.round(s.totalPnl)).toLocaleString()}${costRoi ? ' (' + (s.totalPnl>=0?'+':'') + costRoi + '%)' : ''}</div>`
+            : ''}
+        </div>
+      </div>
+      <!-- Portfolio weight bar -->
+      <div style="background:#F0F0F0;border-radius:4px;height:4px;overflow:hidden;">
+        <div style="height:100%;border-radius:4px;background:${sColor};width:${Math.min(pct*2.5,100).toFixed(1)}%;"></div>
+      </div>
+      <div style="font-size:0.58em;font-weight:700;color:#9CA3AF;margin-top:2px;">${pct.toFixed(1)}% of equity</div>
+    </div>`;
+  }).join('');
+}
+// ══════════════════════════════════════════════════════════════════════
 
 function renderROIFunds(sortBy) {
   const sym = currentCurrency?.symbol || '₹';
