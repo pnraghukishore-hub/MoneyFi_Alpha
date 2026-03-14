@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.24.1 -->
+<!-- MoneyFi v3.24.3 -->
 <!-- -
   MoneyFi — Hi
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
@@ -1724,7 +1724,26 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     .lab-fund-bar-wrap { height:5px; background:#F3F4F6; border-radius:4px; overflow:hidden; margin-bottom:4px; }
     .lab-fund-bar { height:100%; border-radius:4px; transition:width 0.4s; }
     .lab-fund-footer { display:flex; justify-content:space-between; font-size:0.65em; font-weight:700; color:#9CA3AF; }
-    .lab-fund-advisor { 
+    .nw-drilldown-wrap {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.lab-holdings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  margin-top: 6px;
+  background: #F0F4FF;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid #E0E7FF;
+  transition: background 0.15s;
+}
+.lab-holdings-row:active { background: #E0E7FF; }
+.lab-fund-advisor { 
       font-size:0.67em; font-weight:700; color:#7C3AED;
       background:#F5F3FF; border-radius:8px; padding:5px 8px; margin-top:6px;
       display:flex; gap:5px; align-items:flex-start; line-height:1.4;
@@ -11502,6 +11521,99 @@ function _drawDonut(nwAccounts) {
 }
 
 // ── FUNDS TAB ──────────────────────────────────────────────────────────
+
+// ── Lab Investments — per-stock holdings expand/collapse ─────────────
+function toggleLabHoldings(accId, rowEl) {
+  const panel = document.getElementById('lab-holdings-panel-' + accId);
+  const chevEl = rowEl ? rowEl.querySelector('.lab-holdings-chevron') : null;
+  if (!panel) return;
+
+  if (panel.style.display === 'block') {
+    panel.style.display = 'none';
+    if (chevEl) chevEl.textContent = '▶';
+    return;
+  }
+
+  // Build panel if empty
+  if (!panel.innerHTML) {
+    const acc = (data._nwAccounts||[]).find(a => a.id === accId);
+    if (!acc || !acc.meta?.holdings?.length) {
+      panel.innerHTML = '<div style="font-size:0.72em;color:#9CA3AF;padding:8px 0;">No individual holdings data — re-import to populate.</div>';
+      panel.style.display = 'block';
+      return;
+    }
+    const sym2 = currentCurrency?.symbol || '$';
+    const holdings = acc.meta.holdings;
+    const sorted   = [...holdings].sort((a,b) => (b.curVal||0)-(a.curVal||0));
+    const totalVal  = sorted.reduce((s,h) => s+(h.curVal||0), 0);
+    const totalPnl  = sorted.reduce((s,h) => s+(h.pnl||0), 0);
+    const totalCost = sorted.reduce((s,h) => s+(h.avgCost||0)*(h.qty||0), 0);
+    const pnlCol   = totalPnl >= 0 ? '#059669' : '#DC2626';
+    const pnlSign  = totalPnl >= 0 ? '▲' : '▼';
+
+    let html = '<div style="padding:10px 0 4px;">';
+
+    // Summary header
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;'
+          + 'padding:6px 10px;background:#F0F4FF;border-radius:8px;margin-bottom:8px;">'
+          + '<div style="font-size:0.72em;font-weight:900;color:#1E2A6E;">'
+          + holdings.length + ' HOLDINGS · ' + sym2 + Math.round(totalVal).toLocaleString() + '</div>'
+          + '<div style="font-size:0.72em;font-weight:800;color:' + pnlCol + ';">'
+          + pnlSign + ' ' + sym2 + Math.abs(Math.round(totalPnl)).toLocaleString() + ' P&L</div>'
+          + '</div>';
+
+    // Top holdings (max 10)
+    const show = sorted.slice(0, 10);
+    show.forEach(h => {
+      const pnl    = h.pnl != null ? h.pnl : null;
+      const pColor = pnl == null ? '#9CA3AF' : pnl >= 0 ? '#059669' : '#DC2626';
+      const pSign  = pnl == null ? '' : pnl >= 0 ? '▲' : '▼';
+      const pTxt   = pnl == null ? '' : pSign + ' ' + sym2 + Math.abs(Math.round(pnl)).toLocaleString();
+      const pct    = totalVal > 0 ? ((h.curVal||0)/totalVal*100).toFixed(0) : 0;
+      const costBasis = h.avgCost != null && h.qty != null
+        ? ' · Cost ' + sym2 + Math.round(h.avgCost * h.qty).toLocaleString() : '';
+      const pnlPct = h.avgCost > 0 && h.qty > 0 && h.pnl != null
+        ? ' (' + (h.pnl/(h.avgCost*h.qty)*100).toFixed(1) + '%)' : '';
+
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;'
+            + 'padding:5px 4px;border-bottom:1px solid #F5F5F5;">'
+            + '<div>'
+            + '<div style="font-size:0.78em;font-weight:800;color:var(--text-dark);">'
+            + (h.symbol || h.name || '') + '</div>'
+            + '<div style="font-size:0.62em;color:var(--text-light);font-weight:600;">'
+            + pct + '% · ' + (h.qty || '') + ' units' + costBasis + '</div>'
+            + '</div>'
+            + '<div style="text-align:right;">'
+            + '<div style="font-size:0.78em;font-weight:900;color:var(--text-dark);">'
+            + sym2 + Math.round(h.curVal||0).toLocaleString() + '</div>'
+            + '<div style="font-size:0.68em;font-weight:700;color:' + pColor + ';">'
+            + pTxt + pnlPct + '</div>'
+            + '</div>'
+            + '</div>';
+    });
+
+    if (holdings.length > 10) {
+      html += '<div style="text-align:center;padding:6px 0;font-size:0.68em;font-weight:700;color:var(--text-light);">'
+            + '+ ' + (holdings.length - 10) + ' more holdings in Net Worth screen</div>';
+    }
+
+    // Concentration warning
+    if (show.length && totalVal > 0 && (show[0].curVal||0)/totalVal > 0.25) {
+      html += '<div style="margin-top:6px;padding:6px 8px;background:#FEF3C7;border-radius:6px;'
+            + 'font-size:0.68em;font-weight:700;color:#92400E;">⚠️ '
+            + (show[0].symbol||show[0].name) + ' is '
+            + ((show[0].curVal||0)/totalVal*100).toFixed(0)
+            + '% of this account — consider diversifying.</div>';
+    }
+
+    html += '</div>';
+    panel.innerHTML = html;
+  }
+
+  panel.style.display = 'block';
+  if (chevEl) chevEl.textContent = '▼';
+}
+
 function renderROIFunds(sortBy) {
   const sym = currentCurrency?.symbol || '₹';
   const summaryEl = document.getElementById('roi-funds-summary');
@@ -11651,6 +11763,24 @@ function renderROIFunds(sortBy) {
         </div>
       ` : ''}
       ${advisorHtml}
+      ${(() => {
+        const HOLDINGS_TYPES = new Set(['brokerage','brokerage_taxable','stocks_direct',
+          'retirement_401k','retirement_roth','retirement_ira','hsa']);
+        if (!HOLDINGS_TYPES.has(a.type) || !a.meta?.holdings?.length) return '';
+        const h = a.meta.holdings;
+        const totalPnl = h.reduce((s,x) => s+(x.pnl||0), 0);
+        const pnlCol = totalPnl >= 0 ? '#059669' : '#DC2626';
+        const pnlSign = totalPnl >= 0 ? '▲' : '▼';
+        return `<div class="lab-holdings-row" onclick="toggleLabHoldings('${a.id}',this)">
+          <span style="font-size:0.72em;font-weight:800;color:#4F46E5;">
+            <span class="lab-holdings-chevron">▶</span> ${h.length} stock${h.length!==1?'s':''}
+          </span>
+          <span style="font-size:0.72em;font-weight:800;color:${pnlCol};">
+            ${pnlSign} ${sym}${Math.abs(Math.round(totalPnl)).toLocaleString()} P&L
+          </span>
+        </div>
+        <div id="lab-holdings-panel-${a.id}" style="display:none;"></div>`;
+      })()}
     </div>`;
   }).join('');
 }
@@ -15068,7 +15198,9 @@ function renderNetWorth() {
               <span class="swipe-btn-icon">🗑️</span>Delete
             </button>
           </div>`;
-        const wrapClass = (acc._imported && !acc._isREImport) ? '' : 'nw-swipe-wrap';
+        // Drilldown accounts need a container even if imported (for panel insertion)
+        const wrapClass = hasDrillDown ? 'nw-drilldown-wrap'
+          : (acc._imported && !acc._isREImport) ? '' : 'nw-swipe-wrap';
         const hasDrillDown = acc.meta && acc.meta.holdings && acc.meta.holdings.length > 0 &&
           (acc.type === 'stocks_direct' || (acc.meta && acc.meta.holdingType === 'us_brokerage'));
         const rowClickAttr = hasDrillDown ? `data-drilldown="${acc.id}" onclick="toggleHoldingsExpand('${acc.id}')" style="cursor:pointer;"` : '';
@@ -15293,8 +15425,10 @@ function buildAccountMetaLine(acc) {
     if (acc._monthlyTotal) parts.push(fmt(acc._monthlyTotal) + '/mo');
   }
   // Zerodha direct equity — show stock count + P&L hint
-  if (acc.type === 'stocks_direct' && acc.meta && acc.meta.stockCount) {
-    parts.push(acc.meta.stockCount + ' stocks');
+  const hasHoldings = acc.meta && acc.meta.holdings && acc.meta.holdings.length > 0;
+  if (hasHoldings && (acc.type === 'stocks_direct' || acc.meta.holdingType === 'us_brokerage')) {
+    const cnt = acc.meta.stockCount || acc.meta.holdings.length;
+    parts.push(cnt + ' stock' + (cnt !== 1 ? 's' : ''));
     const pnl = acc.meta.unrealizedPnl;
     if (pnl != null && pnl !== 0) {
       const sign = pnl >= 0 ? '▲' : '▼';
@@ -16555,10 +16689,11 @@ function toggleHoldingsExpand(accId) {
   // Insert panel after the account row inside the swipe-wrap
   const row = document.querySelector('[data-drilldown="' + accId + '"]');
   if (row) {
-    const wrap = row.closest('.nw-swipe-wrap') || row.parentElement;
-    wrap.appendChild(panel);
-    // Update chevron
-    const chevEl = row.querySelector('.holdings-chevron');
+    // Insert INSIDE the row div itself so it flows within the card
+    row.appendChild(panel);
+    // Update chevron — check both row and parent
+    const chevEl = row.querySelector('.holdings-chevron')
+      || row.closest('.nw-drilldown-wrap, .nw-swipe-wrap')?.querySelector('.holdings-chevron');
     if (chevEl) chevEl.textContent = '▼';
   }
 }
@@ -24870,7 +25005,7 @@ function scoreNWTrajectory(nw, profile) {
 </div>
 
 <!-- ── Universal Bank / Generic CSV Import ─────────────────────────── -->
-<div id="isec-universal" style="display:none;">
+<div class="import-section" id="isec-universal">
 
   <!-- Step 1: Upload -->
   <div class="import-step active" id="iuniversal-step1">
