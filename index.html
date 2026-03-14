@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.24.5 -->
+<!-- MoneyFi v3.24.6 -->
 <!-- -
   MoneyFi — Hi
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
@@ -11667,7 +11667,7 @@ function toggleLabHoldings(accId, rowEl) {
           + '</div>';
 
     // Top holdings (max 10)
-    const show = sorted.slice(0, 10);
+    const show = sorted;  // Show ALL holdings in Lab
     show.forEach(h => {
       const pnl    = h.pnl != null ? h.pnl : null;
       const pColor = pnl == null ? '#9CA3AF' : pnl >= 0 ? '#059669' : '#DC2626';
@@ -11696,10 +11696,6 @@ function toggleLabHoldings(accId, rowEl) {
             + '</div>';
     });
 
-    if (holdings.length > 10) {
-      html += '<div style="text-align:center;padding:6px 0;font-size:0.68em;font-weight:700;color:var(--text-light);">'
-            + '+ ' + (holdings.length - 10) + ' more holdings in Net Worth screen</div>';
-    }
 
     // Concentration warning
     if (show.length && totalVal > 0 && (show[0].curVal||0)/totalVal > 0.25) {
@@ -15307,12 +15303,13 @@ function renderNetWorth() {
           (acc.type === 'stocks_direct' || (acc.meta && acc.meta.holdingType === 'us_brokerage'));
         // Keep nw-swipe-wrap so iOS touch/swipe listeners fire correctly on drilldown rows
         const wrapClass = (acc._imported && !acc._isREImport) ? '' : 'nw-swipe-wrap';
-        const rowClickAttr = hasDrillDown ? `data-drilldown="${acc.id}" onclick="toggleHoldingsExpand('${acc.id}')" style="cursor:pointer;"` : '';
+        // Holdings detail lives in Lab — NW rows are display-only for drilldown accounts
+        const rowClickAttr = '';
         return `<div class="${wrapClass}">
           ${swipeActions}
           <div class="nw-account-row" ${rowClickAttr}>
             <div class="nw-account-left">
-              <div class="nw-account-name">${acc.name}${hasDrillDown ? ' <span style=\"font-size:0.7em;color:#5B5FEF;font-weight:800;\">↗</span>' : ''}</div>
+              <div class="nw-account-name">${acc.name}${''</div>
               ${metaLine ? `<div class="nw-account-meta">${metaLine}</div>` : ''}
               <div class="nw-account-bar-wrap"><div class="nw-account-bar-fill" style="width:${(pct*100).toFixed(0)}%;background:${cfg.color};"></div></div>
             </div>
@@ -15538,7 +15535,7 @@ function buildAccountMetaLine(acc) {
       const sign = pnl >= 0 ? '▲' : '▼';
       parts.push(sign + ' ' + fmt(Math.abs(pnl)) + ' P&L');
     }
-    parts.push('<span class="holdings-chevron">▶</span> Tap to expand');
+    // Holdings detail is shown in Lab Investments → View N stocks
   }
   if (acc._imported) parts.push('📥 imported');
   return parts.join(' · ');
@@ -17823,6 +17820,142 @@ function resetUniversalImport() {
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════════
+// PARSER: Zerodha Console Holdings (Portfolio > Holdings export)
+// Format: Excel with 3 sheets — Equity, Mutual Funds, Combined
+// Header at row 23 (after metadata rows), data-col B onwards (col index 1)
+// ══════════════════════════════════════════════════════════════════════
+function parseZerodhaConsoleHoldings(wb) {
+  const records = [];
+  let totalEquityVal = 0, totalEquityInv = 0, totalEquityPnl = 0;
+  let totalMFVal = 0, totalMFInv = 0, totalMFPnl = 0;
+  const stockList = [], mfList = [];
+
+  // Process each sheet — prefer Equity + Mutual Funds over Combined
+  for (const sheetName of wb.SheetNames) {
+    if (/combined/i.test(sheetName)) continue; // skip Combined — Equity+MF more precise
+    const isEquity = /equity/i.test(sheetName);
+    const isMF     = /mutual/i.test(sheetName);
+    if (!isEquity && !isMF) continue;
+
+    const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header:1, raw:false, defval:'' });
+
+    // Find header row — look for 'Symbol' in column B (index 1)
+    let headerRow = -1;
+    for (let i = 0; i < rawRows.length; i++) {
+      if (String(rawRows[i][1] || '').trim().toLowerCase() === 'symbol') {
+        headerRow = i; break;
+      }
+    }
+    if (headerRow < 0) continue;
+
+    // Extract summary values from rows 14-18 (0-indexed: rows ~14-17)
+    // Look for Invested Value and Present Value in col B/C
+    let invVal = 0, presVal = 0, pnlVal = 0;
+    for (let i = 0; i < headerRow; i++) {
+      const label = String(rawRows[i][1] || '').trim();
+      const val   = parseFloat(String(rawRows[i][2] || '0').replace(/,/g,'')) || 0;
+      if (/invested value/i.test(label))  invVal  = val;
+      if (/present value/i.test(label))   presVal = val;
+      if (/unrealized p&l$/i.test(label)) pnlVal  = val;
+    }
+
+    // Parse data rows (after header)
+    for (let i = headerRow + 1; i < rawRows.length; i++) {
+      const row = rawRows[i];
+      const symbol = String(row[1] || '').trim();
+      if (!symbol || symbol === '') continue;
+
+      const isin    = String(row[2] || '').trim();
+      const qty     = parseFloat(String(row[4] || '0').replace(/,/g,'')) || 0; // Qty Available
+      const avgCost = parseFloat(String(row[9] || '0').replace(/,/g,'')) || 0; // Avg Price
+      const ltp     = parseFloat(String(row[10]|| '0').replace(/,/g,'')) || 0; // Prev Closing
+      const pnl     = parseFloat(String(row[11]|| '0').replace(/,/g,'')) || 0; // Unrealized P&L
+      const sector  = String(row[3] || '').trim();
+
+      if (qty <= 0) continue;
+
+      const curVal   = ltp > 0 ? qty * ltp : 0;
+      const costVal  = avgCost > 0 ? qty * avgCost : 0;
+
+      if (isEquity) {
+        // Classify ETFs (GOLDBEES, NIFTYBEES etc) separately
+        const isETF = /ETF/i.test(sector) || /BEES$/i.test(symbol) || /CASE$/i.test(symbol);
+        stockList.push({ symbol, isin, qty, avgCost, curVal, costBasis: costVal, pnl,
+          sector, isETF, ltp });
+        totalEquityVal += curVal;
+        totalEquityInv += costVal;
+        totalEquityPnl += pnl;
+      } else {
+        // Mutual Funds from Zerodha Console — symbol is full fund name
+        mfList.push({ symbol, isin, qty, avgCost, curVal, costBasis: costVal, pnl, sector });
+        totalMFVal += curVal;
+        totalMFInv += costVal;
+        totalMFPnl += pnl;
+      }
+    }
+  }
+
+  // Build NW account for equity holdings
+  if (stockList.length > 0) {
+    records.push({
+      date: new Date().toISOString().substring(0,10),
+      description: 'Zerodha Console — Equity Holdings',
+      amount: 0, type: 'investment', category: 'investment',
+      currency: 'INR', source: 'zerodha_console',
+      _holdingsOnly: true,
+      _nwAccount: {
+        name: 'Zerodha — Direct Equity',
+        type: 'stocks_direct',
+        balance: Math.round(totalEquityVal),
+        investedAmount: Math.round(totalEquityInv),
+        currency: 'INR',
+        source: 'zerodha_console',
+        assetClass: 'EQUITY',
+        geography: 'IN',
+        meta: {
+          holdingType: 'direct_equity',
+          stockCount: stockList.length,
+          unrealizedPnl: Math.round(totalEquityPnl),
+          holdings: stockList.map(h => ({
+            symbol: h.symbol,
+            isin: h.isin,
+            qty: h.qty,
+            avgCost: h.avgCost,
+            curVal: h.curVal,
+            pnl: h.pnl,
+            sector: h.sector,
+          })),
+        },
+      },
+    });
+  }
+
+  // Build NW accounts for MF holdings (one per fund)
+  mfList.forEach(mf => {
+    records.push({
+      date: new Date().toISOString().substring(0,10),
+      description: mf.symbol,
+      amount: 0, type: 'investment', category: 'investment',
+      currency: 'INR', source: 'zerodha_console',
+      _holdingsOnly: true,
+      _nwAccount: {
+        name: mf.symbol.length > 50 ? mf.symbol.substring(0,50) : mf.symbol,
+        type: 'mf_equity',
+        balance: Math.round(mf.curVal),
+        investedAmount: Math.round(mf.costBasis),
+        currency: 'INR',
+        source: 'zerodha_console',
+        assetClass: 'EQUITY',
+        geography: 'IN',
+      },
+    });
+  });
+
+  return records;
+}
+
 function processNamedParserFile(file, parser) {
   const ext = file.name.split('.').pop().toLowerCase();
   showToast('🔍 Analysing file...');
@@ -17881,6 +18014,14 @@ function processNamedParserFile(file, parser) {
           // All non-CAMS parsers: read first sheet as rawRows
           const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
           if (parser === 'zerodha') {
+            // Detect Zerodha Console Holdings format (has 'Equity' + 'Mutual Funds' sheets)
+            const hasEquitySheet = wb.SheetNames.some(n => /^equity$/i.test(n));
+            const hasMFSheet     = wb.SheetNames.some(n => /mutual/i.test(n));
+            if (hasEquitySheet && hasMFSheet) {
+              records = parseZerodhaConsoleHoldings(wb);
+              finishNamedParse(parser, records, file.name);
+              return;
+            }
             // Parse every sheet — Zerodha P&L exports have multiple sheets (Equity + Other Debits and Credits)
             wb.SheetNames.forEach(sheetName => {
               const sheetRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
