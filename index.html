@@ -1,7 +1,35 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.24.8 -->
+<!-- MoneyFi v3.25.0 -->
 <!-- -
   MoneyFi — Hi
+PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
+When discussing asset allocation or sector weights, reference these public frameworks:
+
+INDIA ALLOCATION FRAMEWORKS:
+• SEBI Investor Charter (2023): Conservative=20%EQ/70%Debt/10%Gold | Moderate=50%EQ/40%Debt/10%Gold | Aggressive=75%EQ/15%Debt/10%Gold
+• Freefincal/Pattu FIRE model: 60-70% equity MF (index-heavy), 10% gold ETF, 20-30% debt/FD — optimised for tax efficiency
+• Nifty 50 sector weights (reference): Financials 33%, IT 13%, Energy 12%, FMCG 9%, Auto 6%
+
+US/GLOBAL FRAMEWORKS:
+• Vanguard Target Retirement: Age-based glide path — 90% equity at 25, 50% at 65
+• Bogleheads Three-Fund: Total Market + International + Bond, equity% = 110 minus age
+• Ray Dalio All-Weather: 30% stocks, 40% LT bonds, 15% IT bonds, 7.5% gold, 7.5% commodities
+
+HOW TO USE THESE:
+1. State what the user CURRENTLY has (exact % from their data)
+2. State what the closest applicable framework suggests for their age/risk profile
+3. State the specific GAP: "You have X%, framework suggests Y% — gap of Z%"
+4. If recommending a direction (more equity, less gold etc.), cite the framework by name
+5. NEVER say "you should buy X stock/fund" — say "frameworks suggest increasing equity allocation; index funds like Nifty 50 ETFs are a common vehicle cited in SEBI investor education"
+6. ALWAYS end portfolio advice responses with: "⚖️ This analysis is based on public financial frameworks for educational reference. Please consult a SEBI-registered investment advisor (RIA) or CFP before making allocation decisions."
+
+LEGAL BOUNDARY — NEVER CROSS:
+• NEVER name specific stocks to buy
+• NEVER give price targets
+• NEVER say "this will give X% returns"
+• You CAN say: "Index funds tracking Nifty 50 are referenced in SEBI investor education materials as a diversification vehicle"
+• You CAN say: "The Bogleheads framework, cited by Vanguard, suggests equity% = 110 minus your age (${profile?.age||'?'} → ${profile?.age ? 110 - profile.age : '?'}% equity)"
+
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
   ═══════════════════════════════════════════════
   Version  : 3.16.0
@@ -11951,6 +11979,38 @@ function _resolveSector(symbol, rawSector) {
   return 'OTHERS';
 }
 
+
+// ── Sector benchmark data (public index weights) ─────────────────────
+// Source: NSE Nifty 50 index methodology (rebalanced semi-annually)
+// Used only as a REFERENCE POINT, not as investment advice
+const NIFTY50_SECTOR_WEIGHTS = {
+  'FINANCIAL SERVICES': 33.2,
+  'SOFTWARE SERVICES':  13.1,
+  'ENERGY':             11.8,
+  'FMCG':                9.2,
+  'AUTO ANCILLARY':      6.1,
+  'PHARMACEUTICALS':     4.8,
+  'METALS & MINING':     4.3,
+  'CEMENT':              2.9,
+  'TELECOM':             2.5,
+  'DEFENCE':             2.2,  // Growing weight post-2023 defence PSU listings
+  'ETF':                 0.0,  // Not in index (passthrough)
+  'OTHERS':             10.9,
+};
+
+// S&P 500 sector weights (for US-heavy portfolios)
+const SP500_SECTOR_WEIGHTS = {
+  'SOFTWARE SERVICES':  29.0,  // IT + Communication
+  'FINANCIAL SERVICES': 13.5,
+  'PHARMACEUTICALS':    12.8,  // Healthcare
+  'CONSUMER DURABLES':  10.4,  // Consumer Discretionary
+  'INDUSTRIALS':         8.9,
+  'FMCG':                6.5,  // Consumer Staples
+  'ENERGY':              3.9,
+  'METALS & MINING':     2.6,
+  'OTHERS':             12.4,
+};
+
 const SECTOR_COLORS = {
   'DEFENCE':                  '#6366F1',
   'ENERGY':                   '#F59E0B',
@@ -11982,17 +12042,23 @@ function buildUnifiedEquityLedger() {
 
   if (dematAccounts.length === 0) return { stocks: [], totalVal: 0, totalPnl: 0, accountCount: 0 };
 
-  const map = {}; // symbol → consolidated entry
+  const map = {}; // normalised symbol → consolidated entry
+  // Normalise symbol: strip common company suffixes so 'WIPRO LTD' and 'WIPRO' merge
+  const _normSym = s => (s || '').toUpperCase().trim()
+    .replace(/\s+(LTD|LIMITED|INC|CORP|CO|PLC|NV|SA|AG|PTY|PVT|INDUSTRIES|ENTERPRISES|GROUP)\b\.?/g, '')
+    .replace(/[^A-Z0-9&]/g, '').trim();
   dematAccounts.forEach(account => {
     const acctCur = account.currency || 'INR'; // INR for Zerodha, USD for Fidelity/Schwab
     (account.meta.holdings || []).forEach(h => {
-      const key = (h.symbol || '').toUpperCase().trim();
+      const key = _normSym(h.symbol);
       if (!key) return;
       // Resolve sector: from holding tag first, then symbol lookup, then OTHERS
-      const resolvedSector = _resolveSector(h.symbol, h.sector);
+      // Also apply user overrides from data._equitySectorOverrides
+      const userOverrides = data._equitySectorOverrides || {};
+      const resolvedSector = userOverrides[key] || _resolveSector(h.symbol, h.sector);
       if (!map[key]) {
         map[key] = {
-          symbol:   h.symbol,
+          symbol:   h.symbol,  // keep original display symbol from first encounter
           sector:   resolvedSector,
           totalQty: 0,
           totalVal: 0,  // always in display currency
@@ -12012,6 +12078,10 @@ function buildUnifiedEquityLedger() {
       map[key].totalVal  += curVal;
       map[key].totalPnl  += pnl;
       map[key].totalCost += cost;
+      // Upgrade sector: real sector beats OTHERS (best-sector-wins)
+      if (resolvedSector !== 'OTHERS' && map[key].sector === 'OTHERS') {
+        map[key].sector = resolvedSector;
+      }
       if (!map[key].accounts.includes(account.name)) {
         map[key].accounts.push(account.name);
       }
@@ -12300,6 +12370,82 @@ function sortEquityLedger(by) {
   }
 }
 
+
+// ── User-editable sector overrides ────────────────────────────────────
+function _normSym(s) {
+  return (s || '').toUpperCase().trim()
+    .replace(/\s+(LTD|LIMITED|INC|CORP|CO|PLC|NV|SA|AG|PTY|PVT|INDUSTRIES|ENTERPRISES|GROUP)\b\.?/g, '')
+    .replace(/[^A-Z0-9&]/g, '').trim();
+}
+
+function _editEquitySector(normKey, displaySymbol, triggerEl) {
+  // Remove any existing picker
+  const existing = document.getElementById('eq-sector-picker');
+  if (existing) { existing.remove(); return; }
+
+  const sectors = Object.keys(SECTOR_COLORS).filter(s => s !== 'OTHERS').sort();
+  const current = (data._equitySectorOverrides || {})[normKey] || 'OTHERS';
+
+  const picker = document.createElement('div');
+  picker.id = 'eq-sector-picker';
+  picker.style.cssText = 'position:fixed;z-index:9999;background:white;border:1.5px solid #E0E7FF;'
+    + 'border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);'
+    + 'min-width:220px;max-width:280px;';
+
+  // Position near the trigger element
+  const rect = triggerEl.getBoundingClientRect();
+  const top  = Math.min(rect.bottom + 4, window.innerHeight - 280);
+  picker.style.top  = top + 'px';
+  picker.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 290)) + 'px';
+
+  picker.innerHTML = `
+    <div style="font-size:0.75em;font-weight:900;color:#1E2A6E;margin-bottom:8px;">
+      📊 Edit sector for <strong>${displaySymbol}</strong>
+    </div>
+    <select id="eq-sector-select" style="width:100%;padding:8px;border:1.5px solid #E0E7FF;
+      border-radius:8px;font-size:0.82em;font-weight:700;margin-bottom:10px;">
+      ${sectors.map(s => `<option value="${s}"${s===current?' selected':''}>${s}</option>`).join('')}
+    </select>
+    <div style="display:flex;gap:8px;">
+      <button onclick="_saveEquitySector('${normKey}')" 
+        style="flex:1;padding:8px;background:#1E2A6E;color:white;border:none;
+          border-radius:8px;font-size:0.82em;font-weight:900;cursor:pointer;">
+        ✅ Save
+      </button>
+      <button onclick="document.getElementById('eq-sector-picker')?.remove()"
+        style="padding:8px 12px;background:#F3F4F6;color:#374151;border:none;
+          border-radius:8px;font-size:0.82em;font-weight:800;cursor:pointer;">
+        ✕
+      </button>
+    </div>
+    <div style="font-size:0.62em;color:#9CA3AF;margin-top:6px;line-height:1.4;">
+      Saved locally · applies across all your holdings instantly
+    </div>`;
+
+  document.body.appendChild(picker);
+
+  // Close on outside tap
+  setTimeout(() => {
+    document.addEventListener('click', function _closePicker(e) {
+      if (!picker.contains(e.target) && e.target !== triggerEl) {
+        picker.remove();
+        document.removeEventListener('click', _closePicker);
+      }
+    });
+  }, 100);
+}
+
+function _saveEquitySector(normKey) {
+  const select = document.getElementById('eq-sector-select');
+  if (!select) return;
+  if (!data._equitySectorOverrides) data._equitySectorOverrides = {};
+  data._equitySectorOverrides[normKey] = select.value;
+  document.getElementById('eq-sector-picker')?.remove();
+  save();  // persist to Firebase
+  renderEquityConcentration();  // re-render with new sector
+  showToast('✅ Sector updated: ' + normKey + ' → ' + select.value);
+}
+
 function _renderUnifiedLedger(ledger, sym, sortBy) {
   _equityLedgerData = ledger;
   const body   = document.getElementById('eq-ledger-body');
@@ -12317,6 +12463,8 @@ function _renderUnifiedLedger(ledger, sym, sortBy) {
     return b.totalVal - a.totalVal; // default: value
   });
 
+  // If sorted by sector, inject group headers between sectors
+  let lastSector = null;
   body.innerHTML = sorted.map(s => {
     const pct      = totalVal > 0 ? (s.totalVal / totalVal * 100) : 0;
     const pnlCol   = s.totalPnl >= 0 ? '#059669' : '#DC2626';
@@ -12329,15 +12477,26 @@ function _renderUnifiedLedger(ledger, sym, sortBy) {
       ? ((s.totalVal - s.totalCost) / s.totalCost * 100).toFixed(1)
       : null;
 
-    return `<div style="padding:8px 4px;border-bottom:1px solid #F0F0F0;">
+    // Sector group header (only when sorted by sector)
+    let sectorHeader = '';
+    if (sortBy === 'sector' && s.sector !== lastSector) {
+      const secTotal = sorted.filter(x => x.sector === s.sector).reduce((a,x) => a+x.totalVal, 0);
+      const secPct   = totalVal > 0 ? (secTotal/totalVal*100).toFixed(0) : 0;
+      sectorHeader = `<div style="background:${_sectorColor(s.sector)}18;border-left:3px solid ${_sectorColor(s.sector)};padding:5px 10px;margin:6px 0 2px;border-radius:0 6px 6px 0;">
+        <span style="font-size:0.68em;font-weight:900;color:${_sectorColor(s.sector)};">${s.sector}</span>
+        <span style="font-size:0.62em;font-weight:700;color:#9CA3AF;margin-left:8px;">${secPct}% of equity · ${sorted.filter(x=>x.sector===s.sector).length} stocks</span>
+      </div>`;
+      lastSector = s.sector;
+    }
+    return sectorHeader + `<div style="padding:8px 4px;border-bottom:1px solid #F0F0F0;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
         <div style="min-width:0;flex:1;">
           <div style="font-size:0.82em;font-weight:900;color:#1E2A6E;display:flex;align-items:center;flex-wrap:wrap;gap:3px;">
             ${s.symbol}${dupeFlag}
           </div>
-          <div style="font-size:0.62em;font-weight:700;color:#6B7280;margin-top:2px;display:flex;align-items:center;gap:5px;">
+          <div style="font-size:0.62em;font-weight:700;color:#6B7280;margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
             <span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${sColor};flex-shrink:0;"></span>
-            ${s.sector || 'OTHERS'} · ${s.totalQty} units
+            <span onclick="_editEquitySector('${_normSym(s.symbol)}','${s.symbol}',this)" style="cursor:pointer;border-bottom:1px dashed ${s.sector==='OTHERS'?'#DC2626':'#9CA3AF'};color:${s.sector==='OTHERS'?'#DC2626':'#6B7280'};" title="Tap to edit sector">${s.sector==='OTHERS'?'⚠️ OTHERS (tap to fix)':s.sector}</span> · ${s.totalQty} units
           </div>
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:10px;">
@@ -27040,7 +27199,35 @@ function buildAIContext() {
           return ' | liquidity=' + Object.entries(liq).filter(([,v])=>v>0).map(([k,v])=>`${k}:${(v/t9b*100).toFixed(0)}%`).join(',');
         })();
         L.push(
-          `PORTFOLIO HEALTH: total=${sym}${Math.round(port.totalPortfolio||0).toLocaleString()} | equity=${(port.eqPct*100).toFixed(0)}%(${sym}${Math.round(port.eqAmt||0).toLocaleString()}) | debt=${(port.dbPct*100).toFixed(0)}%(${sym}${Math.round(port.dbAmt||0).toLocaleString()}) | gold=${(port.auPct*100).toFixed(0)}%(${sym}${Math.round(port.auAmt||0).toLocaleString()}) | RE=${(port.rePct*100).toFixed(0)}%(${sym}${Math.round(port.reAmt||0).toLocaleString()}) | cash=${(port.caPct*100).toFixed(0)}%(${sym}${Math.round(port.caAmt||0).toLocaleString()}) | targetEquity=${(port.targetEq*100).toFixed(0)}% | concentration=${(port.concRatio*100).toFixed(0)}% | signals=${(port.signals||[]).join('; ')}${sebiStr}${liqStr}`);
+          (() => {
+          // Equity sector breakdown for AI — only if equity holdings exist
+          try {
+            const eqLedger = typeof buildUnifiedEquityLedger === 'function' ? buildUnifiedEquityLedger() : null;
+            if (eqLedger && eqLedger.stocks.length > 0) {
+              const sMap = {};
+              eqLedger.stocks.forEach(s => { sMap[s.sector] = (sMap[s.sector]||0) + s.totalVal; });
+              const sTotal = Object.values(sMap).reduce((a,b)=>a+b,0);
+              const sStr = Object.entries(sMap).sort(([,a],[,b])=>b-a)
+                .map(([k,v]) => `${k}:${(v/sTotal*100).toFixed(0)}%`).join(', ');
+              const isIN = (profile?.region||'IN') === 'IN';
+              const bench = isIN ? NIFTY50_SECTOR_WEIGHTS : SP500_SECTOR_WEIGHTS;
+              const benchName = isIN ? 'Nifty50' : 'S&P500';
+              // HHI score
+              const hhi = typeof _computeHHI === 'function' ? _computeHHI(sMap, sTotal) : null;
+              const hhiLabel = hhi ? (hhi >= 0.18 ? 'Concentrated' : hhi >= 0.10 ? 'Moderate' : 'Diversified') : 'unknown';
+              // Top 3 vs-benchmark gaps
+              const gapStr = Object.entries(sMap).map(([sec,val]) => {
+                const u = val/sTotal*100; const b = bench[sec]||0;
+                return { sec, diff: (u-b).toFixed(0), u: u.toFixed(0), b: b.toFixed(0) };
+              }).filter(g => Math.abs(g.diff) >= 10)
+                .sort((a,b) => Math.abs(b.diff)-Math.abs(a.diff)).slice(0,3)
+                .map(g => `${g.sec}:user=${g.u}%,${benchName}=${g.b}%`).join(' | ');
+              L.push(`EQUITY SECTOR BREAKDOWN: totalEquity=${sym}${Math.round(eqLedger.totalVal).toLocaleString()} | stocks=${eqLedger.stocks.length} | hhi=${hhi?.toFixed(3)||'?'} (${hhiLabel}) | sectors=${sStr}${gapStr ? ' | vsIndex='+gapStr : ''}`);
+            }
+          } catch(e) {}
+        })();
+
+        `PORTFOLIO HEALTH: total=${sym}${Math.round(port.totalPortfolio||0).toLocaleString()} | equity=${(port.eqPct*100).toFixed(0)}%(${sym}${Math.round(port.eqAmt||0).toLocaleString()}) | debt=${(port.dbPct*100).toFixed(0)}%(${sym}${Math.round(port.dbAmt||0).toLocaleString()}) | gold=${(port.auPct*100).toFixed(0)}%(${sym}${Math.round(port.auAmt||0).toLocaleString()}) | RE=${(port.rePct*100).toFixed(0)}%(${sym}${Math.round(port.reAmt||0).toLocaleString()}) | cash=${(port.caPct*100).toFixed(0)}%(${sym}${Math.round(port.caAmt||0).toLocaleString()}) | targetEquity=${(port.targetEq*100).toFixed(0)}% | concentration=${(port.concRatio*100).toFixed(0)}% | signals=${(port.signals||[]).join('; ')}${sebiStr}${liqStr}`);
       }
 
       // P10 — NW Trajectory
