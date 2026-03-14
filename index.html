@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v3.25.0 -->
+<!-- MoneyFi v3.25.1 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -27198,8 +27198,7 @@ function buildAIContext() {
           if (!t9b) return '';
           return ' | liquidity=' + Object.entries(liq).filter(([,v])=>v>0).map(([k,v])=>`${k}:${(v/t9b*100).toFixed(0)}%`).join(',');
         })();
-        L.push(
-          (() => {
+        (() => {
           // Equity sector breakdown for AI — only if equity holdings exist
           try {
             const eqLedger = typeof buildUnifiedEquityLedger === 'function' ? buildUnifiedEquityLedger() : null;
@@ -27227,7 +27226,7 @@ function buildAIContext() {
           } catch(e) {}
         })();
 
-        `PORTFOLIO HEALTH: total=${sym}${Math.round(port.totalPortfolio||0).toLocaleString()} | equity=${(port.eqPct*100).toFixed(0)}%(${sym}${Math.round(port.eqAmt||0).toLocaleString()}) | debt=${(port.dbPct*100).toFixed(0)}%(${sym}${Math.round(port.dbAmt||0).toLocaleString()}) | gold=${(port.auPct*100).toFixed(0)}%(${sym}${Math.round(port.auAmt||0).toLocaleString()}) | RE=${(port.rePct*100).toFixed(0)}%(${sym}${Math.round(port.reAmt||0).toLocaleString()}) | cash=${(port.caPct*100).toFixed(0)}%(${sym}${Math.round(port.caAmt||0).toLocaleString()}) | targetEquity=${(port.targetEq*100).toFixed(0)}% | concentration=${(port.concRatio*100).toFixed(0)}% | signals=${(port.signals||[]).join('; ')}${sebiStr}${liqStr}`);
+        L.push(`PORTFOLIO HEALTH: total=${sym}${Math.round(port.totalPortfolio||0).toLocaleString()} | equity=${(port.eqPct*100).toFixed(0)}%(${sym}${Math.round(port.eqAmt||0).toLocaleString()}) | debt=${(port.dbPct*100).toFixed(0)}%(${sym}${Math.round(port.dbAmt||0).toLocaleString()}) | gold=${(port.auPct*100).toFixed(0)}%(${sym}${Math.round(port.auAmt||0).toLocaleString()}) | RE=${(port.rePct*100).toFixed(0)}%(${sym}${Math.round(port.reAmt||0).toLocaleString()}) | cash=${(port.caPct*100).toFixed(0)}%(${sym}${Math.round(port.caAmt||0).toLocaleString()}) | targetEquity=${(port.targetEq*100).toFixed(0)}% | concentration=${(port.concRatio*100).toFixed(0)}% | signals=${(port.signals||[]).join('; ')}${sebiStr}${liqStr}`);
       }
 
       // P10 — NW Trajectory
