@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.1.1 -->
+<!-- MoneyFi v4.1.2 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -187,6 +187,40 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     .topbar-badge { background: var(--yellow); color: var(--text-dark); font-weight: 800; font-size: 0.8em; padding: 4px 12px; border-radius: 20px; cursor: pointer; }
     /* Quick-access icon buttons in topbar - fixed positioning replaced with flex in topbar */
     .topbar-icons { display: flex; align-items: center; gap: 6px; position: relative; }
+
+    /* ── MoneyFi Pulse Stories ───────────────────────────────────── */
+    .pulse-row { display:flex; gap:14px; overflow-x:auto; padding:10px 20px 4px; scrollbar-width:none; -ms-overflow-style:none; margin-bottom:2px; }
+    .pulse-row::-webkit-scrollbar { display:none; }
+    .pulse-avatar { display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; flex-shrink:0; user-select:none; -webkit-tap-highlight-color:transparent; }
+    .pulse-ring { width:58px; height:58px; border-radius:50%; padding:2.5px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .pulse-ring.ring-gold   { background:conic-gradient(#F59E0B,#FCD34D,#F59E0B); }
+    .pulse-ring.ring-green  { background:conic-gradient(#10B981,#6EE7B7,#10B981); }
+    .pulse-ring.ring-purple { background:conic-gradient(#7C3AED,#C4B5FD,#7C3AED); }
+    .pulse-ring.ring-amber  { background:conic-gradient(#F97316,#FDE68A,#F97316); }
+    .pulse-ring.ring-blue   { background:conic-gradient(#3B82F6,#BAE6FD,#3B82F6); }
+    .pulse-ring.ring-red    { background:conic-gradient(#EF4444,#FCA5A5,#EF4444); }
+    .pulse-ring.glow        { box-shadow:0 0 12px 3px rgba(245,158,11,0.55); animation:pulseGlow 2s ease-in-out infinite; }
+    .pulse-ring.pulse-amber { animation:pulseAmber 1.6s ease-in-out infinite; }
+    @keyframes pulseGlow  { 0%,100%{box-shadow:0 0 10px 2px rgba(245,158,11,0.5);}  50%{box-shadow:0 0 20px 6px rgba(245,158,11,0.75);} }
+    @keyframes pulseAmber { 0%,100%{box-shadow:0 0 8px 2px rgba(249,115,22,0.4);}   50%{box-shadow:0 0 16px 5px rgba(249,115,22,0.7);} }
+    .pulse-inner { width:50px; height:50px; border-radius:50%; background:var(--white); display:flex; align-items:center; justify-content:center; font-size:1.4em; }
+    .pulse-seen .pulse-ring { background:#E5E7EB !important; box-shadow:none !important; animation:none !important; }
+    .pulse-label { font-size:0.6em; font-weight:800; color:var(--text-med); max-width:60px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .story-overlay { position:fixed; inset:0; z-index:2000; display:flex; flex-direction:column; touch-action:none; }
+    .story-progress-bar { display:flex; gap:3px; padding:12px 14px 0; position:absolute; top:0; left:0; right:0; z-index:10; }
+    .story-seg { height:2.5px; border-radius:2px; background:rgba(255,255,255,0.35); flex:1; overflow:hidden; }
+    .story-seg-fill { height:100%; background:#fff; border-radius:2px; width:0%; transition:none; }
+    .story-seg-fill.animating { transition:width linear; }
+    .story-card { flex:1; display:flex; flex-direction:column; justify-content:flex-end; padding:28px 24px 36px; position:relative; overflow:hidden; }
+    .story-close { position:absolute; top:48px; right:16px; background:rgba(0,0,0,0.25); border:none; border-radius:50%; width:34px; height:34px; color:#fff; font-size:1.1em; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:11; }
+    .story-icon-big { font-size:3.6em; margin-bottom:12px; line-height:1; }
+    .story-badge { display:inline-block; background:rgba(255,255,255,0.2); color:#fff; font-size:0.7em; font-weight:900; padding:4px 12px; border-radius:20px; margin-bottom:10px; letter-spacing:0.4px; }
+    .story-headline { font-size:1.7em; font-weight:900; color:#fff; line-height:1.2; margin-bottom:10px; text-shadow:0 2px 12px rgba(0,0,0,0.3); }
+    .story-subtext { font-size:0.88em; font-weight:700; color:rgba(255,255,255,0.85); line-height:1.55; margin-bottom:20px; }
+    .story-cta { display:inline-block; background:rgba(255,255,255,0.2); border:1.5px solid rgba(255,255,255,0.5); border-radius:24px; padding:10px 22px; color:#fff; font-family:Nunito,sans-serif; font-weight:900; font-size:0.85em; cursor:pointer; backdrop-filter:blur(6px); align-self:flex-start; }
+    .story-tap-left  { position:absolute; top:0; left:0; width:40%; height:100%; z-index:9; }
+    .story-tap-right { position:absolute; top:0; right:0; width:60%; height:100%; z-index:9; }
+
     .topbar-icon-btn { background: var(--white); border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 1em; cursor: pointer; box-shadow: var(--card-shadow); display: flex; align-items: center; justify-content: center; transition: transform 0.2s; flex-shrink: 0; }
     .topbar-icon-btn:hover { transform: scale(1.1); }
     .topbar-tray { display: flex; align-items: center; gap: 6px; overflow: hidden; max-width: 0; opacity: 0; transition: max-width 0.3s ease, opacity 0.25s ease; }
@@ -2439,6 +2473,12 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
 <!-- ══════════════ HOME ══════════════ -->
 <div class="screen active" id="screen-home">
+  <!-- ── MoneyFi Pulse Stories row ── -->
+  <div id="pulse-row" class="pulse-row"></div>
+
+  <!-- Story full-screen overlay (hidden) -->
+  <div id="story-overlay" class="story-overlay" style="display:none;"></div>
+
   <!-- Time Period Selector -->
   <div class="time-period-bar" id="time-period-bar">
     <button class="period-tab" onclick="setPeriod('day',this)">Day</button>
@@ -6425,8 +6465,438 @@ function setHomeTab(tab) {
   renderHome();
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// MONEYFI PULSE — Story Engine v1.0
+// Three layers: Aggregator → Story Logic → UI Renderer
+// Session state: _pulseStories[], _pulseSeenIds (sessionStorage)
+// ══════════════════════════════════════════════════════════════════════
+
+let _pulseStories   = [];   // generated story stack for this session
+let _pulsePlayerIdx = 0;    // current story index in player
+let _pulseTimer     = null; // auto-advance interval
+let _pulsePaused    = false;
+let _pulseSegStart  = null; // timestamp when current seg started
+const PULSE_DURATION = 4000; // 4s per story
+
+// ── Seen state (persisted per day) ─────────────────────────────────
+function _pulseSeenKey() { return 'mfi_pulse_seen_' + new Date().toISOString().slice(0,10); }
+function _getPulseSeen()  { try { return JSON.parse(sessionStorage.getItem(_pulseSeenKey())||'[]'); } catch(e) { return []; } }
+function _markPulseSeen(id) { const s=_getPulseSeen(); if(!s.includes(id)){s.push(id);} try{sessionStorage.setItem(_pulseSeenKey(),JSON.stringify(s));}catch(e){} }
+
+// ── Copy bank — 10 variants per story type, seeded by day ──────────
+const _COPY = {
+  freedomGain: [
+    {h:"You just bought a weekend.", s:"Your investments earned enough this week to cover {days} days of future retirement."},
+    {h:"Freedom chips are stacking up.", s:"This week's market gains cover {days} days of your retirement runway."},
+    {h:"Time is on your side.", s:"Your portfolio worked while you slept — enough for {days} retirement days."},
+    {h:"The clock is ticking in your favour.", s:"Compounding bought you {days} more days of financial freedom this week."},
+    {h:"Passive income, active results.", s:"Your holdings generated the equivalent of {days} retirement days this week."},
+    {h:"You're buying back your time.", s:"{days} more days of freedom added to your retirement runway."},
+    {h:"Wealth is time you've already earned.", s:"This week's gains represent {days} days of future lifestyle funded."},
+    {h:"The machine keeps running.", s:"Your portfolio earned {days} retirement days on autopilot this week."},
+    {h:"Compound interest never sleeps.", s:"{days} days of retirement runway added — just by staying invested."},
+    {h:"You can't buy time, but you can earn it.", s:"This week: {days} retirement days banked, zero effort required."},
+  ],
+  shieldStrength: [
+    {h:"Your fortress is stronger.", s:"Emergency buffer: {months} months. That's {months} months of pure leverage."},
+    {h:"The safety net is holding.", s:"You can survive {months} months without a paycheck. Sleep well tonight."},
+    {h:"Bulletproof for {months} months.", s:"Your emergency fund covers every bill, every SIP, every surprise."},
+    {h:"Runway extended.", s:"{months} months of financial runway — most people have zero."},
+    {h:"Stress-tested and standing.", s:"Job loss, medical bill, market crash — {months} months covered."},
+    {h:"The Fortress Architect at work.", s:"Every rupee in your buffer is a brick in your financial fortress."},
+    {h:"Unbreakable for {months} months.", s:"Your emergency fund is fully funded. That's rare. That's powerful."},
+    {h:"Peace of mind has a number.", s:"Yours is {months} months. That's {months} months nobody can touch."},
+    {h:"The floor is solid.", s:"{months} months of expenses locked, safe, and earning interest."},
+    {h:"You built the safety net.", s:"Most people skip this step. You didn't. {months} months covered."},
+  ],
+  nwMilestone: [
+    {h:"You crossed {milestone}.", s:"A round number that proves the strategy is working. Onwards."},
+    {h:"{milestone} unlocked.", s:"Milestone reached. The next one is already in sight."},
+    {h:"The scoreboard says {milestone}.", s:"Net worth is just a number — but this one means something."},
+    {h:"Welcome to the {milestone} club.", s:"Most people never get here. You did. Now keep going."},
+    {h:"{milestone}. That happened.", s:"Compounding, discipline, and time — all three working for you."},
+    {h:"Net worth: {milestone}.", s:"The number that changes how the next chapter looks."},
+    {h:"You just hit {milestone}.", s:"Proof that the plan is working. Stay the course."},
+    {h:"The counter hit {milestone}.", s:"Every decision you made brought you here. Good ones."},
+    {h:"{milestone} achieved.", s:"Small steps, long time horizon, big result."},
+    {h:"From zero to {milestone}.", s:"The journey continues — but today, celebrate."},
+  ],
+  savingsStreak: [
+    {h:"{streak} months in a row.", s:"You've spent less than you earned for {streak} consecutive months. Rare discipline."},
+    {h:"The streak lives — {streak} months.", s:"Consistent savers in the top 10%. You're one of them."},
+    {h:"Unbroken. {streak} months.", s:"Every month, more in than out. That's the whole game."},
+    {h:"{streak}-month savings streak.", s:"Momentum is the most underrated financial asset. Protect this."},
+    {h:"The discipline is showing.", s:"{streak} months positive savings rate. The habit is set."},
+    {h:"Month {streak} of the streak.", s:"Small positive choices, compounding into financial freedom."},
+    {h:"Still going — {streak} months.", s:"You haven't broken the chain. Don't break it now."},
+    {h:"{streak} green months.", s:"Income > Expenses, {streak} times in a row. Simple. Powerful."},
+    {h:"The habit is real — {streak} months.", s:"Most people can't say this. You can."},
+    {h:"Streak: {streak} months.", s:"Each positive month is a vote for the person you're becoming."},
+  ],
+  fhsRise: [
+    {h:"Your score is climbing.", s:"Financial Health Score: {score}/100. Up {delta} points this month."},
+    {h:"The numbers are moving.", s:"FHS {score} — {delta} points gained. Every pillar counts."},
+    {h:"Progress is measurable.", s:"Your Financial Health Score rose {delta} points. Keep stacking."},
+    {h:"+{delta} points.", s:"FHS now at {score}/100. Discipline shows up in the score."},
+    {h:"Upward only.", s:"Financial Health Score: {score}. {delta} more points than last month."},
+    {h:"The score reflects the work.", s:"{score}/100 — {delta} points better. The pillars are strengthening."},
+    {h:"Stronger by {delta}.", s:"FHS {score}/100. Your financial architecture is solidifying."},
+    {h:"The chart is green.", s:"+{delta} on your FHS. Every positive decision moves this number."},
+    {h:"{delta} points of proof.", s:"FHS {score}/100. Proof that the daily choices are working."},
+    {h:"Score: {score}. Delta: +{delta}.", s:"Your financial health is measurable. And it's improving."},
+  ],
+  goalSurge: [
+    {h:"{goal} is {pct}% funded.", s:"You're {pct}% of the way to {goal}. The gap is closing."},
+    {h:"Closing in on {goal}.", s:"{pct}% funded. {remaining} left to go. Keep the SIPs running."},
+    {h:"{goal} update: {pct}%.", s:"Progress is real. {remaining} more and this goal is done."},
+    {h:"The goal is getting closer.", s:"{goal} — {pct}% there. Momentum is on your side."},
+    {h:"{pct}% of the way there.", s:"{goal} is within reach. The math is working."},
+    {h:"Goal tracker: {goal}.", s:"{pct}% funded. Every SIP moves this number forward."},
+    {h:"{goal}: almost there.", s:"{pct}% done. {remaining} stands between you and this milestone."},
+    {h:"Funded: {pct}%.", s:"{goal} — the SIPs are doing their job. {remaining} to go."},
+    {h:"The {goal} fund is growing.", s:"{pct}% there. The discipline is paying off."},
+    {h:"{goal} at {pct}%.", s:"Progress is proof. {remaining} more and you're done."},
+  ],
+  pillarBreakthrough: [
+    {h:"Breakthrough unlocked.", s:"Your {pillar} pillar just levelled up. The system is recognising your work."},
+    {h:"Pillar upgrade: {pillar}.", s:"From average to strong. Your {pillar} score is in a new tier."},
+    {h:"{pillar} is strengthening.", s:"The FHS engine marked this pillar as improved. Real progress."},
+    {h:"Level up: {pillar}.", s:"Your financial architecture just got stronger in {pillar}."},
+    {h:"The {pillar} wall is taller.", s:"Each improvement compounds. This pillar is proof of that."},
+    {h:"{pillar} tier upgraded.", s:"The numbers moved. The work is showing."},
+    {h:"New tier: {pillar}.", s:"Your {pillar} pillar crossed a scoring threshold. Stay consistent."},
+    {h:"{pillar} is rising.", s:"Pillar score improved. The FHS is responding to your choices."},
+    {h:"The pillar held.", s:"{pillar} — stronger than last month. The foundation is solid."},
+    {h:"{pillar} upgraded.", s:"One pillar stronger. One step closer to Mastery."},
+  ],
+  clarityWin: [
+    {h:"Your portfolio got cleaner.", s:"PCS: {pcs}/100. Grade {grade}. Clarity over complexity — always."},
+    {h:"Clarity Score: {pcs}/100.", s:"Grade {grade} — {label}. Your portfolio is telling a cleaner story."},
+    {h:"The signal is cleaner.", s:"Portfolio Clarity Score {pcs} — less noise, more signal."},
+    {h:"Focused portfolio.", s:"PCS {pcs}/100. {funds} funds doing real work, {exits} flagged for exit."},
+    {h:"Less is more — PCS {pcs}.", s:"Grade {grade}: {label}. Concentrated, intentional, clean."},
+    {h:"Portfolio clarity: {pcs}/100.", s:"You cut the complexity. The numbers confirm it."},
+    {h:"Grade {grade} clarity.", s:"PCS {pcs}/100. {label}. Every fund earns its place."},
+    {h:"Cleaner every month.", s:"PCS {pcs} — {label}. The portfolio is sharpening."},
+    {h:"Your money is focused.", s:"Portfolio Clarity Score: {pcs}/100. Overlap eliminated."},
+    {h:"Signal over noise.", s:"PCS {pcs}, Grade {grade}. Complexity costs returns. You chose clarity."},
+  ],
+};
+
+function _copyVariant(type) {
+  const bank = _COPY[type]; if (!bank) return {h:'', s:''};
+  const seed = parseInt(new Date().toISOString().slice(8,10)) % bank.length;
+  return bank[seed];
+}
+
+// ── Story Aggregator ────────────────────────────────────────────────
+function _generatePulseStories() {
+  const stories = [];
+  const sym = currentCurrency?.symbol || '$';
+  const profile = getFHSProfile();
+  const agg = typeof getFHSMonthlyAggregates === 'function' ? getFHSMonthlyAggregates(6, profile) : null;
+  const monthlyExp = agg?.avgExp || 0;
+  const snaps = getNWSnapshots ? getNWSnapshots() : [];
+  const nw = computeNetWorth();
+
+  // ── 1. Freedom Gain ─────────────────────────────────────────────
+  try {
+    const totalPortfolio = (data._nwAccounts||[])
+      .filter(a => !['loan','credit_card','other_liability'].includes(a.type))
+      .reduce((s,a) => s + (nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0)), 0);
+    const weeklyReturn = totalPortfolio * (0.10 / 52); // assume 10% CAGR
+    const dailyRetireSpend = monthlyExp > 0 ? monthlyExp / 30 : (totalPortfolio * 0.04 / 365);
+    const days = dailyRetireSpend > 0 ? (weeklyReturn / dailyRetireSpend).toFixed(1) : null;
+    if (days && parseFloat(days) > 0.3 && totalPortfolio > 0) {
+      const cv = _copyVariant('freedomGain');
+      stories.push({
+        id: 'freedom_gain',
+        type: 'freedomGain',
+        icon: '⏳',
+        ringClass: 'ring-gold',
+        ringEffect: 'glow',
+        gradFrom: '#1A1035', gradTo: '#7C3AED',
+        badge: '🏆 Freedom Builder',
+        headline: cv.h,
+        subtext: cv.s.replace('{days}', days),
+        label: 'Freedom',
+        cta: 'See Retire Tab →',
+        ctaAction: () => { closePulsePlayer(); goToScreen('roi'); setTimeout(()=>switchROITab('retire'),300); },
+      });
+    }
+  } catch(e) {}
+
+  // ── 2. Shield Strength (Emergency Fund) ─────────────────────────
+  try {
+    const ef = typeof scoreEmergencyFund === 'function' ? scoreEmergencyFund(nw, agg, profile) : null;
+    const months = ef?.months;
+    const cfg = FHS_REGION?.[profile?.region||'IN'] || {};
+    const target = cfg.emergencyMonths || 6;
+    if (months && months >= target) {
+      const cv = _copyVariant('shieldStrength');
+      stories.push({
+        id: 'shield_strength',
+        type: 'shieldStrength',
+        icon: '🛡️',
+        ringClass: 'ring-green',
+        ringEffect: '',
+        gradFrom: '#064E3B', gradTo: '#10B981',
+        badge: '🏰 Fortress Architect',
+        headline: cv.h.replace('{months}', months),
+        subtext: cv.s.replace(/{months}/g, months),
+        label: 'Shield',
+        cta: 'See Emergency Fund →',
+        ctaAction: () => { closePulsePlayer(); switchScreen('fhs', null); },
+      });
+    }
+  } catch(e) {}
+
+  // ── 3. NW Milestone ─────────────────────────────────────────────
+  try {
+    const nwVal = nw.netWorth;
+    const milestones = [1e4,2.5e4,5e4,1e5,2.5e5,5e5,1e6,2.5e6,5e6,1e7];
+    const crossed = milestones.filter(m => {
+      if (nwVal < m) return false;
+      const prev = snaps.length > 0 ? snapValue(snaps[snaps.length-1]) : 0;
+      return prev < m; // crossed since last snapshot
+    });
+    if (crossed.length > 0) {
+      const m = crossed[crossed.length-1];
+      const mStr = sym + (m >= 1e6 ? (m/1e6).toFixed(1)+'M' : m >= 1e3 ? (m/1e3).toFixed(0)+'K' : m);
+      const cv = _copyVariant('nwMilestone');
+      stories.push({
+        id: 'nw_milestone_' + m,
+        type: 'nwMilestone',
+        icon: '🎯',
+        ringClass: 'ring-gold',
+        ringEffect: 'glow',
+        gradFrom: '#1B1F5E', gradTo: '#F59E0B',
+        badge: '🌟 Milestone Crossed',
+        headline: cv.h.replace('{milestone}', mStr),
+        subtext: cv.s.replace('{milestone}', mStr),
+        label: 'Milestone',
+        cta: 'See Net Worth →',
+        ctaAction: () => { closePulsePlayer(); goToScreen('networth'); },
+      });
+    }
+  } catch(e) {}
+
+  // ── 4. Savings Streak ───────────────────────────────────────────
+  try {
+    const months = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k)).sort().reverse().slice(0,12);
+    let streak = 0;
+    for (const mk of months) {
+      const m = data[mk] || {};
+      const inc = (m.income||[]).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0);
+      const exp = (m.expenses||[]).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0);
+      if (inc > exp && inc > 0) streak++; else break;
+    }
+    if (streak >= 3) {
+      const cv = _copyVariant('savingsStreak');
+      stories.push({
+        id: 'savings_streak_' + streak,
+        type: 'savingsStreak',
+        icon: '🔥',
+        ringClass: 'ring-amber',
+        ringEffect: 'pulse-amber',
+        gradFrom: '#7C2D12', gradTo: '#F97316',
+        badge: `🔥 ${streak}-Month Streak`,
+        headline: cv.h.replace(/{streak}/g, streak),
+        subtext: cv.s.replace(/{streak}/g, streak),
+        label: 'Streak',
+        cta: 'See Budget →',
+        ctaAction: () => { closePulsePlayer(); switchScreen('budget', null); },
+      });
+    }
+  } catch(e) {}
+
+  // ── 5. FHS Rise ─────────────────────────────────────────────────
+  try {
+    const fhsResult = typeof computeFHSScore === 'function' ? computeFHSScore() : null;
+    const score = fhsResult?.overall ?? fhsResult?.score ?? 0;
+    const lastScore = profile?.lastMonthScore || 0;
+    const delta = Math.round(score - lastScore);
+    if (score > 0 && delta >= 3) {
+      const cv = _copyVariant('fhsRise');
+      stories.push({
+        id: 'fhs_rise',
+        type: 'fhsRise',
+        icon: '❤️',
+        ringClass: 'ring-purple',
+        ringEffect: '',
+        gradFrom: '#2D1B69', gradTo: '#7C3AED',
+        badge: '📈 Score Climber',
+        headline: cv.h.replace('{delta}', delta).replace('{score}', Math.round(score)),
+        subtext: cv.s.replace('{score}', Math.round(score)).replace('{delta}', delta),
+        label: 'FHS',
+        cta: 'See Health Score →',
+        ctaAction: () => { closePulsePlayer(); switchScreen('fhs', null); },
+      });
+    }
+  } catch(e) {}
+
+  // ── 6. Top Goal Surge ───────────────────────────────────────────
+  try {
+    const goals = (data._goals||[]).filter(g => g.mappedAccounts?.length > 0 && g.target > 0);
+    const best = goals.map(g => {
+      const cur = typeof computeGoalCurrent==='function' ? computeGoalCurrent(g.mappedAccounts, g.unit, g.goalType) : 0;
+      const pct = Math.round(cur / g.target * 100);
+      return { g, pct, cur };
+    }).filter(x => x.pct >= 25 && x.pct < 100).sort((a,b) => b.pct - a.pct)[0];
+    if (best) {
+      const remaining = fmt(best.g.target - best.cur);
+      const cv = _copyVariant('goalSurge');
+      stories.push({
+        id: 'goal_surge_' + (best.g.name||'goal'),
+        type: 'goalSurge',
+        icon: best.g.icon || '🎯',
+        ringClass: 'ring-blue',
+        ringEffect: '',
+        gradFrom: '#1E3A5F', gradTo: '#3B82F6',
+        badge: '🎯 Goal Progress',
+        headline: cv.h.replace('{goal}', best.g.name||'Goal').replace('{pct}', best.pct),
+        subtext: cv.s.replace(/{goal}/g, best.g.name||'Goal').replace(/{pct}/g, best.pct).replace('{remaining}', remaining),
+        label: best.g.name ? best.g.name.substring(0,10) : 'Goal',
+        cta: 'See Goals →',
+        ctaAction: () => { closePulsePlayer(); switchScreen('budget', null); },
+      });
+    }
+  } catch(e) {}
+
+  // ── 7. Clarity Win ──────────────────────────────────────────────
+  try {
+    if (typeof _computePCS === 'function' && (_clarityFundData||[]).length > 0) {
+      const d = _computePCS();
+      const grade = d.pcs>=85?'A':d.pcs>=70?'B':d.pcs>=50?'C':d.pcs>=30?'D':'F';
+      const gradeLabel = {A:'Clean & Focused',B:'Good Shape',C:'Fragmented',D:'Overlapping',F:'Critical'};
+      const exits = (_clarityFundData||[]).filter(f=>f.verdict==='exit').length;
+      const keeps = (_clarityFundData||[]).filter(f=>f.verdict==='keep').length;
+      if (d.pcs >= 50) {
+        const cv = _copyVariant('clarityWin');
+        stories.push({
+          id: 'clarity_win',
+          type: 'clarityWin',
+          icon: '💎',
+          ringClass: 'ring-blue',
+          ringEffect: '',
+          gradFrom: '#0F172A', gradTo: '#1E2A6E',
+          badge: '💎 Clarity Report',
+          headline: cv.h.replace('{pcs}', d.pcs).replace('{grade}', grade),
+          subtext: cv.s.replace('{pcs}', d.pcs).replace('{grade}', grade)
+                       .replace('{label}', gradeLabel[grade]||'')
+                       .replace('{funds}', keeps).replace('{exits}', exits),
+          label: 'Clarity',
+          cta: 'See Clarity →',
+          ctaAction: () => { closePulsePlayer(); goToScreen('roi'); setTimeout(()=>switchROITab('clarity'),300); },
+        });
+      }
+    }
+  } catch(e) {}
+
+  // Sort: unseen first, then by impact (milestones > streaks > scores)
+  const seen = _getPulseSeen();
+  const order = ['nwMilestone','freedomGain','shieldStrength','savingsStreak','fhsRise','goalSurge','clarityWin','pillarBreakthrough'];
+  stories.sort((a,b) => {
+    const aS = seen.includes(a.id) ? 1 : 0;
+    const bS = seen.includes(b.id) ? 1 : 0;
+    if (aS !== bS) return aS - bS;
+    return order.indexOf(a.type) - order.indexOf(b.type);
+  });
+
+  return stories.slice(0, 5);
+}
+
+// ── Pulse Row Renderer ──────────────────────────────────────────────
+function renderPulseRow() {
+  const el = document.getElementById('pulse-row');
+  if (!el) return;
+  _pulseStories = _generatePulseStories();
+  if (_pulseStories.length === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  const seen = _getPulseSeen();
+  el.innerHTML = _pulseStories.map((s, i) => `
+    <div class="pulse-avatar ${seen.includes(s.id)?'pulse-seen':''}" onclick="openPulsePlayer(${i})">
+      <div class="pulse-ring ${s.ringClass} ${seen.includes(s.id)?'':s.ringEffect}">
+        <div class="pulse-inner">${s.icon}</div>
+      </div>
+      <div class="pulse-label">${s.label}</div>
+    </div>`).join('');
+}
+
+// ── Story Player ────────────────────────────────────────────────────
+function openPulsePlayer(idx) {
+  _pulsePlayerIdx = idx || 0;
+  _renderStoryFrame();
+  const overlay = document.getElementById('story-overlay');
+  if (overlay) overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closePulsePlayer() {
+  clearTimeout(_pulseTimer);
+  const overlay = document.getElementById('story-overlay');
+  if (overlay) overlay.style.display = 'none';
+  document.body.style.overflow = '';
+  renderPulseRow(); // refresh seen state
+}
+
+function _renderStoryFrame() {
+  const overlay = document.getElementById('story-overlay');
+  if (!overlay || !_pulseStories.length) return;
+  clearTimeout(_pulseTimer);
+
+  const s = _pulseStories[_pulsePlayerIdx];
+  if (!s) { closePulsePlayer(); return; }
+  _markPulseSeen(s.id);
+
+  const total = _pulseStories.length;
+  const segs = Array.from({length: total}, (_,i) => {
+    if (i < _pulsePlayerIdx) return `<div class="story-seg"><div class="story-seg-fill" style="width:100%;"></div></div>`;
+    if (i === _pulsePlayerIdx) return `<div class="story-seg"><div class="story-seg-fill animating" id="pulse-seg-active" style="width:0%;transition-duration:${PULSE_DURATION}ms;"></div></div>`;
+    return `<div class="story-seg"><div class="story-seg-fill" style="width:0%;"></div></div>`;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div class="story-card" style="background:linear-gradient(160deg,${s.gradFrom},${s.gradTo});">
+      <div class="story-progress-bar">${segs}</div>
+      <button class="story-close" onclick="closePulsePlayer()">✕</button>
+      <div class="story-tap-left"  onclick="_pulseStep(-1)"></div>
+      <div class="story-tap-right" onclick="_pulseStep(1)"></div>
+      <div class="story-icon-big">${s.icon}</div>
+      <div class="story-badge">${s.badge}</div>
+      <div class="story-headline">${s.headline}</div>
+      <div class="story-subtext">${s.subtext}</div>
+      <button class="story-cta" onclick="_storyCtaClick(${_pulsePlayerIdx})">${s.cta}</button>
+    </div>`;
+
+  // Animate progress bar
+  requestAnimationFrame(() => {
+    const fill = document.getElementById('pulse-seg-active');
+    if (fill) fill.style.width = '100%';
+  });
+
+  // Auto-advance
+  _pulseTimer = setTimeout(() => _pulseStep(1), PULSE_DURATION);
+}
+
+function _pulseStep(dir) {
+  clearTimeout(_pulseTimer);
+  const next = _pulsePlayerIdx + dir;
+  if (next < 0) { closePulsePlayer(); return; }
+  if (next >= _pulseStories.length) { closePulsePlayer(); return; }
+  _pulsePlayerIdx = next;
+  _renderStoryFrame();
+}
+
+function _storyCtaClick(idx) {
+  const s = _pulseStories[idx];
+  if (s?.ctaAction) s.ctaAction();
+}
+
+
 function renderHome() {
   ensureMonth(viewMonth);
+  try { renderPulseRow(); } catch(e) {}
   const m = data[viewMonth];
 
   let expenses, income, investments, additional;
