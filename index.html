@@ -12140,6 +12140,9 @@ function generateClarityPDF() {
   const hl  = (yy,col=[210,215,225],thick=0.25)=>{doc.setDrawColor(...col);doc.setLineWidth(thick);doc.line(M,yy,W-M,yy);};
   const rc  = (x,yy,w,h,fill,r=2)=>{doc.setFillColor(...fill);doc.roundedRect(x,yy,w,h,r,r,'F');};
   const ch  = (t,x,yy,bg,tc=[255,255,255])=>{const tw=doc.getTextWidth(t)+5;rc(x,yy-4.5,tw,6,bg);doc.setFontSize(6);doc.setFont('helvetica','bold');doc.setTextColor(...tc);doc.text(t,x+2.5,yy);};
+  // badge(): plain colored text, no background pill — cleaner alignment
+  const badge = (t,x,yy,col,sz=6.5,st='bold')=>{doc.setFontSize(sz);doc.setFont('helvetica',st);doc.setTextColor(...col);doc.text(String(t),x,yy);};
+  const rbadge= (t,x,yy,col,sz=6.5,st='bold')=>{doc.setFontSize(sz);doc.setFont('helvetica',st);doc.setTextColor(...col);doc.text(String(t),x,yy,{align:'right'});};
   const sb  = (title,yy)=>{rc(M,yy-5,W-2*M,7,[238,242,252]);doc.setDrawColor(...COL.navy);doc.setLineWidth(0.5);doc.line(M,yy-5,M,yy+2);ln(title,M+4,yy,7.5,'bold',COL.navy);return yy+5;};
   const kv  = (l,v,yy,vc=COL.navy,bold=false)=>{ln(l,M,yy,7.5,'normal',COL.gray);rln(v,W-M,yy,7.5,bold?'bold':'normal',vc);};
   const br  = (x,yy,w,h,pct,fc,bg=COL.lightGray)=>{doc.setFillColor(...bg);doc.rect(x,yy,w,h,'F');doc.setFillColor(...fc);doc.rect(x,yy,Math.max(0.5,Math.min(pct/100*w,w)),h,'F');};
@@ -12204,10 +12207,14 @@ function generateClarityPDF() {
   ln('MoneyFi',M,12,16,'bold',COL.white);
   ln('Advisor-Ready Strategic Brief',M,20,9,'normal',[160,180,235]);
   ln(priv?'PRIVATE — FOR CA/ADVISOR USE ONLY':'SHAREABLE VERSION — AMOUNTS HIDDEN',M,28,6.5,'bold',priv?COL.yellow:[100,240,175]);
-  rln(`Prepared: ${today}`,W-M,12,7.5,'normal',[155,175,225]);
-  if(profile.age){const el=empType==='self_employed'?'Self-employed':empType==='business_owner'?'Business Owner':empType==='retired'?'Retired':'W-2 Employee';rln(`Age ${profile.age}  ·  ${el}  ·  ${region}`,W-M,20,6.5,'normal',[155,175,225]);}
-  doc.setFillColor(...fhsCol.map(c=>Math.max(0,c-20)));doc.circle(W-M-10,10.5,10.5,'F');doc.setFillColor(...fhsCol);doc.circle(W-M-10,10.5,9,'F');
-  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...COL.white);doc.text(String(fhsScore),W-M-10,14,{align:'center'});doc.setFontSize(5.5);doc.text('/100',W-M-10,18.5,{align:'center'});
+  rln(`Prepared: ${today}`,metaX,12,7.5,'normal',[155,175,225]);
+  if(profile.age){const el=empType==='self_employed'?'Self-employed':empType==='business_owner'?'Business Owner':empType==='retired'?'Retired':'W-2 Employee';rln(`Age ${profile.age}  ·  ${el}  ·  ${region}`,metaX,20,6.5,'normal',[155,175,225]);}
+  // Score circle — positioned left of right margin so it doesn't obscure Prepared/Age text
+  const scoreX = W-M-14;
+  doc.setFillColor(...fhsCol.map(c=>Math.max(0,c-20)));doc.circle(scoreX,10.5,10.5,'F');doc.setFillColor(...fhsCol);doc.circle(scoreX,10.5,9,'F');
+  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...COL.white);doc.text(String(fhsScore),scoreX,14,{align:'center'});doc.setFontSize(5.5);doc.text('/100',scoreX,18.5,{align:'center'});
+  // Push right-aligned metadata text to leave room for the circle
+  const metaX = scoreX - 14;
   y=46;
 
   // Mission
@@ -12333,7 +12340,7 @@ function generateClarityPDF() {
   // Velocity
   if(snaps.length>=2){const ls=snaps[snaps.length-1];const ps2=snaps[snaps.length-2];const nwD=snapValue(ls)-(snapValue(ps2)||0);const ds=avgExp>0?avgExp/30:0;const db=ds>0?Math.round(nwD/ds/365*30):null;if(db!=null&&!isNaN(db)){ln('NW Velocity (freedom days bought — 12m):',M,y,7.5,'normal',COL.gray);rln(`${db>0?'+':''}${db} days`,W-M,y,7.5,'bold',db>0?COL.green:COL.red);y+=7;}}
   // Estate
-  ln('Estate & Legacy:',M,y,7.5,'normal',COL.gray);y+=5;let ex=M;[['Will',hasWill],['Power of Attorney',hasPOA],['Nominees',hasNominees]].forEach(([lbl,done])=>{ch((done?'✓ ':'✗ ')+lbl,ex,y,done?COL.green:COL.red);ex+=doc.getTextWidth((done?'✓ ':'✗ ')+lbl)+11;});y+=12;
+  ln('Estate & Legacy:',M,y,7.5,'normal',COL.gray);y+=5;let ex=M;[['Will',hasWill],['Power of Attorney',hasPOA],['Nominees',hasNominees]].forEach(([lbl,done])=>{const etxt=(done?'✓ ':'✗ ')+lbl;badge(etxt,ex,y,done?COL.green:COL.red,7);ex+=doc.getTextWidth(etxt)+10;});y+=12;
 
   // ══════════════════════════════════════════════════════════════
   // PAGE 3 — NET WORTH & LIQUIDITY (Spendable vs Locked)
@@ -12367,7 +12374,7 @@ function generateClarityPDF() {
     ln(g.label,M,y,7.5,'normal',COL.navy);
     ln(priv?fmt2(total):'—',M+70,y,7.5,'normal',COL.navy);
     ln(fresh||'Unknown',M+130,y,6.5,'normal',freshCol);
-    ch(g.tag,W-M-22,y,isLocked?COL.amber:COL.green);
+    badge(g.tag,W-M-22,y,isLocked?COL.amber:COL.green);
     y+=7;
   });
   hl(y,COL.lightGray);y+=4;
@@ -12428,10 +12435,13 @@ function generateClarityPDF() {
     // Show what's actually driving the "Other" bucket
     const otherAccts=(data._nwAccounts||[]).filter(a=>!['loan','credit_card','other_liability'].includes(a.type)&&(ASSET_CLASSES[a.type]||'other')==='other'&&(a.balance||0)>0);
     const otherBreakdown=otherAccts.map(a=>`${(a.name||a.type).substring(0,18)} (${a.type})`).slice(0,4).join(', ');
-    CY(14);rc(M,y,W-2*M,13,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.4);doc.line(M,y,M,y+13);
-    ln(`⚠  Large "Other" bucket (${(acMap.other/totalAC*100).toFixed(0)}%) — unclassified assets cannot be assigned a risk weight. Risk Architecture and Portfolio Health scores may be understated.`,M+3,y+5.5,6.5,'bold',[146,64,14]);
-    if(otherBreakdown) ln(`Accounts: ${otherBreakdown}${otherAccts.length>4?` + ${otherAccts.length-4} more`:''}`,M+3,y+10.5,6,'italic',[146,64,14]);
-    y+=17;
+    const otherWarning=`⚠  Large "Other" bucket (${(acMap.other/totalAC*100).toFixed(0)}%) — unclassified assets cannot be assigned a risk weight. Risk Architecture and Portfolio Health scores may be understated.`;
+    const owLines=doc.splitTextToSize(otherWarning,W-2*M-8);
+    const owH=owLines.length*4.5+(otherBreakdown?8:4)+4;
+    CY(owH+4);rc(M,y,W-2*M,owH,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.4);doc.line(M,y,M,y+owH);
+    doc.setFontSize(6.5);doc.setFont('helvetica','bold');doc.setTextColor(146,64,14);doc.text(owLines,M+3,y+5);
+    if(otherBreakdown){const bdLines=doc.splitTextToSize(`Accounts: ${otherBreakdown}${otherAccts.length>4?` + ${otherAccts.length-4} more`:''}`,W-2*M-8);doc.setFontSize(6);doc.setFont('helvetica','italic');doc.text(bdLines,M+3,y+owLines.length*4.5+6);}
+    y+=owH+4;
   }
   y+=4;
 
@@ -12469,7 +12479,15 @@ function generateClarityPDF() {
   });
   y+=5;CY(36);hl(y);y+=5;y=sb('CA / ADVISOR INSTRUCTION — REBALANCING MANDATE',y);y+=3;
   const ef2=(_clarityFundData||[]).filter(f=>f.verdict==='exit');const kf2=(_clarityFundData||[]).filter(f=>f.verdict==='keep');
-  if(ef2.length>0){const te=ef2.reduce((s,f)=>s+(f.val||0),0);const il=doc.splitTextToSize(priv?`Exit ${ef2.length} fund(s) valued at ${sym}${Math.round(te).toLocaleString()} and reinvest into top ${Math.min(kf2.length,5)} performers. Verify exit loads and STCG/LTCG implications before redemption.`:`Exit ${ef2.length} fund(s) and consolidate into top ${Math.min(kf2.length,5)} performers.`,W-2*M);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...COL.navy);doc.text(il,M,y);y+=il.length*5+4;}
+  if(ef2.length>0){
+    const te=ef2.reduce((s,f)=>s+(f.val||0),0);
+    const mandateText=priv
+      ?`Exit ${ef2.length} fund(s) valued at ${sym}${Math.round(te).toLocaleString()} and reinvest into top ${Math.min(kf2.length,5)} performers. Verify exit loads and STCG/LTCG implications before redemption.`
+      :`Exit ${ef2.length} fund(s) and consolidate into top ${Math.min(kf2.length,5)} performers. Verify exit loads before execution.`;
+    const il=doc.splitTextToSize(mandateText,W-2*M-4);
+    doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(...COL.navy);doc.text(il,M,y);
+    y+=il.length*5+4;
+  }
   ln('CA / Advisor Signature:',M,y,8,'normal',COL.gray);doc.setDrawColor(190,195,205);doc.setLineWidth(0.25);doc.line(M+48,y,W-M-58,y);ln('Date:',W-M-54,y,8,'normal',COL.gray);doc.line(W-M-38,y,W-M-28,y);y+=10;
   ln('Approved Actions:',M,y,8,'normal',COL.gray);y+=5;[0,1,2].forEach(()=>{doc.line(M,y,W-M-30,y);y+=6;});
 
@@ -12494,7 +12512,15 @@ function generateClarityPDF() {
     }
   }).catch(()=>{});
   y+=2;
-  if(d.goalMismatchPenalty>0){CY(16);rc(M,y,W-2*M,14,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.5);doc.line(M,y,M,y+14);ln('⚠ GOAL-HORIZON MISMATCH',M+4,y+6,7.5,'bold',[146,64,14]);ln(`-${d.goalMismatchPenalty} pts. Some goals have mismatched fund types. Review with CA.`,M+4,y+11.5,7,'normal',[146,64,14]);y+=18;}
+  if(d.goalMismatchPenalty>0){
+    const mmTxt=`-${d.goalMismatchPenalty} pts: Some goals are linked to funds too volatile for their timeline. Switch to lower-risk fund categories before the next review.`;
+    const mmL=doc.splitTextToSize(mmTxt,W-2*M-10);
+    const mmH=Math.max(16,mmL.length*4.5+10);
+    CY(mmH+4);rc(M,y,W-2*M,mmH,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.5);doc.line(M,y,M,y+mmH);
+    ln('⚠ GOAL-HORIZON MISMATCH',M+4,y+6,7.5,'bold',[146,64,14]);
+    doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(146,64,14);doc.text(mmL,M+4,y+12);
+    y+=mmH+4;
+  }
 
   // ══════════════════════════════════════════════════════════════
   // PAGE 5 — TAX & INSURANCE AUDIT
@@ -12731,8 +12757,8 @@ function generateClarityPDF() {
     CY(12);
     const rc2=f.risk==='HIGH'?COL.red:f.risk==='REVIEW'?COL.amber:COL.green;
     ln(f.flag,M,y,7.5,'bold',COL.navy);
-    ch(f.applies?'YES':'NO',M+110,y,f.applies?COL.amber:COL.green);
-    ch(f.risk,W-M-22,y,rc2);
+    badge(f.applies?'YES':'NO',M+110,y,f.applies?COL.amber:COL.green,7);
+    rbadge(f.risk,W-M,y,rc2,7);
     y+=6;
     const dl=doc.splitTextToSize(f.detail,W-2*M-4);
     doc.setFontSize(6.5);doc.setFont('helvetica','italic');doc.setTextColor(...COL.gray);doc.text(dl,M,y);
@@ -12803,29 +12829,65 @@ function generateClarityPDF() {
   }
   y+=4;
 
-  // Metals liquidity
+  // Metals liquidity — reads from data._metals (the primary source) + _nwAccounts type=metals
   CY(50);y=sb('PHYSICAL METALS — LIQUIDITY PROFILE',y);y+=3;
-  const metalAccounts=(data._nwAccounts||[]).filter(a=>a.type==='metals'&&(a.balance||0)>0);
-  if(metalAccounts.length===0){
+  const INVEST_GRADE_PURITIES = new Set(['24K','999','999 FINE','999 Fine','24k','Pt999','Pt950']);
+  const allMetalItems=[
+    ...(data._metals||[]).map(m=>({
+      name:m.name||m.metalType||'Metal',
+      metalType:(m.metalType||'gold').toLowerCase(),
+      purity:m.purity||'',
+      grams:Number(m.grams||m.weightGms||0),
+      occasion:m.occasion||'',
+      balance:Number(m.grams||m.weightGms||0)*((typeof getPriceForMetal==='function')?getPriceForMetal(m.metalType||'gold',m.purity||''):(m.price||0)),
+      currency:m.currency||'USD',
+      _src:'metals'
+    })),
+    ...(data._nwAccounts||[]).filter(a=>a.type==='metals'&&(a.balance||0)>0&&!(data._metals||[]).length).map(a=>({
+      name:a.name||'Metal',metalType:(a.meta?.metalType||'gold').toLowerCase(),
+      purity:a.meta?.purity||'',grams:a.meta?.grams||0,occasion:'',
+      balance:nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0),currency:a.currency||'USD',_src:'nw'
+    }))
+  ];
+
+  if(allMetalItems.length===0){
     rc(M,y,W-2*M,10,[238,248,240],2);ln('No metals recorded in Net Worth.',M+4,y+7,7,'italic',COL.gray);y+=14;
   } else {
-    const METAL_LIQ={gold:{days:'1–2 days',method:'Bank/jeweller buyback or exchange ETF',rating:'HIGHLY LIQUID'},silver:{days:'1–3 days',method:'Exchange ETF or dealer',rating:'LIQUID'},platinum:{days:'3–7 days',method:'Specialist dealer only',rating:'MODERATE'}};
-    [['Metal / Item',M],['Value',M+70],['Weight',M+100],['Liquidation',M+125],['Rating',W-M]].forEach(([h,x],i)=>{if(i<4)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+    // Classify: investment-grade (24K / 999 purity) vs ornamental — group ornamentals
+    const investGrade=allMetalItems.filter(m=>INVEST_GRADE_PURITIES.has(m.purity)||(!m.purity&&!m.occasion));
+    const ornamental=allMetalItems.filter(m=>!INVEST_GRADE_PURITIES.has(m.purity)&&(m.purity||m.occasion));
+    // Summarise ornamental by type
+    const ornGroups={};
+    ornamental.forEach(m=>{const k=m.metalType;if(!ornGroups[k])ornGroups[k]={type:k,grams:0,value:0};ornGroups[k].grams+=m.grams;ornGroups[k].value+=m.balance;});
+    const ornRows=Object.values(ornGroups).map(g=>({
+      name:`Ornamental ${g.type.charAt(0).toUpperCase()+g.type.slice(1)}`,
+      metalType:g.type,purity:'Mixed',grams:g.grams,
+      balance:g.value,currency:'USD',isOrnamental:true
+    }));
+    const displayRows=[...investGrade.map(m=>({...m,isOrnamental:false})),...ornRows];
+    const METAL_LIQ={gold:{days:'1–2 days',rating:'HIGHLY LIQUID'},silver:{days:'1–3 days',rating:'LIQUID'},platinum:{days:'3–7 days',rating:'MODERATE'}};
+    [['Metal / Item',M],['Value',M+60],['Weight',M+95],['Purity',M+115],['Liquidity',M+148],['Note',W-M]].forEach(([h,x],i)=>{if(i<5)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
     y+=3;hl(y,[225,230,238]);y+=4;
-    metalAccounts.forEach(a=>{
+    displayRows.forEach(m=>{
       CY(10);
-      const val=nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);
-      const mType=(a.meta?.metalType||'gold').toLowerCase();
-      const grams=a.meta?.grams||0;
-      const liq=METAL_LIQ[mType]||METAL_LIQ.gold;
-      const rc3=liq.rating==='HIGHLY LIQUID'?COL.green:liq.rating==='LIQUID'?COL.green:COL.amber;
-      ln((a.name||mType).substring(0,28),M,y,7,'normal',COL.navy);
-      ln(priv?fmt2(val):'—',M+70,y,7,'normal',COL.navy);
-      ln(grams>0?`${grams.toFixed(1)}g`:'—',M+100,y,7,'normal',COL.gray);
-      ln(liq.days,M+125,y,7,'normal',COL.gray);
-      ch(liq.rating,W-M-34,y,rc3);
-      y+=7;
+      const val=nwConvert?nwConvert(m.balance||0,m.currency||'USD'):(m.balance||0);
+      const liq=METAL_LIQ[m.metalType]||METAL_LIQ.gold;
+      const liqCol=liq.rating==='HIGHLY LIQUID'?COL.green:liq.rating==='LIQUID'?COL.green:COL.amber;
+      const note=m.isOrnamental?'Sentimental — not liquidatable at spot':liq.days;
+      ln(m.name.substring(0,26),M,y,7,'normal',m.isOrnamental?COL.gray:COL.navy);
+      ln(priv&&val>0?fmt2(val):'—',M+60,y,7,'normal',COL.navy);
+      ln(m.grams>0?`${m.grams.toFixed(1)}g`:'—',M+95,y,6.5,'normal',COL.gray);
+      ln(m.purity||'—',M+115,y,6.5,'normal',COL.gray);
+      badge(m.isOrnamental?'ORNAMENTAL':liq.rating,M+148,y,m.isOrnamental?COL.gray:liqCol,6);
+      rln(note,W-M,y,6,'italic',COL.gray);
+      y+=8;
     });
+    // Total investment-grade value
+    const invGradeTotal=investGrade.reduce((s,m)=>s+(nwConvert?nwConvert(m.balance||0,m.currency||'USD'):(m.balance||0)),0);
+    const ornTotal=ornamental.reduce((s,m)=>s+(nwConvert?nwConvert(m.balance||0,m.currency||'USD'):(m.balance||0)),0);
+    hl(y,[215,220,230]);y+=4;
+    if(priv){ln('Investment-grade (spot-liquidatable):',M,y,7,'normal',COL.gray);rln(fmt2(invGradeTotal),W-M,y,7,'bold',COL.green);y+=6;
+    ln('Ornamental (sentimental value only):',M,y,7,'normal',COL.gray);rln(fmt2(ornTotal),W-M,y,7,'normal',COL.amber);y+=6;}
   }
 
   // Net Liquid Worth summary
@@ -12875,8 +12937,8 @@ function generateClarityPDF() {
     CY(12);
     ln(row.cat,M,y,7,'bold',COL.navy);
     ln(count>0?(priv&&totalVal>0?`${count} acct${count>1?'s':''} · ${fmt2(totalVal)}`:`${count} acct${count>1?'s':''}`):'Check manually',M+90,y,7,'normal',COL.gray);
-    ch(status,M+128,y,statusCol);
-    ch(row.urgency,W-M-28,y,urgCol);
+    badge(status,M+128,y,statusCol,6.5);
+    rbadge(row.urgency,W-M,y,urgCol,6.5);
     y+=7;
     ln(row.note,M,y,6,'italic',COL.gray);y+=6;
   });
@@ -12906,8 +12968,8 @@ function generateClarityPDF() {
     rc(M,y-4,W-2*M,12,[c.done?232:255,c.done?248:c.urgency==='CRITICAL'?235:247,c.done?240:c.urgency==='CRITICAL'?235:230],2);
     doc.setFillColor(...ic);doc.rect(M,y-4,4,12,'F');
     ln(c.item,M+7,y+1,7.5,'bold',COL.navy);
-    ch(c.done?'✓ DONE':'✗ PENDING',M+100,y+1,c.done?COL.green:COL.red);
-    ch(c.urgency,W-M-30,y+1,c.done?COL.green:c.urgency==='CRITICAL'?COL.red:COL.amber);
+    badge(c.done?'✓ DONE':'✗ PENDING',M+100,y+1,c.done?COL.green:COL.red,7);
+    rbadge(c.urgency,W-M,y+1,c.done?COL.green:c.urgency==='CRITICAL'?COL.red:COL.amber,7);
     ln(c.action,M+7,y+7,6,'italic',COL.gray);
     y+=16;
   });
@@ -22140,16 +22202,15 @@ function _parseSingleSMS(msg) {
     // 14-Mar-26, 14-Mar-2026
     { rx: /(\d{1,2})[-\/\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\/\s](\d{2,4})/i,
       parse: m => new Date(`${m[2]} ${m[1]} ${m[3].length===2?'20'+m[3]:m[3]}`) },
-    // 14/03/2026 or 14-03-2026
+    // 16-03-26 or 16/03/26 (DD-MM-YY two-digit year — common in Indian bank SMS)
+    { rx: /(\d{2})[-\/](\d{2})[-\/](\d{2})(?!\d)/,
+      parse: m => { const yr='20'+m[3]; return new Date(`${yr}-${m[2]}-${m[1]}`); } },
+    // 14/03/2026 or 14-03-2026 (DD-MM-YYYY)
     { rx: /(\d{2})[-\/](\d{2})[-\/](\d{4})/,
       parse: m => new Date(`${m[3]}-${m[2]}-${m[1]}`) },
     // 03/14/2026 (US format — month first)
     { rx: /(\d{2})\/(\d{2})\/(\d{4})/,
-      parse: m => {
-        // Heuristic: if first group > 12, it's DD/MM; else assume MM/DD for US
-        const d1 = parseInt(m[1]), d2 = parseInt(m[2]);
-        return d1 > 12 ? new Date(`${m[3]}-${m[2]}-${m[1]}`) : new Date(`${m[3]}-${m[1]}-${m[2]}`);
-      }},
+      parse: m => { const d1=parseInt(m[1]),d2=parseInt(m[2]); return d1>12?new Date(`${m[3]}-${m[2]}-${m[1]}`):new Date(`${m[3]}-${m[1]}-${m[2]}`); }},
     // Mar 14, 2026
     { rx: /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s+(\d{4})/i,
       parse: m => new Date(`${m[1]} ${m[2]} ${m[3]}`) },
@@ -22181,26 +22242,69 @@ function _parseSingleSMS(msg) {
   const acctMatch = msg.match(/(?:a\/c|acc(?:ount)?|card|acct)[\s#*Xx]*(?:[Xx*]{2,4})?(\d{4})\b/i);
   const last4 = acctMatch ? acctMatch[1] : null;
 
-  // ── Merchant / payee ──
-  // Priority: "at <merchant>", "to VPA <upi>", "Info: <merchant>", "Merchant: <merchant>"
-  let merchant = '';
-  const merchantPatterns = [
-    /\bat\s+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,30}?)(?:\s+on|\s+for|\.|,|$)/i,
-    /\bmerchant[:\s]+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,25}?)(?:\.|,|$)/i,
-    /\binfo[:\s]+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,25}?)(?:\.|,|\s+avl|$)/i,
-    /\bto\s+(?:vpa\s+)?([a-z0-9._%+\-]{3,30}@[a-z]{2,15})\b/i, // UPI handle
-    /\bpayee[:\s]+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,25}?)(?:\.|,|$)/i,
-    /\bby\s+(?:neft|imps|upi)[-\s]?([A-Za-z0-9]{4,20})\b/i,
-    /\bref(?:erence)?[:\s#]+([A-Za-z0-9 ]{3,20}?)(?:\.|,|\s+avl|$)/i,
+  // ── VPA brand lookup — maps UPI handle keywords to clean merchant names ──
+  const VPA_BRAND_MAP = [
+    [/axis.*mutual|axismf|axisbankingandpsu|axisamc/i, 'Axis Mutual Fund'],
+    [/hdfc.*mutual|hdfcmf|hdfcamc/i,                   'HDFC Mutual Fund'],
+    [/sbi.*mutual|sbimf/i,                             'SBI Mutual Fund'],
+    [/nippon.*mutual|nipponamc|reliancemf/i,           'Nippon Mutual Fund'],
+    [/icicipru|icici.*mutual/i,                        'ICICI Pru Mutual Fund'],
+    [/kotakmf|kotak.*mutual/i,                         'Kotak Mutual Fund'],
+    [/mirae|miraeamc/i,                                'Mirae Asset MF'],
+    [/ppfas|paragparikh/i,                             'Parag Parikh MF'],
+    [/motilal|mofsl/i,                                 'Motilal Oswal MF'],
+    [/growwmf|groww.*invest/i,                         'Groww MF'],
+    [/zerodha|coin\.zerodha/i,                         'Zerodha Coin'],
+    [/kuvera/i,                                        'Kuvera MF'],
+    [/nps.*cra|npscra|kfintech.*nps|nsdl.*pension/i,  'NPS'],
+    [/lic\.?(india)?|licindia/i,                       'LIC'],
+    [/swiggy/i,'Swiggy'],[/zomato/i,'Zomato'],[/amazon/i,'Amazon'],
+    [/flipkart/i,'Flipkart'],[/\buber\b/i,'Uber'],[/\bola\b/i,'Ola'],
+    [/netflix/i,'Netflix'],[/spotify/i,'Spotify'],
   ];
-  for (const rx of merchantPatterns) {
-    const m = msg.match(rx);
-    if (m && m[1]) { merchant = m[1].trim(); break; }
+
+  // ── Merchant / payee ──
+  let merchant = '';
+
+  // 1) Text AFTER the VPA handle — e.g. "to VPA abc@icici Axis Mutual Funds on 16-03-26"
+  const vpaAfterRx = /\bvpa\s+[a-z0-9._%+\-]+@[a-z0-9\-]+\s+([A-Za-z][A-Za-z0-9 &.'\\-]{2,40}?)(?:\s+on\b|\s+dated\b|\.|,|$)/i;
+  const vpaAfterM = msg.match(vpaAfterRx);
+  if (vpaAfterM && vpaAfterM[1] && !/^(on|for|dated|ref|at|to|from)\b/i.test(vpaAfterM[1])) {
+    merchant = vpaAfterM[1].trim();
   }
+
+  // 2) VPA handle (any length) → brand lookup, then humanise
   if (!merchant) {
-    // Fallback: extract from "transferred to <name>" or "from <name>"
-    const fallback = msg.match(/\b(?:to|from)\s+([A-Z][A-Za-z ]{2,20}?)(?:\s+a\/c|\s+account|\.|,|$)/);
-    if (fallback) merchant = fallback[1].trim();
+    const vpaHandleRx = /\bto\s+(?:vpa\s+)?([a-z0-9._%+\-]{1,80}@[a-z0-9\-]{2,25})\b/i;
+    const vpaHM = msg.match(vpaHandleRx);
+    if (vpaHM) {
+      const handle = vpaHM[1];
+      for (const [rx, name] of VPA_BRAND_MAP) { if (rx.test(handle)) { merchant = name; break; } }
+      if (!merchant) merchant = handle.split('@')[0].replace(/[._\-]/g,' ').replace(/\b\w/g,c=>c.toUpperCase()).substring(0,30).trim();
+    }
+  }
+
+  // 3) Standard patterns: "at <merchant>", "Merchant:", "Info:", etc.
+  if (!merchant) {
+    const stdPats = [
+      /\bat\s+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,30}?)(?:\s+on|\s+for|\.|,|$)/i,
+      /\bmerchant[:\s]+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,25}?)(?:\.|,|$)/i,
+      /\binfo[:\s]+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,25}?)(?:\.|,|\s+avl|$)/i,
+      /\bpayee[:\s]+([A-Za-z0-9][A-Za-z0-9 .&'\-]{2,25}?)(?:\.|,|$)/i,
+      /\bby\s+(?:neft|imps|upi)[-\s]?([A-Za-z0-9]{4,20})\b/i,
+    ];
+    for (const rx of stdPats) { const m=msg.match(rx); if(m&&m[1]){merchant=m[1].trim();break;} }
+  }
+
+  // 4) Full-message brand scan
+  if (!merchant) {
+    for (const [rx, name] of VPA_BRAND_MAP) { if (rx.test(msg)) { merchant = name; break; } }
+  }
+
+  // 5) Generic name fallback
+  if (!merchant) {
+    const fb = msg.match(/\b(?:to|from)\s+([A-Z][A-Za-z ]{2,20}?)(?:\s+a\/c|\s+account|\.|,|$)/);
+    if (fb) merchant = fb[1].trim();
   }
 
   // ── Auto-category ──
@@ -22210,21 +22314,24 @@ function _parseSingleSMS(msg) {
     [/uber|ola|rapido|taxi|cab|metro|bus|train|irctc|makemytrip|goibibo|airlines?/i,   'Transport'],
     [/netflix|spotify|hotstar|prime|disney|youtube|zee5|subscription/i,                 'Subscriptions'],
     [/hospital|pharma|medical|apollo|fortis|dr\.|clinic|health/i,                       'Healthcare'],
-    [/electricity|water|gas|utility|bsnl|jio|airtel|bill|recharge/i,                    'Utilities'],
-    [/salary|payroll|credited.*salary|sal\b/i,                                           'Salary'],
-    [/neft|imps|upi|transfer/i,                                                          'Transfer'],
-    [/emi|loan|mortgage|hdfc.*emi|icici.*emi/i,                                          'Loan/EMI'],
-    [/atm|cash|withdraw/i,                                                               'Cash Withdrawal'],
-    [/invest|mutual fund|mf|zerodha|groww|coin|sip/i,                                   'Investment'],
-    [/rent|housing|pg\b|flat/i,                                                          'Rent/Housing'],
+    [/electricity|water|gas|utility|bsnl|jio|airtel|bill|recharge/i,                   'Utilities'],
+    [/salary|payroll|credited.*salary|sal\b/i,                                          'Salary'],
+    [/neft|imps|upi|transfer/i,                                                         'Transfer'],
+    [/emi|loan|mortgage|hdfc.*emi|icici.*emi/i,                                         'Loan/EMI'],
+    [/atm|cash|withdraw/i,                                                              'Cash Withdrawal'],
+    [/mutual fund|mf\b|zerodha|groww|coin|sip\b|nps\b|invest/i,                       'Investment'],
+    [/rent|housing|pg\b|flat/i,                                                         'Rent/Housing'],
   ];
   let category = txType === 'income' ? 'Other Income' : 'Other Expense';
   for (const [rx, cat] of catMap) {
     if (rx.test(msg) || (merchant && rx.test(merchant))) { category = cat; break; }
   }
-  // Income overrides
   if (txType === 'income' && /salary|payroll/i.test(msg)) category = 'Salary';
   if (txType === 'income' && /refund/i.test(msg)) category = 'Refund';
+
+  // ── Smart type: upgrade expense → investment for known investment brands ──
+  const investBrandRx = /mutual fund|mf\b|zerodha|groww|kuvera|nps\b|sip\b|axisbankingandpsu|axis.*mf|hdfc.*mf|sbi.*mf|nippon.*mf|icici.*pru|kotak.*mf|mirae|ppfas|motilal.*oswal|licindia/i;
+  const finalType = (txType==='expense' && (investBrandRx.test(msg)||(merchant&&investBrandRx.test(merchant)))) ? 'investment' : txType;
 
   const description = merchant || (last4 ? `${bank} ••${last4}` : bank);
 
@@ -22234,11 +22341,11 @@ function _parseSingleSMS(msg) {
     merchant,
     amount,
     currency,
-    type: txType,
+    type: finalType,
     category,
     bank,
     last4,
-    _selected: true,      // default: selected for import
+    _selected: true,
     _raw: msg.substring(0, 120),
   };
 }
@@ -22339,8 +22446,9 @@ function _renderSMSReviewTable() {
           <td>
             <select onchange="_smsTxTypeChange(${i},this.value)"
               style="border:1px solid #E5E7EB;border-radius:6px;padding:3px 6px;font-family:Nunito,sans-serif;font-size:0.72em;font-weight:700;">
-              <option value="expense" ${r.type==='expense'?'selected':''}>💸 Expense</option>
-              <option value="income"  ${r.type==='income' ?'selected':''}>💰 Income</option>
+              <option value="expense"    ${r.type==='expense'   ?'selected':''}>💸 Expense</option>
+              <option value="income"     ${r.type==='income'    ?'selected':''}>💰 Income</option>
+              <option value="investment" ${r.type==='investment'?'selected':''}>📈 Investment</option>
             </select>
           </td>
         </tr>
