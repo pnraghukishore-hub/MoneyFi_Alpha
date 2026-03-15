@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.2.2 -->
+<!-- MoneyFi v4.2.3 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -12022,25 +12022,89 @@ function generateClarityPDF() {
   checkY(45);
   line('TAX SHELTER UTILIZATION',M,y,8,'bold',[30,42,110]); y+=5; hline(y); y+=5;
   const region=profile.region||'IN';
-  const shelters=region==='IN'?[
-    {name:'80C (ELSS+EPF+PPF)',limit:150000,used:(()=>{ const inv=(data[viewMonth]?.investments||[]); return inv.filter(i=>['ELSS','EPF','PPF'].some(t=>i.category?.includes(t))).reduce((s,i)=>s+convertAmt(i.amount,i.currency),0)*12; })()},
-    {name:'80D Health Insurance',limit:25000,used:((profile.healthCover||0)>0?25000:0)},
-    {name:'NPS 80CCD(1B)',limit:50000,used:((data._nwAccounts||[]).filter(a=>a.type==='nps').reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):0),0)>0?50000:0)},
-  ]:[
-    {name:'401(k)',limit:23000,used:((data._nwAccounts||[]).filter(a=>a.type==='retirement_401k').reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):0)/15,0))},
-    {name:'IRA/Roth IRA',limit:7000,used:((data._nwAccounts||[]).filter(a=>['retirement_ira','retirement_roth'].includes(a.type)).reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):0)/15,0))},
-    {name:'HSA',limit:3850,used:((data._nwAccounts||[]).filter(a=>a.type==='hsa').reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):0)/15,0))},
+
+  // ── Helper: get annual contributions from actual account meta ───
+  const annualContribByType = (types) => {
+    const accts = (data._nwAccounts||[]).filter(a=>types.includes(a.type));
+    const fromMeta = accts.reduce((s,a)=>s+(a.meta?.monthlyContribution||a._monthlyTotal||0)*12,0);
+    // Also check investment transactions tagged this month
+    return fromMeta;
+  };
+  const acctNamesForType = (types) =>
+    (data._nwAccounts||[]).filter(a=>types.includes(a.type)).map(a=>a.name||a.type).join(', ') || null;
+
+  const shelters = region==='IN' ? [
+    {
+      name:'80C (ELSS+EPF+PPF)', limit:150000,
+      used:(()=>{
+        // Monthly investment txns tagged ELSS/EPF/PPF × 12
+        const inv=(data[viewMonth]?.investments||[]);
+        const txnAnnual=inv.filter(i=>['ELSS','EPF','PPF'].some(t=>i.category?.includes(t))).reduce((s,i)=>s+convertAmt(i.amount,i.currency),0)*12;
+        // Also from account contributions
+        const acctAnnual=annualContribByType(['mf_elss','epf','ppf']);
+        return Math.max(txnAnnual, acctAnnual);
+      })(),
+      updateNote:'Net Worth → ELSS / EPF / PPF accounts → Edit → Monthly Contribution',
+      accounts: acctNamesForType(['mf_elss','epf','ppf']),
+    },
+    {
+      name:'80D Health Insurance', limit:25000,
+      used:(profile.healthCover||0)>0 ? 25000 : 0,
+      updateNote:'Score → Edit Profile → Health Insurance Cover',
+      accounts: null,
+    },
+    {
+      name:'NPS 80CCD(1B)', limit:50000,
+      used: annualContribByType(['nps']),
+      updateNote:'Net Worth → NPS account → Edit → Monthly Contribution',
+      accounts: acctNamesForType(['nps']),
+    },
+  ] : [
+    {
+      name:"401(k)", limit:23000,
+      used: annualContribByType(['retirement_401k']),
+      updateNote:'Net Worth → 401(k) account → Edit → Monthly Contribution',
+      accounts: acctNamesForType(['retirement_401k']),
+    },
+    {
+      name:'IRA / Roth IRA', limit:7000,
+      used: annualContribByType(['retirement_ira','retirement_roth']),
+      updateNote:'Net Worth → IRA / Roth account → Edit → Monthly Contribution',
+      accounts: acctNamesForType(['retirement_ira','retirement_roth']),
+    },
+    {
+      name:'HSA', limit:3850,
+      used: annualContribByType(['hsa']),
+      updateNote:'Net Worth → HSA account → Edit → Monthly Contribution',
+      accounts: acctNamesForType(['hsa']),
+    },
   ];
+
   shelters.forEach(sh=>{
+    checkY(14);
     const usedCapped=Math.min(sh.used||0,sh.limit);
     const pct=sh.limit>0?(usedCapped/sh.limit*100):0;
+    const hasData=(sh.used||0)>0;
     line(sh.name,M,y,7.5,'normal',[55,65,81]);
     const bX=M+70; const bW=W-M*2-70;
     doc.setFillColor(229,231,235); doc.rect(bX,y-3.5,bW,4,'F');
-    const barCol2=pct>=80?[34,197,94]:pct>=40?[245,158,11]:[239,68,68];
-    doc.setFillColor(...barCol2); doc.rect(bX,y-3.5,pct/100*bW,4,'F');
-    rline(priv?`${sym}${Math.round(usedCapped).toLocaleString()} / ${sym}${sh.limit.toLocaleString()}`:`${pct.toFixed(0)}% utilized`,W-M,y,7,'bold',barCol2);
-    y+=8;
+    const barCol2=!hasData?[209,213,219]:pct>=80?[34,197,94]:pct>=40?[245,158,11]:[239,68,68];
+    if(hasData) { doc.setFillColor(...barCol2); doc.rect(bX,y-3.5,Math.max(pct/100*bW,0.5),4,'F'); }
+    const valText = !hasData
+      ? 'No contribution data'
+      : priv ? `${sym}${Math.round(usedCapped).toLocaleString()} / ${sym}${sh.limit.toLocaleString()}`
+             : `${pct.toFixed(0)}% utilized`;
+    rline(valText,W-M,y,7,'bold',!hasData?[156,163,175]:barCol2);
+    y+=5;
+    // Account names (if available)
+    if(sh.accounts) {
+      line(`Accounts: ${sh.accounts}`,M+2,y,6,'italic',[100,116,139]);
+      y+=4;
+    }
+    // Where to update — always show
+    const updateCol=!hasData?[239,68,68]:[156,163,175];
+    line(`${!hasData?'⚠ Update: ':'ℹ Update: '}${sh.updateNote}`,M+2,y,6,'italic',updateCol);
+    y+=6;
   });
   y+=4;
 
