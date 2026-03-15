@@ -108,7 +108,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -5479,6 +5479,9 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
             style="width:100%;border:1.5px solid #C7D2FE;border-radius:8px;padding:7px 10px;font-family:Nunito,sans-serif;font-size:0.82em;font-weight:700;box-sizing:border-box;">
           <div style="font-size:0.68em;color:#6366F1;font-weight:600;margin-top:5px;line-height:1.4;">
             PDF will require this password to open. Share the password separately from the file.
+          </div>
+          <div style="font-size:0.65em;color:#9CA3AF;font-weight:600;margin-top:4px;line-height:1.4;background:#F1F5F9;border-radius:6px;padding:5px 8px;">
+            ⚠️ <strong>macOS Preview bypasses PDF passwords by design</strong> — use Chrome (open PDF in browser), Adobe Acrobat Reader, or Foxit to enforce the password.
           </div>
         </div>
         <div id="pdf-pw-off-hint" style="font-size:0.72em;color:var(--text-light);font-weight:600;">
@@ -12198,8 +12201,19 @@ function generateClarityPDF() {
   }
 
   // Estate
-  checkY(14);hline(y);y+=5;line('Estate & Legacy:',M,y,7,'normal',[80,90,105]);
-  let ex=M+42;[['Will',hasWill],['Power of Attorney',hasPOA],['Nominees',hasNominees]].forEach(([lbl,done])=>{chip((done?'✓ ':'✗ ')+lbl,ex,y,done?[5,150,105]:[220,38,38]);ex+=doc.getTextWidth((done?'✓ ':'✗ ')+lbl)+11;});y+=12;
+  // ── NW snapshot teaser before page break ──────────────────────
+  if(priv && nw.netWorth > 0){
+    checkY(14); hline(y,[210,215,225]); y+=5;
+    line('Total Assets',M,y,7.5,'normal',[80,90,105]);
+    rline(maskAmt(nw.totalAssets),W-M,y,7.5,'normal',[30,42,110]);
+    y+=6;
+    line('Total Liabilities',M,y,7.5,'normal',[80,90,105]);
+    rline(maskAmt(nw.liabTotal),W-M,y,7.5,'normal',[220,38,38]);
+    y+=5; hline(y,[210,215,225],0.4); y+=4;
+    line('Net Worth',M,y,9,'bold',[30,42,110]);
+    rline(maskAmt(nw.netWorth),W-M,y,9,'bold',[30,42,110]);
+    y+=10;
+  }
 
   // ════════════════════════════════════════════════════════════════
   // PAGE 2 — CASH FLOW · GOALS · TAX
@@ -12320,24 +12334,50 @@ function generateClarityPDF() {
 
   // ════════════════════════════════════════════════════════════════
   // PASSWORD ENCRYPTION (pdf-lib AES-128)
+  // Note: macOS Preview does NOT enforce PDF encryption by design.
+  // Password protection is enforced by: Chrome PDF viewer, Adobe
+  // Acrobat Reader, Foxit, and most Windows/Android PDF apps.
   // ════════════════════════════════════════════════════════════════
   const filename=`MoneyFi_Advisor_Brief_${priv?'Private':'Shareable'}_${today.replace(/ /g,'_')}.pdf`;
-  if(pwEnabled&&window.PDFLib){
-    showToast('🔐 Encrypting PDF…',1500);
-    const pdfBytes=doc.output('arraybuffer');
-    window.PDFLib.PDFDocument.load(pdfBytes).then(async pdfDoc=>{
-      const encBytes=await pdfDoc.save({
-        userPassword:pw1,ownerPassword:pw1+'_owner_mfi',
-        permissions:{printing:'highResolution',modifying:false,copying:false,annotating:true,fillingForms:true,contentAccessibility:true,documentAssembly:false},
+
+  if(pwEnabled){
+    if(!window.PDFLib){
+      // Library not yet loaded — save unprotected and warn
+      doc.save(filename);
+      showToast('⚠️ Encryption library not ready — PDF saved without password. Reload and try again.', 4000);
+      return;
+    }
+    showToast('🔐 Encrypting PDF…', 1500);
+    const pdfBytes = doc.output('arraybuffer');
+    window.PDFLib.PDFDocument.load(pdfBytes, { ignoreEncryption: true }).then(async pdfDoc => {
+      const encBytes = await pdfDoc.save({
+        userPassword: pw1,
+        ownerPassword: pw1 + '_owner_mfi_' + Date.now(),
+        permissions: {
+          printing: 'highResolution',
+          modifying: false,
+          copying: false,
+          annotating: true,
+          fillingForms: true,
+          contentAccessibility: true,
+          documentAssembly: false,
+        },
+        useObjectStreams: false,   // Critical for broad PDF viewer compatibility
       });
-      const blob=new Blob([encBytes],{type:'application/pdf'});const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
-      showToast('🔐 Encrypted PDF downloaded!',3000);
-    }).catch(err=>{console.warn('Encryption failed:',err);doc.save(filename);showToast('⚠️ Encryption unavailable — unprotected PDF saved',3500);});
+      const blob = new Blob([encBytes], { type: 'application/pdf' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+      showToast('🔐 Encrypted PDF saved. Open in Chrome, Adobe or Foxit — macOS Preview bypasses PDF passwords by design.', 5000);
+    }).catch(err => {
+      console.warn('[MoneyFi] PDF encryption failed:', err);
+      doc.save(filename);
+      showToast('⚠️ Encryption failed — unprotected PDF saved. Check console for details.', 4000);
+    });
   } else {
-    if(pwEnabled)showToast('⚠️ Encryption library loading — saving without password',3500);
     doc.save(filename);
-    showToast('📄 Advisor PDF downloaded!',3000);
+    showToast('📄 Advisor PDF downloaded!', 3000);
   }
 }
 
