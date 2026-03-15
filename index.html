@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.1.2 -->
+<!-- MoneyFi v4.1.3 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -6577,16 +6577,60 @@ const _COPY = {
     {h:"Less is more — PCS {pcs}.", s:"Grade {grade}: {label}. Concentrated, intentional, clean."},
     {h:"Portfolio clarity: {pcs}/100.", s:"You cut the complexity. The numbers confirm it."},
     {h:"Grade {grade} clarity.", s:"PCS {pcs}/100. {label}. Every fund earns its place."},
-    {h:"Cleaner every month.", s:"PCS {pcs} — {label}. The portfolio is sharpening."},
-    {h:"Your money is focused.", s:"Portfolio Clarity Score: {pcs}/100. Overlap eliminated."},
-    {h:"Signal over noise.", s:"PCS {pcs}, Grade {grade}. Complexity costs returns. You chose clarity."},
+    {h:"Cleaner every month.", s:"PCS {pcs} — {label}. The portfolio is sharpening.", d:"Less overlap = less drag on returns."},
+    {h:"Your money is focused.", s:"Portfolio Clarity Score: {pcs}/100. Overlap eliminated.", d:"Concentrated portfolios historically outperform fragmented ones."},
+    {h:"Signal over noise.", s:"PCS {pcs}, Grade {grade}. Complexity costs returns. You chose clarity.", d:"Every fund you cut is one less thing to track."},
+  ],
+
+  lifestyleCreep: [
+    {h:"There's a leak in the boat.", s:"Your spending grew {spendGrowth}% but your NW only grew {nwGrowth}%. The gap is the leak.", d:"Lifestyle creep is silent. This is it showing up in the numbers."},
+    {h:"The hidden leak.", s:"NW up {nwGrowth}%, spending up {spendGrowth}%. Your freedom price just rose {delta}.", d:"Every extra dollar of lifestyle costs 25× more in FIRE corpus needed."},
+    {h:"Your goalpost moved.", s:"NW grew — so did spending. The gap costs {delta} more in retirement corpus.", d:"Lifestyle inflation is the #1 reason high earners stay stuck."},
+    {h:"Spending is outrunning wealth.", s:"+{spendGrowth}% expenses vs +{nwGrowth}% NW. The ratio is flipping.", d:"The fix: freeze one spending category. Just one."},
+    {h:"The boat has a slow leak.", s:"Wealth built {nwGrowth}%. Spending grew {spendGrowth}%. Plug the gap now.", d:"Small leaks sink big ships. This one is fixable."},
+    {h:"Creep detected.", s:"Your spending grew {spendGrowth}% vs {nwGrowth}% NW growth. Time to audit.", d:"Run the Budget tab — one category is likely the culprit."},
+    {h:"More income, more spend.", s:"The classic trap. NW +{nwGrowth}%, expenses +{spendGrowth}%. Break the pattern.", d:"Automate savings before lifestyle absorbs the raise."},
+    {h:"Wealth dilution alert.", s:"Spending velocity ({spendGrowth}%) is outpacing wealth growth ({nwGrowth}%).", d:"Every % of lifestyle creep compounds against you at retirement."},
+    {h:"The silent tax.", s:"Lifestyle inflation cost you {delta} in extra retirement corpus needed.", d:"The cheapest retirement is the one where spending stayed flat."},
+    {h:"Good problem. Real problem.", s:"You're earning more. Spending more. NW not keeping pace.", d:"The goal: let NW grow faster than lifestyle. Reverse this ratio."},
+  ],
+
+  weeklyStrategy: [
+    {h:"Wednesday deep-dive.", s:"Mastery question: {question}", d:"One question. Five minutes. Compounding understanding."},
+    {h:"Mid-week check-in.", s:"Strategy focus: {question}", d:"The best investors revisit the fundamentals regularly."},
+    {h:"The Wednesday edge.", s:"{question}", d:"Consistent reflection is what separates investors from speculators."},
+    {h:"Strategy session.", s:"This week's focus: {question}", d:"Small insights, applied consistently, produce outsized results."},
+    {h:"Your Wednesday signal.", s:"{question}", d:"One principle internalized beats ten half-understood."},
+    {h:"Mid-week mastery.", s:"Reflect on this: {question}", d:"Financial mastery is built one question at a time."},
+    {h:"The thoughtful investor.", s:"{question}", d:"Pause. Think. Apply. Repeat."},
+    {h:"Wednesday wisdom.", s:"{question}", d:"The market rewards patience and punishes ignorance."},
+    {h:"Strategy over tactics.", s:"This week: {question}", d:"Tactics without strategy is noise. This is the strategy."},
+    {h:"The weekly edge.", s:"{question}", d:"One good financial decision a week compounds to freedom."},
+  ],
+
+  fridayFreedom: [
+    {h:"Weekend outlook: freedom check.", s:"You've bought {days} retirement days this month. {projection}", d:"Every invested rupee is a future day you don't need to work."},
+    {h:"It's Friday. Check the scoreboard.", s:"{days} days of freedom banked this month alone.", d:"The best weekend feeling: your money worked harder than you did."},
+    {h:"TGIF — the portfolio kind.", s:"This month: {days} retirement days added to the runway.", d:"Freedom is built one invested day at a time."},
+    {h:"Your weekly freedom report.", s:"{days} days bought this month. Runway: {runway}", d:"Slow accumulation beats fast speculation. Always."},
+    {h:"Friday freedom check.", s:"Month total: {days} retirement days funded by your portfolio.", d:"Compounding is patient. So are you."},
+    {h:"The weekend numbers.", s:"{days} days of future freedom built this month.", d:"Every Friday, the count goes up. That's the whole game."},
+    {h:"End of week scorecard.", s:"Portfolio added {days} retirement days this month.", d:"The score that matters isn't on the weekend sports app."},
+    {h:"Freedom units added.", s:"{days} retirement days this month. Running total growing.", d:"The only counter worth watching go up."},
+    {h:"Weekly freedom ledger.", s:"{days} days of retirement funded this month by compounding.", d:"You're buying back time. That's what investing actually is."},
+    {h:"Friday: the freedom check-in.", s:"{days} days of future leisure funded this month.", d:"Rest this weekend knowing the machine is still running."},
   ],
 };
 
 function _copyVariant(type) {
-  const bank = _COPY[type]; if (!bank) return {h:'', s:''};
-  const seed = parseInt(new Date().toISOString().slice(8,10)) % bank.length;
-  return bank[seed];
+  const bank = _COPY[type]; if (!bank) return {h:'', s:'', d:''};
+  // Seed by day-of-month for weekly types, day-of-week for others
+  const weeklyTypes = ['weeklyStrategy','fridayFreedom'];
+  const seed = weeklyTypes.includes(type)
+    ? new Date().getDay()
+    : parseInt(new Date().toISOString().slice(8,10)) % bank.length;
+  const entry = bank[seed % bank.length];
+  return { h: entry.h||'', s: entry.s||'', d: entry.d||'' };
 }
 
 // ── Story Aggregator ────────────────────────────────────────────────
@@ -6619,6 +6663,7 @@ function _generatePulseStories() {
         badge: '🏆 Freedom Builder',
         headline: cv.h,
         subtext: cv.s.replace('{days}', days),
+        detail: cv.d,
         label: 'Freedom',
         cta: 'See Retire Tab →',
         ctaAction: () => { closePulsePlayer(); goToScreen('roi'); setTimeout(()=>switchROITab('retire'),300); },
@@ -6644,9 +6689,10 @@ function _generatePulseStories() {
         badge: '🏰 Fortress Architect',
         headline: cv.h.replace('{months}', months),
         subtext: cv.s.replace(/{months}/g, months),
+        detail: cv.d,
         label: 'Shield',
-        cta: 'See Emergency Fund →',
-        ctaAction: () => { closePulsePlayer(); switchScreen('fhs', null); },
+        cta: '⚡ Simulate a Shock →',
+        ctaAction: () => { closePulsePlayer(); goToScreen('roi'); setTimeout(()=>{ switchROITab('plan'); setTimeout(()=>setSimScenario('fire'),300); },300); },
       });
     }
   } catch(e) {}
@@ -6674,6 +6720,7 @@ function _generatePulseStories() {
         badge: '🌟 Milestone Crossed',
         headline: cv.h.replace('{milestone}', mStr),
         subtext: cv.s.replace('{milestone}', mStr),
+        detail: cv.d,
         label: 'Milestone',
         cta: 'See Net Worth →',
         ctaAction: () => { closePulsePlayer(); goToScreen('networth'); },
@@ -6703,6 +6750,7 @@ function _generatePulseStories() {
         badge: `🔥 ${streak}-Month Streak`,
         headline: cv.h.replace(/{streak}/g, streak),
         subtext: cv.s.replace(/{streak}/g, streak),
+        detail: cv.d,
         label: 'Streak',
         cta: 'See Budget →',
         ctaAction: () => { closePulsePlayer(); switchScreen('budget', null); },
@@ -6728,6 +6776,7 @@ function _generatePulseStories() {
         badge: '📈 Score Climber',
         headline: cv.h.replace('{delta}', delta).replace('{score}', Math.round(score)),
         subtext: cv.s.replace('{score}', Math.round(score)).replace('{delta}', delta),
+        detail: cv.d,
         label: 'FHS',
         cta: 'See Health Score →',
         ctaAction: () => { closePulsePlayer(); switchScreen('fhs', null); },
@@ -6756,6 +6805,7 @@ function _generatePulseStories() {
         badge: '🎯 Goal Progress',
         headline: cv.h.replace('{goal}', best.g.name||'Goal').replace('{pct}', best.pct),
         subtext: cv.s.replace(/{goal}/g, best.g.name||'Goal').replace(/{pct}/g, best.pct).replace('{remaining}', remaining),
+        detail: cv.d,
         label: best.g.name ? best.g.name.substring(0,10) : 'Goal',
         cta: 'See Goals →',
         ctaAction: () => { closePulsePlayer(); switchScreen('budget', null); },
@@ -6785,6 +6835,7 @@ function _generatePulseStories() {
           subtext: cv.s.replace('{pcs}', d.pcs).replace('{grade}', grade)
                        .replace('{label}', gradeLabel[grade]||'')
                        .replace('{funds}', keeps).replace('{exits}', exits),
+          detail: cv.d,
           label: 'Clarity',
           cta: 'See Clarity →',
           ctaAction: () => { closePulsePlayer(); goToScreen('roi'); setTimeout(()=>switchROITab('clarity'),300); },
@@ -6793,9 +6844,128 @@ function _generatePulseStories() {
     }
   } catch(e) {}
 
+  // ── 8. Lifestyle Creep — "The Hidden Leak" ─────────────────────
+  try {
+    const sortedMonths = Object.keys(data).filter(k=>/^\d{4}-\d{2}$/.test(k)).sort().reverse();
+    if (sortedMonths.length >= 3) {
+      const recent3  = sortedMonths.slice(0,3);
+      const prev3    = sortedMonths.slice(3,6);
+      const avgSpend = (mks) => {
+        if (!mks.length) return 0;
+        return mks.reduce((s,mk)=>{
+          const m = data[mk]||{};
+          return s + (m.expenses||[]).reduce((ss,e)=>ss+convertAmt(e.amount,e.currency),0);
+        },0) / mks.length;
+      };
+      const recentSpend = avgSpend(recent3);
+      const prevSpend   = avgSpend(prev3);
+      // NW velocity: compare current NW vs snapshot 3 months ago
+      const oldSnap = snaps.length > 0 ? snapValue(snaps[Math.max(0, snaps.length-2)]) : 0;
+      const newNW   = nw.netWorth;
+      const nwGrowthPct   = oldSnap > 0 ? ((newNW - oldSnap) / Math.abs(oldSnap) * 100) : 0;
+      const spendGrowthPct = prevSpend > 0 ? ((recentSpend - prevSpend) / prevSpend * 100) : 0;
+      // Trigger: spending growth outpaces NW growth by >5%, both must be material
+      if (spendGrowthPct > 5 && spendGrowthPct > nwGrowthPct + 5 && recentSpend > 50) {
+        const extraAnnual = (recentSpend - prevSpend) * 12;
+        const extraCorpus = extraAnnual * 25; // 4% SWR
+        const deltaStr = fmt(extraCorpus);
+        const cv = _copyVariant('lifestyleCreep');
+        stories.push({
+          id: 'lifestyle_creep',
+          type: 'lifestyleCreep',
+          icon: '⛵',
+          ringClass: 'ring-amber',
+          ringEffect: 'pulse-amber',
+          gradFrom: '#451A03', gradTo: '#92400E',
+          badge: '⚠️ Lifestyle Alert',
+          headline: cv.h,
+          subtext: cv.s
+            .replace('{spendGrowth}', spendGrowthPct.toFixed(1))
+            .replace('{nwGrowth}',   nwGrowthPct.toFixed(1))
+            .replace(/{delta}/g, deltaStr),
+          detail: cv.d,
+          label: 'Leak',
+          cta: 'Review Budget →',
+          ctaAction: () => { closePulsePlayer(); switchScreen('budget', null); },
+        });
+      }
+    }
+  } catch(e) {}
+
+  // ── 9. Weekly cadence stories (day-of-week triggered) ───────────
+  try {
+    const dow = new Date().getDay(); // 0=Sun,1=Mon...5=Fri,6=Sat
+    // Friday Freedom Check
+    if (dow === 5) {
+      const totalPortfolio = (data._nwAccounts||[])
+        .filter(a=>!['loan','credit_card','other_liability'].includes(a.type))
+        .reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0)),0);
+      const monthlyReturn = totalPortfolio * (0.10 / 12);
+      const dailySpend = monthlyExp > 0 ? monthlyExp / 30 : totalPortfolio * 0.04 / 365;
+      const days = dailySpend > 0 ? (monthlyReturn / dailySpend).toFixed(1) : null;
+      const runway = snaps.length > 0
+        ? `Running total: ${snaps.length} months tracked.`
+        : 'Take a snapshot to track your runway.';
+      if (days && parseFloat(days) > 0) {
+        const cv = _copyVariant('fridayFreedom');
+        stories.push({
+          id: 'friday_freedom_' + new Date().toISOString().slice(0,10),
+          type: 'fridayFreedom',
+          icon: '🏖️',
+          ringClass: 'ring-gold',
+          ringEffect: 'glow',
+          gradFrom: '#1A1035', gradTo: '#6D28D9',
+          badge: '🏖️ Friday Freedom',
+          headline: cv.h,
+          subtext: cv.s.replace('{days}', days).replace('{runway}', runway),
+          detail: cv.d,
+          label: 'Friday',
+          cta: 'See Retire Tab →',
+          ctaAction: () => { closePulsePlayer(); goToScreen('roi'); setTimeout(()=>switchROITab('retire'),300); },
+        });
+      }
+    }
+    // Wednesday Strategy Tip
+    if (dow === 3) {
+      const masteryQs = [
+        'Do you have a written Investment Policy Statement?',
+        'Is your asset allocation age-appropriate and reviewed annually?',
+        'Have you stress-tested your portfolio against a 40% drawdown?',
+        'Is your emergency fund in a high-yield account, not a regular savings account?',
+        'Do you know your household\'s true savings rate this year?',
+        'Have you reviewed your insurance cover against your current income?',
+        'Is your estate/nominee documentation up to date?',
+        'Do you know your portfolio\'s blended expense ratio?',
+        'Have you maximised your tax-advantaged accounts this year?',
+        'Do you have a clear definition of your "Enough" number?',
+      ];
+      const qSeed = Math.floor(Date.now() / (7*24*3600*1000)) % masteryQs.length; // changes weekly
+      const q = masteryQs[qSeed];
+      const cv = _copyVariant('weeklyStrategy');
+      stories.push({
+        id: 'wednesday_strategy_' + new Date().toISOString().slice(0,7),
+        type: 'weeklyStrategy',
+        icon: '🧠',
+        ringClass: 'ring-purple',
+        ringEffect: '',
+        gradFrom: '#1E1B4B', gradTo: '#4338CA',
+        badge: '🧠 Wednesday Mastery',
+        headline: cv.h,
+        subtext: cv.s.replace('{question}', q),
+        detail: cv.d,
+        label: 'Strategy',
+        cta: 'See Health Score →',
+        ctaAction: () => { closePulsePlayer(); switchScreen('fhs', null); },
+      });
+    }
+  } catch(e) {}
+
+  // ── B: Velocity tightening — add detail field to all stories ────
+  // (stories already built above include detail from updated copy bank)
+
   // Sort: unseen first, then by impact (milestones > streaks > scores)
   const seen = _getPulseSeen();
-  const order = ['nwMilestone','freedomGain','shieldStrength','savingsStreak','fhsRise','goalSurge','clarityWin','pillarBreakthrough'];
+  const order = ['nwMilestone','lifestyleCreep','freedomGain','fridayFreedom','shieldStrength','savingsStreak','fhsRise','goalSurge','weeklyStrategy','clarityWin','pillarBreakthrough'];
   stories.sort((a,b) => {
     const aS = seen.includes(a.id) ? 1 : 0;
     const bS = seen.includes(b.id) ? 1 : 0;
@@ -6866,6 +7036,7 @@ function _renderStoryFrame() {
       <div class="story-badge">${s.badge}</div>
       <div class="story-headline">${s.headline}</div>
       <div class="story-subtext">${s.subtext}</div>
+      ${s.detail ? `<div style="font-size:0.75em;font-weight:700;color:rgba(255,255,255,0.6);line-height:1.4;margin-bottom:16px;border-left:2px solid rgba(255,255,255,0.3);padding-left:10px;">${s.detail}</div>` : ''}
       <button class="story-cta" onclick="_storyCtaClick(${_pulsePlayerIdx})">${s.cta}</button>
     </div>`;
 
