@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.0.9 -->
+<!-- MoneyFi v4.1.0 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -6112,7 +6112,10 @@ function _updateMetalBadge() {
     badge.innerHTML = `<span style="color:#10B981;font-weight:800;">🟢 Live · Gold ${goldOz}${ageStr?' · '+ageStr:''}</span>`;
   } else {
     badge.style.display = '';
-    badge.innerHTML = `<span style="color:#F59E0B;font-weight:800;">📌 Seed prices · <a href="#" onclick="fetchLiveMetalPrices(true);return false;" style="color:#4F46E5;text-decoration:underline;">Refresh</a></span>`;
+    badge.innerHTML = `<span style="color:#F59E0B;font-weight:800;">📌 Live fetch unavailable</span>
+      <div style="font-size:0.9em;color:#6B7280;font-weight:600;margin-top:3px;">
+        Enter current price manually below — switch to <b>Per troy oz</b>, type today's gold price (e.g. from Google), then tap <b>Apply</b>.
+      </div>`;
   }
 }
 // ─────────────────────────────────────────────────────────────────────────
@@ -9890,19 +9893,26 @@ function _syncUnitButtons() {
 }
 
 function setMetalPriceUnit(unit) {
+  const prevUnit = metalPriceUnit;
   metalPriceUnit = unit;
   _syncUnitButtons();
   _updatePriceLabel();
-  // Convert current input value between g and oz
+
   const inp = document.getElementById('metal-price-override-input');
   const cur = parseFloat(inp?.value) || 0;
+
+  if (unit === prevUnit) return; // no change — don't convert
+
   if (inp && cur > 0) {
-    inp.value = unit === 'oz'
-      ? (cur * 31.1035).toFixed(2)   // g → oz
-      : (cur / 31.1035).toFixed(2);  // oz → g
+    // Convert from previous unit to new unit
+    if (prevUnit === 'g' && unit === 'oz') {
+      inp.value = (cur * 31.1035).toFixed(2);  // g → oz
+    } else if (prevUnit === 'oz' && unit === 'g') {
+      inp.value = (cur / 31.1035).toFixed(2);  // oz → g
+    }
   } else {
-    // Populate from live price
-    const base = getMetalBasePrice(currentMetal);
+    // Input is empty — populate from live/base price
+    const base    = getMetalBasePrice(currentMetal);
     const baseDisp = metalPriceToDisplay(base);
     if (inp) inp.value = unit === 'oz' ? (baseDisp * 31.1035).toFixed(2) : baseDisp.toFixed(2);
   }
