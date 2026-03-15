@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.1.9 -->
+<!-- MoneyFi v4.2.0 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -5324,11 +5324,11 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       <div style="font-size:0.75em;font-weight:800;color:var(--text-med);margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Privacy Mode</div>
       <div style="display:flex;gap:0;border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;">
         <button id="pdf-mode-private" onclick="setPDFMode('private')"
-          style="flex:1;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;border:none;cursor:pointer;background:#1E2A6E;color:#fff;">
+          style="flex:1;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;border:none;cursor:pointer;background:#1E2A6E;color:#ffffff;">
           🔒 Private (CA)
         </button>
         <button id="pdf-mode-share" onclick="setPDFMode('share')"
-          style="flex:1;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;border:none;cursor:pointer;background:#F3F4F6;color:var(--text-med);">
+          style="flex:1;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;border:none;cursor:pointer;background:#F3F4F6;color:#6B7280;">
           📤 Shareable
         </button>
       </div>
@@ -11773,6 +11773,8 @@ function openAdvisorPDFModal() {
   if (ta && !ta.value) {
     ta.value = profile.primaryObjective || `Achieve FIRE by age ${retAge} (current age: ${age}) with an inflation-adjusted monthly lifestyle of ${sym}5,000.`;
   }
+  // Reset toggle to current state visually
+  setPDFMode(_pdfPrivateMode ? 'private' : 'share');
   document.getElementById('advisor-pdf-modal').style.display = 'flex';
 }
 function closeAdvisorPDFModal() {
@@ -11780,11 +11782,14 @@ function closeAdvisorPDFModal() {
 }
 function setPDFMode(mode) {
   _pdfPrivateMode = (mode === 'private');
-  document.getElementById('pdf-mode-private').style.background = _pdfPrivateMode ? '#1E2A6E' : '#F3F4F6';
-  document.getElementById('pdf-mode-private').style.color      = _pdfPrivateMode ? '#fff'    : 'var(--text-med)';
-  document.getElementById('pdf-mode-share').style.background   = !_pdfPrivateMode ? '#7C3AED' : '#F3F4F6';
-  document.getElementById('pdf-mode-share').style.color        = !_pdfPrivateMode ? '#fff'    : 'var(--text-med)';
-  document.getElementById('pdf-mode-desc').textContent = _pdfPrivateMode
+  const btnPriv = document.getElementById('pdf-mode-private');
+  const btnShare = document.getElementById('pdf-mode-share');
+  const desc = document.getElementById('pdf-mode-desc');
+  if (!btnPriv || !btnShare) return;
+  // Use literal hex — CSS variables don't resolve via element.style
+  btnPriv.style.cssText  = `flex:1;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;border:none;cursor:pointer;background:${_pdfPrivateMode?'#1E2A6E':'#F3F4F6'};color:${_pdfPrivateMode?'#ffffff':'#6B7280'};`;
+  btnShare.style.cssText = `flex:1;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;border:none;cursor:pointer;background:${!_pdfPrivateMode?'#7C3AED':'#F3F4F6'};color:${!_pdfPrivateMode?'#ffffff':'#6B7280'};`;
+  if (desc) desc.textContent = _pdfPrivateMode
     ? 'Shows all amounts · Account-level detail · For your CA only'
     : 'Amounts hidden · Percentages only · Safe to share publicly';
 }
