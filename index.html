@@ -12529,6 +12529,312 @@ function generateClarityPDF() {
     y+=chartH+12;
   }
 
+  // ══════════════════════════════════════════════════════════════
+  // PAGE 7 — TAX JURISDICTION & RESIDENCY
+  // ══════════════════════════════════════════════════════════════
+  NP();PH('Page 7 — Tax Jurisdiction & Residency','Entity & Treaty Status');y=18;
+
+  y=sb('TAX JURISDICTION & RESIDENCY STATUS',y);y+=3;
+
+  // Derive residency status from region + employment
+  const isMultiGeo = (profile.region==='US' && (data._nwAccounts||[]).some(a=>a.currency==='INR'||a.geography==='IN'))
+    || (profile.region==='IN' && (data._nwAccounts||[]).some(a=>a.currency==='USD'||a.geography==='US'));
+  const residencyStatus = profile.region==='US'
+    ? (empType==='retired' ? 'US Resident (Retired)' : empType==='self_employed'||empType==='business_owner' ? 'US Resident — Self-employed' : 'US Resident — W-2 Employee')
+    : profile.region==='IN'
+    ? (isMultiGeo ? 'Indian Resident — Cross-border assets detected' : 'Indian Resident')
+    : 'Multi-jurisdiction';
+
+  const jurisdictionRows = [
+    ['Declared Region', region, region==='US'?COL.indigo:COL.green],
+    ['Residency Status', residencyStatus, COL.navy],
+    ['Employment Type', empType==='self_employed'?'Self-employed / 1099':empType==='business_owner'?'Business Owner':empType==='retired'?'Retired':'W-2 Employee', COL.gray],
+    ['Marginal Tax Rate', profile.taxProfile?.marginalRate ? `${(profile.taxProfile.marginalRate*100).toFixed(0)}%` : 'Not set — update in Score profile', profile.taxProfile?.marginalRate?COL.navy:COL.amber],
+    ['Cross-border Assets', isMultiGeo?'YES — assets in multiple currencies':'Not detected', isMultiGeo?COL.amber:COL.green],
+  ];
+  jurisdictionRows.forEach(([l,v,c])=>{kv(l,String(v),y,c);y+=7;});
+  y+=4;
+
+  // DTAA / treaty flags
+  CY(55);y=sb('TREATY & REPORTING OBLIGATIONS',y);y+=3;
+  rc(M,y,W-2*M,10,[238,242,252],2);
+  ln('Flags below are derived from your region + asset profile. Confirm exact status with a cross-border tax attorney.',M+4,y+7,6.5,'italic',COL.gray);y+=14;
+
+  const treatyFlags = [];
+  if(region==='US') {
+    treatyFlags.push({flag:'FBAR (FinCEN 114)',applies:isMultiGeo,detail:'Required if foreign financial accounts exceed $10,000 aggregate at any point in the year. Filed separately from tax return by April 15.',risk:isMultiGeo?'HIGH':'LOW'});
+    treatyFlags.push({flag:'FATCA (Form 8938)',applies:isMultiGeo,detail:'Required if foreign assets exceed $50,000 (single) / $100,000 (married). Filed with Form 1040.',risk:isMultiGeo?'HIGH':'LOW'});
+    treatyFlags.push({flag:'US-India DTAA',applies:isMultiGeo,detail:'India-US treaty prevents double taxation on income, dividends, and capital gains. Requires specific treaty elections on tax return.',risk:isMultiGeo?'REVIEW':'N/A'});
+    treatyFlags.push({flag:'Foreign Tax Credit (Form 1116)',applies:isMultiGeo,detail:'Offsets taxes paid to India against US tax liability. File to avoid double taxation on Indian income.',risk:isMultiGeo?'REVIEW':'N/A'});
+  } else {
+    treatyFlags.push({flag:'NRI / RNOR Status',applies:isMultiGeo,detail:'Tax residency in India is determined by days of physical presence. RNOR status available for returning NRIs — only Indian-source income taxed.',risk:isMultiGeo?'REVIEW':'LOW'});
+    treatyFlags.push({flag:'DTAA (India-US / India-UAE)',applies:isMultiGeo,detail:'India has DTAA with 90+ countries. Declare foreign income and claim treaty relief to avoid double taxation.',risk:isMultiGeo?'HIGH':'LOW'});
+    treatyFlags.push({flag:'Schedule FA (Foreign Assets)',applies:isMultiGeo,detail:'Mandatory disclosure of foreign assets in Indian ITR if you hold foreign accounts, equity, or property.',risk:isMultiGeo?'HIGH':'LOW'});
+    treatyFlags.push({flag:'PFIC Rules (US holdings)',applies:isMultiGeo,detail:'Indian MFs held by US persons are classified as PFICs — complex US tax treatment. Consult a dual-certified CPA.',risk:isMultiGeo?'HIGH':'N/A'});
+  }
+
+  [['Treaty / Obligation',M],['Applies',M+110],['Risk Level',W-M]].forEach(([h,x],i)=>{if(i<2)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+  y+=3;hl(y,[225,230,238]);y+=4;
+  treatyFlags.forEach(f=>{
+    CY(12);
+    const rc2=f.risk==='HIGH'?COL.red:f.risk==='REVIEW'?COL.amber:COL.green;
+    ln(f.flag,M,y,7.5,'bold',COL.navy);
+    ch(f.applies?'YES':'NO',M+110,y,f.applies?COL.amber:COL.green);
+    ch(f.risk,W-M-22,y,rc2);
+    y+=6;
+    const dl=doc.splitTextToSize(f.detail,W-2*M-4);
+    doc.setFontSize(6.5);doc.setFont('helvetica','italic');doc.setTextColor(...COL.gray);doc.text(dl,M,y);
+    y+=dl.length*4+4;
+  });
+
+  // CA action note
+  CY(16);rc(M,y,W-2*M,14,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.5);doc.line(M,y,M,y+14);
+  ln('CA Action Required:',M+4,y+6,7,'bold',[146,64,14]);
+  ln(isMultiGeo?'Client has cross-border assets. Verify FBAR/FATCA compliance and DTAA elections BEFORE any rebalancing or fund exits.':'Confirm tax residency has not changed in the current financial year before finalising investment strategy.',M+4,y+11,6.5,'normal',[146,64,14]);
+  y+=18;
+
+  // ══════════════════════════════════════════════════════════════
+  // PAGE 8 — REAL ESTATE & TANGIBLE ASSET LIQUIDITY
+  // ══════════════════════════════════════════════════════════════
+  NP();PH('Page 8 — Real Estate & Physical Assets: Liquidity & Velocity','Tangible Asset Reality Check');y=18;
+
+  y=sb('REAL ESTATE — LOAN-TO-VALUE & LIQUIDITY',y);y+=3;
+  rc(M,y,W-2*M,10,[238,242,252],2);
+  ln('LTV = Outstanding Mortgage ÷ Current Market Value. Higher LTV = less accessible equity. Liquidation time = typical market time in that country.',M+4,y+7,6.5,'italic',COL.gray);y+=14;
+
+  // RE accounts
+  const reAccounts=(data._nwAccounts||[]).filter(a=>a.type==='realestate');
+  const reImports=(data._realEstate||[]).map((p,idx)=>{const cv=nwConvert?nwConvert(Number(p.currentValue||p.purchaseValue||0),(p.currency||'USD')):Number(p.currentValue||p.purchaseValue||0);return{name:(p.description||'Property '+(idx+1)).substring(0,28),currentValue:cv,purchaseValue:nwConvert?nwConvert(Number(p.purchaseValue||0),(p.currency||'USD')):Number(p.purchaseValue||0),country:p.country||region,lastUpdated:p.date||''};});
+  const reAll=[...reAccounts.map(a=>({name:(a.name||'Property').substring(0,28),currentValue:nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0),purchaseValue:nwConvert?nwConvert(a.meta?.purchaseValue||0,a.currency):(a.meta?.purchaseValue||0),country:a.meta?.country||region,lastUpdated:a.lastUpdated||''})),...reImports];
+
+  // Find linked mortgage loans
+  const mortgageLoans=(data._nwAccounts||[]).filter(a=>a.type==='loan'&&(/(home|house|mortgage|property|tudor|nilayam|real.?estate)/i.test(a.name||'')));
+
+  if(reAll.length===0){
+    rc(M,y,W-2*M,10,[238,248,240],2);ln('No real estate accounts recorded.',M+4,y+7,7,'italic',COL.gray);y+=14;
+  } else {
+    [['Property',M],['Market Value',M+70],['Mortgage',M+108],['LTV',M+138],['Liquidity',W-M]].forEach(([h,x],i)=>{if(i<4)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+    y+=3;hl(y,[225,230,238]);y+=4;
+    reAll.forEach((re,i)=>{
+      CY(12);
+      // Find linked mortgage by fuzzy name match
+      const linkedLoan=mortgageLoans[i]||(mortgageLoans.length===1?mortgageLoans[0]:null);
+      const mortgageBal=linkedLoan?nwConvert?nwConvert(linkedLoan.balance||0,linkedLoan.currency||'USD'):(linkedLoan.balance||0):0;
+      const ltv=re.currentValue>0&&mortgageBal>0?Math.round(mortgageBal/re.currentValue*100):0;
+      const equity=re.currentValue-mortgageBal;
+      const ltvCol=ltv>80?COL.red:ltv>60?COL.amber:ltv>0?COL.green:COL.gray;
+      // Liquidation time by country
+      const liqTime=re.country==='IN'||re.country==='India'?'3–6 months':re.country==='US'||re.country==='United States'?'1–3 months':re.country==='AE'||re.country==='UAE'?'2–4 months':'3–6 months';
+      ln(re.name,M,y,7,'bold',COL.navy);
+      ln(priv?fmt2(re.currentValue):'—',M+70,y,7,'normal',COL.navy);
+      ln(mortgageBal>0?(priv?fmt2(mortgageBal):'Exists'):'None',M+108,y,7,'normal',mortgageBal>0?COL.amber:COL.green);
+      ln(ltv>0?`${ltv}%`:'—',M+138,y,7.5,'bold',ltvCol);
+      rln(liqTime,W-M,y,7,'normal',COL.gray);
+      y+=6;
+      if(priv&&equity>0){ln(`  Net equity: ${fmt2(equity)}${re.lastUpdated?'  ·  Last updated: '+re.lastUpdated:''}`,M,y,6,'italic',COL.gray);y+=5;}
+    });
+  }
+  y+=4;
+
+  // Metals liquidity
+  CY(50);y=sb('PHYSICAL METALS — LIQUIDITY PROFILE',y);y+=3;
+  const metalAccounts=(data._nwAccounts||[]).filter(a=>a.type==='metals'&&(a.balance||0)>0);
+  if(metalAccounts.length===0){
+    rc(M,y,W-2*M,10,[238,248,240],2);ln('No metals recorded in Net Worth.',M+4,y+7,7,'italic',COL.gray);y+=14;
+  } else {
+    const METAL_LIQ={gold:{days:'1–2 days',method:'Bank/jeweller buyback or exchange ETF',rating:'HIGHLY LIQUID'},silver:{days:'1–3 days',method:'Exchange ETF or dealer',rating:'LIQUID'},platinum:{days:'3–7 days',method:'Specialist dealer only',rating:'MODERATE'}};
+    [['Metal / Item',M],['Value',M+70],['Weight',M+100],['Liquidation',M+125],['Rating',W-M]].forEach(([h,x],i)=>{if(i<4)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+    y+=3;hl(y,[225,230,238]);y+=4;
+    metalAccounts.forEach(a=>{
+      CY(10);
+      const val=nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);
+      const mType=(a.meta?.metalType||'gold').toLowerCase();
+      const grams=a.meta?.grams||0;
+      const liq=METAL_LIQ[mType]||METAL_LIQ.gold;
+      const rc3=liq.rating==='HIGHLY LIQUID'?COL.green:liq.rating==='LIQUID'?COL.green:COL.amber;
+      ln((a.name||mType).substring(0,28),M,y,7,'normal',COL.navy);
+      ln(priv?fmt2(val):'—',M+70,y,7,'normal',COL.navy);
+      ln(grams>0?`${grams.toFixed(1)}g`:'—',M+100,y,7,'normal',COL.gray);
+      ln(liq.days,M+125,y,7,'normal',COL.gray);
+      ch(liq.rating,W-M-34,y,rc3);
+      y+=7;
+    });
+  }
+
+  // Net Liquid Worth summary
+  CY(26);hl(y);y+=5;y=sb('NET LIQUID WORTH — CRISIS-ACCESSIBLE CAPITAL',y);y+=3;
+  const liquidInDays=(accs,days)=>accs.reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0)),0);
+  const immediate=(data._nwAccounts||[]).filter(a=>['checking','savings_acc','cash','emergency'].includes(a.type));
+  const within7d=(data._nwAccounts||[]).filter(a=>['metals','brokerage','brokerage_taxable','mf_equity','mf_debt','mf_hybrid','mf_index','mf_gold','stocks_direct'].includes(a.type));
+  const within30d=(data._nwAccounts||[]).filter(a=>['bonds_fd','bank_fd'].includes(a.type));
+  const immVal=liquidInDays(immediate,0);const w7Val=liquidInDays(within7d,7);const w30Val=liquidInDays(within30d,30);
+  [['Immediate (T+0 — bank accounts)',fmt2(immVal),COL.green],['Within 7 days (MF/equity redemption)',fmt2(immVal+w7Val),COL.green],['Within 30 days (+bonds/FD)',fmt2(immVal+w7Val+w30Val),COL.amber],['Locked (retirement, RE, ELSS)',fmt2(nw.totalAssets-(immVal+w7Val+w30Val)),COL.amber]].forEach(([l,v,c])=>{if(priv){kv(l,v,y,c);}else{ln(l,M,y,7.5,'normal',COL.gray);rln('—',W-M,y,7.5,'normal',COL.gray);}y+=6.5;});
+
+  // ══════════════════════════════════════════════════════════════
+  // PAGE 9 — ESTATE HYGIENE & BENEFICIARY MATRIX
+  // ══════════════════════════════════════════════════════════════
+  NP();PH('Page 9 — Estate Hygiene & Beneficiary Matrix','Legacy & Probate Risk');y=18;
+
+  y=sb('BENEFICIARY / NOMINEE STATUS BY ACCOUNT CATEGORY',y);y+=3;
+  rc(M,y,W-2*M,10,[238,242,252],2);
+  ln('Accounts without a confirmed nominee pass through probate — a court process taking 1–3 years that freezes assets. This table shows your legal exposure.',M+4,y+7,6.5,'italic',COL.navy);y+=14;
+
+  // Map account categories to nominee requirement
+  const nomOverall=profile.taxProfile?.hasNominees;
+  const NOMINEE_REQUIRED=[
+    {cat:'Bank Accounts (Checking/Savings)',types:['checking','savings_acc'],urgency:'HIGH',note:'Nominee ensures immediate family access without court order.'},
+    {cat:'Investment / Brokerage',types:['brokerage','brokerage_taxable','stocks_direct'],urgency:'HIGH',note:'SEBI/FINRA requires nominee for seamless transfer.'},
+    {cat:'Mutual Funds',types:['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','mf_index'],urgency:'HIGH',note:'Each folio needs separate nominee update.'},
+    {cat:'Retirement (401k/IRA/EPF/PPF)',types:['retirement','retirement_401k','retirement_roth','retirement_ira','epf','ppf','nps'],urgency:'CRITICAL',note:'Supersedes will — beneficiary designation overrides estate documents.'},
+    {cat:'Life Insurance',types:[],urgency:'CRITICAL',note:'Verify nominee is current — outdated nominees are a common estate failure.'},
+    {cat:'Real Estate',types:['realestate'],urgency:'MEDIUM',note:'Joint ownership or Will is typically sufficient; check local law.'},
+    {cat:'Metals / Jewellery',types:['metals'],urgency:'LOW',note:'Document in Will; physical possession simplifies transfer.'},
+  ];
+
+  [['Category',M],['Accounts',M+90],['Status',M+128],['Urgency',W-M]].forEach(([h,x],i)=>{if(i<3)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+  y+=3;hl(y,[225,230,238]);y+=4;
+
+  let totalAtRisk=0;
+  NOMINEE_REQUIRED.forEach(row=>{
+    const accts=row.types.length>0?(data._nwAccounts||[]).filter(a=>row.types.includes(a.type)&&(a.balance||0)>0):[];
+    const totalVal=accts.reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0)),0);
+    const count=row.types.length===0?1:accts.length;
+    if(count===0&&row.types.length>0)return;
+    // Status derived from global hasNominees flag (best we can do without per-account data)
+    const status=nomOverall==='yes'?'Confirmed':nomOverall==='partial'?'Partial':'Not recorded';
+    const statusCol=status==='Confirmed'?COL.green:status==='Partial'?COL.amber:COL.red;
+    const urgCol=row.urgency==='CRITICAL'?COL.red:row.urgency==='HIGH'?COL.amber:row.urgency==='MEDIUM'?[107,114,128]:COL.lightGray;
+    if(status!=='Confirmed'&&totalVal>0)totalAtRisk+=totalVal;
+    CY(12);
+    ln(row.cat,M,y,7,'bold',COL.navy);
+    ln(count>0?(priv&&totalVal>0?`${count} acct${count>1?'s':''} · ${fmt2(totalVal)}`:`${count} acct${count>1?'s':''}`):'Check manually',M+90,y,7,'normal',COL.gray);
+    ch(status,M+128,y,statusCol);
+    ch(row.urgency,W-M-28,y,urgCol);
+    y+=7;
+    ln(row.note,M,y,6,'italic',COL.gray);y+=6;
+  });
+
+  // Probate risk summary
+  if(totalAtRisk>0&&nomOverall!=='yes'){
+    CY(18);rc(M,y,W-2*M,16,[255,235,235],3);doc.setDrawColor(...COL.red);doc.setLineWidth(0.8);doc.line(M,y,M,y+16);
+    ln('⚠ PROBATE RISK',M+4,y+7,8,'bold',[180,30,30]);
+    ln(priv?`${fmt2(totalAtRisk)} of assets have no confirmed nominee — this wealth could be frozen for 1–3 years in probate if the unexpected occurs.`:'Significant assets have no confirmed nominee. Update beneficiary designations before this meeting ends.',M+4,y+12.5,7,'normal',[180,30,30]);
+    y+=20;
+  } else if(nomOverall==='yes'){
+    CY(12);rc(M,y,W-2*M,10,[232,248,240],2);ln('All nominees confirmed — no probate risk identified. ✓',M+4,y+7,7,'normal',[22,101,52]);y+=14;
+  }
+
+  // Estate checklist
+  CY(45);y=sb('ESTATE HYGIENE CHECKLIST',y);y+=3;
+  const checklist=[
+    {item:'Will / Testament',done:hasWill,urgency:'CRITICAL',action:'Draft with estate attorney. Update every 3–5 years or after major life event.'},
+    {item:'Power of Attorney (Financial)',done:hasPOA,urgency:'CRITICAL',action:'Names someone to manage finances if incapacitated. Separate from healthcare POA.'},
+    {item:'Nominees on all accounts',done:nomOverall==='yes',urgency:'CRITICAL',action:'Bank, MF, retirement, insurance — each requires separate nomination.'},
+    {item:'Digital asset inventory',done:profile.taxProfile?.hasDigitalWill||false,urgency:'HIGH',action:'Document passwords, crypto wallets, domain names. Store with attorney.'},
+    {item:'Life insurance beneficiary review',done:profile.taxProfile?.hasLifeInsurance||false,urgency:'HIGH',action:'Verify named beneficiary is current. Birth, marriage, divorce can create mismatches.'},
+  ];
+  checklist.forEach(c=>{
+    CY(12);
+    const ic=c.done?COL.green:c.urgency==='CRITICAL'?COL.red:COL.amber;
+    rc(M,y-4,W-2*M,12,[c.done?232:255,c.done?248:c.urgency==='CRITICAL'?235:247,c.done?240:c.urgency==='CRITICAL'?235:230],2);
+    doc.setFillColor(...ic);doc.rect(M,y-4,4,12,'F');
+    ln(c.item,M+7,y+1,7.5,'bold',COL.navy);
+    ch(c.done?'✓ DONE':'✗ PENDING',M+100,y+1,c.done?COL.green:COL.red);
+    ch(c.urgency,W-M-30,y+1,c.done?COL.green:c.urgency==='CRITICAL'?COL.red:COL.amber);
+    ln(c.action,M+7,y+7,6,'italic',COL.gray);
+    y+=16;
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // PAGE 10 — TAX HARVESTING DASHBOARD
+  // ══════════════════════════════════════════════════════════════
+  NP();PH('Page 10 — Tax Harvesting Dashboard: Alpha the CA Provides','YTD Realized Gains & Offsettable Losses');y=18;
+
+  y=sb('HOW TAX-LOSS HARVESTING WORKS',y);y+=3;
+  rc(M,y,W-2*M,18,[238,242,252],3);doc.setDrawColor(...COL.indigo);doc.setLineWidth(0.6);doc.line(M,y,M,y+18);
+  ln('Tax-loss harvesting: sell a fund at a loss → the loss offsets gains from winners → you pay tax only on the NET gain.',M+4,y+6,7,'normal',COL.navy);
+  ln('Example: Fund A gains +$10,000. Fund B has an unrealized loss of -$4,000. Selling B reduces taxable gain to $6,000.',M+4,y+12,6.5,'italic',COL.gray);
+  ln(isUS?'US: Short-term losses offset short-term gains first (ordinary income rate). Long-term losses offset long-term gains (15-20% rate).'
+         :'India: STCL offsets STCG. LTCL only offsets LTCG. Cannot offset salary income. Carry forward unused losses for 8 years.',M+4,y+17,6,'normal',COL.gray);
+  y+=22;
+
+  // Unrealized gains (winners)
+  const allFunds=_clarityFundData||[];
+  const winners=allFunds.filter(f=>f.cost!=null&&f.cost>0&&f.pct!=null&&f.pct>0);
+  const losers=allFunds.filter(f=>f.cost!=null&&f.cost>0&&f.pct!=null&&f.pct<0);
+  const totalGainAmt=winners.reduce((s,f)=>s+(f.val-(f.cost||f.val)),0);
+  const totalLossAmt=Math.abs(losers.reduce((s,f)=>s+(f.val-(f.cost||f.val)),0));
+  const netTaxableGain=Math.max(0,totalGainAmt-totalLossAmt);
+  const marginalRate2=profile.taxProfile?.marginalRate||0.20;
+  const taxIfNoHarvest=Math.round(totalGainAmt*marginalRate2);
+  const taxAfterHarvest=Math.round(netTaxableGain*marginalRate2);
+  const taxSaving=taxIfNoHarvest-taxAfterHarvest;
+
+  // Summary scorecard
+  CY(28);
+  const harvestCols=4;const hcW=(W-2*M)/harvestCols;
+  const hCards=[
+    {l:'Total Unrealised Gains',v:priv?`+${fmt2(totalGainAmt)}`:`+${(winners.length>0?(winners.reduce((s,f)=>s+(f.pct||0),0)/winners.length).toFixed(0)+'% avg'):'—'}`,c:COL.green},
+    {l:'Harvestable Losses',v:priv?`-${fmt2(totalLossAmt)}`:(losers.length>0?`${losers.length} funds`:'None'),c:losers.length>0?COL.red:COL.gray},
+    {l:'Net Taxable Gain',v:priv?fmt2(netTaxableGain):'After offset',c:netTaxableGain<totalGainAmt?COL.amber:COL.red},
+    {l:'Est. Tax Saving',v:priv&&taxSaving>0?fmt2(taxSaving):'Calculate with CA',c:taxSaving>0?COL.green:COL.gray},
+  ];
+  hCards.forEach((s,i)=>{const sx=M+i*hcW;rc(sx,y,hcW-2,18,[242,245,252],3);doc.setFillColor(...s.c);doc.rect(sx,y+15,hcW-2,1,'F');ln(s.l,sx+3,y+6,5.5,'normal',COL.gray);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...s.c);doc.text(String(s.v),sx+3,y+14);});
+  y+=24;
+
+  // Losers table — harvestable positions
+  CY(16);y=sb('HARVESTABLE LOSS POSITIONS (EXIT or REVIEW funds)',y);y+=3;
+  if(losers.length===0){
+    rc(M,y,W-2*M,10,[232,248,240],2);ln('No unrealised losses detected in EXIT / REVIEW funds — nothing to harvest this cycle.',M+4,y+7,7,'italic',[22,101,52]);y+=14;
+  } else {
+    [['Fund / Account',M],['Cost',M+80],['Current Value',M+110],['Loss (₹/$)',M+140],['Loss %',W-M]].forEach(([h,x],i)=>{if(i<4)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+    y+=3;hl(y,[225,230,238]);y+=4;
+    losers.sort((a,b)=>(a.pct||0)-(b.pct||0)).forEach(f=>{
+      CY(8);
+      const lossAmt=f.val-(f.cost||f.val);
+      ln(_cleanFundName(f.a.name||'').substring(0,32),M,y,7,'normal',COL.navy);
+      ln(priv?fmt2(f.cost||0):'—',M+80,y,7,'normal',COL.gray);
+      ln(priv?fmt2(f.val):'—',M+110,y,7,'normal',COL.gray);
+      ln(priv?`-${fmt2(Math.abs(lossAmt))}`:'Loss',M+140,y,7,'bold',COL.red);
+      rln(`${(f.pct||0).toFixed(1)}%`,W-M,y,7.5,'bold',COL.red);
+      y+=7;
+    });
+    if(priv&&totalLossAmt>0){hl(y,COL.lightGray);y+=4;ln('Total Harvestable Losses:',M,y,7.5,'bold',COL.gray);rln(`-${fmt2(totalLossAmt)}`,W-M,y,8,'bold',COL.red);y+=8;}
+  }
+
+  // Winners table — gains to be offset
+  CY(20);y=sb('GAIN POSITIONS (KEEP funds with unrealised gains)',y);y+=3;
+  if(winners.length===0){
+    rc(M,y,W-2*M,10,[238,242,252],2);ln('No cost basis data available — add Invested Amount in Net Worth to activate harvesting analysis.',M+4,y+7,7,'italic',COL.gray);y+=14;
+  } else {
+    [['Fund / Account',M],['Cost',M+80],['Current Value',M+110],['Gain',M+140],['Gain %',W-M]].forEach(([h,x],i)=>{if(i<4)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+    y+=3;hl(y,[225,230,238]);y+=4;
+    winners.sort((a,b)=>(b.pct||0)-(a.pct||0)).slice(0,8).forEach(f=>{
+      CY(8);
+      const gainAmt=f.val-(f.cost||f.val);
+      ln(_cleanFundName(f.a.name||'').substring(0,32),M,y,7,'normal',COL.navy);
+      ln(priv?fmt2(f.cost||0):'—',M+80,y,7,'normal',COL.gray);
+      ln(priv?fmt2(f.val):'—',M+110,y,7,'normal',COL.gray);
+      ln(priv?`+${fmt2(gainAmt)}`:'Gain',M+140,y,7,'bold',COL.green);
+      rln(`+${(f.pct||0).toFixed(1)}%`,W-M,y,7.5,'bold',COL.green);
+      y+=7;
+    });
+  }
+
+  // CA instruction
+  CY(22);hl(y);y+=5;
+  rc(M,y,W-2*M,18,[232,241,255],3);doc.setDrawColor(...COL.indigo);doc.setLineWidth(1);doc.line(M,y,M,y+18);
+  ln('CA HARVESTING INSTRUCTION',M+4,y+6,7.5,'bold',COL.navy);
+  if(losers.length>0&&winners.length>0&&priv){
+    ln(`Sell ${losers.length} loss position${losers.length>1?'s':''} (-${fmt2(totalLossAmt)}) to offset gains (+${fmt2(totalGainAmt)}). Net taxable: ${fmt2(netTaxableGain)}. Est. tax saving: ${fmt2(taxSaving)} at ${Math.round(marginalRate2*100)}% rate.`,M+4,y+12,7,'normal',COL.navy);
+    ln('Verify wash-sale rules (US: 30-day rule / India: no wash-sale restriction). Harvest before fiscal year-end.',M+4,y+17,6.5,'italic',COL.gray);
+  } else if(losers.length===0){
+    ln('No harvestable losses this cycle. Review REVIEW-tagged funds for partial exits on next market dip.',M+4,y+12,7,'normal',COL.navy);
+  } else {
+    ln('Add Invested Amount to fund accounts in Net Worth to enable full gain/loss calculation.',M+4,y+12,7,'normal',COL.navy);
+  }
+  y+=22;
+
   // ── Footers on all pages ───────────────────────────────────────
   const totalPgs=doc.getNumberOfPages();
   for(let pg=1;pg<=totalPgs;pg++){
