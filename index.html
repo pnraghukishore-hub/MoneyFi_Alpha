@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.0.8 -->
+<!-- MoneyFi v4.0.9 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -5164,7 +5164,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     <div id="metal-live-badge" style="font-size:0.72em;margin-bottom:8px;display:none;"></div>
     <button onclick="fetchLiveMetalPrices(true);showToast('🔄 Refreshing metal prices…',2000);"
       style="width:100%;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:7px;font-family:Nunito,sans-serif;font-size:0.74em;font-weight:800;color:#92400E;cursor:pointer;margin-bottom:12px;">
-      🔄 Refresh Live Prices (goldprice.org)
+      🔄 Refresh Live Prices (metals.live · goldprice.org · er-api)
     </button>
 
     <!-- Segmented unit toggle (g / oz) -->
@@ -6009,46 +6009,51 @@ async function fetchLiveMetalPrices(force) {
     } catch(e) {}
   }
 
-  // 2. Primary: goldprice.org
-  let goldG = null, silverG = null, goldOz = null, silverOz = null;
+  // 2. Try 3 APIs in sequence — first success wins
+  let goldG = null, silverG = null, goldOz = null;
   const TROY = 31.1035;
 
-  try {
-    const res = await fetch('https://data-asg.goldprice.org/dbXRates/USD', {
-      signal: AbortSignal.timeout(8000),
-      headers: { 'Accept': 'application/json' }
-    });
+  const _tryGoldAPI = async (url, parseResp) => {
+    const res = await fetch(url, { signal: AbortSignal.timeout(7000), headers: { 'Accept': 'application/json' } });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const json = await res.json();
-    const item = json?.items?.[0];
-    if (!item?.xauPrice) throw new Error('No XAU');
-    goldOz   = item.xauPrice;
-    silverOz = item.xagPrice || null;
-    goldG    = goldOz / TROY;
-    silverG  = silverOz ? silverOz / TROY : null;
-  } catch(e) {
-    // 3. Fallback: open.er-api.com (includes XAU as currency vs USD)
+    return parseResp(await res.json());
+  };
+
+  const apis = [
+    // API 1: metals.live — CORS-open, no key, returns USD/oz
+    {
+      url: 'https://api.metals.live/v1/spot/gold',
+      parse: j => ({ oz: j?.price || j?.[0]?.price || null })
+    },
+    // API 2: goldprice.org — ECB-sourced, returns items array
+    {
+      url: 'https://data-asg.goldprice.org/dbXRates/USD',
+      parse: j => ({ oz: j?.items?.[0]?.xauPrice || null, silverOz: j?.items?.[0]?.xagPrice || null })
+    },
+    // API 3: open.er-api.com with XAU base — 1 XAU = X USD
+    {
+      url: 'https://open.er-api.com/v6/latest/XAU',
+      parse: j => ({ oz: j?.rates?.USD || null })
+    },
+  ];
+
+  for (const api of apis) {
     try {
-      const res2 = await fetch('https://open.er-api.com/v6/latest/XAU', {
-        signal: AbortSignal.timeout(8000)
-      });
-      if (!res2.ok) throw new Error('HTTP ' + res2.status);
-      const json2 = await res2.json();
-      // json2.rates.USD = how many USD per 1 XAU (troy oz)
-      if (json2?.rates?.USD) {
-        goldOz  = json2.rates.USD;
+      const result = await _tryGoldAPI(api.url, api.parse);
+      if (result?.oz && result.oz > 100) { // sanity: gold must be > $100/oz
+        goldOz  = result.oz;
         goldG   = goldOz / TROY;
-        silverG = null; // not available in this endpoint
+        if (result.silverOz) silverG = result.silverOz / TROY;
+        break;
       }
-    } catch(e2) {
-      // Both APIs failed — stay on seeds/cache
-      _metalLiveStatus = 'static';
-      _updateMetalBadge();
-      return;
-    }
+    } catch(e) { /* try next */ }
   }
 
-  if (!goldG) { _metalLiveStatus = 'static'; _updateMetalBadge(); return; }
+  if (!goldG) {
+    _metalLiveStatus = 'static';
+    _updateMetalBadge();
+    return;
+  }
 
   // 4. Apply prices
   _applyLiveMetalPrices(goldG, silverG, null);
@@ -6057,7 +6062,7 @@ async function fetchLiveMetalPrices(force) {
   try {
     localStorage.setItem(_METAL_CACHE_KEY, JSON.stringify({
       ts: Date.now(), goldG, silverG: silverG || METAL_CONFIG.silver.pricePerGram,
-      goldOz: goldOz || goldG * TROY, silverOz
+      goldOz: goldOz || goldG * TROY
     }));
   } catch(e) {}
 
@@ -6138,14 +6143,16 @@ function resetMetalPriceOverride(metalType, purity) {
       if (k === metalType || k.startsWith(prefix)) delete data._metalPriceOverrides[k];
     });
   }
-  save(); renderMetals(); renderNetWorth();
-  // Refresh the input in the sheet to show new default value
-  const base = getMetalBasePrice(metalType);
-  const baseDisp = metalPriceToDisplay(base);
-  const inp = document.getElementById('metal-price-override-input');
-  if (inp) inp.value = (metalPriceUnit === 'oz' ? baseDisp * 31.1035 : baseDisp).toFixed(2);
-  renderPurityPrices(metalType);
-  showToast('\u21BA Price reset to default');
+  // Re-apply live price immediately if available (don't fall back to stale seed)
+  fetchLiveMetalPrices(true).then(() => {
+    save(); renderMetals(); renderNetWorth();
+    const base = getMetalBasePrice(metalType);
+    const baseDisp = metalPriceToDisplay(base);
+    const inp = document.getElementById('metal-price-override-input');
+    if (inp) inp.value = (metalPriceUnit === 'oz' ? baseDisp * 31.1035 : baseDisp).toFixed(2);
+    renderPurityPrices(metalType);
+  });
+  showToast('↺ Fetching live price…');
 }
 
 function getMetalBasePrice(metalType) {
