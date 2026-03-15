@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.0.7 -->
+<!-- MoneyFi v4.0.8 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -6000,9 +6000,7 @@ async function fetchLiveMetalPrices(force) {
     try {
       const cached = JSON.parse(localStorage.getItem(_METAL_CACHE_KEY) || 'null');
       if (cached && cached.ts && Date.now() - cached.ts < _METAL_CACHE_TTL && cached.goldG && cached.silverG) {
-        METAL_CONFIG.gold.pricePerGram   = cached.goldG;
-        METAL_CONFIG.silver.pricePerGram = cached.silverG;
-        if (cached.platinumG) METAL_CONFIG.platinum.pricePerGram = cached.platinumG;
+        _applyLiveMetalPrices(cached.goldG, cached.silverG, cached.platinumG || null);
         _metalLiveStatus = 'cached';
         _metalLiveTs     = cached.ts;
         _updateMetalBadge();
@@ -6011,9 +6009,10 @@ async function fetchLiveMetalPrices(force) {
     } catch(e) {}
   }
 
-  // 2. Fetch from goldprice.org — returns price per troy oz in USD
-  // Endpoint: https://data-asg.goldprice.org/dbXRates/USD
-  // Returns: { items: [{ xauPrice, xagPrice, ... }] }
+  // 2. Primary: goldprice.org
+  let goldG = null, silverG = null, goldOz = null, silverOz = null;
+  const TROY = 31.1035;
+
   try {
     const res = await fetch('https://data-asg.goldprice.org/dbXRates/USD', {
       signal: AbortSignal.timeout(8000),
@@ -6022,41 +6021,78 @@ async function fetchLiveMetalPrices(force) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
     const item = json?.items?.[0];
-    if (!item?.xauPrice) throw new Error('No XAU price');
-
-    const goldPerOz     = item.xauPrice;   // USD per troy oz
-    const silverPerOz   = item.xagPrice;   // USD per troy oz
-    const TROY_OZ_GRAMS = 31.1035;
-
-    const goldG     = goldPerOz   / TROY_OZ_GRAMS;
-    const silverG   = silverPerOz / TROY_OZ_GRAMS;
-
-    // Update live (only if user hasn't set an override for the base key)
-    METAL_CONFIG.gold.pricePerGram   = goldG;
-    METAL_CONFIG.silver.pricePerGram = silverG;
-
-    // Cache
-    try {
-      localStorage.setItem(_METAL_CACHE_KEY, JSON.stringify({
-        ts: Date.now(), goldG, silverG,
-        goldOz: goldPerOz, silverOz: silverPerOz
-      }));
-    } catch(e) {}
-
-    _metalLiveStatus = 'live';
-    _metalLiveTs     = Date.now();
-    _updateMetalBadge();
-
-    // Re-render metals screen and home invest cards
-    try { renderMetals(); } catch(e) {}
-    try { renderHome();   } catch(e) {}
-    try { renderNetWorth(); } catch(e) {}
-
+    if (!item?.xauPrice) throw new Error('No XAU');
+    goldOz   = item.xauPrice;
+    silverOz = item.xagPrice || null;
+    goldG    = goldOz / TROY;
+    silverG  = silverOz ? silverOz / TROY : null;
   } catch(e) {
-    // Silently fall back to seeds / user overrides
-    _metalLiveStatus = 'static';
-    _updateMetalBadge();
+    // 3. Fallback: open.er-api.com (includes XAU as currency vs USD)
+    try {
+      const res2 = await fetch('https://open.er-api.com/v6/latest/XAU', {
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!res2.ok) throw new Error('HTTP ' + res2.status);
+      const json2 = await res2.json();
+      // json2.rates.USD = how many USD per 1 XAU (troy oz)
+      if (json2?.rates?.USD) {
+        goldOz  = json2.rates.USD;
+        goldG   = goldOz / TROY;
+        silverG = null; // not available in this endpoint
+      }
+    } catch(e2) {
+      // Both APIs failed — stay on seeds/cache
+      _metalLiveStatus = 'static';
+      _updateMetalBadge();
+      return;
+    }
   }
+
+  if (!goldG) { _metalLiveStatus = 'static'; _updateMetalBadge(); return; }
+
+  // 4. Apply prices
+  _applyLiveMetalPrices(goldG, silverG, null);
+
+  // 5. Cache
+  try {
+    localStorage.setItem(_METAL_CACHE_KEY, JSON.stringify({
+      ts: Date.now(), goldG, silverG: silverG || METAL_CONFIG.silver.pricePerGram,
+      goldOz: goldOz || goldG * TROY, silverOz
+    }));
+  } catch(e) {}
+
+  _metalLiveStatus = 'live';
+  _metalLiveTs     = Date.now();
+  _updateMetalBadge();
+
+  try { renderMetals(); }   catch(e) {}
+  try { renderHome();   }   catch(e) {}
+  try { renderNetWorth(); } catch(e) {}
+}
+
+function _applyLiveMetalPrices(goldG, silverG, platinumG) {
+  // Always update METAL_CONFIG seeds
+  METAL_CONFIG.gold.pricePerGram   = goldG;
+  if (silverG) METAL_CONFIG.silver.pricePerGram = silverG;
+  if (platinumG) METAL_CONFIG.platinum.pricePerGram = platinumG;
+
+  // Also push into _metalPriceOverrides['gold'] ONLY if the stored value
+  // matches an old seed (≤100 USD/gram) — i.e. was never a real user override.
+  // This ensures getPriceForMetal() picks up the live price immediately.
+  if (!data._metalPriceOverrides) data._metalPriceOverrides = {};
+  const SEED_THRESHOLD = 100; // USD/gram — anything ≤ this was probably a seed, not a user entry
+  const storedGold = data._metalPriceOverrides['gold'];
+  if (storedGold === undefined || storedGold <= SEED_THRESHOLD) {
+    data._metalPriceOverrides['gold'] = goldG;
+  }
+  if (silverG) {
+    const storedSilver = data._metalPriceOverrides['silver'];
+    if (storedSilver === undefined || storedSilver <= 2) { // silver seeds are always <$2/g
+      data._metalPriceOverrides['silver'] = silverG;
+    }
+  }
+  // Note: we do NOT call save() — these are session-level live prices.
+  // They get refreshed on every app load. Persisting would overwrite user overrides.
 }
 
 function _updateMetalBadge() {
@@ -23657,7 +23693,10 @@ _auth.onAuthStateChanged(async user => {
       'pnraghukishore@gmail.com',
       'swathikishore12@gmail.com',
       'skanda.penujuri@gmail.com',
+      'suja81@gmail.com',
       'charlesakl@gmail.com',
+      'narasimha.neo@gmail.com',
+      'ping2rupesh@gmail.com',
       'ebooksofpnr@gmail.com',
       'pnrkiran@gmail.com'
     ];
