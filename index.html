@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.0.6 -->
+<!-- MoneyFi v4.0.7 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -2797,7 +2797,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div class="metal-form-field"><label>Notes</label><input type="text" id="metal-notes" placeholder="Optional"></div>
       </div>
       <button class="metal-save-btn gold" id="metal-save-btn" onclick="addMetalEntry()">+ Add Gold Entry</button>
-      <div style="font-size:0.73em;color:var(--text-light);font-weight:600;margin-top:10px;text-align:center;" id="metal-price-hint">💡 Est. gold ≈ $95.50/g · $2,970/oz</div>
+      <div style="font-size:0.73em;color:var(--text-light);font-weight:600;margin-top:10px;text-align:center;" id="metal-price-hint">💡 Live gold price loaded on app start — tap ✏️ to override</div>
     </div>
   </div>
   <div class="metal-holdings-card">
@@ -5157,8 +5157,15 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     <button onclick="closeMetalPriceSheet()" style="background:#F2F2F2;border:none;border-radius:50%;width:32px;height:32px;font-size:1em;cursor:pointer;color:var(--text-med);font-weight:900;flex-shrink:0;display:flex;align-items:center;justify-content:center;">✕</button>
   </div>
 
-  <!-- Scrollable body -->
+  <!-- Scrollable body -->\
   <div style="overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 18px 40px;flex:1;">
+
+    <!-- Live price status badge -->
+    <div id="metal-live-badge" style="font-size:0.72em;margin-bottom:8px;display:none;"></div>
+    <button onclick="fetchLiveMetalPrices(true);showToast('🔄 Refreshing metal prices…',2000);"
+      style="width:100%;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:7px;font-family:Nunito,sans-serif;font-size:0.74em;font-weight:800;color:#92400E;cursor:pointer;margin-bottom:12px;">
+      🔄 Refresh Live Prices (goldprice.org)
+    </button>
 
     <!-- Segmented unit toggle (g / oz) -->
     <div style="background:#EFEFEF;border-radius:12px;padding:3px;display:flex;gap:3px;margin-bottom:16px;">
@@ -5977,6 +5984,97 @@ const METAL_CONFIG = {
   silver:   { label:'Silver',   emoji:'🥈', pricePerGram: 1.03,   hint:'Use ✏️ Price to set your local silver price per gram. 925 Sterling = 92.5%, 900 = 90%.' },
   platinum: { label:'Platinum', emoji:'🔷', pricePerGram: 30.50,  hint:'Pt999 ≈ $30.50/g. Pt950 ≈ $28.98/g. Use ✏️ Edit to set current price — per-purity overrides supported.' },
 };
+
+// ── Live Metal Price Engine ───────────────────────────────────────────────
+// Source: goldprice.org (CORS-open, no key needed)
+// Updates METAL_CONFIG.gold/silver.pricePerGram with live USD/gram values
+// Cached 1h in localStorage — user overrides always win over live prices
+const _METAL_CACHE_KEY = 'mfi_metal_cache';
+const _METAL_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+let   _metalLiveStatus = 'static';
+let   _metalLiveTs     = null;
+
+async function fetchLiveMetalPrices(force) {
+  // 1. Try cache first
+  if (!force) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(_METAL_CACHE_KEY) || 'null');
+      if (cached && cached.ts && Date.now() - cached.ts < _METAL_CACHE_TTL && cached.goldG && cached.silverG) {
+        METAL_CONFIG.gold.pricePerGram   = cached.goldG;
+        METAL_CONFIG.silver.pricePerGram = cached.silverG;
+        if (cached.platinumG) METAL_CONFIG.platinum.pricePerGram = cached.platinumG;
+        _metalLiveStatus = 'cached';
+        _metalLiveTs     = cached.ts;
+        _updateMetalBadge();
+        return;
+      }
+    } catch(e) {}
+  }
+
+  // 2. Fetch from goldprice.org — returns price per troy oz in USD
+  // Endpoint: https://data-asg.goldprice.org/dbXRates/USD
+  // Returns: { items: [{ xauPrice, xagPrice, ... }] }
+  try {
+    const res = await fetch('https://data-asg.goldprice.org/dbXRates/USD', {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    const item = json?.items?.[0];
+    if (!item?.xauPrice) throw new Error('No XAU price');
+
+    const goldPerOz     = item.xauPrice;   // USD per troy oz
+    const silverPerOz   = item.xagPrice;   // USD per troy oz
+    const TROY_OZ_GRAMS = 31.1035;
+
+    const goldG     = goldPerOz   / TROY_OZ_GRAMS;
+    const silverG   = silverPerOz / TROY_OZ_GRAMS;
+
+    // Update live (only if user hasn't set an override for the base key)
+    METAL_CONFIG.gold.pricePerGram   = goldG;
+    METAL_CONFIG.silver.pricePerGram = silverG;
+
+    // Cache
+    try {
+      localStorage.setItem(_METAL_CACHE_KEY, JSON.stringify({
+        ts: Date.now(), goldG, silverG,
+        goldOz: goldPerOz, silverOz: silverPerOz
+      }));
+    } catch(e) {}
+
+    _metalLiveStatus = 'live';
+    _metalLiveTs     = Date.now();
+    _updateMetalBadge();
+
+    // Re-render metals screen and home invest cards
+    try { renderMetals(); } catch(e) {}
+    try { renderHome();   } catch(e) {}
+    try { renderNetWorth(); } catch(e) {}
+
+  } catch(e) {
+    // Silently fall back to seeds / user overrides
+    _metalLiveStatus = 'static';
+    _updateMetalBadge();
+  }
+}
+
+function _updateMetalBadge() {
+  const badge = document.getElementById('metal-live-badge');
+  if (!badge) return;
+  const age = _metalLiveTs ? Math.round((Date.now() - _metalLiveTs) / 60000) : null;
+  const ageStr = age !== null ? (age < 2 ? 'just now' : age < 60 ? `${age}m ago` : `${Math.round(age/60)}h ago`) : '';
+  if (_metalLiveStatus === 'live' || _metalLiveStatus === 'cached') {
+    const cached = JSON.parse(localStorage.getItem(_METAL_CACHE_KEY) || 'null');
+    const goldOz = cached?.goldOz ? `$${Math.round(cached.goldOz).toLocaleString()}/oz` : '';
+    badge.style.display = '';
+    badge.innerHTML = `<span style="color:#10B981;font-weight:800;">🟢 Live · Gold ${goldOz}${ageStr?' · '+ageStr:''}</span>`;
+  } else {
+    badge.style.display = '';
+    badge.innerHTML = `<span style="color:#F59E0B;font-weight:800;">📌 Seed prices · <a href="#" onclick="fetchLiveMetalPrices(true);return false;" style="color:#4F46E5;text-decoration:underline;">Refresh</a></span>`;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────
 
 function updateMetalPriceOverride(metalType, price, purity) {
   if (!data._metalPriceOverrides) data._metalPriceOverrides = {};
@@ -14505,6 +14603,7 @@ function renderROISimulator() {
 }
 
 function renderMetals() {
+  _updateMetalBadge(); // sync live price status
   const metals=getMetals(), cfg=METAL_CONFIG;
   const totals={};
   // Also fold in NW-sheet metal accounts so mini-tiles show combined totals
@@ -23605,7 +23704,8 @@ _auth.onAuthStateChanged(async user => {
     // Load data from cloud, then start real-time sync
     await firebaseLoad(user.uid);
     startRealtimeSync(user.uid);
-    fetchLiveFX(); // refresh FX rates in background — non-blocking
+    fetchLiveFX();           // refresh FX rates in background — non-blocking
+    fetchLiveMetalPrices();  // refresh gold/silver prices in background — non-blocking
 
   } else {
     // Not signed in — show login screen
