@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.1.6 -->
+<!-- MoneyFi v4.1.7 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -190,6 +190,12 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
     /* ── MoneyFi Pulse Stories ───────────────────────────────────── */
     .pulse-row { display:flex; gap:14px; overflow-x:auto; padding:10px 20px 4px; scrollbar-width:none; -ms-overflow-style:none; margin-bottom:2px; }
+    .pulse-row::-webkit-scrollbar { display:none; }
+    .pulse-panel { overflow:hidden; max-height:0; transition:max-height 0.32s cubic-bezier(0.4,0,0.2,1); background:var(--bg); }
+    .pulse-panel.open { max-height:120px; }
+    .pulse-topbar-btn { position:relative; background:var(--white); border:none; border-radius:50%; width:34px; height:34px; font-size:1em; cursor:pointer; box-shadow:var(--card-shadow); display:flex; align-items:center; justify-content:center; transition:transform 0.2s; flex-shrink:0; }
+    .pulse-topbar-btn:hover { transform:scale(1.1); }
+    .pulse-unseen-dot { position:absolute; top:2px; right:2px; width:9px; height:9px; border-radius:50%; background:#EF4444; border:1.5px solid var(--bg); display:none; }
     .pulse-row::-webkit-scrollbar { display:none; }
     .pulse-avatar { display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; flex-shrink:0; user-select:none; -webkit-tap-highlight-color:transparent; }
     .pulse-ring { width:58px; height:58px; border-radius:50%; padding:2.5px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -2465,6 +2471,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <div style="display:flex;align-items:center;gap:8px;">
     <div class="topbar-badge" id="topbar-month" style="cursor:default;">Feb 2026</div>
     <div class="topbar-icons">
+      <button class="pulse-topbar-btn" id="pulse-topbar-btn" onclick="togglePulsePanel()" title="MoneyFi Pulse">
+        🔮
+        <span class="pulse-unseen-dot" id="pulse-unseen-dot"></span>
+      </button>
       <button class="topbar-icon-btn" onclick="goToScreen('roi')"      title="Investment Growth Lab">🔬</button>
       <button class="topbar-icon-btn" onclick="goToScreen('metals')"   title="Metals">🥇</button>
       <button class="topbar-icon-btn" onclick="goToScreen('settings')" title="Settings">⚙️</button>
@@ -2474,8 +2484,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
 <!-- ══════════════ HOME ══════════════ -->
 <div class="screen active" id="screen-home">
-  <!-- ── MoneyFi Pulse Stories row ── -->
-  <div id="pulse-row" class="pulse-row"></div>
+  <!-- ── MoneyFi Pulse Stories panel (collapsed by default) ── -->
+  <div id="pulse-panel" class="pulse-panel">
+    <div id="pulse-row" class="pulse-row"></div>
+  </div>
 
   <!-- Story full-screen overlay (hidden) -->
   <div id="story-overlay" class="story-overlay" style="display:none;"></div>
@@ -6666,6 +6678,7 @@ function _generatePulseStories() {
         subtext: cv.s.replace('{days}', days),
         detail: cv.d,
         label: 'Freedom',
+        shareMetric: days ? `${days} retirement days bought this week` : null,
         cta: 'See Retire Tab →',
         ctaAction: () => { closePulsePlayer(); goToScreen('roi'); setTimeout(()=>switchROITab('retire'),300); },
       });
@@ -6692,6 +6705,7 @@ function _generatePulseStories() {
         subtext: cv.s.replace(/{months}/g, months),
         detail: cv.d,
         label: 'Shield',
+        shareMetric: `${months}-month emergency buffer built`,
         cta: '⚡ Simulate a Shock →',
         ctaAction: () => { closePulsePlayer(); goToScreen('roi'); setTimeout(()=>{ switchROITab('plan'); setTimeout(()=>setSimScenario('fire'),300); },300); },
       });
@@ -6723,6 +6737,7 @@ function _generatePulseStories() {
         subtext: cv.s.replace('{milestone}', mStr),
         detail: cv.d,
         label: 'Milestone',
+        shareMetric: `${mStr} milestone crossed`,
         cta: 'See Net Worth →',
         ctaAction: () => { closePulsePlayer(); goToScreen('networth'); },
       });
@@ -6753,6 +6768,7 @@ function _generatePulseStories() {
         subtext: cv.s.replace(/{streak}/g, streak),
         detail: cv.d,
         label: 'Streak',
+        shareMetric: `${streak}-month positive savings streak`,
         cta: 'See Budget →',
         ctaAction: () => { closePulsePlayer(); switchScreen('budget', null); },
       });
@@ -6779,6 +6795,7 @@ function _generatePulseStories() {
         subtext: cv.s.replace('{score}', Math.round(score)).replace('{delta}', delta),
         detail: cv.d,
         label: 'FHS',
+        shareMetric: `Financial Health Score: ${Math.round(score)}/100`,
         cta: 'See Health Score →',
         ctaAction: () => { closePulsePlayer(); switchScreen('fhs', null); },
       });
@@ -6808,6 +6825,7 @@ function _generatePulseStories() {
         subtext: cv.s.replace(/{goal}/g, best.g.name||'Goal').replace(/{pct}/g, best.pct).replace('{remaining}', remaining),
         detail: cv.d,
         label: best.g.name ? best.g.name.substring(0,10) : 'Goal',
+        shareMetric: `${best.pct}% funded toward ${best.g.name||'my goal'}`,
         cta: 'See Goals →',
         ctaAction: () => { closePulsePlayer(); switchScreen('budget', null); },
       });
@@ -6838,6 +6856,7 @@ function _generatePulseStories() {
                        .replace('{funds}', keeps).replace('{exits}', exits),
           detail: cv.d,
           label: 'Clarity',
+          shareMetric: `Portfolio Clarity Score: ${d.pcs}/100 · Grade ${grade}`,
           cta: 'See Clarity →',
           ctaAction: () => { closePulsePlayer(); goToScreen('roi'); setTimeout(()=>switchROITab('clarity'),300); },
         });
@@ -6886,6 +6905,7 @@ function _generatePulseStories() {
             .replace(/{delta}/g, deltaStr),
           detail: cv.d,
           label: 'Leak',
+          shareMetric: `Working on trimming lifestyle creep`,
           cta: 'Review Budget →',
           ctaAction: () => { closePulsePlayer(); switchScreen('budget', null); },
         });
@@ -6921,6 +6941,7 @@ function _generatePulseStories() {
           subtext: cv.s.replace('{days}', days).replace('{runway}', runway),
           detail: cv.d,
           label: 'Friday',
+          shareMetric: days ? `${days} retirement days funded this month` : null,
           cta: 'See Retire Tab →',
           ctaAction: () => { closePulsePlayer(); goToScreen('roi'); setTimeout(()=>switchROITab('retire'),300); },
         });
@@ -6955,6 +6976,7 @@ function _generatePulseStories() {
         subtext: cv.s.replace('{question}', q),
         detail: cv.d,
         label: 'Strategy',
+        shareMetric: `Working through the Mastery checklist`,
         cta: 'See Health Score →',
         ctaAction: () => { closePulsePlayer(); switchScreen('fhs', null); },
       });
@@ -6982,9 +7004,18 @@ function renderPulseRow() {
   const el = document.getElementById('pulse-row');
   if (!el) return;
   _pulseStories = _generatePulseStories();
-  if (_pulseStories.length === 0) { el.style.display = 'none'; return; }
-  el.style.display = 'flex';
+
+  // Update unseen dot on topbar button
+  const dot = document.getElementById('pulse-unseen-dot');
   const seen = _getPulseSeen();
+  const unseenCount = _pulseStories.filter(s => !seen.includes(s.id)).length;
+  if (dot) dot.style.display = unseenCount > 0 ? 'block' : 'none';
+
+  if (_pulseStories.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+
   el.innerHTML = _pulseStories.map((s, i) => `
     <div class="pulse-avatar ${seen.includes(s.id)?'pulse-seen':''}" onclick="openPulsePlayer(${i})">
       <div class="pulse-ring ${s.ringClass} ${seen.includes(s.id)?'':s.ringEffect}">
@@ -6992,6 +7023,19 @@ function renderPulseRow() {
       </div>
       <div class="pulse-label">${s.label}</div>
     </div>`).join('');
+}
+
+let _pulseOpen = false;
+function togglePulsePanel() {
+  const panel = document.getElementById('pulse-panel');
+  if (!panel) return;
+  _pulseOpen = !_pulseOpen;
+  panel.classList.toggle('open', _pulseOpen);
+  // Regenerate stories when opening
+  if (_pulseOpen) renderPulseRow();
+  // Update button appearance
+  const btn = document.getElementById('pulse-topbar-btn');
+  if (btn) btn.style.background = _pulseOpen ? 'var(--yellow)' : 'var(--white)';
 }
 
 // ── Story Player ────────────────────────────────────────────────────
@@ -7101,8 +7145,6 @@ function generatePulseShareCard(story) {
   } catch(e) {}
 
   const sym = currentCurrency?.symbol || '$';
-  const nw  = computeNetWorth();
-  const nwStr = sym + _fmtK(nw.netWorth);
   const dateStr = new Date().toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'numeric'});
   const userName = window._fbUser?.displayName?.split(' ')[0] || 'MoneyFi';
 
@@ -7169,13 +7211,14 @@ function generatePulseShareCard(story) {
   // ── Divider ──
   ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(60, 870, W-120, 1);
 
-  // ── Mystery hook + FHS score ──
+  // ── Mystery hook + FHS score + story metric (no NW — too personal) ──
+  const metricLine = story.shareMetric
+    ? story.shareMetric
+    : fhsScore > 0 ? `Financial Health Score: ${fhsScore}/100` : 'MoneyFi user';
   ctx.font='bold 38px sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center';
   ctx.fillText(`${userName}'s MoneyFi Pulse`, W/2, 928);
   ctx.font='700 26px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.55)';
-  ctx.fillText(fhsScore > 0
-    ? `Financial Health Score: ${fhsScore}/100 · NW: ${nwStr}`
-    : `Net Worth: ${nwStr}`, W/2, 968);
+  ctx.fillText(fhsScore > 0 ? `FHS: ${fhsScore}/100 · ${metricLine}` : metricLine, W/2, 968);
   ctx.font='bold 30px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.textAlign='center';
   ctx.fillText(`What's your MoneyFi score?`, W/2, 1016);
   ctx.textAlign='left';
@@ -7337,7 +7380,7 @@ function _sharePulseWhatsApp(fhsScore) {
 
 function renderHome() {
   ensureMonth(viewMonth);
-  try { renderPulseRow(); } catch(e) {}
+  try { renderPulseRow(); } catch(e) {} // updates unseen dot only
   const m = data[viewMonth];
 
   let expenses, income, investments, additional;
