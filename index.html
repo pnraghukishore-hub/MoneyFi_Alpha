@@ -12204,17 +12204,17 @@ function generateClarityPDF() {
   doc.setFillColor(...COL.yellow); doc.rect(0,0,4,38,'F');
   // Golden-yellow bottom rule on header
   doc.setFillColor(...COL.yellow); doc.rect(0,37,W,1,'F');
+  // Declare positions first — scoreX = circle centre, metaX = right-align point for text
+  const scoreX = W-M-14;
+  const metaX  = scoreX - 14;
   ln('MoneyFi',M,12,16,'bold',COL.white);
   ln('Advisor-Ready Strategic Brief',M,20,9,'normal',[160,180,235]);
   ln(priv?'PRIVATE — FOR CA/ADVISOR USE ONLY':'SHAREABLE VERSION — AMOUNTS HIDDEN',M,28,6.5,'bold',priv?COL.yellow:[100,240,175]);
   rln(`Prepared: ${today}`,metaX,12,7.5,'normal',[155,175,225]);
   if(profile.age){const el=empType==='self_employed'?'Self-employed':empType==='business_owner'?'Business Owner':empType==='retired'?'Retired':'W-2 Employee';rln(`Age ${profile.age}  ·  ${el}  ·  ${region}`,metaX,20,6.5,'normal',[155,175,225]);}
-  // Score circle — positioned left of right margin so it doesn't obscure Prepared/Age text
-  const scoreX = W-M-14;
+  // Score circle — sits right of metaX, doesn't overlap text
   doc.setFillColor(...fhsCol.map(c=>Math.max(0,c-20)));doc.circle(scoreX,10.5,10.5,'F');doc.setFillColor(...fhsCol);doc.circle(scoreX,10.5,9,'F');
   doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...COL.white);doc.text(String(fhsScore),scoreX,14,{align:'center'});doc.setFontSize(5.5);doc.text('/100',scoreX,18.5,{align:'center'});
-  // Push right-aligned metadata text to leave room for the circle
-  const metaX = scoreX - 14;
   y=46;
 
   // Mission
