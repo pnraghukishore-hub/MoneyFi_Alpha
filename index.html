@@ -12251,13 +12251,6 @@ function generateClarityPDF() {
     hl(y,COL.lightGray);y+=3;ln('Total Liabilities',M,y,7.5,'bold',COL.gray);rln(maskAmt(nw.liabTotal),W-M,y,8,'bold',COL.red);y+=8;
   }
 
-  // NW teaser — stays on page 1 only if there's room
-  CY(18);hl(y);y+=5;
-  ln('Total Assets',M,y,7.5,'normal',COL.gray);rln(maskAmt(nw.totalAssets),W-M,y,7.5,'normal',COL.navy);y+=6;
-  ln('Total Liabilities',M,y,7.5,'normal',COL.gray);rln(maskAmt(nw.liabTotal),W-M,y,7.5,'normal',COL.red);y+=5;
-  hl(y,COL.lightGray,0.4);y+=4;
-  ln('Net Worth',M,y,9,'bold',COL.navy);rln(maskAmt(nw.netWorth),W-M,y,9,'bold',COL.navy);y+=8;
-
   // ══════════════════════════════════════════════════════════════
   // PAGE 2 — FHS MASTERY SCORECARD (13-Pillar)
   // ══════════════════════════════════════════════════════════════
@@ -12275,31 +12268,68 @@ function generateClarityPDF() {
   y=sb('ALL 13 PILLARS',y);y+=3;
   const pillarArr=fhs.pillarResults?Object.entries(fhs.pillarResults).map(([k,p])=>({label:p.name||k,score:p.result?.score??0,status:p.result?.status||'',band:p.band||''})):[];
   if(pillarArr.length>0){
-    const cols=4;const cW=(W-2*M)/cols;const rH=11;
-    pillarArr.forEach((p,i)=>{
-      const cx=M+(i%cols)*cW;const cy=y+Math.floor(i/cols)*rH;
-      const pC=p.status==='inactive'||p.status==='na'?[180,185,195]:p.score>=70?COL.green:p.score>=45?COL.amber:COL.red;
-      rc(cx,cy-5,cW-3,rH-1,pC.map(c=>Math.min(255,c+190)),2);doc.setFillColor(...pC);doc.rect(cx,cy+5,cW-3,1,'F');
-      doc.setFontSize(5.5);doc.setFont('helvetica','bold');doc.setTextColor(...pC);doc.text(p.label.substring(0,16),cx+2.5,cy);
-      doc.setFontSize(p.status==='inactive'||p.status==='na'?7:9.5);doc.text(p.status==='inactive'||p.status==='na'?'N/A':`${Math.round(p.score)}`,cx+cW-5,cy,{align:'right'});
+    // 2-column layout — full names, no truncation, colored score text only (no pill box)
+    const halfLen=Math.ceil(pillarArr.length/2);
+    const colW2=(W-2*M)/2-4;
+    const rH2=8.5;
+    // Column headers
+    ['Foundation & Mastery Pillars','Score','Pillars (cont.)','Score'].forEach((h,i)=>{
+      const xs=[M,M+colW2-2,M+(W-2*M)/2+4,M+(W-2*M)/2+4+colW2-2];
+      if(i%2===0) ln(h,xs[i],y,6,'bold',COL.gray);
+      else rln(h,xs[i],y,6,'bold',COL.gray);
     });
-    y+=Math.ceil(pillarArr.length/cols)*rH+6;
+    y+=3; hl(y,[225,230,238]); y+=4;
+    for(let i=0;i<halfLen;i++){
+      const left=pillarArr[i];
+      const right=pillarArr[i+halfLen];
+      const rowY=y+i*rH2;
+      // Alternating row tint
+      if(i%2===0){doc.setFillColor(248,250,255);doc.rect(M,rowY-4,colW2,rH2-1,'F');doc.rect(M+(W-2*M)/2+4,rowY-4,colW2,rH2-1,'F');}
+      // Left column
+      const lcol=left.status==='inactive'||left.status==='na'?COL.gray:left.score>=70?COL.green:left.score>=45?COL.amber:COL.red;
+      // Color indicator strip
+      doc.setFillColor(...lcol);doc.rect(M,rowY-4,2.5,rH2-1,'F');
+      ln(left.label,M+5,rowY,7,'normal',COL.navy);
+      // Score: large colored number, bold
+      doc.setFontSize(left.status==='inactive'||left.status==='na'?7:9);
+      doc.setFont('helvetica','bold');doc.setTextColor(...lcol);
+      doc.text(left.status==='inactive'||left.status==='na'?'N/A':`${Math.round(left.score)}`,M+colW2-1,rowY,{align:'right'});
+      // Right column
+      if(right){
+        const rcol=right.status==='inactive'||right.status==='na'?COL.gray:right.score>=70?COL.green:right.score>=45?COL.amber:COL.red;
+        const rx=M+(W-2*M)/2+4;
+        doc.setFillColor(...rcol);doc.rect(rx,rowY-4,2.5,rH2-1,'F');
+        ln(right.label,rx+5,rowY,7,'normal',COL.navy);
+        doc.setFontSize(right.status==='inactive'||right.status==='na'?7:9);
+        doc.setFont('helvetica','bold');doc.setTextColor(...rcol);
+        doc.text(right.status==='inactive'||right.status==='na'?'N/A':`${Math.round(right.score)}`,rx+colW2-1,rowY,{align:'right'});
+      }
+    }
+    y+=halfLen*rH2+6;
   }
 
   // Foundation audit
   CY(60);y=sb('FOUNDATION AUDIT',y);y+=3;
-  // Emergency
+  // Emergency — value on first line, bar on second (prevents bar/text overlap)
   ln('Emergency Buffer:',M,y,7.5,'normal',COL.gray);
-  if(efR.status==='inactive'){rln('Tag liquid accounts to activate',W-M,y,7,'bold',COL.red);}
-  else{const ec=efMonths>=6?COL.green:efMonths>=3?COL.amber:COL.red;br(W-M-50,y-3.5,48,3.5,Math.min(efMonths/6*100,100),ec);rln(`${efMonths.toFixed(1)} / ${efR.emergencyTarget||6} months`,W-M,y,7.5,'bold',ec);}
-  y+=7;
+  if(efR.status==='inactive'){
+    rln('Tag liquid accounts to activate',W-M,y,7,'bold',COL.red);
+  } else {
+    const ec=efMonths>=6?COL.green:efMonths>=3?COL.amber:COL.red;
+    rln(`${efMonths.toFixed(1)} / ${efR.emergencyTarget||6} months`,W-M,y,7.5,'bold',ec);
+    y+=4; br(M+80,y-2,W-2*M-80,3,Math.min(efMonths/(efR.emergencyTarget||6)*100,100),ec);
+  }
+  y+=8;
   // DTI
   ln('Debt-to-Income (CFPB — monthly pmts ÷ income):',M,y,7.5,'normal',COL.gray);
   if(debtR.dti!=null){const dl=dtiPct<=20?'Excellent':dtiPct<=28?'Good':dtiPct<=36?'Moderate':dtiPct<=43?'Watch':'High';const dc=dtiPct<=28?COL.green:dtiPct<=36?COL.amber:dtiPct<=43?[249,115,22]:COL.red;rln(priv?`${dtiPct.toFixed(1)}% — ${dl}  (${sym}${Math.round(debtR.monthlyDebt)}/mo)`:`${dtiPct.toFixed(1)}% — ${dl}`,W-M,y,7.5,'bold',dc);}
   else{rln('Add monthly payment to loan accounts',W-M,y,7,'italic',COL.gray);}
   y+=7;
   // Savings
-  ln('Savings Rate (6-month avg):',M,y,7.5,'normal',COL.gray);br(W-M-50,y-3.5,48,3.5,savRate,savRate>=30?COL.green:savRate>=15?COL.amber:COL.red);rln(`${savRate}%${savRate>=40?' — High performer':savRate>=20?' — Solid':''}`,W-M,y,7.5,'bold',savRate>=30?COL.green:savRate>=15?COL.amber:COL.red);y+=7;
+  ln('Savings Rate (6-month avg):',M,y,7.5,'normal',COL.gray);
+  const srCol=savRate>=30?COL.green:savRate>=15?COL.amber:COL.red;
+  rln(`${savRate}%${savRate>=40?' — High performer':savRate>=20?' — Solid':''}`,W-M,y,7.5,'bold',srCol);
+  y+=4; br(M+80,y-2,W-2*M-80,3,savRate,srCol); y+=8;
   // Velocity
   if(snaps.length>=2){const ls=snaps[snaps.length-1];const ps2=snaps[snaps.length-2];const nwD=snapValue(ls)-(snapValue(ps2)||0);const ds=avgExp>0?avgExp/30:0;const db=ds>0?Math.round(nwD/ds/365*30):null;if(db!=null&&!isNaN(db)){ln('NW Velocity (freedom days bought — 12m):',M,y,7.5,'normal',COL.gray);rln(`${db>0?'+':''}${db} days`,W-M,y,7.5,'bold',db>0?COL.green:COL.red);y+=7;}}
   // Estate
@@ -12729,8 +12759,24 @@ function generateClarityPDF() {
   const reImports=(data._realEstate||[]).map((p,idx)=>{const cv=nwConvert?nwConvert(Number(p.currentValue||p.purchaseValue||0),(p.currency||'USD')):Number(p.currentValue||p.purchaseValue||0);return{name:(p.description||'Property '+(idx+1)).substring(0,28),currentValue:cv,purchaseValue:nwConvert?nwConvert(Number(p.purchaseValue||0),(p.currency||'USD')):Number(p.purchaseValue||0),country:p.country||region,lastUpdated:p.date||''};});
   const reAll=[...reAccounts.map(a=>({name:(a.name||'Property').substring(0,28),currentValue:nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0),purchaseValue:nwConvert?nwConvert(a.meta?.purchaseValue||0,a.currency):(a.meta?.purchaseValue||0),country:a.meta?.country||region,lastUpdated:a.lastUpdated||''})),...reImports];
 
-  // Find linked mortgage loans
-  const mortgageLoans=(data._nwAccounts||[]).filter(a=>a.type==='loan'&&(/(home|house|mortgage|property|tudor|nilayam|real.?estate)/i.test(a.name||'')));
+  // Find linked mortgage loans — match by name similarity, never fall back globally
+  const mortgageLoans=(data._nwAccounts||[]).filter(a=>a.type==='loan'&&(/(home|house|mortgage|property|tudor|nilayam|real.?estate|land|flat|villa|plot)/i.test(a.name||'')));
+
+  // Build a name-match lookup: for each RE property, find the loan whose name
+  // best matches the property name (word overlap). If no match, mortgage = 0.
+  const findLinkedMortgage = (reName) => {
+    if (!mortgageLoans.length) return null;
+    const propWords = (reName||'').toLowerCase().split(/\s+/).filter(w=>w.length>2);
+    // Score each loan by word overlap with property name
+    let best=null, bestScore=0;
+    mortgageLoans.forEach(loan=>{
+      const loanWords=(loan.name||'').toLowerCase().split(/\s+/);
+      const overlap=propWords.filter(w=>loanWords.some(lw=>lw.includes(w)||w.includes(lw))).length;
+      if(overlap>bestScore){bestScore=overlap;best=loan;}
+    });
+    // Only link if at least 1 word overlaps — otherwise this property has no mortgage
+    return bestScore>=1 ? best : null;
+  };
 
   if(reAll.length===0){
     rc(M,y,W-2*M,10,[238,248,240],2);ln('No real estate accounts recorded.',M+4,y+7,7,'italic',COL.gray);y+=14;
@@ -12739,8 +12785,7 @@ function generateClarityPDF() {
     y+=3;hl(y,[225,230,238]);y+=4;
     reAll.forEach((re,i)=>{
       CY(12);
-      // Find linked mortgage by fuzzy name match
-      const linkedLoan=mortgageLoans[i]||(mortgageLoans.length===1?mortgageLoans[0]:null);
+      const linkedLoan = findLinkedMortgage(re.name);
       const mortgageBal=linkedLoan?nwConvert?nwConvert(linkedLoan.balance||0,linkedLoan.currency||'USD'):(linkedLoan.balance||0):0;
       const ltv=re.currentValue>0&&mortgageBal>0?Math.round(mortgageBal/re.currentValue*100):0;
       const equity=re.currentValue-mortgageBal;
