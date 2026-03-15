@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.1.7 -->
+<!-- MoneyFi v4.1.8 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -6633,6 +6633,127 @@ const _COPY = {
     {h:"Weekly freedom ledger.", s:"{days} days of retirement funded this month by compounding.", d:"You're buying back time. That's what investing actually is."},
     {h:"Friday: the freedom check-in.", s:"{days} days of future leisure funded this month.", d:"Rest this weekend knowing the machine is still running."},
   ],
+  goalAchieved: [
+    {h:"You did it. {goal} is fully funded.", s:"Every SIP, every decision brought you here. This one is done.", d:"Completed goals compound confidence as much as money does."},
+    {h:"Goal unlocked: {goal}.", s:"100% funded. The discipline paid off. What is the next target?", d:"One down. The habit is set. Keep it running."},
+    {h:"{goal} complete.", s:"You set a goal. You funded it. That is rare. Celebrate it.", d:"Most people never finish what they start financially. You did."},
+    {h:"Mission accomplished: {goal}.", s:"Fully funded. The system worked. You worked.", d:"The best time to set the next goal is right now."},
+    {h:"{goal} 100% funded.", s:"Done. Fully. The SIPs delivered. Time to set the next one.", d:"Completed goals are proof of concept. Build on this."},
+    {h:"Finish line crossed: {goal}.", s:"This goal is done. Your financial architecture is working.", d:"Each completed goal makes the next one easier to believe in."},
+    {h:"{goal} is funded. Fully.", s:"You stayed consistent long enough to see it through.", d:"Consistency is rare. You have it."},
+    {h:"Goal complete: {goal}.", s:"The journey to {goal} is over. 100% funded.", d:"Financial goals are habits with a finish line. You crossed it."},
+    {h:"The {goal} chapter is closed.", s:"Funded. Done. Filed under wins. Now open the next chapter.", d:"Every closed goal opens a bigger one."},
+    {h:"{goal}: done and dusted.", s:"Fully funded. You can stop worrying about this one.", d:"Cross it off. Breathe. Start the next one."},
+  ],
+  fireMilestone: [
+    {h:"You are {pct}% of the way to financial independence.", s:"FIRE corpus: {corpus}. Target: {target}. Keep the SIPs running.", d:"Every percent gets compoundingly easier as the base grows."},
+    {h:"{pct}% FIRE funded.", s:"{corpus} of {target} corpus built. The machine is running.", d:"The last 10% always arrives faster than the first 10%."},
+    {h:"Financial independence is {pct}% real.", s:"Corpus: {corpus}. The most important financial goal.", d:"FIRE is a direction. You are heading right."},
+    {h:"The FIRE number is {pct}% funded.", s:"{corpus} toward {target}. The gap is closing every month.", d:"Compounding does most of the heavy lifting from here."},
+    {h:"{pct}% closer to quitting on your own terms.", s:"FIRE corpus: {corpus}. Target: {target}. SIPs are the engine.", d:"Financial independence means options, not just early retirement."},
+    {h:"Freedom checkpoint: {pct}%.", s:"Your FIRE number is {pct}% funded. {corpus} of {target} locked in.", d:"Every basis point of return matters more at this corpus size."},
+    {h:"The independence fund is {pct}% full.", s:"{corpus} banked. {target} is the destination. {pct}% there.", d:"The number that changes everything is getting closer."},
+    {h:"{pct}% funded, FIRE edition.", s:"Corpus: {corpus}. You are {pct}% free.", d:"Time in market beats timing the market."},
+    {h:"FIRE: {pct}% of the way there.", s:"{corpus} toward a {target} target. Keep compounding.", d:"The last leg of a long journey is always the fastest."},
+    {h:"Financial independence: {pct}% funded.", s:"At {corpus}, you have earned {pct}% of the right to say no.", d:"Build the number. Options follow automatically."},
+  ],
+  spendLessWeek: [
+    {h:"Lighter week.", s:"You spent {pct}% less than this time last month. {saved} back in your pocket.", d:"Small weekly wins compound into monthly habits."},
+    {h:"The weekly discipline is showing.", s:"{pct}% less spent vs the same week last month. {saved} saved.", d:"Spending less is redirection, not sacrifice."},
+    {h:"Week-on-week: you won.", s:"This week came in {pct}% lighter than last month equivalent.", d:"Consistent lighter weeks beat one dramatic budget cut."},
+    {h:"You spent less. Again.", s:"{pct}% under last month weekly pace. {saved} redirected.", d:"The habit is forming. The number is proof."},
+    {h:"Lighter footprint this week.", s:"Spending down {pct}% vs the same period last month.", d:"Every lighter week is a vote for your future self."},
+    {h:"Under budget. Again.", s:"{pct}% less than this week last month. {saved} unspent.", d:"Unspent money is waiting to be invested."},
+    {h:"The gap is growing.", s:"This week: {pct}% less than last month equivalent week.", d:"Income minus expenses equals freedom. You grew the gap."},
+    {h:"Spending velocity: slowing.", s:"{pct}% lighter than this time last month. {saved} saved.", d:"Slowing the spend rate is as powerful as increasing income."},
+    {h:"Below last month pace.", s:"Week spend down {pct}%. {saved} more than last month.", d:"Small deltas, consistent direction. That is the formula."},
+    {h:"This week vs last month: you win.", s:"{pct}% less spent. {saved} back to the runway.", d:"Win the week. The month takes care of itself."},
+  ],
+  monthBetterThanLast: [
+    {h:"This month is tracking better.", s:"You are {pct}% under last month spending pace at this point.", d:"A better month compounds into a better quarter."},
+    {h:"Month-on-month: improvement.", s:"Same date last month, you had spent {pct}% more. Not this time.", d:"Trending in the right direction is the whole game."},
+    {h:"The month is looking good.", s:"Spending {pct}% lighter than last month at this point.", d:"Finish strong. The trajectory is yours to keep."},
+    {h:"Better than last month.", s:"At this pace, you will end {pct}% under last month total.", d:"Month-over-month improvement is the metric that matters."},
+    {h:"Pace check: you are ahead.", s:"This month is running {pct}% lighter than last month right now.", d:"Stay the course. The finish line rewards the consistent."},
+    {h:"Month trajectory: improving.", s:"{pct}% better than last month run rate. Keep it.", d:"Small monthly improvements become transformational annually."},
+    {h:"You are outpacing last month.", s:"Spending down {pct}% vs last month at the same point.", d:"Every better month raises the floor for the next one."},
+    {h:"This month vs last: advantage you.", s:"{pct}% less spent at this point vs last month.", d:"The direction matters more than the magnitude."},
+    {h:"The month is already better.", s:"You are {pct}% under last month pace. Finish strong.", d:"Momentum is a financial asset. You have it right now."},
+    {h:"Better month incoming.", s:"At this point last month, you had spent {pct}% more.", d:"Keep the pace. The month belongs to you."},
+  ],
+  incomeGrowth: [
+    {h:"Your earning power grew.", s:"Average monthly income up {pct}% this quarter vs last. +{delta}/mo.", d:"Income growth is the fastest lever in the financial freedom equation."},
+    {h:"The income line is rising.", s:"+{pct}% average monthly income this quarter vs last.", d:"Every percent of income growth, invested, compounds into freedom."},
+    {h:"You are earning more.", s:"Quarterly income average: up {pct}%. {delta} more per month.", d:"Grow income. Keep lifestyle flat. The gap becomes freedom."},
+    {h:"Income trajectory: up {pct}%.", s:"This quarter vs last: +{delta}/month average. The trend is clear.", d:"Income is the fuel. The machine converts it to wealth."},
+    {h:"Earning potential: expanding.", s:"Monthly income average grew {pct}% vs last quarter.", d:"The most powerful wealth-building tool is a rising income curve."},
+    {h:"+{pct}% on the income side.", s:"This quarter monthly average: {delta} more than last quarter.", d:"Higher income is only valuable if the savings rate holds."},
+    {h:"The income engine is running.", s:"Average monthly income up {pct}% quarter-on-quarter.", d:"Pair this with flat lifestyle and watch wealth accelerate."},
+    {h:"Your income grew {pct}% this quarter.", s:"+{delta}/month vs last quarter. The number is moving.", d:"Income growth without lifestyle inflation is wealth creation."},
+    {h:"Quarterly income check: up {pct}%.", s:"+{delta}/month average vs last quarter. Keep the rate.", d:"The compounding of a rising income is the most underrated force in finance."},
+    {h:"Income: growing. {pct}% up.", s:"This quarter avg: {delta} more per month than last quarter.", d:"The income line and the savings rate are the only two dials that matter."},
+  ],
+  savingsRateRecord: [
+    {h:"New personal best: {rate}% savings rate.", s:"Your highest savings rate ever recorded. This month belongs to you.", d:"A record savings rate means the gap between income and lifestyle is at its widest."},
+    {h:"Personal best: {rate}% saved.", s:"You have never saved this much of your income in a single month.", d:"Personal bests compound. The new floor is higher."},
+    {h:"All-time record: {rate}% savings rate.", s:"Best month ever for savings. The discipline is peaking.", d:"Records are meant to be broken. Set it again next month."},
+    {h:"{rate}% your best savings month.", s:"New record. Most of your income stayed yours this month.", d:"High savings rate months move the needle fastest."},
+    {h:"The best month you have ever had: {rate}%.", s:"Savings rate record broken. The bar is reset higher.", d:"What gets measured gets improved. You just improved the ceiling."},
+    {h:"Record savings rate: {rate}%.", s:"You have never kept this much of what you earned.", d:"A record is proof that the system is working."},
+    {h:"New ceiling: {rate}% savings rate.", s:"Personal best. The financial discipline is at its peak.", d:"Raise the floor by celebrating the ceiling."},
+    {h:"{rate}% saved, best ever.", s:"New record for monthly savings rate. The habit is compounding.", d:"The best savings months are the ones you repeat."},
+    {h:"All-time high: {rate}% savings.", s:"This month broke your previous record. Remember this feeling.", d:"Records are reference points. This one raises the standard."},
+    {h:"Personal record: {rate}% savings rate.", s:"Your money-to-self ratio hit a new high this month.", d:"The best financial decisions do not feel like sacrifice."},
+  ],
+  lowestSpendMonth: [
+    {h:"Your leanest month in a year.", s:"Lowest spending in 12 months. The discipline is real.", d:"A lean month is proof the priorities are clear."},
+    {h:"Lightest footprint in 12 months.", s:"This month set the low watermark for spending this year.", d:"The floor you set this month becomes the new normal."},
+    {h:"12-month low spend.", s:"You have never spent less in a single month over the past year.", d:"Minimum spend months are maximum freedom months."},
+    {h:"The leanest month of the year.", s:"Spending at a 12-month low. Every unspent dollar is working.", d:"Lean months let the portfolio breathe and grow undisturbed."},
+    {h:"Lowest spend in a year.", s:"This month came in lower than every month in the past 12.", d:"What is the floor? You just found it. Now defend it."},
+    {h:"12-month spending low, you did it.", s:"The lightest month in a year. The discipline is compounding.", d:"Spend less. Invest the rest. Repeat."},
+    {h:"A new low, the good kind.", s:"Lowest monthly spending in 12 months. The gap is at its widest.", d:"Wide gap equals fast compounding. This is how wealth accelerates."},
+    {h:"Your quietest financial month in a year.", s:"Spend low was here. The rest goes to work.", d:"Quiet months are loud wins on the portfolio side."},
+    {h:"The floor just got lower.", s:"12-month low spend. Every lean month sets a new reference point.", d:"The financial equivalent of a new personal best."},
+    {h:"Minimum spend. Maximum compounding.", s:"Lowest spending month in 12. Let the portfolio run.", d:"The less you spend, the faster the machine grows."},
+  ],
+  nwVelocity: [
+    {h:"Your net worth grew {pct}% this week.", s:"+{delta} in 7 days. The machine is accelerating.", d:"Weekly NW growth is compounding in real time."},
+    {h:"Strong week for the portfolio.", s:"Net worth up {pct}% in 7 days. +{delta}.", d:"Momentum builds. Do not break it."},
+    {h:"+{pct}% net worth in one week.", s:"{delta} added to the scoreboard this week.", d:"The week that compounds is the week you barely noticed."},
+    {h:"The scoreboard moved.", s:"NW up {pct}% this week. {delta} in 7 days.", d:"Small weekly gains, compounded over years, become everything."},
+    {h:"Week-on-week: up {pct}%.", s:"Net worth grew {delta} in the past 7 days.", d:"Velocity is the hidden metric of wealth building."},
+    {h:"7-day NW gain: +{pct}%.", s:"+{delta} this week. The trend is clear.", d:"Weekly gains do not feel like much. Until they do."},
+    {h:"Net worth velocity: {pct}% this week.", s:"The portfolio added {delta} in 7 days.", d:"Compound interest works in weeks, not just years."},
+    {h:"+{delta} in 7 days.", s:"Net worth up {pct}% this week. The system is working.", d:"A good week is proof the strategy is sound."},
+    {h:"The gap widened this week.", s:"NW up {pct}% ({delta}) over 7 days.", d:"Every percentage point of weekly growth compounds exponentially."},
+    {h:"Weekly scorecard: +{pct}%.", s:"Net worth added {delta} this week. Keep going.", d:"The week you stopped watching is usually the best week."},
+  ],
+  firstInvestment: [
+    {h:"The first SIP is the most important.", s:"You have started. That puts you ahead of everyone who has not.", d:"The best time to invest was yesterday. The second best time is right now."},
+    {h:"Step one: complete.", s:"Your first investment is in. The compound machine is switched on.", d:"Starting is the hardest part. You did it."},
+    {h:"The journey begins.", s:"First investment recorded. The rest is compounding.", d:"Every investor you admire started exactly where you just did."},
+    {h:"You just planted a seed.", s:"First investment in. Time and compounding will do the rest.", d:"The tree that gives the most shade was planted long ago."},
+    {h:"The clock is ticking in your favour.", s:"First investment down. Compounding starts now, not later.", d:"Time in market is the one advantage you cannot buy back."},
+    {h:"First investment: done.", s:"The machine is switched on. Let it run.", d:"The first rupee invested is worth more than any subsequent one."},
+    {h:"Welcome to the investor class.", s:"You made your first investment. Most people never do.", d:"Investing is not for someday. You made it today."},
+    {h:"The compounding clock starts now.", s:"First investment in. The machine does not sleep.", d:"Wealth is built in the quiet hours when the markets are closed."},
+    {h:"You started. That is everything.", s:"First investment recorded. The hardest step is behind you.", d:"The investor edge is not intelligence, it is starting early."},
+    {h:"First investment in the books.", s:"The journey of a thousand crores begins with a single SIP.", d:"Small start. Big finish. Always."},
+  ],
+  debtFree: [
+    {h:"Zero debt. Full freedom.", s:"All loan accounts at zero. The financial slate is clean.", d:"Debt-free is a status very few people hold. You do now."},
+    {h:"The debt is gone.", s:"Every loan account cleared. The burden has lifted.", d:"Zero debt means every rupee of income is fully yours."},
+    {h:"Debt-free. Finally.", s:"All balances cleared. The financial weight is off.", d:"Now redirect every EMI payment into investments."},
+    {h:"Clean slate.", s:"No outstanding loans. No EMIs. Just forward.", d:"Debt-free people sleep differently. You will notice."},
+    {h:"The EMI chapter is closed.", s:"All loans at zero. 100% of income is now yours to direct.", d:"Freedom is not just financial. Zero debt changes everything."},
+    {h:"Fully debt-free.", s:"Every loan cleared. The monthly surplus just grew substantially.", d:"Redirect the old EMI amount to investments immediately."},
+    {h:"The load is gone.", s:"Zero outstanding debt. Clean financial foundation.", d:"Build on this. Debt-free is the starting point, not the destination."},
+    {h:"No more EMIs. No more interest.", s:"All loans cleared. Your cash flow just improved permanently.", d:"The best investment return is the interest you no longer pay."},
+    {h:"Debt: eliminated.", s:"Every outstanding balance is zero. The freedom is real.", d:"Now compound the surplus. Aggressively."},
+    {h:"Free and clear.", s:"No loans. No credit card balance. No debt.", d:"Debt-free is Stage 1 of financial independence. You just passed it."},
+  ],
+
 };
 
 function _copyVariant(type) {
@@ -6986,9 +7107,126 @@ function _generatePulseStories() {
   // ── B: Velocity tightening — add detail field to all stories ────
   // (stories already built above include detail from updated copy bank)
 
-  // Sort: unseen first, then by impact (milestones > streaks > scores)
+  // ── 10. Goal Achieved ───────────────────────────────────────────
+  try {
+    const _ak='mfi_achieved_'+new Date().toISOString().slice(0,10);
+    const _af=JSON.parse(sessionStorage.getItem(_ak)||'[]');
+    const _ag=(data._goals||[]).filter(g=>{
+      if(!g.mappedAccounts?.length||!g.target||g.target<=0)return false;
+      if(_af.includes(g.name||g.id))return false;
+      const cur=typeof computeGoalCurrent==='function'?computeGoalCurrent(g.mappedAccounts,g.unit,g.goalType):0;
+      return cur>=g.target;
+    });
+    if(_ag.length>0){
+      const g=_ag[0];const cv=_copyVariant('goalAchieved');
+      _af.push(g.name||g.id);try{sessionStorage.setItem(_ak,JSON.stringify(_af));}catch(e2){}
+      stories.push({id:'goal_achieved_'+(g.name||g.id||'').replace(/\s+/g,'_').slice(0,20),type:'goalAchieved',icon:'\u{1F389}',ringClass:'ring-gold',ringEffect:'glow',gradFrom:'#1A3A0A',gradTo:'#16A34A',badge:'\u{1F3C6} Goal Complete',headline:cv.h.replace(/{goal}/g,g.name||'Your Goal'),subtext:cv.s.replace(/{goal}/g,g.name||'Your Goal'),detail:cv.d,label:'Done!',shareMetric:'Fully funded: '+(g.name||'my goal'),cta:'See Goals \u2192',ctaAction:()=>{closePulsePlayer();switchScreen('budget',null);}});
+    }
+  } catch(e) {}
+
+  // ── 11. FIRE Milestone ──────────────────────────────────────────
+  try {
+    const _fr=typeof scoreFIRE==='function'?scoreFIRE(nw,agg,profile,FHS_REGION?.[profile?.region||'IN']||FHS_REGION?.IN||{}):null;
+    const _fp=Math.round((_fr?.ratio||0)*100);
+    const _pp=Math.round(((snaps.length>0?snaps[snaps.length-1]._fireRatio:0)||0)*100);
+    const _fm=[25,50,75,100].filter(m=>_fp>=m&&_pp<m);
+    if(_fm.length>0&&_fr?.corpus>0){
+      const m=_fm[_fm.length-1];const cv=_copyVariant('fireMilestone');
+      stories.push({id:'fire_milestone_'+m,type:'fireMilestone',icon:'\u{1F525}',ringClass:'ring-gold',ringEffect:'glow',gradFrom:'#3D0000',gradTo:'#DC2626',badge:'FIRE '+m+'% Milestone',headline:cv.h.replace('{pct}',m),subtext:cv.s.replace(/{pct}/g,m).replace('{corpus}',fmt(_fr.corpus)).replace('{target}',fmt(_fr.target)),detail:cv.d,label:'FIRE '+m+'%',shareMetric:m+'% of my FIRE number funded',cta:'See Retire Tab \u2192',ctaAction:()=>{closePulsePlayer();goToScreen('roi');setTimeout(()=>switchROITab('retire'),300);}});
+    }
+  } catch(e) {}
+
+  // ── 12. Spend Less This Week ────────────────────────────────────
+  try {
+    const _td2=new Date(),_dow2=_td2.getDay(),_ws2=new Date(_td2);_ws2.setDate(_td2.getDate()-_dow2);
+    const _lms2=new Date(_ws2);_lms2.setMonth(_ws2.getMonth()-1);
+    const _lme2=new Date(_lms2);_lme2.setDate(_lms2.getDate()+6);
+    const _wsp2=(from,to)=>Object.keys(data).filter(k=>/^\d{4}-\d{2}$/.test(k)).reduce((s,mk)=>s+(data[mk]?.expenses||[]).filter(e=>{const d=new Date(e.date||'');return d>=from&&d<=to;}).reduce((ss,e)=>ss+convertAmt(e.amount,e.currency),0),0);
+    const _tw2=_wsp2(_ws2,_td2),_lw2=_wsp2(_lms2,_lme2);
+    if(_tw2>0&&_lw2>0){const p2=((_lw2-_tw2)/_lw2*100);if(p2>=10){const cv=_copyVariant('spendLessWeek');stories.push({id:'spend_less_week_'+new Date().toISOString().slice(0,10),type:'spendLessWeek',icon:'\u{1F4C9}',ringClass:'ring-green',ringEffect:'',gradFrom:'#064E3B',gradTo:'#059669',badge:'Weekly Win',headline:cv.h,subtext:cv.s.replace('{pct}',p2.toFixed(0)).replace(/{saved}/g,fmt(Math.abs(_lw2-_tw2))),detail:cv.d,label:'Lighter',shareMetric:'Spent '+p2.toFixed(0)+'% less than this time last month',cta:'See Budget \u2192',ctaAction:()=>{closePulsePlayer();switchScreen('budget',null);}});}}
+  } catch(e) {}
+
+  // ── 13. Month Better Than Last ──────────────────────────────────
+  try {
+    const _cm2=viewMonth,_arr2=_cm2.split('-').map(Number),_yr2=_arr2[0],_mo2=_arr2[1];
+    const _pm2=_mo2===1?(_yr2-1)+'-12':_yr2+'-'+String(_mo2-1).padStart(2,'0');
+    const _dom2=new Date().getDate();
+    const _spd2=(mk,day)=>(data[mk]?.expenses||[]).filter(e=>parseInt((e.date||'').split('-')[2]||'99')<=day).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0);
+    const _cs2=_spd2(_cm2,_dom2),_ps2=_spd2(_pm2,_dom2);
+    if(_cs2>0&&_ps2>0){const p3=((_ps2-_cs2)/_ps2*100);if(p3>=5){const cv=_copyVariant('monthBetterThanLast');stories.push({id:'month_better_'+_cm2,type:'monthBetterThanLast',icon:'\u{1F4CA}',ringClass:'ring-green',ringEffect:'',gradFrom:'#1E3A2F',gradTo:'#10B981',badge:'Month Progress',headline:cv.h,subtext:cv.s.replace(/{pct}/g,p3.toFixed(0)),detail:cv.d,label:'Better Month',shareMetric:'Spending '+p3.toFixed(0)+'% better than last month',cta:'See Transactions \u2192',ctaAction:()=>{closePulsePlayer();switchScreen('tx',null);}});}}
+  } catch(e) {}
+
+  // ── 14. Income Growth ───────────────────────────────────────────
+  try {
+    const _imks2=Object.keys(data).filter(k=>/^\d{4}-\d{2}$/.test(k)).sort().reverse();
+    if(_imks2.length>=6){
+      const _gi2=mks2=>mks2.reduce((s,mk)=>s+(data[mk]?.income||[]).reduce((ss,e)=>ss+convertAmt(e.amount,e.currency),0),0)/mks2.length;
+      const _ra2=_gi2(_imks2.slice(0,3)),_pa2=_gi2(_imks2.slice(3,6));
+      if(_pa2>0&&_ra2>_pa2){const p4=((_ra2-_pa2)/_pa2*100);if(p4>=5){const cv=_copyVariant('incomeGrowth');stories.push({id:'income_growth_'+_imks2[0].slice(0,7),type:'incomeGrowth',icon:'\u{1F4B9}',ringClass:'ring-green',ringEffect:'',gradFrom:'#1A3A1A',gradTo:'#16A34A',badge:'Income Growing',headline:cv.h.replace('{pct}',p4.toFixed(0)),subtext:cv.s.replace('{pct}',p4.toFixed(0)).replace(/{delta}/g,fmt(_ra2-_pa2)),detail:cv.d,label:'Income Up',shareMetric:'Monthly income grew '+p4.toFixed(0)+'% this quarter',cta:'See Transactions \u2192',ctaAction:()=>{closePulsePlayer();switchScreen('tx',null);}});}}
+    }
+  } catch(e) {}
+
+  // ── 15. Savings Rate Record ─────────────────────────────────────
+  try {
+    const _smr=data[viewMonth]||{};
+    const _sir=(_smr.income||[]).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0);
+    const _ser=(_smr.expenses||[]).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0);
+    const _srr=_sir>0?Math.round((_sir-_ser)/_sir*100):0;
+    if(_srr>0){
+      const _mhr=Math.max(0,...Object.keys(data).filter(k=>/^\d{4}-\d{2}$/.test(k)&&k!==viewMonth).map(mk=>{const m=data[mk]||{};const i=(m.income||[]).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0);const x=(m.expenses||[]).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0);return i>0?Math.round((i-x)/i*100):0;}));
+      if(_srr>_mhr&&_srr>=20){const cv=_copyVariant('savingsRateRecord');stories.push({id:'savings_rate_record_'+viewMonth,type:'savingsRateRecord',icon:'\u{1F3C6}',ringClass:'ring-gold',ringEffect:'glow',gradFrom:'#1C1A00',gradTo:'#CA8A04',badge:'Personal Best',headline:cv.h.replace(/{rate}/g,_srr),subtext:cv.s.replace(/{rate}/g,_srr),detail:cv.d,label:'Record!',shareMetric:'Personal best: '+_srr+'% savings rate this month',cta:'See Budget \u2192',ctaAction:()=>{closePulsePlayer();switchScreen('budget',null);}});}
+    }
+  } catch(e) {}
+
+  // ── 16. Lowest Spend Month ──────────────────────────────────────
+  try {
+    const _lsm=(data[viewMonth]?.expenses||[]).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0);
+    if(_lsm>0){
+      const _lhm=Object.keys(data).filter(k=>/^\d{4}-\d{2}$/.test(k)&&k<viewMonth).sort().reverse().slice(0,11);
+      if(_lhm.length>=3){
+        const _mxm=Math.max(..._lhm.map(mk=>(data[mk]?.expenses||[]).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0)));
+        if(_lsm<_mxm*0.85){const cv=_copyVariant('lowestSpendMonth');stories.push({id:'lowest_spend_'+viewMonth,type:'lowestSpendMonth',icon:'\u{1F3AF}',ringClass:'ring-purple',ringEffect:'',gradFrom:'#1E1B4B',gradTo:'#4338CA',badge:'12-Month Low',headline:cv.h,subtext:cv.s,detail:cv.d,label:'Lean Month',shareMetric:'My leanest spending month in a year',cta:'See Budget \u2192',ctaAction:()=>{closePulsePlayer();switchScreen('budget',null);}});}
+      }
+    }
+  } catch(e) {}
+
+  // ── 17. NW Velocity ─────────────────────────────────────────────
+  try {
+    const _cnwv=nw.netWorth;
+    if(snaps.length>=1&&_cnwv>0){
+      const _twav=new Date();_twav.setDate(_twav.getDate()-14);
+      const _rsv=[...snaps].reverse().find(s=>{const d=new Date(s.date||s.month||'2000-01');return d>=_twav;});
+      if(_rsv){
+        const _svv=snapValue(_rsv),_vpv=_svv>0?((_cnwv-_svv)/Math.abs(_svv)*100):0,_vdv=fmt(Math.abs(_cnwv-_svv));
+        if(_vpv>=0.5){const cv=_copyVariant('nwVelocity');stories.push({id:'nw_velocity_'+new Date().toISOString().slice(0,10),type:'nwVelocity',icon:'\u{1F4C8}',ringClass:'ring-green',ringEffect:'',gradFrom:'#0A2E1A',gradTo:'#059669',badge:'NW Momentum',headline:cv.h.replace('{pct}',_vpv.toFixed(1)).replace('{delta}',_vdv),subtext:cv.s.replace('{pct}',_vpv.toFixed(1)).replace(/{delta}/g,_vdv),detail:cv.d,label:'+'+_vpv.toFixed(1)+'%',shareMetric:'Net worth grew '+_vpv.toFixed(1)+'% this week',cta:'See Net Worth \u2192',ctaAction:()=>{closePulsePlayer();goToScreen('networth');}});}
+      }
+    }
+  } catch(e) {}
+
+  // ── 18. First Investment ────────────────────────────────────────
+  try {
+    const _aic=Object.keys(data).filter(k=>/^\d{4}-\d{2}$/.test(k)).reduce((s,mk)=>s+(data[mk]?.investments||[]).length,0);
+    if(_aic===1){const cv=_copyVariant('firstInvestment');stories.push({id:'first_investment',type:'firstInvestment',icon:'\u{1F331}',ringClass:'ring-green',ringEffect:'glow',gradFrom:'#0A1F0A',gradTo:'#15803D',badge:'Journey Begins',headline:cv.h,subtext:cv.s,detail:cv.d,label:'First SIP',shareMetric:'Just made my first investment with MoneyFi',cta:'See Investments \u2192',ctaAction:()=>{closePulsePlayer();goToScreen('roi');setTimeout(()=>switchROITab('investments'),300);}});}
+  } catch(e) {}
+
+  // ── 19. Debt Free ────────────────────────────────────────────────
+  try {
+    const _dfl=(data._nwAccounts||[]).filter(a=>['loan','credit_card','other_liability'].includes(a.type)&&Math.abs(a.balance||0)>0);
+    const _tld=_dfl.reduce((s,a)=>s+Math.abs(nwConvert(a.balance||0,a.currency)),0);
+    const _phld=snaps.length>0&&(snaps[snaps.length-1]._hadLoans!==false);
+    if(_tld===0&&_phld&&snaps.length>0){const cv=_copyVariant('debtFree');stories.push({id:'debt_free_'+new Date().toISOString().slice(0,7),type:'debtFree',icon:'\u{1F4B3}',ringClass:'ring-gold',ringEffect:'glow',gradFrom:'#0F172A',gradTo:'#7C3AED',badge:'Debt-Free',headline:cv.h,subtext:cv.s,detail:cv.d,label:'Debt-Free',shareMetric:'Officially debt-free',cta:'See Net Worth \u2192',ctaAction:()=>{closePulsePlayer();goToScreen('networth');}});}
+  } catch(e) {}
+
+  // Sort: unseen first, then by impact
   const seen = _getPulseSeen();
-  const order = ['nwMilestone','lifestyleCreep','freedomGain','fridayFreedom','shieldStrength','savingsStreak','fhsRise','goalSurge','weeklyStrategy','clarityWin','pillarBreakthrough'];
+  const order = [
+    'goalAchieved','debtFree','nwMilestone','fireMilestone',
+    'savingsRateRecord','lowestSpendMonth','lifestyleCreep',
+    'freedomGain','fridayFreedom','shieldStrength','savingsStreak',
+    'nwVelocity','monthBetterThanLast','spendLessWeek',
+    'incomeGrowth','fhsRise','goalSurge','firstInvestment',
+    'weeklyStrategy','clarityWin','pillarBreakthrough'
+  ];
   stories.sort((a,b) => {
     const aS = seen.includes(a.id) ? 1 : 0;
     const bS = seen.includes(b.id) ? 1 : 0;
@@ -18970,10 +19208,11 @@ function buildMonthlySnapshot(monthKey) {
     topCategories,
     budgetPerformance,
     currency: currentCurrency.code,
-    // Rate context at snapshot time — used to explain NW changes due to FX/metals
     _fxRate:    (data._fxOverrides?.[currentCurrency.code] ?? FX_USD_BASE[currentCurrency.code] ?? 1),
     _goldUSDg:  METAL_CONFIG?.gold?.pricePerGram || 96.50,
     _silverUSDg: METAL_CONFIG?.silver?.pricePerGram || 1.03,
+    _hadLoans:  (data._nwAccounts||[]).some(a => ['loan','credit_card','other_liability'].includes(a.type) && Math.abs(a.balance||0) > 0),
+    _fireRatio: (() => { try { const r = typeof scoreFIRE==='function' ? scoreFIRE(computeNetWorth(), getFHSMonthlyAggregates(6, getFHSProfile()), getFHSProfile(), FHS_REGION?.[getFHSProfile()?.region||'IN']||{}) : null; return r?.ratio || 0; } catch(e) { return 0; } })(),
   };
 }
 
