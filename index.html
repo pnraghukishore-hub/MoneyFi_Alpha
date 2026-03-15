@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.1.0 -->
+<!-- MoneyFi v4.1.1 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -3954,6 +3954,9 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     </div>
   </div>
 
+  <!-- ── FX / Metal drift banner (hidden until conditions met) ── -->
+  <div id="nw-drift-banner" style="display:none;margin-bottom:12px;"></div>
+
   <!-- ── CTA Buttons ── -->
   <div class="nw-cta-row">
     <button class="nw-btn-snapshot" onclick="saveNWSnapshot()">📸 Snapshot Month</button>
@@ -6072,7 +6075,7 @@ async function fetchLiveMetalPrices(force) {
 
   try { renderMetals(); }   catch(e) {}
   try { renderHome();   }   catch(e) {}
-  try { renderNetWorth(); } catch(e) {}
+  try { window._nwDriftDismissed = false; renderNetWorth(); } catch(e) {}
 }
 
 function _applyLiveMetalPrices(goldG, silverG, platinumG) {
@@ -17307,8 +17310,94 @@ function buildNWMetalsBody(accounts, cfg, addBtnLabel) {
   return html;
 }
 
+// ── NW Drift Banner ───────────────────────────────────────────────────────
+// Shows a dismissible contextual note when NW dropped >2% vs last snapshot
+// AND the drop can be attributed to FX weakening or gold/metal price change.
+// Session-only — dismissed state stored in window._nwDriftDismissed.
+
+function renderNWDriftBanner() {
+  const el = document.getElementById('nw-drift-banner');
+  if (!el) return;
+
+  // Already dismissed this session
+  if (window._nwDriftDismissed) { el.style.display = 'none'; return; }
+
+  const snaps = getNWSnapshots();
+  if (snaps.length < 1) { el.style.display = 'none'; return; }
+
+  // Use the most recent snapshot as baseline
+  const lastSnap = snaps[snaps.length - 1];
+  const snapNW   = snapValue(lastSnap);
+  if (!snapNW || snapNW <= 0) { el.style.display = 'none'; return; }
+
+  const nw = computeNetWorth();
+  const currentNW = nw.netWorth;
+  const delta     = currentNW - snapNW;
+  const deltaPct  = (delta / Math.abs(snapNW)) * 100;
+
+  // Only show if NW dropped more than 2%
+  if (deltaPct >= -2) { el.style.display = 'none'; return; }
+
+  // Analyse causes
+  const causes = [];
+  const sym = currentCurrency?.symbol || '$';
+
+  // FX drift: compare snapshot FX rate vs current
+  const snapFX    = lastSnap._fxRate;
+  const curFX     = (data._fxOverrides?.[currentCurrency.code] ?? FX_USD_BASE[currentCurrency.code] ?? 1);
+  const hasFXData = snapFX && snapFX > 0 && lastSnap.currency === currentCurrency.code;
+  if (hasFXData) {
+    const fxDriftPct = ((curFX - snapFX) / snapFX) * 100;
+    if (Math.abs(fxDriftPct) >= 1) {
+      const dir = fxDriftPct < 0 ? 'weakened' : 'strengthened';
+      causes.push(`${currentCurrency.code} ${dir} ${Math.abs(fxDriftPct).toFixed(1)}% vs USD`);
+    }
+  }
+
+  // Gold drift: compare snapshot gold price vs current
+  const snapGold  = lastSnap._goldUSDg;
+  const curGold   = METAL_CONFIG?.gold?.pricePerGram || 96.50;
+  if (snapGold && snapGold > 0) {
+    const goldDriftPct = ((curGold - snapGold) / snapGold) * 100;
+    if (Math.abs(goldDriftPct) >= 2) {
+      const dir = goldDriftPct < 0 ? 'down' : 'up';
+      const goldOzChange = ((curGold - snapGold) * 31.1035).toFixed(0);
+      causes.push(`Gold ${dir} $${Math.abs(goldOzChange)}/oz since snapshot`);
+    }
+  }
+
+  // Only show banner if we can attribute the drop to FX/metals
+  if (causes.length === 0) { el.style.display = 'none'; return; }
+
+  // Format the delta
+  const snapLabel = lastSnap.month || lastSnap.date?.slice(0,7) || 'last snapshot';
+  const absDelta  = fmt(Math.abs(delta));
+
+  el.style.display = '';
+  el.innerHTML = `
+    <div style="background:#FFF7ED;border:1.5px solid #FDE68A;border-radius:14px;padding:12px 14px;position:relative;">
+      <button onclick="window._nwDriftDismissed=true;document.getElementById('nw-drift-banner').style.display='none';"
+        style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:1em;cursor:pointer;color:#9CA3AF;line-height:1;">✕</button>
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <div style="font-size:1.3em;flex-shrink:0;margin-top:1px;">📊</div>
+        <div>
+          <div style="font-size:0.8em;font-weight:900;color:#92400E;margin-bottom:3px;">
+            NW down ${absDelta} (${Math.abs(deltaPct).toFixed(1)}%) vs ${snapLabel}
+          </div>
+          <div style="font-size:0.72em;font-weight:700;color:#78350F;line-height:1.5;">
+            ${causes.map(c => `• ${c}`).join('<br>')}
+          </div>
+          <div style="font-size:0.68em;font-weight:600;color:#B45309;margin-top:4px;">
+            Your actual holdings are unchanged — this reflects market rate movements.
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderNetWorth() {
   const nw = computeNetWorth();
+  renderNWDriftBanner(); // contextual FX/metal drift note
 
   // ── Hero ──
   document.getElementById('nw-total').textContent = fmt(nw.netWorth);
@@ -17927,6 +18016,10 @@ function buildMonthlySnapshot(monthKey) {
     topCategories,
     budgetPerformance,
     currency: currentCurrency.code,
+    // Rate context at snapshot time — used to explain NW changes due to FX/metals
+    _fxRate:    (data._fxOverrides?.[currentCurrency.code] ?? FX_USD_BASE[currentCurrency.code] ?? 1),
+    _goldUSDg:  METAL_CONFIG?.gold?.pricePerGram || 96.50,
+    _silverUSDg: METAL_CONFIG?.silver?.pricePerGram || 1.03,
   };
 }
 
