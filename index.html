@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.1.8 -->
+<!-- MoneyFi v4.1.9 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -3254,6 +3254,17 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     <!-- ══ CLARITY TAB ══ -->
     <div id="roi-panel-clarity" style="display:none;">
 
+      <!-- ── Premium Action — Advisor PDF ── -->
+      <div onclick="openAdvisorPDFModal()" style="background:linear-gradient(135deg,#0F172A,#1E2A6E,#4F46E5);border-radius:16px;padding:14px 18px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 20px rgba(30,42,110,0.35);position:relative;overflow:hidden;">
+        <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.05);"></div>
+        <div>
+          <div style="font-size:0.62em;font-weight:800;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Final Intelligence Output</div>
+          <div style="font-size:0.95em;font-weight:900;color:#fff;">📄 Generate Advisor-Ready PDF</div>
+          <div style="font-size:0.7em;font-weight:700;color:rgba(255,255,255,0.65);margin-top:3px;">3-page Strategic Brief · FHS Vital Signs · Tax Engine · CA Action Plan</div>
+        </div>
+        <div style="font-size:1.8em;flex-shrink:0;">→</div>
+      </div>
+
       <!-- PCS Hero Card -->
       <div class="pcs-hero-card">
         <div class="pcs-hero-eyebrow">Portfolio Clarity Engine</div>
@@ -3299,7 +3310,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
       <!-- Export Actions Row -->
       <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <button onclick="generateClarityPDF()" style="flex:1;background:#1E2A6E;color:#fff;border:none;border-radius:14px;padding:11px 8px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <button onclick="openAdvisorPDFModal()" style="flex:1;background:#1E2A6E;color:#fff;border:none;border-radius:14px;padding:11px 8px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
           📄 CA Export PDF
         </button>
         <button onclick="generateBeforeAfterCard()" style="flex:1;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;border:none;border-radius:14px;padding:11px 8px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
@@ -5279,6 +5290,56 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <div style="padding:14px 14px 90px;" id="fhs-root">
     <!-- Content rendered by renderFHS() -->
     <div style="text-align:center;padding:60px 20px;color:var(--text-light);font-weight:700;">Loading Financial Health Score…</div>
+  </div>
+</div>
+
+<!-- ── ADVISOR PDF MODAL ── -->
+<div class="modal-overlay" id="advisor-pdf-modal" style="display:none;" onclick="if(event.target===this)closeAdvisorPDFModal()">
+  <div class="modal" style="max-width:370px;">
+    <div class="modal-header">
+      <div class="modal-title">📄 Advisor-Ready PDF</div>
+      <button class="modal-close" onclick="closeAdvisorPDFModal()">✕</button>
+    </div>
+    <div style="padding:8px 4px 12px;">
+      <!-- Mission Statement -->
+      <div style="font-size:0.75em;font-weight:800;color:var(--text-med);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Primary Objective</div>
+      <textarea id="pdf-mission" rows="2" placeholder="e.g. Achieve FIRE by age 45 with ₹2L/month inflation-adjusted lifestyle"
+        style="width:100%;border:1.5px solid #E5E7EB;border-radius:10px;padding:8px 10px;font-family:Nunito,sans-serif;font-size:0.82em;font-weight:600;color:var(--text-dark);resize:none;box-sizing:border-box;"></textarea>
+
+      <!-- Estate Checklist -->
+      <div style="font-size:0.75em;font-weight:800;color:var(--text-med);margin:12px 0 6px;text-transform:uppercase;letter-spacing:0.5px;">Estate & Legacy (tick if done)</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.82em;font-weight:700;color:var(--text-dark);cursor:pointer;">
+          <input type="checkbox" id="pdf-will" style="width:16px;height:16px;accent-color:#1E2A6E;"> Will / Testament in place
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.82em;font-weight:700;color:var(--text-dark);cursor:pointer;">
+          <input type="checkbox" id="pdf-poa" style="width:16px;height:16px;accent-color:#1E2A6E;"> Power of Attorney assigned
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.82em;font-weight:700;color:var(--text-dark);cursor:pointer;">
+          <input type="checkbox" id="pdf-nominees" style="width:16px;height:16px;accent-color:#1E2A6E;"> All nominees updated
+        </label>
+      </div>
+
+      <!-- Privacy Toggle -->
+      <div style="font-size:0.75em;font-weight:800;color:var(--text-med);margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Privacy Mode</div>
+      <div style="display:flex;gap:0;border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;">
+        <button id="pdf-mode-private" onclick="setPDFMode('private')"
+          style="flex:1;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;border:none;cursor:pointer;background:#1E2A6E;color:#fff;">
+          🔒 Private (CA)
+        </button>
+        <button id="pdf-mode-share" onclick="setPDFMode('share')"
+          style="flex:1;padding:9px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.78em;border:none;cursor:pointer;background:#F3F4F6;color:var(--text-med);">
+          📤 Shareable
+        </button>
+      </div>
+      <div id="pdf-mode-desc" style="font-size:0.72em;font-weight:600;color:var(--text-light);margin-top:6px;line-height:1.4;">
+        Shows all amounts · Account-level detail · For your CA only
+      </div>
+
+      <button onclick="generateClarityPDF()" style="width:100%;margin-top:16px;background:linear-gradient(135deg,#1E2A6E,#4F46E5);color:#fff;border:none;border-radius:14px;padding:14px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.9em;cursor:pointer;">
+        📄 Generate PDF
+      </button>
+    </div>
   </div>
 </div>
 
@@ -11700,184 +11761,406 @@ function renderGoalOrchestration() {
 // ══════════════════════════════════════════════════════════════════
 // CA EXPORT PDF — Client-side, jsPDF, zero server
 // ══════════════════════════════════════════════════════════════════
+let _pdfPrivateMode = true;
+
+function openAdvisorPDFModal() {
+  // Pre-fill mission from profile
+  const profile = getFHSProfile() || {};
+  const age = profile.age || '?';
+  const retAge = profile.retirementAge || 50;
+  const sym = currentCurrency?.symbol || '$';
+  const ta = document.getElementById('pdf-mission');
+  if (ta && !ta.value) {
+    ta.value = profile.primaryObjective || `Achieve FIRE by age ${retAge} (current age: ${age}) with an inflation-adjusted monthly lifestyle of ${sym}5,000.`;
+  }
+  document.getElementById('advisor-pdf-modal').style.display = 'flex';
+}
+function closeAdvisorPDFModal() {
+  document.getElementById('advisor-pdf-modal').style.display = 'none';
+}
+function setPDFMode(mode) {
+  _pdfPrivateMode = (mode === 'private');
+  document.getElementById('pdf-mode-private').style.background = _pdfPrivateMode ? '#1E2A6E' : '#F3F4F6';
+  document.getElementById('pdf-mode-private').style.color      = _pdfPrivateMode ? '#fff'    : 'var(--text-med)';
+  document.getElementById('pdf-mode-share').style.background   = !_pdfPrivateMode ? '#7C3AED' : '#F3F4F6';
+  document.getElementById('pdf-mode-share').style.color        = !_pdfPrivateMode ? '#fff'    : 'var(--text-med)';
+  document.getElementById('pdf-mode-desc').textContent = _pdfPrivateMode
+    ? 'Shows all amounts · Account-level detail · For your CA only'
+    : 'Amounts hidden · Percentages only · Safe to share publicly';
+}
+
 function generateClarityPDF() {
   const jsPDFLib = window.jspdf?.jsPDF;
-  if (!jsPDFLib) {
-    showToast('⏳ PDF library loading — try again in 2 seconds');
-    return;
+  if (!jsPDFLib) { showToast('⏳ PDF library loading — try again in 2 seconds'); return; }
+  closeAdvisorPDFModal();
+
+  // ── Gather all data ──────────────────────────────────────────────
+  const priv   = _pdfPrivateMode;
+  const d      = _computePCS();
+  const sym    = currentCurrency?.symbol || '₹';
+  const profile= getFHSProfile() || {};
+  const fhs    = computeFHSScore();
+  const nw     = computeNetWorth();
+  const agg    = typeof getFHSMonthlyAggregates==='function' ? getFHSMonthlyAggregates(6,profile) : {};
+  const snaps  = getNWSnapshots ? getNWSnapshots() : [];
+  const today  = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const grade  = d.pcs>=85?'A':d.pcs>=70?'B':d.pcs>=50?'C':d.pcs>=30?'D':'F';
+  const fhsGrade = fhs.grade || (fhs.overallScore>=80?'A':fhs.overallScore>=65?'B':fhs.overallScore>=50?'C':'D');
+  const fhsScore = Math.round(fhs.overallScore||fhs.score||0);
+  const mission  = document.getElementById('pdf-mission')?.value || '';
+  const hasWill      = document.getElementById('pdf-will')?.checked;
+  const hasPOA       = document.getElementById('pdf-poa')?.checked;
+  const hasNominees  = document.getElementById('pdf-nominees')?.checked;
+
+  // Privacy helpers
+  const fmtAmt  = (n) => priv ? `${sym}${Math.round(n||0).toLocaleString()}` : `${((n||0)/(nw.totalAssets||1)*100).toFixed(1)}% of assets`;
+  const fmtPct  = (n) => `${n>=0?'+':''}${(n||0).toFixed(1)}%`;
+  const maskAmt = (n, label) => priv ? `${sym}${Math.round(n||0).toLocaleString()}` : label||'[Hidden]';
+
+  const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
+  const W=210, M=18;
+  let y=0;
+
+  // ── Shared helpers ────────────────────────────────────────────────
+  const line = (text,x,yy,size,style='normal',color=[30,42,110]) => {
+    doc.setFontSize(size); doc.setFont('helvetica',style);
+    doc.setTextColor(...color); doc.text(String(text),x,yy);
+  };
+  const rline = (text,x,yy,size,style='normal',color=[30,42,110]) => {
+    doc.setFontSize(size); doc.setFont('helvetica',style);
+    doc.setTextColor(...color); doc.text(String(text),x,yy,{align:'right'});
+  };
+  const hline = (yy,col=[229,231,235]) => {
+    doc.setDrawColor(...col); doc.setLineWidth(0.3); doc.line(M,yy,W-M,yy);
+  };
+  const rect  = (x,yy,w,h,fill) => { doc.setFillColor(...fill); doc.roundedRect(x,yy,w,h,2,2,'F'); };
+  const chip  = (text,x,yy,col,textCol=[255,255,255]) => {
+    const tw = doc.getTextWidth(text)+4; rect(x,yy-4,tw,5.5,col);
+    doc.setFontSize(6); doc.setFont('helvetica','bold'); doc.setTextColor(...textCol);
+    doc.text(text,x+2,yy);
+  };
+  const newPage = () => { doc.addPage(); y=M+6; };
+  const checkY  = (needed=18) => { if(y+needed>278) newPage(); };
+
+  // ══════════════════════════════════════════════════════════════════
+  // PAGE 1 — VITAL SIGNS (The Health View)
+  // ══════════════════════════════════════════════════════════════════
+  rect(0,0,W,42,[30,42,110]);
+  line('MoneyFi',M,13,18,'bold',[255,255,255]);
+  line('Advisor-Ready Strategic Brief',M,21,9,'normal',[180,190,230]);
+  line(priv?'PRIVATE — FOR CA/ADVISOR USE ONLY':'SHAREABLE VERSION — AMOUNTS HIDDEN',M,29,7,'bold',priv?[255,200,80]:[110,231,183]);
+  line(`Prepared: ${today}`,W-M,13,8,'normal',[150,165,210]);
+  if(profile.age) line(`Age: ${profile.age}`,W-M,21,8,'normal',[150,165,210]);
+  y=50;
+
+  // Mission Statement banner
+  if(mission) {
+    rect(M,y,W-2*M,14,[239,246,255]);
+    doc.setDrawColor(30,42,110); doc.setLineWidth(0.8); doc.line(M,y,M,y+14);
+    line('PRIMARY OBJECTIVE',M+4,y+5,6,'bold',[30,42,110]);
+    const mLines = doc.splitTextToSize(mission,W-2*M-10);
+    doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(30,42,110);
+    doc.text(mLines[0],M+4,y+11);
+    y+=20;
   }
 
-  const d   = _computePCS();
-  const sym = currentCurrency?.symbol || '₹';
-  const profile = getFHSProfile() || {};
-  const today = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
-  const grade = d.pcs>=85?'A':d.pcs>=70?'B':d.pcs>=50?'C':d.pcs>=30?'D':'F';
-  const gradeLabel = {A:'Clean & Focused',B:'Good Shape',C:'Fragmented',D:'Significant Overlap',F:'Critical — Act Now'};
+  // FHS Hero
+  const fhsCol = fhsScore>=80?[34,197,94]:fhsScore>=65?[245,158,11]:fhsScore>=50?[249,115,22]:[239,68,68];
+  rect(M,y,W-2*M,32,fhsCol.map(c=>Math.min(255,c+180)));
+  doc.setFillColor(...fhsCol); doc.circle(M+20,y+16,13,'F');
+  doc.setFontSize(16); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text(String(fhsScore),M+20,y+14,{align:'center'});
+  doc.setFontSize(6); doc.text('/100',M+20,y+19,{align:'center'});
+  line('FINANCIAL HEALTH SCORE',M+37,y+8,8,'bold',[30,42,110]);
+  const fhsLabel = fhsScore>=80?'Mastery':fhsScore>=65?'Strong':fhsScore>=50?'Building':'Foundation';
+  line(`Grade ${fhsGrade} — ${fhsLabel}`,M+37,y+15,10,'bold',fhsCol);
+  line(fhs.summaryLine||'Your financial health snapshot',M+37,y+22,7,'normal',[75,85,99]);
+  // Progress bar
+  doc.setFillColor(229,231,235); doc.rect(M+37,y+26,W-M-37-M,3,'F');
+  doc.setFillColor(...fhsCol); doc.rect(M+37,y+26,(fhsScore/100)*(W-M-37-M),3,'F');
+  y+=38;
 
-  const doc = new jsPDFLib({ orientation:'portrait', unit:'mm', format:'a4' });
-  const W = 210, M = 18;  // page width, margin
-  let y = 0;
+  // FHS Pillars compact grid
+  if(fhs.pillarResults && fhs.pillarResults.length>0) {
+    line('PILLAR SCORES',M,y,7,'bold',[100,116,139]); y+=5; hline(y); y+=5;
+    const pillars = fhs.pillarResults.slice(0,8);
+    const colW=(W-2*M)/4; const rowH=8;
+    pillars.forEach((p,i) => {
+      const col=M+(i%4)*colW; const row=y+Math.floor(i/4)*rowH;
+      const pCol=p.score>=70?[34,197,94]:p.score>=45?[245,158,11]:[239,68,68];
+      rect(col,row-4,colW-2,rowH-1,pCol.map(c=>Math.min(255,c+185)));
+      doc.setFontSize(6); doc.setFont('helvetica','bold'); doc.setTextColor(...pCol);
+      doc.text((p.label||p.pillar||'').substring(0,14),col+2,row);
+      doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+      doc.text(`${Math.round(p.score||0)}`,col+colW-6,row,{align:'right'});
+    });
+    y+=Math.ceil(pillars.length/4)*rowH+4;
+  }
 
-  // ── Helper fns ──────────────────────────────────────────────────
-  const line  = (text, x, yy, size, style='normal', color=[30,42,110]) => {
-    doc.setFontSize(size); doc.setFont('helvetica', style);
-    doc.setTextColor(...color); doc.text(text, x, yy);
-  };
-  const hline = (yy, col=[229,231,235]) => {
-    doc.setDrawColor(...col); doc.setLineWidth(0.3); doc.line(M, yy, W-M, yy);
-  };
-  const rect = (x, yy, w, h, fill) => {
-    doc.setFillColor(...fill); doc.roundedRect(x, yy, w, h, 2, 2, 'F');
-  };
+  // Foundation Audit
+  checkY(40);
+  line('FOUNDATION AUDIT',M,y,8,'bold',[30,42,110]); y+=5; hline(y); y+=5;
 
-  // ── Page 1: Cover ───────────────────────────────────────────────
-  // Header bar
-  rect(0, 0, W, 38, [30, 42, 110]);
-  line('MoneyFi', M, 14, 20, 'bold', [255,255,255]);
-  line('Portfolio Consolidation Plan', M, 22, 10, 'normal', [180,190,230]);
-  line(`Prepared: ${today}`, M, 30, 8, 'normal', [150,165,210]);
-  if (profile.name) line(`For: ${profile.name}`, W-M, 30, 8, 'normal', [150,165,210]);
+  // Emergency Fund
+  const efMonths = fhs.pillarResults?.find(p=>/emergency/i.test(p.pillar||p.label))?.months
+    || (agg?.avgExp>0 ? Math.round(nw.byType?.emergency?.total/agg.avgExp) : null)
+    || (profile.emergencyMonths||0);
+  const efTarget = profile.region==='US'?6:6;
+  line('Emergency Buffer:',M,y,8,'normal',[55,65,81]);
+  const efText = efMonths ? `${efMonths} months survival runway` : 'Not configured';
+  const efCol  = efMonths>=efTarget?[34,197,94]:efMonths>=3?[245,158,11]:[239,68,68];
+  line(efText,M+50,y,8,'bold',efCol); y+=7;
 
-  y = 52;
+  // DTI
+  const totalDebt = nw.liabTotal||0;
+  const annInc    = (agg?.avgInc||0)*12;
+  const dti       = annInc>0 ? (totalDebt/annInc*100) : null;
+  line('Debt-to-Income:',M,y,8,'normal',[55,65,81]);
+  if(dti!==null) {
+    const dtiText = priv?`${dti.toFixed(1)}% — ${dti<20?'Optimal':dti<40?'Moderate':'High'}`:`${dti.toFixed(1)}%`;
+    line(dtiText,M+50,y,8,'bold',dti<20?[34,197,94]:dti<40?[245,158,11]:[239,68,68]);
+  } else { line('Insufficient data',M+50,y,8,'normal',[156,163,175]); }
+  y+=7;
 
-  // PCS Score box
-  rect(M, y, W-2*M, 28, [245,248,255]);
-  line('PORTFOLIO CLARITY SCORE', M+5, y+8, 7, 'bold', [100,116,139]);
-  line(`${d.pcs}/100`, M+5, y+18, 22, 'bold', [30,42,110]);
-  line(`Grade ${grade} — ${gradeLabel[grade]}`, M+5, y+25, 8, 'normal', [100,116,139]);
-  // Score bar
-  doc.setFillColor(229,231,235); doc.rect(W/2, y+10, W/2-M-5, 5, 'F');
-  const barW = Math.round((d.pcs/100) * (W/2-M-5));
-  const barCol = grade==='A'||grade==='B' ? [34,197,94] : grade==='C' ? [245,158,11] : [239,68,68];
-  doc.setFillColor(...barCol); doc.rect(W/2, y+10, barW, 5, 'F');
-  line(`${d.activeCount} active · ${d.pausedCount} paused · ${d.totalFunds} total funds`, W/2, y+22, 7, 'normal', [100,116,139]);
+  // Millionaire Velocity
+  if(snaps.length>=2) {
+    const last=snaps[snaps.length-1]; const prev=snaps[snaps.length-2];
+    const nwDelta=snapValue(last)-(snapValue(prev)||0);
+    const dailySpend=agg?.avgExp>0?agg.avgExp/30:0;
+    const daysBought=dailySpend>0?Math.round(nwDelta/dailySpend/365*30):null;
+    line('Freedom Velocity (12m):',M,y,8,'normal',[55,65,81]);
+    if(daysBought!==null&&!isNaN(daysBought)) {
+      line(priv?`${daysBought>0?'+':''}${daysBought} days of freedom bought`:`${daysBought>0?'+':''}${daysBought} freedom days`,M+50,y,8,'bold',daysBought>0?[34,197,94]:[239,68,68]);
+    } else { line('Snapshot data building',M+50,y,7,'italic',[156,163,175]); }
+    y+=7;
+  }
 
-  y += 36;
+  // Estate Hygiene
+  line('Estate & Legacy:',M,y,8,'normal',[55,65,81]);
+  const estateItems=[['Will',hasWill],['POA',hasPOA],['Nominees',hasNominees]];
+  let ex=M+50;
+  estateItems.forEach(([lbl,done])=>{
+    chip(done?`✓ ${lbl}`:`✗ ${lbl}`,ex,y,done?[34,197,94]:[239,68,68]);
+    ex+=doc.getTextWidth(`✓ ${lbl}`)+8;
+  });
+  y+=10;
 
-  // Penalty summary
-  line('SCORE BREAKDOWN', M, y, 8, 'bold', [100,116,139]); y += 6;
-  hline(y); y += 5;
-  const penalties = [
-    ['Category Overlap Penalty',   `-${d.redundancyPenalty} pts`, d.redundancyPenalty===0],
-    ['AMC Concentration Penalty',  `-${d.concentrationPenalty} pts`, d.concentrationPenalty===0],
-    ['Paused Fund Drift Penalty',  `-${d.driftPenalty} pts`, d.driftPenalty===0],
-    ['Goal-Horizon Mismatch',      `-${d.goalMismatchPenalty} pts`, d.goalMismatchPenalty===0],
+  // NW Summary (private only)
+  if(priv) {
+    checkY(20);
+    hline(y); y+=5;
+    line('NET WORTH SNAPSHOT',M,y,8,'bold',[30,42,110]); y+=5;
+    line('Total Assets',M,y,8,'normal',[55,65,81]); rline(maskAmt(nw.totalAssets),W-M,y,8,'bold',[30,42,110]); y+=6;
+    line('Total Liabilities',M,y,8,'normal',[55,65,81]); rline(maskAmt(nw.liabTotal),W-M,y,8,'bold',[220,38,38]); y+=6;
+    hline(y); y+=4;
+    line('Net Worth',M,y,10,'bold',[30,42,110]); rline(maskAmt(nw.netWorth),W-M,y,10,'bold',[30,42,110]); y+=8;
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // PAGE 2 — ENGINE ROOM (Tax & Income View)
+  // ══════════════════════════════════════════════════════════════════
+  newPage();
+  rect(0,0,W,14,[30,42,110]);
+  line('Page 2 — The Engine Room: Tax & Income Efficiency',M,10,9,'bold',[255,255,255]);
+  y=22;
+
+  // Cash Flow Profile
+  line('CASH FLOW PROFILE',M,y,8,'bold',[30,42,110]); y+=5; hline(y); y+=5;
+  const avgInc=agg?.avgInc||0; const avgExp=agg?.avgExp||0; const surplus=avgInc-avgExp;
+  const annGross=avgInc*12; const annBurn=avgExp*12;
+  const rows2=[
+    ['Annual Gross Income', maskAmt(annGross)],
+    ['Annual Essential Burn', maskAmt(annBurn)],
+    ['Investable Surplus / month', priv?`${sym}${Math.round(surplus).toLocaleString()} (${annGross>0?(surplus/avgInc*100).toFixed(0)+'% savings rate':'—'})`:'[Percentage only mode]'],
   ];
-  penalties.forEach(([lbl, pts, ok]) => {
-    line(lbl, M, y, 8, 'normal', [55,65,81]);
-    line(pts, W-M, y, 8, 'bold', ok?[5,150,105]:[220,38,38]);
-    y += 6;
+  rows2.forEach(([lbl,val])=>{
+    line(lbl,M,y,8,'normal',[55,65,81]); rline(val,W-M,y,8,'bold',[30,42,110]); y+=7;
   });
-  hline(y); y += 5;
-  line('Penalties subtracted from 100', M, y, 7, 'italic', [156,163,175]);
-  y += 12;
+  y+=4;
 
-  // ── Overlap section ──────────────────────────────────────────────
-  if (d.overlapDetails.length > 0) {
-    line('CATEGORY OVERLAP DETECTED', M, y, 9, 'bold', [30,42,110]); y += 6;
-    hline(y); y += 5;
-    d.overlapDetails.forEach(({ cat, accs, max }) => {
-      if (y > 255) { doc.addPage(); y = M; }
-      line(`${cat}`, M, y, 8, 'bold', [55,65,81]);
-      line(`${accs.length} funds (max ${max} recommended)`, W-M, y, 7, 'normal', [220,38,38]);
-      y += 5;
-      accs.forEach(a => {
-        const val = nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);
-        const cost = a.investedAmount!=null?(nwConvert?nwConvert(a.investedAmount,a.currency):a.investedAmount):null;
-        const pct = cost&&cost>0?(val-cost)/cost*100:null;
-        const roi = pct!=null?` (${pct>=0?'+':''}${pct.toFixed(0)}%)` : '';
-        line(`  · ${_cleanFundName(a.name).substring(0,45)} — ${sym}${Math.round(val).toLocaleString()}${roi}`, M+3, y, 7, 'normal', [75,85,99]);
-        y += 5;
-      });
-      y += 2;
-    });
-    y += 4;
+  // Asset Allocation vs Target
+  checkY(40);
+  line('ASSET ALLOCATION VS TARGET',M,y,8,'bold',[30,42,110]); y+=5; hline(y); y+=5;
+  const acMap={equity:0,debt:0,gold:0,re:0,cash:0,other:0};
+  const ASSET_CLASSES={mf_equity:'equity',mf_elss:'equity',mf_index:'equity',stocks_direct:'equity',brokerage:'equity',brokerage_taxable:'equity',retirement_401k:'equity',retirement_roth:'equity',retirement_ira:'equity',mf_debt:'debt',bonds_fd:'debt',bank_fd:'debt',nps:'debt',epf:'debt',ppf:'debt',ibond:'debt',checking:'cash',savings_acc:'cash',bank_checking_us:'cash',emergency:'cash',hsa:'cash',mf_gold:'gold',metals:'gold',mf_hybrid:'equity',realestate:'re',college_529:'equity'};
+  (data._nwAccounts||[]).filter(a=>!['loan','credit_card','other_liability'].includes(a.type)).forEach(a=>{
+    const ac=ASSET_CLASSES[a.type]||'other';
+    acMap[ac]+=(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0));
+  });
+  const totalAC=Object.values(acMap).reduce((s,v)=>s+v,0)||1;
+  const targetAC=data._targetAllocation||{equity:60,debt:20,gold:10,re:5,cash:5};
+  const acLabels={equity:'Equity/Growth',debt:'Fixed Income',gold:'Gold/Metals',re:'Real Estate',cash:'Cash/Liquid',other:'Other'};
+  const acColors={equity:[79,70,229],debt:[16,185,129],gold:[245,158,11],re:[239,68,68],cash:[107,114,128],other:[156,163,175]};
+  const headerCols=[85,100,116,139];
+  line('Asset Class',M,y,7,'bold',headerCols); line('Current',M+70,y,7,'bold',headerCols); line('Target',M+95,y,7,'bold',headerCols); line('Gap',W-M,y,7,'bold',headerCols); y+=4;
+  hline(y); y+=4;
+  Object.keys(acLabels).forEach(ac=>{
+    if(acMap[ac]===0&&!targetAC[ac]) return;
+    const curPct=(acMap[ac]/totalAC*100);
+    const tgtPct=targetAC[ac]||0;
+    const gap=curPct-tgtPct;
+    line(acLabels[ac],M,y,7.5,'normal',[55,65,81]);
+    // Mini bar
+    const barX=M+55; const barMaxW=30;
+    doc.setFillColor(229,231,235); doc.rect(barX,y-3.5,barMaxW,4,'F');
+    doc.setFillColor(...(acColors[ac]||[100,100,100])); doc.rect(barX,y-3.5,Math.min(curPct/100*barMaxW,barMaxW),4,'F');
+    line(`${curPct.toFixed(0)}%`,M+70,y,7,'bold',acColors[ac]||[55,65,81]);
+    line(`${tgtPct}%`,M+95,y,7,'normal',[100,116,139]);
+    const gCol=Math.abs(gap)<5?[34,197,94]:Math.abs(gap)<15?[245,158,11]:[239,68,68];
+    rline(`${gap>0?'+':''}${gap.toFixed(0)}%`,W-M,y,7,'bold',gCol);
+    y+=7;
+  });
+  y+=4;
+
+  // Tax Shelter Utilization
+  checkY(45);
+  line('TAX SHELTER UTILIZATION',M,y,8,'bold',[30,42,110]); y+=5; hline(y); y+=5;
+  const region=profile.region||'IN';
+  const shelters=region==='IN'?[
+    {name:'80C (ELSS+EPF+PPF)',limit:150000,used:(()=>{ const inv=(data[viewMonth]?.investments||[]); return inv.filter(i=>['ELSS','EPF','PPF'].some(t=>i.category?.includes(t))).reduce((s,i)=>s+convertAmt(i.amount,i.currency),0)*12; })()},
+    {name:'80D Health Insurance',limit:25000,used:((profile.healthCover||0)>0?25000:0)},
+    {name:'NPS 80CCD(1B)',limit:50000,used:((data._nwAccounts||[]).filter(a=>a.type==='nps').reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):0),0)>0?50000:0)},
+  ]:[
+    {name:'401(k)',limit:23000,used:((data._nwAccounts||[]).filter(a=>a.type==='retirement_401k').reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):0)/15,0))},
+    {name:'IRA/Roth IRA',limit:7000,used:((data._nwAccounts||[]).filter(a=>['retirement_ira','retirement_roth'].includes(a.type)).reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):0)/15,0))},
+    {name:'HSA',limit:3850,used:((data._nwAccounts||[]).filter(a=>a.type==='hsa').reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):0)/15,0))},
+  ];
+  shelters.forEach(sh=>{
+    const usedCapped=Math.min(sh.used||0,sh.limit);
+    const pct=sh.limit>0?(usedCapped/sh.limit*100):0;
+    line(sh.name,M,y,7.5,'normal',[55,65,81]);
+    const bX=M+70; const bW=W-M*2-70;
+    doc.setFillColor(229,231,235); doc.rect(bX,y-3.5,bW,4,'F');
+    const barCol2=pct>=80?[34,197,94]:pct>=40?[245,158,11]:[239,68,68];
+    doc.setFillColor(...barCol2); doc.rect(bX,y-3.5,pct/100*bW,4,'F');
+    rline(priv?`${sym}${Math.round(usedCapped).toLocaleString()} / ${sym}${sh.limit.toLocaleString()}`:`${pct.toFixed(0)}% utilized`,W-M,y,7,'bold',barCol2);
+    y+=8;
+  });
+  y+=4;
+
+  // Unrealized Gains
+  checkY(30);
+  line('ESTIMATED UNREALIZED GAINS',M,y,8,'bold',[30,42,110]); y+=5; hline(y); y+=5;
+  const gainAccs=(data._nwAccounts||[]).filter(a=>a.investedAmount!=null&&a.investedAmount>0&&!['loan','credit_card','other_liability'].includes(a.type));
+  const totalGain=gainAccs.reduce((s,a)=>{
+    const cur=nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);
+    const cost=nwConvert?nwConvert(a.investedAmount||0,a.currency):(a.investedAmount||0);
+    return s+(cur-cost);
+  },0);
+  const totalCost=gainAccs.reduce((s,a)=>s+(nwConvert?nwConvert(a.investedAmount||0,a.currency):(a.investedAmount||0)),0);
+  const gainPct=totalCost>0?(totalGain/totalCost*100):0;
+  line('Total Unrealized Gain:',M,y,8,'normal',[55,65,81]);
+  rline(priv?`${sym}${Math.round(totalGain).toLocaleString()} (${gainPct>=0?'+':''}${gainPct.toFixed(1)}%)`:`${gainPct>=0?'+':''}${gainPct.toFixed(1)}%`,W-M,y,8,'bold',totalGain>=0?[34,197,94]:[239,68,68]);
+  y+=6;
+  line('Note: Indicative only. Use broker statements for STCG/LTCG split.',M,y,6.5,'italic',[156,163,175]); y+=8;
+
+  // ══════════════════════════════════════════════════════════════════
+  // PAGE 3 — CONSOLIDATION STRATEGY (Action View)
+  // ══════════════════════════════════════════════════════════════════
+  newPage();
+  rect(0,0,W,14,[30,42,110]);
+  line('Page 3 — Consolidation Strategy: Action Plan',M,10,9,'bold',[255,255,255]);
+  y=22;
+
+  // PCS score reminder
+  rect(M,y,W-2*M,14,[245,248,255]);
+  line(`Portfolio Clarity Score: ${d.pcs}/100 — Grade ${grade}`,M+5,y+6,8,'bold',[30,42,110]);
+  const gradeLabels={A:'Clean & Focused',B:'Good Shape',C:'Fragmented',D:'Significant Overlap',F:'Critical — Act Now'};
+  line(gradeLabels[grade]||'',M+5,y+11,7,'normal',[100,116,139]);
+  doc.setFillColor(229,231,235); doc.rect(W/2,y+6,W/2-M-5,4,'F');
+  const bCol=grade==='A'||grade==='B'?[34,197,94]:grade==='C'?[245,158,11]:[239,68,68];
+  doc.setFillColor(...bCol); doc.rect(W/2,y+6,Math.round(d.pcs/100*(W/2-M-5)),4,'F');
+  y+=20;
+
+  // Keep / Review / Exit table with liquidity tag
+  line('KEEP / REVIEW / EXIT — WITH LIQUIDITY STATUS',M,y,8,'bold',[30,42,110]); y+=5; hline(y); y+=3;
+
+  // Header
+  const vCols={keep:[34,197,94],review:[245,158,11],exit:[244,63,94]};
+  const vLabels={keep:'KEEP',review:'REVIEW',exit:'EXIT'};
+  line('Verdict',M,y,6.5,'bold',[100,116,139]);
+  line('Fund / Account',M+20,y,6.5,'bold',[100,116,139]);
+  line('Value',M+110,y,6.5,'bold',[100,116,139]);
+  line('Penalty Reason',M+130,y,6.5,'bold',[100,116,139]);
+  line('Liquidity',W-M,y,6.5,'bold',[100,116,139]);
+  y+=4; hline(y); y+=3;
+
+  (_clarityFundData||[]).forEach(({a,verdict,val,pct,cat,score})=>{
+    checkY(9);
+    const col=vCols[verdict]||[100,116,139];
+    rect(M,y-4,14,5.5,col);
+    doc.setFontSize(5.5); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text(vLabels[verdict]||verdict,M+1,y);
+    const name=_cleanFundName(a.name||'').substring(0,30);
+    line(name,M+20,y,6.5,'normal',[30,42,110]);
+    const valStr=priv?`${sym}${Math.round(val||0).toLocaleString()}`:`${pct!=null?(pct>=0?'+':'')+pct.toFixed(0)+'%':'—'}`;
+    line(valStr,M+110,y,6.5,'normal',[100,116,139]);
+    // Penalty reason
+    const penaltyReason=cat?cat.substring(0,18):(verdict==='exit'?'Overlap/Low':'—');
+    line(penaltyReason,M+130,y,6,'italic',[156,163,175]);
+    // Liquidity tag
+    const isLocked=['mf_elss','epf','ppf','nps','bank_fd','ibond','retirement_401k','retirement_roth','retirement_ira','college_529'].includes(a.type);
+    const liqText=isLocked?'LOCKED':'FREE';
+    const liqCol=isLocked?[245,158,11]:[34,197,94];
+    chip(liqText,W-M-20,y,liqCol);
+    y+=7;
+  });
+  y+=6;
+
+  // CA Instruction Footer
+  checkY(45);
+  hline(y); y+=6;
+  line('CA INSTRUCTION — REBALANCING MANDATE',M,y,8,'bold',[30,42,110]); y+=5;
+
+  // Pre-filled instructions from triage
+  const exitFunds2=(_clarityFundData||[]).filter(f=>f.verdict==='exit');
+  const keepFunds2=(_clarityFundData||[]).filter(f=>f.verdict==='keep');
+  const totalExitVal=exitFunds2.reduce((s,f)=>s+(f.val||0),0);
+
+  if(exitFunds2.length>0) {
+    const instrText=priv
+      ? `Exit ${exitFunds2.length} fund(s) valued at ${sym}${Math.round(totalExitVal).toLocaleString()} and reinvest into top ${Math.min(keepFunds2.length,5)} performers. Check exit loads before redemption.`
+      : `Exit ${exitFunds2.length} fund(s) and consolidate into top ${Math.min(keepFunds2.length,5)} performers.`;
+    const instrLines=doc.splitTextToSize(instrText,W-2*M);
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(30,42,110);
+    doc.text(instrLines,M,y);
+    y+=instrLines.length*5+4;
   }
 
-  // ── KEEP / REVIEW / EXIT table ───────────────────────────────────
-  if (y > 220) { doc.addPage(); y = M; }
-  line('CONSOLIDATION RECOMMENDATIONS', M, y, 9, 'bold', [30,42,110]); y += 6;
-  hline(y); y += 5;
+  // Signature lines
+  line('CA / Advisor Signature:',M,y,8,'normal',[55,65,81]);
+  doc.setDrawColor(200,200,200); doc.setLineWidth(0.3); doc.line(M+50,y,W-M-40,y);
+  line('Date:',W-M-35,y,8,'normal',[55,65,81]); doc.line(W-M-20,y,W-M,y); y+=10;
+  line('Approved Actions:',M,y,8,'normal',[55,65,81]); y+=5;
+  doc.line(M,y,W-M,y); y+=6;
+  doc.line(M,y,W-M,y); y+=6;
+  doc.line(M,y,W-M,y); y+=8;
 
-  const verdictCols = { keep:[34,197,94], review:[245,158,11], exit:[244,63,94] };
-  const verdictLabels = { keep:'KEEP', review:'REVIEW', exit:'EXIT' };
-
-  _clarityFundData.forEach(({ a, verdict, val, pct }) => {
-    if (y > 265) { doc.addPage(); y = M; }
-    const col = verdictCols[verdict];
-    rect(M, y-4, 14, 5, col);
-    line(verdictLabels[verdict], M+1, y, 5, 'bold', [255,255,255]);
-    line(_cleanFundName(a.name).substring(0,42), M+16, y, 7.5, 'normal', [30,42,110]);
-    const valStr = `${sym}${Math.round(val).toLocaleString()}${pct!=null?' · '+(pct>=0?'+':'')+pct.toFixed(0)+'%':''}`;
-    line(valStr, W-M, y, 7, 'normal', [100,116,139]);
-    y += 7;
-  });
-
-  // ── Tax Estimate page ────────────────────────────────────────────
-  const exitFunds = _clarityFundData.filter(f=>f.verdict==='exit'&&f.cost!=null&&f.pct!=null&&f.pct>0);
-  if (exitFunds.length) {
-    if (y > 220) { doc.addPage(); y = M; }
-    y += 6;
-    line('TAX ESTIMATE ON EXIT FUNDS', M, y, 9, 'bold', [30,42,110]); y += 6;
-    hline(y); y += 5;
-
-    const now = new Date();
-    const oneYearAgo = new Date(now); oneYearAgo.setFullYear(oneYearAgo.getFullYear()-1);
-    const isINR = (currentCurrency?.code||'INR')==='INR';
-    let ltcgGain=0, stcgGain=0;
-
-    exitFunds.forEach(({ a, val, cost }) => {
-      const gain = val - cost;
-      if (gain <= 0) return;
-      const lastD = a._lastTransactionDate || '';
-      const purchaseD = lastD ? new Date(lastD+'-01') : null;
-      const heldYrs = purchaseD ? (now-purchaseD)/(365.25*24*3600*1000) : null;
-      if (heldYrs===null||heldYrs>=1) ltcgGain += gain;
-      else stcgGain += gain;
-    });
-
-    const LTCG_EXEMPT = isINR ? 100000 : 0;
-    const ltcgTaxable = Math.max(0, ltcgGain - LTCG_EXEMPT);
-    const ltcgTax  = Math.round(ltcgTaxable * 0.10);
-    const stcgTax  = Math.round(stcgGain * 0.15);
-    const totalTax = ltcgTax + stcgTax;
-
-    const taxRows = [
-      ['Long-Term Gains (held >1yr)', sym+_fmtK(ltcgGain), '10% LTCG'+(isINR?' above ₹1L exemption':''), sym+_fmtK(ltcgTax)],
-      ['Short-Term Gains (held <1yr)', sym+_fmtK(stcgGain), '15% STCG — wait for 1yr mark if possible', sym+_fmtK(stcgTax)],
-      ['TOTAL ESTIMATED TAX', '', '', sym+_fmtK(totalTax)],
-    ];
-
-    taxRows.forEach(([lbl, gain, note, tax], i) => {
-      if (i===2) { hline(y); y+=4; }
-      line(lbl, M, y, i===2?9:8, i===2?'bold':'normal', i===2?[30,42,110]:[55,65,81]);
-      if (gain) line(gain, M+80, y, 8, 'normal', [100,116,139]);
-      line(tax, W-M, y, i===2?9:8, i===2?'bold':'normal', i===2?[220,38,38]:[100,116,139]);
-      if (note && i<2) { y+=4; line(note, M+3, y, 6.5, 'italic', [156,163,175]); }
-      y += 7;
-    });
-
-    y += 4;
-    line('This is an indicative estimate only. Verify with your CA.', M, y, 6.5, 'italic', [156,163,175]);
-    if (profile.region==='IN' || isINR) {
-      y += 4;
-      line('NRI note: DTAA provisions may apply. LTCG rates may differ per treaty.', M, y, 6.5, 'italic', [156,163,175]);
-    }
+  // Goal mismatch callout if applicable
+  if(d.goalMismatchPenalty>0) {
+    checkY(18);
+    rect(M,y,W-2*M,16,[255,247,237]);
+    doc.setDrawColor(245,158,11); doc.setLineWidth(0.5); doc.line(M,y,M,y+16);
+    line('⚠ GOAL-HORIZON MISMATCH',M+4,y+6,7.5,'bold',[146,64,14]);
+    line(`-${d.goalMismatchPenalty} pts penalty. Some goals have mismatched fund types. Review with CA.`,M+4,y+12,7,'normal',[146,64,14]);
+    y+=20;
   }
 
   // ── Footer on all pages ──────────────────────────────────────────
-  const totalPages = doc.getNumberOfPages();
-  for (let p=1; p<=totalPages; p++) {
+  const totalPgs=doc.getNumberOfPages();
+  for(let p=1;p<=totalPgs;p++){
     doc.setPage(p);
     hline(285);
-    line(`MoneyFi · Portfolio Consolidation Plan · ${today}`, M, 290, 6.5, 'normal', [156,163,175]);
-    line(`Page ${p} of ${totalPages}`, W-M, 290, 6.5, 'normal', [156,163,175]);
-    line('Indicative only — not financial advice. Verify with your CA/advisor.', W/2, 290, 6, 'italic', [156,163,175]);
+    line(`MoneyFi · Advisor-Ready Strategic Brief · ${today}`,M,290,6,'normal',[156,163,175]);
+    line(`Page ${p} of ${totalPgs}`,W-M,290,6,'normal',[156,163,175]);
+    line('Indicative only — not financial advice. Verify all figures with your CA/advisor.',W/2,290,5.5,'italic',[156,163,175]);
   }
 
-  doc.save(`MoneyFi_Consolidation_Plan_${today.replace(/ /g,'_')}.pdf`);
-  showToast('📄 CA Export PDF downloaded!', 3000);
+  const mode=priv?'Private':'Shareable';
+  doc.save(`MoneyFi_Advisor_Brief_${mode}_${today.replace(/ /g,'_')}.pdf`);
+  showToast('📄 Advisor PDF downloaded!', 3000);
 }
+
 
 // ══════════════════════════════════════════════════════════════════
 // BEFORE / AFTER SHARE CARD — Canvas, 1080×1080, WhatsApp-optimised
@@ -29078,6 +29361,17 @@ function renderFHS() {
       </div>
     </div>` : ''}
     ${renderFHSInsights(fhs)}
+
+    <!-- Advisor PDF Export -->
+    <div onclick="openAdvisorPDFModal()" style="background:linear-gradient(135deg,#0F172A,#1E2A6E);border-radius:14px;padding:13px 16px;margin-top:14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 16px rgba(30,42,110,0.3);">
+      <div>
+        <div style="font-size:0.62em;font-weight:800;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Share with your CA</div>
+        <div style="font-size:0.88em;font-weight:900;color:#fff;">📄 Export Advisor-Ready PDF</div>
+        <div style="font-size:0.68em;font-weight:700;color:rgba(255,255,255,0.6);margin-top:2px;">3-page brief · Private or shareable mode</div>
+      </div>
+      <div style="font-size:1.6em;">→</div>
+    </div>
+
     </div><!-- end fhs-pillars-wrap -->
   `;
 }
