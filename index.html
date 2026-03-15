@@ -12204,17 +12204,11 @@ function generateClarityPDF() {
   doc.setFillColor(...COL.yellow); doc.rect(0,0,4,38,'F');
   // Golden-yellow bottom rule on header
   doc.setFillColor(...COL.yellow); doc.rect(0,37,W,1,'F');
-  // Declare positions first — scoreX = circle centre, metaX = right-align point for text
-  const scoreX = W-M-14;
-  const metaX  = scoreX - 14;
   ln('MoneyFi',M,12,16,'bold',COL.white);
   ln('Advisor-Ready Strategic Brief',M,20,9,'normal',[160,180,235]);
   ln(priv?'PRIVATE — FOR CA/ADVISOR USE ONLY':'SHAREABLE VERSION — AMOUNTS HIDDEN',M,28,6.5,'bold',priv?COL.yellow:[100,240,175]);
-  rln(`Prepared: ${today}`,metaX,12,7.5,'normal',[155,175,225]);
-  if(profile.age){const el=empType==='self_employed'?'Self-employed':empType==='business_owner'?'Business Owner':empType==='retired'?'Retired':'W-2 Employee';rln(`Age ${profile.age}  ·  ${el}  ·  ${region}`,metaX,20,6.5,'normal',[155,175,225]);}
-  // Score circle — sits right of metaX, doesn't overlap text
-  doc.setFillColor(...fhsCol.map(c=>Math.max(0,c-20)));doc.circle(scoreX,10.5,10.5,'F');doc.setFillColor(...fhsCol);doc.circle(scoreX,10.5,9,'F');
-  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...COL.white);doc.text(String(fhsScore),scoreX,14,{align:'center'});doc.setFontSize(5.5);doc.text('/100',scoreX,18.5,{align:'center'});
+  rln(`Prepared: ${today}`,W-M,12,7.5,'normal',[155,175,225]);
+  if(profile.age){const el=empType==='self_employed'?'Self-employed':empType==='business_owner'?'Business Owner':empType==='retired'?'Retired':'W-2 Employee';rln(`Age ${profile.age}  ·  ${el}  ·  ${region}`,W-M,20,6.5,'normal',[155,175,225]);}
   y=46;
 
   // Mission
@@ -12246,7 +12240,21 @@ function generateClarityPDF() {
   // Agenda
   CY(12+top3.length*14);y=sb('MEETING AGENDA — TOP 3 PRIORITIES',y);y+=3;
   if(top3.length===0){ln('No critical flags — client tracking well.',M,y,7.5,'italic',COL.green);y+=10;}
-  else{top3.forEach((item,i)=>{CY(14);rc(M,y-4,W-2*M,11,item.col.map(c=>Math.min(255,c+195)),3);ch(`${i+1}  ${item.tag}`,M+2,y+1,item.col);const cw=doc.getTextWidth(`${i+1}  ${item.tag}`)+9;const tl=doc.splitTextToSize(item.text,W-M*2-cw-4);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(35,45,65);doc.text(tl,M+cw+2,y);y+=Math.max(11,tl.length*4.5+5);});}
+  else{top3.forEach((item,i)=>{
+    CY(14);
+    rc(M,y-4,W-2*M,11,item.col.map(c=>Math.min(255,c+195)),3);
+    // Priority number in item color
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...item.col);
+    doc.text(`${i+1}`,M+3,y+2);
+    // Tag text in item color, bold
+    doc.setFontSize(7.5);doc.text(item.tag,M+9,y+2);
+    const tagW=3+4+doc.getTextWidth(item.tag)+4;
+    // Body text in dark
+    const tl=doc.splitTextToSize(item.text,W-2*M-tagW-4);
+    doc.setFont('helvetica','normal');doc.setTextColor(35,45,65);doc.setFontSize(7.5);
+    doc.text(tl,M+tagW+2,y);
+    y+=Math.max(11,tl.length*4.5+5);
+  });}
   y+=4;
 
   // Liability breakdown
@@ -12254,7 +12262,7 @@ function generateClarityPDF() {
     CY(28);y=sb('LIABILITY BREAKDOWN',y);y+=3;
     const loans=(data._nwAccounts||[]).filter(a=>a.type==='loan'||a.type==='other_liability');
     const cards=(data._nwAccounts||[]).filter(a=>a.type==='credit_card');
-    [...loans,...cards].slice(0,5).forEach(a=>{const bal=nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);const mp=a.meta?.monthlyPayment||0;ln((a.name||a.type).substring(0,32),M,y,7,'normal',COL.navy);rln(mp>0?`${fmt2(bal)} · ${fmt2(mp)}/mo`:fmt2(bal),W-M-20,y,7,'normal',COL.gray);ch(a.type==='credit_card'?'CC':'LOAN',W-M-18,y,a.type==='credit_card'?COL.amber:COL.lightGray);y+=6.5;});
+    [...loans,...cards].slice(0,5).forEach(a=>{const bal=nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);const mp=a.meta?.monthlyPayment||0;ln((a.name||a.type).substring(0,32),M,y,7,'normal',COL.navy);const typeLabel=a.type==='credit_card'?'CC':'LOAN';const typCol=a.type==='credit_card'?COL.amber:COL.gray;badge(typeLabel,W-M-14,y,typCol,5.5);rln(mp>0?`${fmt2(bal)} · ${fmt2(mp)}/mo`:fmt2(bal),W-M-20,y,7,'normal',COL.gray);y+=6.5;});
     hl(y,COL.lightGray);y+=3;ln('Total Liabilities',M,y,7.5,'bold',COL.gray);rln(maskAmt(nw.liabTotal),W-M,y,8,'bold',COL.red);y+=8;
   }
 
@@ -12374,7 +12382,10 @@ function generateClarityPDF() {
     ln(g.label,M,y,7.5,'normal',COL.navy);
     ln(priv?fmt2(total):'—',M+70,y,7.5,'normal',COL.navy);
     ln(fresh||'Unknown',M+130,y,6.5,'normal',freshCol);
-    badge(g.tag,W-M-22,y,isLocked?COL.amber:COL.green);
+    // Color-coded text only — no pill background
+    const liqLabel = g.tag==='LOCKED'?'● Locked':g.tag==='INVEST'?'● Investable':'● Liquid';
+    const liqCol2  = g.tag==='LOCKED'?COL.amber:COL.green;
+    rbadge(liqLabel,W-M,y,liqCol2,6.5,'bold');
     y+=7;
   });
   hl(y,COL.lightGray);y+=4;
@@ -12435,7 +12446,7 @@ function generateClarityPDF() {
     // Show what's actually driving the "Other" bucket
     const otherAccts=(data._nwAccounts||[]).filter(a=>!['loan','credit_card','other_liability'].includes(a.type)&&(ASSET_CLASSES[a.type]||'other')==='other'&&(a.balance||0)>0);
     const otherBreakdown=otherAccts.map(a=>`${(a.name||a.type).substring(0,18)} (${a.type})`).slice(0,4).join(', ');
-    const otherWarning=`⚠  Large "Other" bucket (${(acMap.other/totalAC*100).toFixed(0)}%) — unclassified assets cannot be assigned a risk weight. Risk Architecture and Portfolio Health scores may be understated.`;
+    const otherWarning=`Large "Other" bucket (${(acMap.other/totalAC*100).toFixed(0)}%) — unclassified assets cannot be assigned a risk weight. Risk Architecture and Portfolio Health scores may be understated.`;
     const owLines=doc.splitTextToSize(otherWarning,W-2*M-8);
     const owH=owLines.length*4.5+(otherBreakdown?8:4)+4;
     CY(owH+4);rc(M,y,W-2*M,owH,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.4);doc.line(M,y,M,y+owH);
@@ -12866,20 +12877,19 @@ function generateClarityPDF() {
     }));
     const displayRows=[...investGrade.map(m=>({...m,isOrnamental:false})),...ornRows];
     const METAL_LIQ={gold:{days:'1–2 days',rating:'HIGHLY LIQUID'},silver:{days:'1–3 days',rating:'LIQUID'},platinum:{days:'3–7 days',rating:'MODERATE'}};
-    [['Metal / Item',M],['Value',M+60],['Weight',M+95],['Purity',M+115],['Liquidity',M+148],['Note',W-M]].forEach(([h,x],i)=>{if(i<5)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+    [['Metal / Item',M],['Value',M+60],['Weight',M+100],['Purity',M+128],['Liquidity / Days',W-M]].forEach(([h,x],i)=>{if(i<4)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
     y+=3;hl(y,[225,230,238]);y+=4;
     displayRows.forEach(m=>{
       CY(10);
       const val=nwConvert?nwConvert(m.balance||0,m.currency||'USD'):(m.balance||0);
       const liq=METAL_LIQ[m.metalType]||METAL_LIQ.gold;
       const liqCol=liq.rating==='HIGHLY LIQUID'?COL.green:liq.rating==='LIQUID'?COL.green:COL.amber;
-      const note=m.isOrnamental?'Sentimental — not liquidatable at spot':liq.days;
       ln(m.name.substring(0,26),M,y,7,'normal',m.isOrnamental?COL.gray:COL.navy);
       ln(priv&&val>0?fmt2(val):'—',M+60,y,7,'normal',COL.navy);
-      ln(m.grams>0?`${m.grams.toFixed(1)}g`:'—',M+95,y,6.5,'normal',COL.gray);
-      ln(m.purity||'—',M+115,y,6.5,'normal',COL.gray);
-      badge(m.isOrnamental?'ORNAMENTAL':liq.rating,M+148,y,m.isOrnamental?COL.gray:liqCol,6);
-      rln(note,W-M,y,6,'italic',COL.gray);
+      ln(m.grams>0?`${m.grams.toFixed(1)}g`:'—',M+100,y,6.5,'normal',COL.gray);
+      ln(m.purity||'—',M+128,y,6.5,'normal',COL.gray);
+      // Liquidity: ornamental shows dash; investment-grade shows days
+      rln(m.isOrnamental?'—':liq.days,W-M,y,6.5,'normal',m.isOrnamental?COL.gray:liqCol);
       y+=8;
     });
     // Total investment-grade value
@@ -12888,6 +12898,8 @@ function generateClarityPDF() {
     hl(y,[215,220,230]);y+=4;
     if(priv){ln('Investment-grade (spot-liquidatable):',M,y,7,'normal',COL.gray);rln(fmt2(invGradeTotal),W-M,y,7,'bold',COL.green);y+=6;
     ln('Ornamental (sentimental value only):',M,y,7,'normal',COL.gray);rln(fmt2(ornTotal),W-M,y,7,'normal',COL.amber);y+=6;}
+    // Single note below table — no per-row repetition
+    if(ornRows.length>0){y+=2;doc.setFontSize(6.5);doc.setFont('helvetica','italic');doc.setTextColor(...COL.gray);doc.text('ⓘ  Ornamental pieces carry sentimental & cultural value — excluded from liquidatable assets.',M,y);y+=8;}
   }
 
   // Net Liquid Worth summary
