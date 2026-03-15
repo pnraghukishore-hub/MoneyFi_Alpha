@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.1.5 -->
+<!-- MoneyFi v4.1.6 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -212,14 +212,15 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     .story-seg-fill { height:100%; background:#fff; border-radius:2px; width:0%; transition:none; }
     .story-seg-fill.animating { transition:width linear; }
     .story-card { flex:1; display:flex; flex-direction:column; justify-content:center; padding:80px 28px 120px; position:relative; overflow:hidden; }
-    .story-close { position:absolute; top:52px; right:16px; background:rgba(0,0,0,0.35); border:none; border-radius:50%; width:36px; height:36px; color:#fff; font-size:1.1em; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:11; }
+    .story-close { position:absolute; top:52px; right:16px; background:rgba(0,0,0,0.35); border:none; border-radius:50%; width:36px; height:36px; color:#fff; font-size:1.1em; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:13; }
     .story-icon-big { font-size:3.2em; margin-bottom:10px; line-height:1; }
     .story-badge { display:inline-block; background:rgba(255,255,255,0.2); color:#fff; font-size:0.7em; font-weight:900; padding:4px 12px; border-radius:20px; margin-bottom:10px; letter-spacing:0.4px; align-self:flex-start; }
     .story-headline { font-size:1.7em; font-weight:900; color:#fff; line-height:1.2; margin-bottom:10px; text-shadow:0 2px 12px rgba(0,0,0,0.3); }
     .story-subtext { font-size:0.88em; font-weight:700; color:rgba(255,255,255,0.85); line-height:1.55; margin-bottom:20px; }
-    .story-cta { display:inline-block; background:rgba(255,255,255,0.2); border:1.5px solid rgba(255,255,255,0.5); border-radius:24px; padding:10px 22px; color:#fff; font-family:Nunito,sans-serif; font-weight:900; font-size:0.85em; cursor:pointer; backdrop-filter:blur(6px); align-self:flex-start; }
-    .story-tap-left  { position:absolute; top:0; left:0; width:40%; height:100%; z-index:9; }
-    .story-tap-right { position:absolute; top:0; right:0; width:60%; height:100%; z-index:9; }
+    .story-cta { display:inline-block; background:rgba(255,255,255,0.2); border:1.5px solid rgba(255,255,255,0.5); border-radius:24px; padding:10px 22px; color:#fff; font-family:Nunito,sans-serif; font-weight:900; font-size:0.85em; cursor:pointer; backdrop-filter:blur(6px); align-self:flex-start; position:relative; z-index:12; }
+    .story-tap-left  { position:absolute; top:0; left:0; width:40%; height:65%; z-index:9; }
+    .story-tap-right { position:absolute; top:0; right:0; width:60%; height:65%; z-index:9; }
+    .story-btn-row   { display:flex; gap:10px; align-items:center; position:relative; z-index:12; margin-top:8px; }
 
     .topbar-icon-btn { background: var(--white); border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 1em; cursor: pointer; box-shadow: var(--card-shadow); display: flex; align-items: center; justify-content: center; transition: transform 0.2s; flex-shrink: 0; }
     .topbar-icon-btn:hover { transform: scale(1.1); }
@@ -7050,11 +7051,11 @@ function _renderStoryFrame() {
       <div class="story-badge">${s.badge}</div>
       <div class="story-headline">${s.headline}</div>
       <div class="story-subtext">${s.subtext}</div>
-      ${s.detail ? `<div style="font-size:0.75em;font-weight:700;color:rgba(255,255,255,0.6);line-height:1.4;margin-bottom:16px;border-left:2px solid rgba(255,255,255,0.3);padding-left:10px;">${s.detail}</div>` : ''}
-      <div style="display:flex;gap:10px;align-items:center;">
+      ${s.detail ? `<div style="font-size:0.75em;font-weight:700;color:rgba(255,255,255,0.6);line-height:1.4;margin-bottom:16px;border-left:2px solid rgba(255,255,255,0.3);padding-left:10px;position:relative;z-index:12;">${s.detail}</div>` : ''}
+      <div class="story-btn-row">
         <button class="story-cta" onclick="_storyCtaClick(${_pulsePlayerIdx})">${s.cta}</button>
         <button onclick="generatePulseShareCard(_pulseStories[${_pulsePlayerIdx}])"
-          style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);border-radius:24px;padding:10px 16px;color:#fff;font-family:Nunito,sans-serif;font-weight:900;font-size:0.85em;cursor:pointer;backdrop-filter:blur(6px);flex-shrink:0;">
+          style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);border-radius:24px;padding:10px 16px;color:#fff;font-family:Nunito,sans-serif;font-weight:900;font-size:0.85em;cursor:pointer;backdrop-filter:blur(6px);flex-shrink:0;position:relative;z-index:12;">
           📤 Share
         </button>
       </div>
@@ -24713,8 +24714,11 @@ _auth.onAuthStateChanged(async user => {
       'pnraghukishore@gmail.com',
       'swathikishore12@gmail.com',
       'skanda.penujuri@gmail.com',
+      'suja81@gmail.com',
+      'charlesakl@gmail.com',
+      'narasimha.neo@gmail.com',
+      'ping2rupesh@gmail.com',
       'ebooksofpnr@gmail.com',
-      'psatyanarayana252@gmail.com',
       'pnrkiran@gmail.com'
     ];
 
