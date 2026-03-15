@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.0.3 -->
+<!-- MoneyFi v4.0.4 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -7490,7 +7490,7 @@ function switchScreen(name, btn) {
   }
   if(name==='stats') renderStats();
   if(name==='account') renderAccount();
-  if(name==='tx') renderTransactions();
+  if(name==='tx') { window._txSearchContext = null; renderTransactions(); }
   if(name==='home') renderHome();
   if(name==='add') renderAddScreen();
   if(name==='settings') renderSettings();
@@ -8252,6 +8252,36 @@ function updateCategoryBanner(searchTerm, allResults) {
   const lbl3=document.getElementById('cal-lbl-3'), lbl4=document.getElementById('cal-lbl-4');
   if (!bar||!elMTD) return;
 
+  // ── Investment context: triggered from Invest tab tile long-press ──
+  if (window._txSearchContext === 'investment') {
+    const invResults = allResults.filter(r => r._type === 'investment');
+
+    const mtdInv = invResults.filter(r => r._month === viewMonth)
+      .reduce((s,r) => s + convertAmt(r.amount, r.currency), 0);
+
+    const yr = viewMonth.split('-')[0];
+    const ytdInv = invResults.filter(r => r._month && r._month.startsWith(yr))
+      .reduce((s,r) => s + convertAmt(r.amount, r.currency), 0);
+
+    const invMonths = new Set(invResults.filter(r => r._month && r._month.startsWith(yr)).map(r => r._month));
+    const avgInv = invMonths.size > 0 ? ytdInv / invMonths.size : 0;
+
+    const allTimeInv = invResults.reduce((s,r) => s + convertAmt(r.amount, r.currency), 0);
+
+    bar.classList.add('cat-mode');
+    if (lbl1) lbl1.textContent = 'MTD Invested';
+    if (lbl2) lbl2.textContent = 'YTD Invested';
+    if (lbl3) lbl3.textContent = 'Avg/Month';
+    if (lbl4) lbl4.textContent = 'All-Time';
+
+    if (elMTD) { elMTD.textContent = fmt(mtdInv);    elMTD.style.color = '#7C3AED'; elMTD.className = 'cal-sum-val'; }
+    if (elYTD) { elYTD.textContent = fmt(ytdInv);    elYTD.style.color = '#6D28D9'; elYTD.className = 'cal-sum-val'; }
+    if (elAvg) { elAvg.textContent = fmt(avgInv);    elAvg.style.color = '#8B5CF6'; elAvg.className = 'cal-sum-val'; }
+    if (elBud) { elBud.textContent = fmt(allTimeInv); elBud.style.color = '#A78BFA'; elBud.className = 'cal-sum-val'; }
+    return;
+  }
+
+  // ── Default: expense context (home screen spend tile, category search) ──
   const spend = allResults.filter(r=>r._type==='expense'||r._type==='additional');
 
   // MTD: current viewMonth only
@@ -8317,6 +8347,7 @@ function onTxSearch(q) {
   if (clearBtn) clearBtn.style.display = q ? '' : 'none';
 
   if (!q) {
+    window._txSearchContext = null; // reset context on clear
     if (calWrap) calWrap.style.display = '';
     if (listView) listView.style.display = 'none';
     if (dayWrap) dayWrap.style.display = '';
@@ -15695,11 +15726,11 @@ function goToInvestDetail(cardKey) {
   // Long press on invest card → go to transactions filtered by that investment type
   goToScreen('tx');
   setTimeout(() => {
+    window._txSearchContext = 'investment'; // set AFTER switchScreen (which clears it)
     const searchInput = document.getElementById('tx-search-input');
     if (searchInput) {
       searchInput.value = cardKey;
       onTxSearch(cardKey);
-      // Show context toast with total for that invest category
       const cards = getHomeInvCards();
       const card = cards.find(c => c.key === cardKey);
       if (card) showToast(`📈 ${card.label || cardKey} · all history`);
