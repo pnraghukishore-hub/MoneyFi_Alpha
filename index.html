@@ -12774,7 +12774,7 @@ function generateClarityPDF() {
   CY(28);
   const harvestCols=4;const hcW=(W-2*M)/harvestCols;
   const hCards=[
-    {l:'Total Unrealised Gains',v:priv?`+${fmt2(totalGainAmt)}`:`+${(winners.length>0?(winners.reduce((s,f)=>s+(f.pct||0),0)/winners.length).toFixed(0)+'% avg'):'—'}`,c:COL.green},
+    {l:'Total Unrealised Gains',v:priv?`+${fmt2(totalGainAmt)}`:`+${(winners.length>0?(winners.reduce((s,f)=>s+(f.pct||0),0)/winners.length).toFixed(0)+'% avg':'—')}`,c:COL.green},
     {l:'Harvestable Losses',v:priv?`-${fmt2(totalLossAmt)}`:(losers.length>0?`${losers.length} funds`:'None'),c:losers.length>0?COL.red:COL.gray},
     {l:'Net Taxable Gain',v:priv?fmt2(netTaxableGain):'After offset',c:netTaxableGain<totalGainAmt?COL.amber:COL.red},
     {l:'Est. Tax Saving',v:priv&&taxSaving>0?fmt2(taxSaving):'Calculate with CA',c:taxSaving>0?COL.green:COL.gray},
