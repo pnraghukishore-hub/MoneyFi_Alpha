@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.0.4 -->
+<!-- MoneyFi v4.0.5 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -8281,6 +8281,35 @@ function updateCategoryBanner(searchTerm, allResults) {
     return;
   }
 
+  // ── Income context: triggered from Home income tile long-press ──
+  if (window._txSearchContext === 'income') {
+    const incResults = allResults.filter(r => r._type === 'income');
+
+    const mtdInc = incResults.filter(r => r._month === viewMonth)
+      .reduce((s,r) => s + convertAmt(r.amount, r.currency), 0);
+
+    const yr = viewMonth.split('-')[0];
+    const ytdInc = incResults.filter(r => r._month && r._month.startsWith(yr))
+      .reduce((s,r) => s + convertAmt(r.amount, r.currency), 0);
+
+    const incMonths = new Set(incResults.filter(r => r._month && r._month.startsWith(yr)).map(r => r._month));
+    const avgInc = incMonths.size > 0 ? ytdInc / incMonths.size : 0;
+
+    const allTimeInc = incResults.reduce((s,r) => s + convertAmt(r.amount, r.currency), 0);
+
+    bar.classList.add('cat-mode');
+    if (lbl1) lbl1.textContent = 'MTD Earned';
+    if (lbl2) lbl2.textContent = 'YTD Earned';
+    if (lbl3) lbl3.textContent = 'Avg/Month';
+    if (lbl4) lbl4.textContent = 'All-Time';
+
+    if (elMTD) { elMTD.textContent = fmt(mtdInc);    elMTD.style.color = '#10B981'; elMTD.className = 'cal-sum-val'; }
+    if (elYTD) { elYTD.textContent = fmt(ytdInc);    elYTD.style.color = '#059669'; elYTD.className = 'cal-sum-val'; }
+    if (elAvg) { elAvg.textContent = fmt(avgInc);    elAvg.style.color = '#34D399'; elAvg.className = 'cal-sum-val'; }
+    if (elBud) { elBud.textContent = fmt(allTimeInc); elBud.style.color = '#6EE7B7'; elBud.className = 'cal-sum-val'; }
+    return;
+  }
+
   // ── Default: expense context (home screen spend tile, category search) ──
   const spend = allResults.filter(r=>r._type==='expense'||r._type==='additional');
 
@@ -15682,9 +15711,11 @@ function homeCardTouchStart(e, cardKey, type, subcat) {
     _didLongPress       = true;
     _homeLongPressTimer = null;
     if (navigator.vibrate) navigator.vibrate(50);
-    // Route correctly: investments → search by invest type; expense/income → budget detail
+    // Route correctly: investments → invest stats; income → income stats; expense → budget detail
     if (_homeLongPressType === 'investment') {
       goToInvestDetail(cardKey);
+    } else if (_homeLongPressType === 'income') {
+      goToIncomeDetail(cardKey);
     } else {
       goToBudgetDetail(cardKey);
     }
@@ -15734,6 +15765,20 @@ function goToInvestDetail(cardKey) {
       const cards = getHomeInvCards();
       const card = cards.find(c => c.key === cardKey);
       if (card) showToast(`📈 ${card.label || cardKey} · all history`);
+    }
+  }, 80);
+}
+
+function goToIncomeDetail(cardKey) {
+  // Long press on income card → go to transactions showing income stats
+  goToScreen('tx');
+  setTimeout(() => {
+    window._txSearchContext = 'income'; // set AFTER switchScreen (which clears it)
+    const searchInput = document.getElementById('tx-search-input');
+    if (searchInput) {
+      searchInput.value = cardKey;
+      onTxSearch(cardKey);
+      showToast(`💵 ${cardKey} · income history`);
     }
   }, 80);
 }
