@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.2.0 -->
+<!-- MoneyFi v4.2.1 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -11886,9 +11886,13 @@ function generateClarityPDF() {
   y+=38;
 
   // FHS Pillars compact grid
-  if(fhs.pillarResults && fhs.pillarResults.length>0) {
+  const pillarArr = fhs.pillarResults ? Object.entries(fhs.pillarResults).map(([key,p])=>({
+    label: p.name || p.emoji || key,
+    score: p.result?.score ?? 0,
+  })) : [];
+  if(pillarArr.length>0) {
     line('PILLAR SCORES',M,y,7,'bold',[100,116,139]); y+=5; hline(y); y+=5;
-    const pillars = fhs.pillarResults.slice(0,8);
+    const pillars = pillarArr.slice(0,8);
     const colW=(W-2*M)/4; const rowH=8;
     pillars.forEach((p,i) => {
       const col=M+(i%4)*colW; const row=y+Math.floor(i/4)*rowH;
@@ -11907,7 +11911,7 @@ function generateClarityPDF() {
   line('FOUNDATION AUDIT',M,y,8,'bold',[30,42,110]); y+=5; hline(y); y+=5;
 
   // Emergency Fund
-  const efMonths = fhs.pillarResults?.find(p=>/emergency/i.test(p.pillar||p.label))?.months
+  const efMonths = pillarArr.find(p=>/emergency/i.test(p.label||''))?.months
     || (agg?.avgExp>0 ? Math.round(nw.byType?.emergency?.total/agg.avgExp) : null)
     || (profile.emergencyMonths||0);
   const efTarget = profile.region==='US'?6:6;
