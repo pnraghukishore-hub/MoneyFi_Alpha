@@ -12001,12 +12001,13 @@ function generateClarityPDF() {
   const maskAmt = (n) => priv ? `${sym}${Math.round(n||0).toLocaleString()}` : '[Hidden]';
   const fmt2    = (n) => `${sym}${Math.round(n||0).toLocaleString()}`;
 
-  // ── Pre-compute key numbers ────────────────────────────────────
+  // ── Key computed numbers ───────────────────────────────────────
   const fireR    = fhs.pillarResults?.fire?.result      || {};
   const retR     = fhs.pillarResults?.retirement?.result || {};
   const debtR    = fhs.pillarResults?.debt?.result      || {};
   const efR      = fhs.pillarResults?.emergency?.result || {};
   const taxR     = fhs.pillarResults?.tax?.result       || {};
+  const insR     = fhs.pillarResults?.insurance?.result || {};
   const fireGap   = fireR.gap    || 0;
   const fireCorpus= fireR.corpus || 0;
   const fireTarget= fireR.target || 0;
@@ -12027,304 +12028,512 @@ function generateClarityPDF() {
   const rm = 0.10/12; const nn = retYears*12;
   const sipToCloseGap = (retGap>0&&nn>0) ? retGap*rm/(Math.pow(1+rm,nn)-1) : 0;
 
-  // ── Narrative: What the advisor should say ─────────────────────
+  // ── Advisor narrative ──────────────────────────────────────────
   const buildNarrative = () => {
     const lines = [];
     lines.push(priv
       ? `Client is ${profile.age||'?'} years old with a net worth of ${fmt2(nw.netWorth)} and a ${savRate}% savings rate, generating ${fmt2(surplus)}/month of investable surplus.`
       : `Client has a ${savRate}% savings rate with ${yearsToFire} years to their FIRE target age of ${profile.retirementAge||60}.`);
-    if (fireGap > 0 && firePct < 50) {
+    if (fireGap>0&&firePct<50) {
       lines.push(priv
         ? `The FIRE corpus is only ${firePct}% funded (${fmt2(fireCorpus)} of ${fmt2(fireTarget)} needed) — a ${fmt2(sipToCloseGap)}/month SIP over ${retYears} years closes this gap.`
         : `The FIRE corpus is only ${firePct}% funded — the primary discussion should centre on SIP step-up strategy.`);
-    } else if (efMonths < 3 && efR.status !== 'inactive') {
-      lines.push(`Emergency buffer is critically low at ${efMonths.toFixed(1)} months — client is exposed to forced liquidation; build this before any new investment commitments.`);
-    } else if (dtiPct > 43) {
-      lines.push(priv
-        ? `Debt-to-income is ${dtiPct.toFixed(1)}% (${fmt2(debtR.monthlyDebt)}/mo payments) — above the CFPB 43% threshold; prioritise debt reduction before increasing equity allocation.`
-        : `DTI of ${dtiPct.toFixed(1)}% exceeds CFPB 43% — debt sequencing should lead this meeting.`);
-    } else if (d.pcs < 50) {
-      lines.push(`Portfolio Clarity Score is ${d.pcs}/100 with ${(_clarityFundData||[]).filter(f=>f.verdict==='exit').length} funds flagged for exit — consolidation reduces cost drag and simplifies rebalancing immediately.`);
+    } else if (efMonths<3&&efR.status!=='inactive') {
+      lines.push(`Emergency buffer is critically low at ${efMonths.toFixed(1)} months — build this before any new investment commitments.`);
+    } else if (dtiPct>43) {
+      lines.push(priv ? `Debt-to-income is ${dtiPct.toFixed(1)}% (${fmt2(debtR.monthlyDebt)}/mo) — above CFPB 43%; prioritise debt reduction before increasing equity allocation.`
+                      : `DTI of ${dtiPct.toFixed(1)}% exceeds CFPB 43% — debt sequencing should lead this meeting.`);
     } else {
       lines.push(`Client is tracking well across core pillars — the focus this meeting is optimising the final ${100-firePct}% gap to FIRE target.`);
     }
+    // Tax vehicle sentence
     if (isUS) {
       if (empType==='self_employed'||empType==='business_owner') {
-        const sepLimit=Math.round(Math.min((profile.annualCompensation||avgInc*12)*0.25,66000));
-        lines.push(priv&&sepLimit>0
-          ? `As a self-employed filer, the SEP-IRA allows up to ${fmt2(sepLimit)}/yr (25% of net earnings), or a Solo 401(k) allows up to $66,000 employee+employer combined — both far exceed the standard $23,000 W-2 cap. Confirm vehicle before year-end.`
-          : `Self-employed — eligible for SEP-IRA or Solo 401(k), both with higher limits than a standard W-2 plan. Confirm vehicle before year-end.`);
+        const sepMax=Math.round(Math.min((profile.annualCompensation||avgInc*12)*0.25,66000));
+        lines.push(priv&&sepMax>0?`As a self-employed filer, the SEP-IRA allows up to ${fmt2(sepMax)}/yr (25% of net earnings), or a Solo 401(k) allows up to $66,000 combined — confirm vehicle before year-end.`:`Self-employed — eligible for SEP-IRA or Solo 401(k) with higher limits than W-2. Confirm vehicle before year-end.`);
       } else if (empType==='retired') {
-        lines.push(`Client is in distribution phase — discuss RMD timeline (begins age 73), Roth conversion ladder opportunity in low-income years, and tax-efficient withdrawal sequence: taxable → tax-deferred → tax-free.`);
+        lines.push(`Client is in distribution phase — discuss RMD timeline (begins age 73), Roth conversion ladder, and tax-efficient withdrawal sequence: taxable → tax-deferred → tax-free.`);
       } else {
-        const matchPct=profile.employerMatchPct||0;
-        lines.push(matchPct>0
-          ? `Ensure 401(k) contributions reach the ${matchPct}% employer match threshold — that is ${priv?fmt2(((profile.annualCompensation||avgInc*12)*matchPct/100)):matchPct+'% of salary'} in annual free money. Then layer IRA ($7,000) and HSA ($4,150 triple-tax) in order of tax efficiency.`
-          : `Maximise 401(k) to the $23,000 cap, then layer Roth IRA ($7,000 if income allows) and HSA ($4,150 triple-tax-advantaged) before using taxable accounts.`);
+        const mp=profile.employerMatchPct||0;
+        lines.push(mp>0?`Ensure 401(k) contributions reach the ${mp}% employer match threshold — that is ${priv?fmt2(((profile.annualCompensation||avgInc*12)*mp/100)):`${mp}% of salary`} in annual free money. Then layer IRA ($7,000) and HSA ($4,150 triple-tax) in order of tax efficiency.`:`Maximise 401(k) to the $23,000 cap, then layer Roth IRA ($7,000) and HSA ($4,150 triple-tax-advantaged) before using taxable accounts.`);
       }
     } else {
       const has80C=(taxR.shelterUtil||0)>=0.5;
       const hasNPS=(data._nwAccounts||[]).some(a=>a.type==='nps');
-      if (!has80C) {
-        lines.push(`80C limit (₹1.5L) appears under-utilised — confirm ELSS SIPs, EPF voluntary contributions and PPF are all captured in Net Worth before year-end; missing data will understate tax efficiency.`);
-      } else if (!hasNPS) {
-        lines.push(`NPS 80CCD(1B) provides ₹50,000 in deductions over and above 80C — at a 30% marginal rate this equals ₹15,000 in direct annual tax savings. Opening Tier-1 NPS is the highest-leverage tax move remaining.`);
-      } else {
-        lines.push(`Tax shelter utilisation is at ${Math.round((taxR.shelterUtil||0)*100)}% of the ₹2L limit — review ELSS vs PPF allocation for liquidity, and confirm 80D health cover is current before March.`);
-      }
+      if (!has80C) lines.push(`80C limit (₹1.5L) appears under-utilised — confirm ELSS SIPs, EPF contributions and PPF are captured before year-end.`);
+      else if (!hasNPS) lines.push(`NPS 80CCD(1B) provides ₹50,000 additional deduction — at 30% slab this is ₹15,000 in direct annual tax savings; opening Tier-1 NPS is the highest-leverage tax move remaining.`);
+      else lines.push(`Tax shelter utilisation is at ${Math.round((taxR.shelterUtil||0)*100)}% — review ELSS vs PPF allocation for liquidity and confirm 80D cover before March.`);
     }
     return lines;
   };
   const narrativeLines = buildNarrative();
 
-  // ── Advisor agenda items ───────────────────────────────────────
+  // ── Top agenda ─────────────────────────────────────────────────
   const agenda = [];
-  if (fireGap>0) agenda.push({priority:1,tag:'FIRE GAP',col:[220,38,38],
-    text:priv?`${fmt2(fireCorpus)} of ${fmt2(fireTarget)} target (${firePct}% funded). SIP to close: ${fmt2(sipToCloseGap)}/mo over ${retYears} yrs.`:`${firePct}% funded — gap exists. SIP step-up needed.`});
-  if (dtiPct>36) agenda.push({priority:2,tag:'DEBT',col:[234,88,12],
-    text:priv?`DTI ${dtiPct.toFixed(1)}% vs 36% CFPB. Payments: ${fmt2(debtR.monthlyDebt)}/mo. Pay-down vs invest sequence.`:`DTI ${dtiPct.toFixed(1)}% — above CFPB 36%. Debt sequencing discussion.`});
-  if (efMonths<6) agenda.push({priority:efMonths<3?1:2,tag:'EMERGENCY',col:[234,88,12],
-    text:efR.status==='inactive'?'No liquid accounts tagged. Set up buffer before new investments.':`${efMonths.toFixed(1)} months buffer vs 6-month target. Build before increasing equity.`});
-  if (taxR.score<60&&taxR.status!=='inactive') agenda.push({priority:3,tag:'TAX',col:[79,70,229],
-    text:isUS?'Tax shelter contributions have room. Max 401(k)/IRA/HSA before year-end.':'80C/NPS/80D under-utilised. Review before March.'});
-  if (d.pcs<60) agenda.push({priority:3,tag:'PORTFOLIO',col:[79,70,229],
-    text:priv?`PCS ${d.pcs}/100. ${(_clarityFundData||[]).filter(f=>f.verdict==='exit').length} funds to exit — reduces overlap and cost drag.`:`PCS ${d.pcs}/100 — consolidation needed.`});
-  if (goals.length>0) {
-    const offTrack=goals.filter(g=>{const p=_goalProjection(g,10);return !p.isOnTrack&&p.sipNeeded>100;});
-    if (offTrack.length>0) agenda.push({priority:3,tag:'GOALS',col:[5,150,105],
-      text:`${offTrack.length}/${goals.length} goal${goals.length>1?'s':''} off-track. SIP allocation sequencing and prioritisation.`});
-  }
+  if (fireGap>0) agenda.push({priority:1,tag:'FIRE GAP',col:[220,38,38],text:priv?`${fmt2(fireCorpus)} of ${fmt2(fireTarget)} (${firePct}% funded). SIP to close: ${fmt2(sipToCloseGap)}/mo over ${retYears} yrs.`:`${firePct}% funded — SIP step-up needed.`});
+  if (dtiPct>36) agenda.push({priority:2,tag:'DEBT',col:[234,88,12],text:priv?`DTI ${dtiPct.toFixed(1)}% vs 36% CFPB. Payments: ${fmt2(debtR.monthlyDebt)}/mo.`:`DTI ${dtiPct.toFixed(1)}% — above CFPB 36%.`});
+  if (efMonths<6) agenda.push({priority:efMonths<3?1:2,tag:'EMERGENCY',col:[234,88,12],text:efR.status==='inactive'?'No liquid accounts tagged.': `${efMonths.toFixed(1)} months buffer vs 6-month target.`});
+  if (taxR.score<60&&taxR.status!=='inactive') agenda.push({priority:3,tag:'TAX',col:[79,70,229],text:isUS?'Tax shelters have room. Max 401(k)/IRA/HSA before year-end.':'80C/NPS/80D under-utilised. Review before March.'});
+  if (d.pcs<60) agenda.push({priority:3,tag:'PORTFOLIO',col:[79,70,229],text:priv?`PCS ${d.pcs}/100. ${(_clarityFundData||[]).filter(f=>f.verdict==='exit').length} funds to exit.`:`PCS ${d.pcs}/100 — consolidation needed.`});
+  if (goals.length>0){const off=goals.filter(g=>{const p=_goalProjection(g,10);return !p.isOnTrack&&p.sipNeeded>100;});if(off.length>0)agenda.push({priority:3,tag:'GOALS',col:[5,150,105],text:`${off.length}/${goals.length} goal${goals.length>1?'s':''} off-track. SIP allocation sequencing needed.`});}
   agenda.sort((a,b)=>a.priority-b.priority);
   const top3=agenda.slice(0,3);
 
   // ── Tax vehicle recommendation ─────────────────────────────────
   const vehicleData = isUS ? (()=>{
-    if (empType==='self_employed'||empType==='business_owner') {
-      const sepMax=Math.round(Math.min((profile.annualCompensation||avgInc*12)*0.25,66000));
-      return {label:'Recommended Tax Vehicle',rec:'SEP-IRA or Solo 401(k)',
-        detail:priv&&sepMax>0?`SEP-IRA cap: ${fmt2(sepMax)}/yr (25% net earnings). Solo 401k employee cap: $23,000 + employer profit-sharing up to $66,000 total. Solo 401k preferred if income >$100k.`:`Self-employed: SEP-IRA or Solo 401(k) both exceed the $23,000 W-2 limit. Confirm vehicle before filing.`,col:[79,70,229]};
-    } else if (empType==='retired') {
-      return {label:'Distribution Strategy',rec:'RMD + Roth Ladder',
-        detail:'RMDs begin at age 73. Roth conversions in low-income years reduce future RMD burden. Withdrawal sequence: taxable → tax-deferred → tax-free minimises lifetime tax.',col:[5,150,105]};
+    if (empType==='self_employed'||empType==='business_owner'){
+      const sm=Math.round(Math.min((profile.annualCompensation||avgInc*12)*0.25,66000));
+      return {label:'Recommended Tax Vehicle',rec:'SEP-IRA or Solo 401(k)',detail:priv&&sm>0?`SEP-IRA: ${fmt2(sm)}/yr (25% net earnings). Solo 401k: $66,000 employee+employer combined. Solo 401k preferred if income >$100k.`:`Self-employed: both vehicles exceed the $23,000 W-2 limit. Confirm before filing.`,col:[79,70,229]};
+    } else if (empType==='retired'){
+      return {label:'Distribution Strategy',rec:'RMD + Roth Ladder',detail:'RMDs begin age 73. Roth conversions in low-income years reduce future RMD burden. Withdrawal order: taxable → tax-deferred → tax-free.',col:[5,150,105]};
     } else {
       const mp=profile.employerMatchPct||0;
-      return {label:'Recommended Tax Vehicle',rec:'401(k) → Roth IRA → HSA',
-        detail:priv&&mp>0?`Contribute at least ${mp}% to capture full employer match (${fmt2(((profile.annualCompensation||avgInc*12)*mp/100))} free/yr). Then Roth IRA ($7,000). HSA if HDHP eligible ($4,150 — triple-tax).`:`Max employer 401(k) match first (free money), then Roth IRA ($7,000), then HSA ($4,150 triple-tax-advantaged). Stack in tax-efficiency order.`,col:[30,42,110]};
+      return {label:'Recommended Tax Vehicle',rec:'401(k) → Roth IRA → HSA',detail:priv&&mp>0?`Contribute at least ${mp}% to capture full employer match (${fmt2(((profile.annualCompensation||avgInc*12)*mp/100))} free/yr). Then Roth IRA ($7,000). HSA if HDHP eligible ($4,150).`:`Max employer 401(k) match first (free money), then Roth IRA ($7,000), then HSA ($4,150 triple-tax-advantaged).`,col:[30,42,110]};
     }
   })() : (()=>{
     const has80C=(taxR.shelterUtil||0)>=0.5;
     const hasNPS=(data._nwAccounts||[]).some(a=>a.type==='nps');
-    if (!has80C) return {label:'Priority: 80C Completion',rec:'ELSS + EPF + PPF',
-      detail:'80C limit (₹1.5L) appears under-utilised. ELSS for growth + tax, EPF voluntary for guaranteed + deduction, PPF for tax-free corpus building.',col:[245,158,11]};
-    if (!hasNPS) return {label:'Next Vehicle: NPS 80CCD(1B)',rec:'NPS Tier-1',
-      detail:'NPS provides ₹50,000 deduction beyond 80C. At 30% slab = ₹15,000 direct annual tax saving. Equivalent to a 30% guaranteed return on contribution in Year 1.',col:[79,70,229]};
-    return {label:'Tax Efficiency Status',rec:'80C + NPS + 80D active',
-      detail:`Primary shelters at ${Math.round((taxR.shelterUtil||0)*100)}% utilisation. Review ELSS vs PPF split for liquidity needs. Confirm 80D health cover is current for the year.`,col:[5,150,105]};
+    if(!has80C) return {label:'Priority: 80C Completion',rec:'ELSS + EPF + PPF',detail:'80C limit (₹1.5L) under-utilised. ELSS for growth+tax, EPF voluntary for guaranteed+deduction, PPF for tax-free corpus building.',col:[245,158,11]};
+    if(!hasNPS) return {label:'Next Vehicle: NPS 80CCD(1B)',rec:'NPS Tier-1',detail:'₹50,000 deduction beyond 80C. At 30% slab = ₹15,000 direct annual tax saving — equivalent to a 30% guaranteed return in Year 1.',col:[79,70,229]};
+    return {label:'Tax Efficiency Status',rec:'80C + NPS + 80D active',detail:`Primary shelters at ${Math.round((taxR.shelterUtil||0)*100)}% utilisation. Review ELSS vs PPF split for liquidity. Confirm 80D health cover for the year.`,col:[5,150,105]};
   })();
 
-  // ════════════════════════════════════════════════════════════════
-  // PDF DOCUMENT SETUP
-  // ════════════════════════════════════════════════════════════════
+  // ── Data freshness helper ──────────────────────────────────────
+  const accountFreshness = (types) => {
+    const accts = (data._nwAccounts||[]).filter(a => types.includes(a.type) && (a.balance||0) > 0);
+    if (!accts.length) return null;
+    const dates = accts.map(a => a.lastUpdated).filter(Boolean).sort();
+    if (!dates.length) return 'Unknown';
+    const oldest = new Date(dates[0] + 'T00:00:00');
+    const days = Math.floor((Date.now() - oldest) / 86400000);
+    return days <= 7 ? 'Live' : days <= 30 ? `${days}d ago` : days <= 90 ? `${Math.round(days/30)}mo ago` : `${Math.round(days/30)}mo ago ⚠`;
+  };
+
+  // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
   let y=0;
-
-  const line  = (t,x,yy,sz,st='normal',col=[30,42,110])=>{doc.setFontSize(sz);doc.setFont('helvetica',st);doc.setTextColor(...col);doc.text(String(t),x,yy);};
-  const rline = (t,x,yy,sz,st='normal',col=[30,42,110])=>{doc.setFontSize(sz);doc.setFont('helvetica',st);doc.setTextColor(...col);doc.text(String(t),x,yy,{align:'right'});};
-  const hline = (yy,col=[210,215,225],thick=0.25)=>{doc.setDrawColor(...col);doc.setLineWidth(thick);doc.line(M,yy,W-M,yy);};
-  const rect  = (x,yy,w,h,fill,r=2)=>{doc.setFillColor(...fill);doc.roundedRect(x,yy,w,h,r,r,'F');};
-  const chip  = (t,x,yy,bg,tc=[255,255,255])=>{const tw=doc.getTextWidth(t)+5;rect(x,yy-4.5,tw,6,bg);doc.setFontSize(6);doc.setFont('helvetica','bold');doc.setTextColor(...tc);doc.text(t,x+2.5,yy);};
-  const sectionBand=(title,yy)=>{rect(M,yy-5,W-2*M,7,[238,242,252]);doc.setDrawColor(30,42,110);doc.setLineWidth(0.5);doc.line(M,yy-5,M,yy+2);line(title,M+4,yy,7.5,'bold',[30,42,110]);return yy+5;};
-  const kv    = (lbl,val,yy,vc=[30,42,110],bold=false)=>{line(lbl,M,yy,7.5,'normal',[75,88,105]);rline(val,W-M,yy,7.5,bold?'bold':'normal',vc);};
-  const bar   = (x,yy,w,h,pct,fc,bg=[215,220,230])=>{doc.setFillColor(...bg);doc.rect(x,yy,w,h,'F');doc.setFillColor(...fc);doc.rect(x,yy,Math.max(0.5,Math.min(pct/100*w,w)),h,'F');};
-  const newPage=()=>{doc.addPage();y=M+6;};
-  const checkY=(n=18)=>{if(y+n>278)newPage();};
   const fhsCol=fhsScore>=80?[34,197,94]:fhsScore>=65?[245,158,11]:fhsScore>=50?[249,115,22]:[239,68,68];
+  const COL = { navy:[10,20,65], indigo:[79,70,229], green:[5,150,105], amber:[245,158,11], red:[220,38,38], gray:[110,120,140], lightGray:[215,220,230], white:[255,255,255] };
 
-  // ════════════════════════════════════════════════════════════════
+  const ln  = (t,x,yy,sz,st='normal',col=[30,42,110])=>{doc.setFontSize(sz);doc.setFont('helvetica',st);doc.setTextColor(...col);doc.text(String(t),x,yy);};
+  const rln = (t,x,yy,sz,st='normal',col=[30,42,110])=>{doc.setFontSize(sz);doc.setFont('helvetica',st);doc.setTextColor(...col);doc.text(String(t),x,yy,{align:'right'});};
+  const hl  = (yy,col=[210,215,225],thick=0.25)=>{doc.setDrawColor(...col);doc.setLineWidth(thick);doc.line(M,yy,W-M,yy);};
+  const rc  = (x,yy,w,h,fill,r=2)=>{doc.setFillColor(...fill);doc.roundedRect(x,yy,w,h,r,r,'F');};
+  const ch  = (t,x,yy,bg,tc=[255,255,255])=>{const tw=doc.getTextWidth(t)+5;rc(x,yy-4.5,tw,6,bg);doc.setFontSize(6);doc.setFont('helvetica','bold');doc.setTextColor(...tc);doc.text(t,x+2.5,yy);};
+  const sb  = (title,yy)=>{rc(M,yy-5,W-2*M,7,[238,242,252]);doc.setDrawColor(...COL.navy);doc.setLineWidth(0.5);doc.line(M,yy-5,M,yy+2);ln(title,M+4,yy,7.5,'bold',COL.navy);return yy+5;};
+  const kv  = (l,v,yy,vc=COL.navy,bold=false)=>{ln(l,M,yy,7.5,'normal',COL.gray);rln(v,W-M,yy,7.5,bold?'bold':'normal',vc);};
+  const br  = (x,yy,w,h,pct,fc,bg=COL.lightGray)=>{doc.setFillColor(...bg);doc.rect(x,yy,w,h,'F');doc.setFillColor(...fc);doc.rect(x,yy,Math.max(0.5,Math.min(pct/100*w,w)),h,'F');};
+  const NP  = ()=>{doc.addPage();y=M+6;};
+  const CY  = (n=18)=>{if(y+n>278)NP();};
+  const PH  = (title,sub)=>{rc(0,0,W,10,COL.navy);doc.setFillColor(...COL.indigo);doc.rect(0,0,4,10,'F');ln(title,M,7,8,'bold',COL.white);if(sub)rln(sub,W-M,7,6.5,'normal',[160,180,230]);};
+
+  // ══════════════════════════════════════════════════════════════
   // PAGE 1 — EXECUTIVE SUMMARY
-  // ════════════════════════════════════════════════════════════════
-  rect(0,0,W,38,[10,20,65]); doc.setFillColor(79,70,229); doc.rect(0,0,4,38,'F');
-  line('MoneyFi',M,12,16,'bold',[255,255,255]);
-  line('Advisor-Ready Strategic Brief',M,20,9,'normal',[160,180,235]);
-  line(priv?'PRIVATE — FOR CA/ADVISOR USE ONLY':'SHAREABLE VERSION — AMOUNTS HIDDEN',M,28,6.5,'bold',priv?[255,210,50]:[100,240,175]);
-  rline(`Prepared: ${today}`,W-M,12,7.5,'normal',[155,175,225]);
-  if(profile.age){const el2=empType==='self_employed'?'Self-employed':empType==='business_owner'?'Business Owner':empType==='retired'?'Retired':'W-2 Employee';rline(`Age ${profile.age}  ·  ${el2}  ·  ${region}`,W-M,20,6.5,'normal',[155,175,225]);}
-  doc.setFillColor(...fhsCol.map(c=>Math.max(0,c-20))); doc.circle(W-M-10,10.5,10.5,'F');
-  doc.setFillColor(...fhsCol); doc.circle(W-M-10,10.5,9,'F');
-  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);doc.text(String(fhsScore),W-M-10,14,{align:'center'});
-  doc.setFontSize(5.5);doc.text('/100',W-M-10,18.5,{align:'center'});
+  // ══════════════════════════════════════════════════════════════
+  rc(0,0,W,38,COL.navy);doc.setFillColor(...COL.indigo);doc.rect(0,0,4,38,'F');
+  ln('MoneyFi',M,12,16,'bold',COL.white);
+  ln('Advisor-Ready Strategic Brief',M,20,9,'normal',[160,180,235]);
+  ln(priv?'PRIVATE — FOR CA/ADVISOR USE ONLY':'SHAREABLE VERSION — AMOUNTS HIDDEN',M,28,6.5,'bold',priv?[255,210,50]:[100,240,175]);
+  rln(`Prepared: ${today}`,W-M,12,7.5,'normal',[155,175,225]);
+  if(profile.age){const el=empType==='self_employed'?'Self-employed':empType==='business_owner'?'Business Owner':empType==='retired'?'Retired':'W-2 Employee';rln(`Age ${profile.age}  ·  ${el}  ·  ${region}`,W-M,20,6.5,'normal',[155,175,225]);}
+  doc.setFillColor(...fhsCol.map(c=>Math.max(0,c-20)));doc.circle(W-M-10,10.5,10.5,'F');doc.setFillColor(...fhsCol);doc.circle(W-M-10,10.5,9,'F');
+  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...COL.white);doc.text(String(fhsScore),W-M-10,14,{align:'center'});doc.setFontSize(5.5);doc.text('/100',W-M-10,18.5,{align:'center'});
   y=46;
 
-  if(mission){rect(M,y,W-2*M,13,[232,241,255],3);doc.setDrawColor(30,42,110);doc.setLineWidth(1.5);doc.line(M,y,M,y+13);line('CLIENT OBJECTIVE',M+4,y+5,5.5,'bold',[30,42,110]);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(30,42,110);doc.text(doc.splitTextToSize(mission,W-2*M-10)[0],M+4,y+11);y+=19;}
+  // Mission
+  if(mission){rc(M,y,W-2*M,13,[232,241,255],3);doc.setDrawColor(...COL.navy);doc.setLineWidth(1.5);doc.line(M,y,M,y+13);ln('CLIENT OBJECTIVE',M+4,y+5,5.5,'bold',COL.navy);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(...COL.navy);doc.text(doc.splitTextToSize(mission,W-2*M-10)[0],M+4,y+11);y+=19;}
 
   // Snapshot strip
-  const snap4=[{label:'Net Worth',val:maskAmt(nw.netWorth),col:[30,42,110]},{label:'Monthly Surplus',val:priv?`${sym}${Math.round(surplus).toLocaleString()}`:`${savRate}% saved`,col:surplus>=0?[5,150,105]:[239,68,68]},{label:'FIRE Progress',val:`${firePct}%`,col:firePct>=80?[5,150,105]:firePct>=40?[245,158,11]:[239,68,68]},{label:`FHS  ${fhsGrade}`,val:`${fhsScore}/100`,col:fhsCol}];
+  const snap4=[{l:'Net Worth',v:maskAmt(nw.netWorth),c:COL.navy},{l:'Monthly Surplus',v:priv?`${sym}${Math.round(surplus).toLocaleString()}`:`${savRate}% saved`,c:surplus>=0?COL.green:COL.red},{l:'FIRE Progress',v:`${firePct}%`,c:firePct>=80?COL.green:firePct>=40?COL.amber:COL.red},{l:`FHS  ${fhsGrade}`,v:`${fhsScore}/100`,c:fhsCol}];
   const sw=(W-2*M)/4;
-  snap4.forEach((s,i)=>{const sx=M+i*sw;rect(sx,y,sw-2,18,[242,245,252],3);doc.setFillColor(...s.col);doc.rect(sx,y+15,sw-2,1,'F');line(s.label,sx+3,y+6,5.5,'normal',[110,120,140]);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...s.col);doc.text(String(s.val),sx+3,y+14);});
+  snap4.forEach((s,i)=>{const sx=M+i*sw;rc(sx,y,sw-2,18,[242,245,252],3);doc.setFillColor(...s.c);doc.rect(sx,y+15,sw-2,1,'F');ln(s.l,sx+3,y+6,5.5,'normal',COL.gray);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...s.c);doc.text(String(s.v),sx+3,y+14);});
   y+=24;
 
   // Advisor narrative
-  checkY(30);
-  y=sectionBand('ADVISOR BRIEFING — WHAT TO SAY IN THE FIRST 5 MINUTES',y);y+=3;
-  const nbH=narrativeLines.length*9+6;
-  rect(M,y,W-2*M,nbH,[248,250,255],3);doc.setDrawColor(79,70,229);doc.setLineWidth(0.6);doc.line(M,y,M,y+nbH);
-  narrativeLines.forEach((s,i)=>{const wl=doc.splitTextToSize(s,W-2*M-10);doc.setFontSize(7.5);doc.setFont('helvetica',i===0?'bold':'normal');doc.setTextColor(30,42,110);doc.text(wl,M+4,y+6+i*9);});
+  CY(30);y=sb('ADVISOR BRIEFING — WHAT TO SAY IN THE FIRST 5 MINUTES',y);y+=3;
+  const nbH=narrativeLines.length*9+6;rc(M,y,W-2*M,nbH,[248,250,255],3);doc.setDrawColor(...COL.indigo);doc.setLineWidth(0.6);doc.line(M,y,M,y+nbH);
+  narrativeLines.forEach((s,i)=>{const wl=doc.splitTextToSize(s,W-2*M-10);doc.setFontSize(7.5);doc.setFont('helvetica',i===0?'bold':'normal');doc.setTextColor(...COL.navy);doc.text(wl,M+4,y+6+i*9);});
   y+=nbH+10;
 
-  // FIRE gap
+  // FIRE gap bar
   if(fireTarget>0){
-    checkY(26);
-    const gc2=firePct>=80?[5,150,105]:firePct>=50?[245,158,11]:[220,38,38];
-    rect(M,y,W-2*M,24,[255,250,240],3);doc.setDrawColor(...gc2);doc.setLineWidth(1.5);doc.line(M,y,M,y+24);
-    line('FIRE CORPUS — KEY NUMBER FOR THIS MEETING',M+4,y+6,6.5,'bold',[30,42,110]);
-    if(priv){line(`Current: ${fmt2(fireCorpus)}   ·   Target: ${fmt2(fireTarget)} (${fireR.fireMultiple||25}× @ ${fireR.targetSWR||4}% SWR)`,M+4,y+12,7,'normal',[80,90,105]);rline(fireGap>0?`Gap: ${fmt2(fireGap)}  ·  SIP: ${fmt2(sipToCloseGap)}/mo over ${retYears} yrs`:`On track — ${fmt2(fireCorpus-fireTarget)} ahead`,W-M,y+12,7.5,'bold',gc2);}
-    else{rline(fireGap>0?`${firePct}% funded — gap exists`:'On track',W-M,y+12,7.5,'bold',gc2);}
-    bar(M+4,y+19,W-2*M-8,2.5,firePct,gc2);line(`${firePct}% funded`,M+4,y+24,5.5,'normal',gc2);
+    CY(26);const gc=firePct>=80?COL.green:firePct>=50?COL.amber:COL.red;
+    rc(M,y,W-2*M,24,[255,250,240],3);doc.setDrawColor(...gc);doc.setLineWidth(1.5);doc.line(M,y,M,y+24);
+    ln('FIRE CORPUS — KEY NUMBER FOR THIS MEETING',M+4,y+6,6.5,'bold',COL.navy);
+    if(priv){ln(`Current: ${fmt2(fireCorpus)}   ·   Target: ${fmt2(fireTarget)} (${fireR.fireMultiple||25}× @ ${fireR.targetSWR||4}% SWR)`,M+4,y+12,7,'normal',COL.gray);rln(fireGap>0?`Gap: ${fmt2(fireGap)}  ·  SIP: ${fmt2(sipToCloseGap)}/mo over ${retYears} yrs`:`On track — ${fmt2(fireCorpus-fireTarget)} ahead`,W-M,y+12,7.5,'bold',gc);}
+    else{rln(fireGap>0?`${firePct}% funded — gap exists`:'On track',W-M,y+12,7.5,'bold',gc);}
+    br(M+4,y+19,W-2*M-8,2.5,firePct,gc);ln(`${firePct}% funded`,M+4,y+24,5.5,'normal',gc);
     y+=30;
   }
 
   // Agenda
-  checkY(12+top3.length*14);
-  y=sectionBand('MEETING AGENDA — TOP 3 PRIORITIES',y);y+=3;
-  if(top3.length===0){line('No critical flags — client tracking well across all pillars.',M,y,7.5,'italic',[5,150,105]);y+=10;}
-  else{top3.forEach((item,i)=>{checkY(14);rect(M,y-4,W-2*M,11,item.col.map(c=>Math.min(255,c+195)),3);chip(`${i+1}  ${item.tag}`,M+2,y+1,item.col);const cw2=doc.getTextWidth(`${i+1}  ${item.tag}`)+9;const tl2=doc.splitTextToSize(item.text,W-M*2-cw2-4);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(35,45,65);doc.text(tl2,M+cw2+2,y);y+=Math.max(11,tl2.length*4.5+5);});}
+  CY(12+top3.length*14);y=sb('MEETING AGENDA — TOP 3 PRIORITIES',y);y+=3;
+  if(top3.length===0){ln('No critical flags — client tracking well.',M,y,7.5,'italic',COL.green);y+=10;}
+  else{top3.forEach((item,i)=>{CY(14);rc(M,y-4,W-2*M,11,item.col.map(c=>Math.min(255,c+195)),3);ch(`${i+1}  ${item.tag}`,M+2,y+1,item.col);const cw=doc.getTextWidth(`${i+1}  ${item.tag}`)+9;const tl=doc.splitTextToSize(item.text,W-M*2-cw-4);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(35,45,65);doc.text(tl,M+cw+2,y);y+=Math.max(11,tl.length*4.5+5);});}
   y+=4;
 
   // Liability breakdown
   if(priv&&nw.liabTotal>0){
-    checkY(28);y=sectionBand('LIABILITY BREAKDOWN',y);y+=3;
+    CY(28);y=sb('LIABILITY BREAKDOWN',y);y+=3;
     const loans=(data._nwAccounts||[]).filter(a=>a.type==='loan'||a.type==='other_liability');
     const cards=(data._nwAccounts||[]).filter(a=>a.type==='credit_card');
-    [...loans,...cards].slice(0,5).forEach(a=>{const bal2=nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);const mp2=a.meta?.monthlyPayment||0;line((a.name||a.type).substring(0,30),M,y,7,'normal',[30,42,110]);rline(mp2>0?`${fmt2(bal2)} · ${fmt2(mp2)}/mo`:fmt2(bal2),W-M-20,y,7,'normal',[80,90,105]);chip(a.type==='credit_card'?'CC':'LOAN',W-M-18,y,a.type==='credit_card'?[245,158,11]:[156,163,175]);y+=6.5;});
-    hline(y,[215,220,228]);y+=3;line('Total Liabilities',M,y,7.5,'bold',[80,90,105]);rline(maskAmt(nw.liabTotal),W-M,y,8,'bold',[220,38,38]);y+=10;
+    [...loans,...cards].slice(0,5).forEach(a=>{const bal=nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);const mp=a.meta?.monthlyPayment||0;ln((a.name||a.type).substring(0,32),M,y,7,'normal',COL.navy);rln(mp>0?`${fmt2(bal)} · ${fmt2(mp)}/mo`:fmt2(bal),W-M-20,y,7,'normal',COL.gray);ch(a.type==='credit_card'?'CC':'LOAN',W-M-18,y,a.type==='credit_card'?COL.amber:COL.lightGray);y+=6.5;});
+    hl(y,COL.lightGray);y+=3;ln('Total Liabilities',M,y,7.5,'bold',COL.gray);rln(maskAmt(nw.liabTotal),W-M,y,8,'bold',COL.red);y+=8;
   }
 
+  // NW teaser — stays on page 1 only if there's room
+  CY(18);hl(y);y+=5;
+  ln('Total Assets',M,y,7.5,'normal',COL.gray);rln(maskAmt(nw.totalAssets),W-M,y,7.5,'normal',COL.navy);y+=6;
+  ln('Total Liabilities',M,y,7.5,'normal',COL.gray);rln(maskAmt(nw.liabTotal),W-M,y,7.5,'normal',COL.red);y+=5;
+  hl(y,COL.lightGray,0.4);y+=4;
+  ln('Net Worth',M,y,9,'bold',COL.navy);rln(maskAmt(nw.netWorth),W-M,y,9,'bold',COL.navy);y+=8;
+
+  // ══════════════════════════════════════════════════════════════
+  // PAGE 2 — FHS MASTERY SCORECARD (13-Pillar)
+  // ══════════════════════════════════════════════════════════════
+  NP();PH('Page 2 — FHS Mastery Scorecard: 13-Pillar Health Audit','The Structural View');y=18;
+
+  // FHS hero
+  const fhsLStr=fhsScore>=80?'Mastery':fhsScore>=65?'Strong':fhsScore>=50?'Building':'Foundation';
+  rc(M,y,W-2*M,22,fhsCol.map(c=>Math.min(255,c+180)),3);
+  doc.setFillColor(...fhsCol.map(c=>Math.max(0,c-15)));doc.circle(M+14,y+11,10,'F');doc.setFillColor(...fhsCol);doc.circle(M+14,y+11,8.5,'F');
+  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...COL.white);doc.text(String(fhsScore),M+14,y+14.5,{align:'center'});doc.setFontSize(5.5);doc.text('/100',M+14,y+19,{align:'center'});
+  ln('FINANCIAL HEALTH SCORE',M+28,y+6.5,8,'bold',COL.navy);ln(`Grade ${fhsGrade} — ${fhsLStr}`,M+28,y+13,10,'bold',fhsCol);
+  ln(fhs.summaryLine||'',M+28,y+19,6.5,'italic',COL.gray);br(M+28,y+22,W-M-28-M,2.5,fhsScore,fhsCol);y+=30;
+
+  // Pillar grid — all 13
+  y=sb('ALL 13 PILLARS',y);y+=3;
+  const pillarArr=fhs.pillarResults?Object.entries(fhs.pillarResults).map(([k,p])=>({label:p.name||k,score:p.result?.score??0,status:p.result?.status||'',band:p.band||''})):[];
+  if(pillarArr.length>0){
+    const cols=4;const cW=(W-2*M)/cols;const rH=11;
+    pillarArr.forEach((p,i)=>{
+      const cx=M+(i%cols)*cW;const cy=y+Math.floor(i/cols)*rH;
+      const pC=p.status==='inactive'||p.status==='na'?[180,185,195]:p.score>=70?COL.green:p.score>=45?COL.amber:COL.red;
+      rc(cx,cy-5,cW-3,rH-1,pC.map(c=>Math.min(255,c+190)),2);doc.setFillColor(...pC);doc.rect(cx,cy+5,cW-3,1,'F');
+      doc.setFontSize(5.5);doc.setFont('helvetica','bold');doc.setTextColor(...pC);doc.text(p.label.substring(0,16),cx+2.5,cy);
+      doc.setFontSize(p.status==='inactive'||p.status==='na'?7:9.5);doc.text(p.status==='inactive'||p.status==='na'?'N/A':`${Math.round(p.score)}`,cx+cW-5,cy,{align:'right'});
+    });
+    y+=Math.ceil(pillarArr.length/cols)*rH+6;
+  }
+
+  // Foundation audit
+  CY(60);y=sb('FOUNDATION AUDIT',y);y+=3;
+  // Emergency
+  ln('Emergency Buffer:',M,y,7.5,'normal',COL.gray);
+  if(efR.status==='inactive'){rln('Tag liquid accounts to activate',W-M,y,7,'bold',COL.red);}
+  else{const ec=efMonths>=6?COL.green:efMonths>=3?COL.amber:COL.red;br(W-M-50,y-3.5,48,3.5,Math.min(efMonths/6*100,100),ec);rln(`${efMonths.toFixed(1)} / ${efR.emergencyTarget||6} months`,W-M,y,7.5,'bold',ec);}
+  y+=7;
+  // DTI
+  ln('Debt-to-Income (CFPB — monthly pmts ÷ income):',M,y,7.5,'normal',COL.gray);
+  if(debtR.dti!=null){const dl=dtiPct<=20?'Excellent':dtiPct<=28?'Good':dtiPct<=36?'Moderate':dtiPct<=43?'Watch':'High';const dc=dtiPct<=28?COL.green:dtiPct<=36?COL.amber:dtiPct<=43?[249,115,22]:COL.red;rln(priv?`${dtiPct.toFixed(1)}% — ${dl}  (${sym}${Math.round(debtR.monthlyDebt)}/mo)`:`${dtiPct.toFixed(1)}% — ${dl}`,W-M,y,7.5,'bold',dc);}
+  else{rln('Add monthly payment to loan accounts',W-M,y,7,'italic',COL.gray);}
+  y+=7;
+  // Savings
+  ln('Savings Rate (6-month avg):',M,y,7.5,'normal',COL.gray);br(W-M-50,y-3.5,48,3.5,savRate,savRate>=30?COL.green:savRate>=15?COL.amber:COL.red);rln(`${savRate}%${savRate>=40?' — High performer':savRate>=20?' — Solid':''}`,W-M,y,7.5,'bold',savRate>=30?COL.green:savRate>=15?COL.amber:COL.red);y+=7;
+  // Velocity
+  if(snaps.length>=2){const ls=snaps[snaps.length-1];const ps2=snaps[snaps.length-2];const nwD=snapValue(ls)-(snapValue(ps2)||0);const ds=avgExp>0?avgExp/30:0;const db=ds>0?Math.round(nwD/ds/365*30):null;if(db!=null&&!isNaN(db)){ln('NW Velocity (freedom days bought — 12m):',M,y,7.5,'normal',COL.gray);rln(`${db>0?'+':''}${db} days`,W-M,y,7.5,'bold',db>0?COL.green:COL.red);y+=7;}}
   // Estate
-  // ── NW snapshot teaser before page break ──────────────────────
-  if(priv && nw.netWorth > 0){
-    checkY(14); hline(y,[210,215,225]); y+=5;
-    line('Total Assets',M,y,7.5,'normal',[80,90,105]);
-    rline(maskAmt(nw.totalAssets),W-M,y,7.5,'normal',[30,42,110]);
-    y+=6;
-    line('Total Liabilities',M,y,7.5,'normal',[80,90,105]);
-    rline(maskAmt(nw.liabTotal),W-M,y,7.5,'normal',[220,38,38]);
-    y+=5; hline(y,[210,215,225],0.4); y+=4;
-    line('Net Worth',M,y,9,'bold',[30,42,110]);
-    rline(maskAmt(nw.netWorth),W-M,y,9,'bold',[30,42,110]);
-    y+=10;
-  }
+  ln('Estate & Legacy:',M,y,7.5,'normal',COL.gray);y+=5;let ex=M;[['Will',hasWill],['Power of Attorney',hasPOA],['Nominees',hasNominees]].forEach(([lbl,done])=>{ch((done?'✓ ':'✗ ')+lbl,ex,y,done?COL.green:COL.red);ex+=doc.getTextWidth((done?'✓ ':'✗ ')+lbl)+11;});y+=12;
 
-  // ════════════════════════════════════════════════════════════════
-  // PAGE 2 — CASH FLOW · GOALS · TAX
-  // ════════════════════════════════════════════════════════════════
-  newPage();
-  rect(0,0,W,10,[10,20,65]);doc.setFillColor(79,70,229);doc.rect(0,0,4,10,'F');
-  line('Page 2 — Cash Flow  ·  Goals  ·  Tax Efficiency',M,7,8,'bold',[255,255,255]);
-  y=18;
+  // ══════════════════════════════════════════════════════════════
+  // PAGE 3 — NET WORTH & LIQUIDITY (Spendable vs Locked)
+  // ══════════════════════════════════════════════════════════════
+  NP();PH('Page 3 — Net Worth & Liquidity: Spendable vs. Locked Wealth','The Reality View');y=18;
 
-  y=sectionBand('CASH FLOW PROFILE',y);y+=3;
+  // NW by type with freshness
+  y=sb('ASSET REGISTER — DATA FRESHNESS',y);y+=3;
+  const NW_GROUPS=[
+    {label:'Cash & Liquid',types:['checking','savings_acc','cash','emergency','bank_checking_us'],tag:'LIQUID'},
+    {label:'Investments',types:['brokerage','brokerage_taxable','stocks_direct','mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','mf_index'],tag:'INVEST'},
+    {label:'Retirement',types:['retirement','retirement_401k','retirement_roth','retirement_ira','hsa','epf','ppf','nps','college_529'],tag:'LOCKED'},
+    {label:'Real Estate',types:['realestate'],tag:'LOCKED'},
+    {label:'Metals',types:['metals'],tag:'LIQUID'},
+    {label:'Bonds / FD',types:['bonds_fd','bank_fd','ibond'],tag:'LIQUID'},
+  ];
+  const LOCKED_TYPES=new Set(['retirement','retirement_401k','retirement_roth','retirement_ira','hsa','epf','ppf','nps','mf_elss','bank_fd','ibond','college_529','realestate']);
+  let totalLiquid=0,totalLocked=0;
+  // Header
+  ['Asset Group','Value','Last Updated','Liquidity'].forEach((h,i)=>{const xs=[M,M+70,M+130,W-M];if(i<3)ln(h,xs[i],y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+  y+=3;hl(y,[225,230,238]);y+=4;
+  NW_GROUPS.forEach(g=>{
+    const accts=(data._nwAccounts||[]).filter(a=>g.types.includes(a.type));
+    if(!accts.length)return;
+    const total=accts.reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0)),0);
+    if(total<=0)return;
+    const fresh=accountFreshness(g.types);
+    const isLocked=g.tag==='LOCKED';
+    if(isLocked)totalLocked+=total;else totalLiquid+=total;
+    const freshCol=!fresh?COL.gray:fresh.includes('⚠')?COL.red:fresh==='Live'?COL.green:COL.gray;
+    ln(g.label,M,y,7.5,'normal',COL.navy);
+    ln(priv?fmt2(total):'—',M+70,y,7.5,'normal',COL.navy);
+    ln(fresh||'Unknown',M+130,y,6.5,'normal',freshCol);
+    ch(g.tag,W-M-22,y,isLocked?COL.amber:COL.green);
+    y+=7;
+  });
+  hl(y,COL.lightGray);y+=4;
+  ln('Total Liquid / Investable',M,y,7.5,'bold',COL.gray);rln(priv?fmt2(totalLiquid):'—',W-M,y,8,'bold',COL.green);y+=6;
+  ln('Total Locked (retirement, RE, ELSS)',M,y,7.5,'bold',COL.gray);rln(priv?fmt2(totalLocked):'—',W-M,y,8,'bold',COL.amber);y+=6;
+  hl(y,COL.lightGray,0.4);y+=4;
+  ln('Net Worth',M,y,9,'bold',COL.navy);rln(maskAmt(nw.netWorth),W-M,y,9,'bold',COL.navy);y+=10;
+
+  // Liquidity clarity note
+  const liquidPct=nw.totalAssets>0?Math.round(totalLiquid/nw.totalAssets*100):0;
+  CY(16);
+  rc(M,y,W-2*M,12,liquidPct>=20?[232,248,240]:[255,247,230],3);
+  doc.setDrawColor(...(liquidPct>=20?COL.green:COL.amber));doc.setLineWidth(0.5);doc.line(M,y,M,y+12);
+  ln(liquidPct>=20?`Liquidity health: ${liquidPct}% of assets are spendable within 30 days.`:`Only ${liquidPct}% of assets are liquid — ${priv?fmt2(nw.totalAssets*(0.20-liquidPct/100)):'most of the portfolio'} is locked in retirement or real estate.`,M+4,y+7,7,'normal',liquidPct>=20?[22,101,52]:[146,64,14]);
+  y+=18;
+
+  // Cash flow
+  CY(40);y=sb('CASH FLOW PROFILE',y);y+=3;
   const annGross=avgInc*12;const annBurn=avgExp*12;
   const el3=empType==='self_employed'?'Self-employed / 1099':empType==='business_owner'?'Business Owner':empType==='retired'?'Retired':'W-2 Employee';
-  [['Employment Type',el3,[80,90,105]],['Annual Gross Income',maskAmt(annGross),[30,42,110]],['Spouse / Partner Income',priv&&(profile.spouseIncome||0)>0?fmt2((profile.spouseIncome||0)*12):'Not declared',[80,90,105]],['Annual Essential Burn',maskAmt(annBurn),[30,42,110]],['Monthly Investable Surplus',priv?`${sym}${Math.round(surplus).toLocaleString()} (${savRate}% savings rate)`:`${savRate}% savings rate`,surplus>=0?[5,150,105]:[220,38,38]]].forEach(([l,v,c])=>{kv(l,String(v),y,c,false);y+=6.5;});y+=5;
+  [['Employment Type',el3,COL.gray],['Annual Gross Income',maskAmt(annGross),COL.navy],['Spouse / Partner Income',priv&&(profile.spouseIncome||0)>0?fmt2((profile.spouseIncome||0)*12):'Not declared',COL.gray],['Annual Essential Burn',maskAmt(annBurn),COL.navy],['Monthly Investable Surplus',priv?`${sym}${Math.round(surplus).toLocaleString()} (${savRate}% savings rate)`:`${savRate}% savings rate`,surplus>=0?COL.green:COL.red]].forEach(([l,v,c])=>{kv(l,String(v),y,c);y+=6.5;});y+=5;
 
-  // Tax vehicle recommendation
-  checkY(24);
-  rect(M,y,W-2*M,24,vehicleData.col.map(c=>Math.min(255,c+193)),3);doc.setDrawColor(...vehicleData.col);doc.setLineWidth(1.2);doc.line(M,y,M,y+24);
-  line(vehicleData.label,M+4,y+6,6,'bold',vehicleData.col);line(`Recommended: ${vehicleData.rec}`,M+4,y+13,8,'bold',[30,42,110]);
+  // Tax vehicle
+  CY(24);rc(M,y,W-2*M,24,vehicleData.col.map(c=>Math.min(255,c+193)),3);doc.setDrawColor(...vehicleData.col);doc.setLineWidth(1.2);doc.line(M,y,M,y+24);
+  ln(vehicleData.label,M+4,y+6,6,'bold',vehicleData.col);ln(`Recommended: ${vehicleData.rec}`,M+4,y+13,8,'bold',COL.navy);
   const vl=doc.splitTextToSize(vehicleData.detail,W-2*M-10);doc.setFontSize(6.5);doc.setFont('helvetica','normal');doc.setTextColor(60,70,90);doc.text(vl[0]||'',M+4,y+20);y+=30;
 
   // Goals
-  checkY(16+Math.min(goals.length,6)*10);
-  y=sectionBand('GOALS FUNDING STATUS',y);y+=3;
-  if(goals.length===0){line('No goals configured — recommend setting FIRE corpus, education and emergency goals.',M,y,7,'italic',[156,163,175]);y+=10;}
+  CY(16+Math.min(goals.length,6)*10);y=sb('GOALS FUNDING STATUS',y);y+=3;
+  if(goals.length===0){ln('No goals configured — set FIRE corpus, education and emergency goals.',M,y,7,'italic',COL.gray);y+=10;}
   else{
-    [['Goal',M],['Target',M+68],['Funded',M+92],['Gap',M+116],['SIP/mo',M+140],['Yrs',W-M]].forEach(([h,x],i)=>{if(i<5)line(h,x,y,6,'bold',[110,120,140]);else rline(h,W-M,y,6,'bold',[110,120,140]);});
-    y+=3;hline(y,[225,230,238]);y+=4;
-    goals.slice(0,6).forEach(g=>{checkY(10);const proj2=_goalProjection(g,10);const fp2=Math.round(proj2.fundingPct);const ga2=proj2.gap;const si2=proj2.sipNeeded;const yr2=proj2.yearsLeft.toFixed(1);const tc2=proj2.isOnTrack?[5,150,105]:ga2>surplus*12?[220,38,38]:[245,158,11];line((g.name||'Goal').substring(0,22),M,y,7,'normal',[30,42,110]);line(priv?fmt2(proj2.target):`${fp2>=100?'✓':fp2+'%'}`,M+68,y,7,'normal',[90,100,115]);bar(M+88,y-3.5,22,3.5,fp2,tc2);line(`${fp2}%`,M+92,y,6.5,'bold',tc2);line(priv&&ga2>0?fmt2(ga2):(ga2>0?'Gap':'✓'),M+116,y,7,'normal',tc2);line(si2>0?(priv?fmt2(si2):'req.'):'-',M+140,y,7,'bold',si2>surplus?[220,38,38]:[30,42,110]);rline(String(yr2),W-M,y,7,'normal',[90,100,115]);y+=8;});
-    if(goals.length>6){line(`+ ${goals.length-6} more goals — see app`,M,y,6,'italic',[156,163,175]);y+=7;}
-    const conf2=_detectGoalConflicts(goals,surplus);
-    if(conf2.hasConflict){checkY(12);rect(M,y,W-2*M,11,[255,247,230],3);doc.setDrawColor(245,158,11);doc.setLineWidth(0.5);doc.line(M,y,M,y+11);line('⚠ Goal Funding Conflict',M+3,y+5,7,'bold',[146,64,14]);line(priv?`Combined SIPs (${fmt2(conf2.totalSIPNeeded)}/mo) exceed surplus by ${fmt2(conf2.deficit)} — sequence by priority`:'Combined SIPs exceed monthly surplus — sequence goals.',M+3,y+9.5,6.5,'normal',[146,64,14]);y+=15;}
+    [['Goal',M],['Target',M+68],['Funded',M+92],['Gap',M+116],['SIP/mo',M+140],['Yrs',W-M]].forEach(([h,x],i)=>{if(i<5)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+    y+=3;hl(y,[225,230,238]);y+=4;
+    goals.slice(0,6).forEach(g=>{CY(10);const pj=_goalProjection(g,10);const fp=Math.round(pj.fundingPct);const ga=pj.gap;const si=pj.sipNeeded;const yr=pj.yearsLeft.toFixed(1);const tc=pj.isOnTrack?COL.green:ga>surplus*12?COL.red:COL.amber;ln((g.name||'Goal').substring(0,22),M,y,7,'normal',COL.navy);ln(priv?fmt2(pj.target):`${fp>=100?'✓':fp+'%'}`,M+68,y,7,'normal',COL.gray);br(M+88,y-3.5,22,3.5,fp,tc);ln(`${fp}%`,M+92,y,6.5,'bold',tc);ln(priv&&ga>0?fmt2(ga):(ga>0?'Gap':'✓'),M+116,y,7,'normal',tc);ln(si>0?(priv?fmt2(si):'req.'):'-',M+140,y,7,'bold',si>surplus?COL.red:COL.navy);rln(String(yr),W-M,y,7,'normal',COL.gray);y+=8;});
+    if(goals.length>6){ln(`+ ${goals.length-6} more goals — see app`,M,y,6,'italic',COL.gray);y+=7;}
+    const cf=_detectGoalConflicts(goals,surplus);
+    if(cf.hasConflict){CY(12);rc(M,y,W-2*M,11,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.5);doc.line(M,y,M,y+11);ln('⚠ Goal Funding Conflict',M+3,y+5,7,'bold',[146,64,14]);ln(priv?`Combined SIPs (${fmt2(cf.totalSIPNeeded)}/mo) exceed surplus by ${fmt2(cf.deficit)}.`:'Combined SIPs exceed monthly surplus — sequence goals.',M+3,y+9.5,6.5,'normal',[146,64,14]);y+=15;}
   }
-  y+=4;
 
-  // Tax shelters
-  checkY(50);y=sectionBand('TAX SHELTER UTILISATION',y);y+=3;
-  const acbt=(types,aliases)=>{const ac2=(data._nwAccounts||[]).filter(a=>{if(types.includes(a.type))return true;if(a.type==='retirement'&&aliases){const sub2=(a.meta?.subtype||'').toLowerCase();return aliases.some(al=>sub2.includes(al));}return false;});return ac2.reduce((s,a)=>{const y3=a.meta?.monthlyContribution||0;const e=a.meta?.employerContribution||0;return s+((y3+e)||a._monthlyTotal||0)*12;},0);};
-  const anft=(types,aliases)=>(data._nwAccounts||[]).filter(a=>{if(types.includes(a.type))return true;if(a.type==='retirement'&&aliases){const sub3=(a.meta?.subtype||'').toLowerCase();return aliases.some(al=>sub3.includes(al));}return false;}).map(a=>a.name||a.type).join(', ')||null;
-  const shelters=region==='IN'?[{name:'80C (ELSS+EPF+PPF)',limit:150000,used:(()=>{const inv2=(data[viewMonth]?.investments||[]);const tx2=inv2.filter(i=>['ELSS','EPF','PPF'].some(t=>i.category?.includes(t))).reduce((s,i)=>s+convertAmt(i.amount,i.currency),0)*12;return Math.max(tx2,acbt(['mf_elss','epf','ppf']));})(),note:'Net Worth → ELSS/EPF/PPF → Monthly Contribution',accts:anft(['mf_elss','epf','ppf'])},{name:'80D Health Insurance',limit:25000,used:(profile.healthCover||0)>0?25000:0,note:'Score → Edit Profile → Health Insurance Cover',accts:null},{name:'NPS 80CCD(1B)',limit:50000,used:acbt(['nps'],['nps']),note:'Net Worth → NPS → Monthly Contribution',accts:anft(['nps'],['nps'])}]:[{name:'401(k)',limit:23000,used:acbt(['retirement_401k'],['401k','401(k)']),note:'Net Worth → 401(k) → Your + Employer Contribution',accts:anft(['retirement_401k'],['401k','401(k)'])},{name:'IRA / Roth IRA',limit:7000,used:acbt(['retirement_ira','retirement_roth'],['ira','roth']),note:'Net Worth → IRA/Roth → Monthly Contribution',accts:anft(['retirement_ira','retirement_roth'],['ira','roth'])},{name:'HSA',limit:3850,used:acbt(['hsa'],['hsa']),note:'Net Worth → HSA → Monthly Contribution',accts:anft(['hsa'],['hsa'])}];
-  [['Shelter',M],['Used',M+68],['Limit',M+96],['Utilisation',W-M]].forEach(([h,x],i)=>{if(i<3)line(h,x,y,6,'bold',[110,120,140]);else rline(h,W-M,y,6,'bold',[110,120,140]);});y+=3;hline(y,[225,230,238]);y+=4;
-  shelters.forEach(sh=>{checkY(15);const cp2=Math.min(sh.used||0,sh.limit);const pt2=sh.limit>0?cp2/sh.limit*100:0;const hd=(sh.used||0)>0;const bc2=!hd?[200,205,215]:pt2>=80?[34,197,94]:pt2>=40?[245,158,11]:[239,68,68];line(sh.name,M,y,7.5,'normal',[30,42,110]);line(priv&&hd?`${sym}${Math.round(cp2).toLocaleString()}`:(hd?'Present':'—'),M+68,y,7,'normal',hd?[30,42,110]:[156,163,175]);line(priv?`${sym}${sh.limit.toLocaleString()}`:'—',M+96,y,7,'normal',[110,120,140]);bar(M+116,y-3.5,W-2*M-116,4,pt2,bc2);rline(hd?`${pt2.toFixed(0)}%`:'No data',W-M,y,7,'bold',!hd?[156,163,175]:bc2);y+=5;if(sh.accts){line(`Accounts: ${sh.accts}`,M+2,y,5.5,'italic',[110,120,140]);y+=3.5;}line(`${!hd?'⚠ ':'ℹ '}${sh.note}`,M+2,y,5.5,'italic',!hd?[220,38,38]:[156,163,175]);y+=7;});
-  const ga3=(data._nwAccounts||[]).filter(a=>a.investedAmount!=null&&a.investedAmount>0&&!['loan','credit_card','other_liability'].includes(a.type));
-  const tg=ga3.reduce((s,a)=>{const c2=nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);const v2=nwConvert?nwConvert(a.investedAmount||0,a.currency):(a.investedAmount||0);return s+(c2-v2);},0);
-  const tc3=ga3.reduce((s,a)=>s+(nwConvert?nwConvert(a.investedAmount||0,a.currency):(a.investedAmount||0)),0);
-  const gp3=tc3>0?tg/tc3*100:0;
-  hline(y);y+=5;line('Estimated Unrealised Gains:',M,y,7.5,'normal',[80,90,105]);rline(priv?`${sym}${Math.round(tg).toLocaleString()} (${gp3>=0?'+':''}${gp3.toFixed(1)}%)`:`${gp3>=0?'+':''}${gp3.toFixed(1)}%`,W-M,y,7.5,'bold',tg>=0?[5,150,105]:[220,38,38]);y+=5;line('Use broker statements for STCG/LTCG split before any redemption.',M,y,6,'italic',[156,163,175]);y+=8;
+  // ══════════════════════════════════════════════════════════════
+  // PAGE 4 — PORTFOLIO CONSOLIDATION
+  // ══════════════════════════════════════════════════════════════
+  NP();PH('Page 4 — Portfolio Consolidation: Keep/Review/Exit Mandate','The Action View');y=18;
 
-  // ════════════════════════════════════════════════════════════════
-  // PAGE 3 — PORTFOLIO & ASSET ALLOCATION
-  // ════════════════════════════════════════════════════════════════
-  newPage();
-  rect(0,0,W,10,[10,20,65]);doc.setFillColor(79,70,229);doc.rect(0,0,4,10,'F');
-  line('Page 3 — Portfolio  ·  Asset Allocation  ·  Consolidation',M,7,8,'bold',[255,255,255]);
-  y=18;
-  y=sectionBand('ASSET ALLOCATION VS TARGET',y);y+=3;
+  // Asset allocation
+  y=sb('ASSET ALLOCATION VS TARGET',y);y+=3;
   const acMap={equity:0,debt:0,gold:0,re:0,cash:0,other:0};
   const ASSET_CLASSES={mf_equity:'equity',mf_elss:'equity',mf_index:'equity',stocks_direct:'equity',brokerage:'equity',brokerage_taxable:'equity',retirement_401k:'equity',retirement_roth:'equity',retirement_ira:'equity',mf_debt:'debt',bonds_fd:'debt',bank_fd:'debt',nps:'debt',epf:'debt',ppf:'debt',ibond:'debt',checking:'cash',savings_acc:'cash',bank_checking_us:'cash',emergency:'cash',hsa:'cash',mf_gold:'gold',metals:'gold',mf_hybrid:'equity',realestate:'re',college_529:'equity'};
   (data._nwAccounts||[]).filter(a=>!['loan','credit_card','other_liability'].includes(a.type)).forEach(a=>{acMap[ASSET_CLASSES[a.type]||'other']+=(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0));});
   const totalAC=Object.values(acMap).reduce((s,v)=>s+v,0)||1;
   const targetAC=data._targetAllocation||{equity:60,debt:20,gold:10,re:5,cash:5};
   const acLabels={equity:'Equity / Growth',debt:'Fixed Income / Debt',gold:'Gold / Metals',re:'Real Estate',cash:'Cash / Liquid',other:'Other / Unclassified'};
-  const acColors={equity:[79,70,229],debt:[16,185,129],gold:[245,158,11],re:[239,68,68],cash:[107,114,128],other:[156,163,175]};
-  [['Asset Class',M],['Value',M+56],['Current',M+84],['Target',M+104],['Gap',W-M]].forEach(([h,x],i)=>{if(i<4)line(h,x,y,6,'bold',[110,120,140]);else rline(h,W-M,y,6,'bold',[110,120,140]);});y+=3;hline(y,[225,230,238]);y+=4;
-  Object.keys(acLabels).forEach(ac=>{if(acMap[ac]===0&&!(targetAC[ac]>0))return;const cp3=acMap[ac]/totalAC*100;const tp3=targetAC[ac]||0;const g3=cp3-tp3;const gc3=Math.abs(g3)<5?[5,150,105]:Math.abs(g3)<15?[245,158,11]:[239,68,68];line(acLabels[ac],M,y,7.5,'normal',[40,50,70]);line(priv?`${sym}${Math.round(acMap[ac]).toLocaleString()}`:'—',M+56,y,7,'normal',[90,100,115]);bar(M+78,y-3.5,22,3.5,cp3,acColors[ac]);line(`${cp3.toFixed(0)}%`,M+84,y,7,'bold',acColors[ac]);line(`${tp3}%`,M+104,y,7,'normal',[120,130,145]);rline(`${g3>0?'+':''}${g3.toFixed(0)}%`,W-M,y,7.5,'bold',gc3);y+=7;});
-  if(acMap.other/totalAC>0.1){checkY(10);rect(M,y,W-2*M,10,[255,247,230],3);doc.setDrawColor(245,158,11);doc.setLineWidth(0.4);doc.line(M,y,M,y+10);line(`⚠  Large "Other" bucket (${(acMap.other/totalAC*100).toFixed(0)}%) — likely real estate or unlisted assets not mapped to standard classes.`,M+3,y+6.5,6.5,'italic',[146,64,14]);y+=14;}
+  const acColors={equity:COL.indigo,debt:COL.green,gold:COL.amber,re:COL.red,cash:COL.gray,other:COL.lightGray};
+  [['Asset Class',M],['Value',M+56],['Current',M+84],['Target',M+104],['Gap',W-M]].forEach(([h,x],i)=>{if(i<4)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+  y+=3;hl(y,[225,230,238]);y+=4;
+  Object.keys(acLabels).forEach(ac=>{if(acMap[ac]===0&&!(targetAC[ac]>0))return;const cp=acMap[ac]/totalAC*100;const tp=targetAC[ac]||0;const gp=cp-tp;const gc=Math.abs(gp)<5?COL.green:Math.abs(gp)<15?COL.amber:COL.red;ln(acLabels[ac],M,y,7.5,'normal',[40,50,70]);ln(priv?fmt2(acMap[ac]):'—',M+56,y,7,'normal',COL.gray);br(M+78,y-3.5,22,3.5,cp,acColors[ac]);ln(`${cp.toFixed(0)}%`,M+84,y,7,'bold',acColors[ac]);ln(`${tp}%`,M+104,y,7,'normal',[120,130,145]);rln(`${gp>0?'+':''}${gp.toFixed(0)}%`,W-M,y,7.5,'bold',gc);y+=7;});
+  if(acMap.other/totalAC>0.1){CY(10);rc(M,y,W-2*M,10,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.4);doc.line(M,y,M,y+10);ln(`⚠  Large "Other" bucket (${(acMap.other/totalAC*100).toFixed(0)}%) — likely real estate or unlisted assets.`,M+3,y+6.5,6.5,'italic',[146,64,14]);y+=14;}
   y+=4;
+
+  // PCS + fund table
   const gradeLabels={A:'Clean & Focused',B:'Good Shape',C:'Fragmented',D:'Significant Overlap',F:'Critical — Act Now'};
-  const pcsCol=grade==='A'||grade==='B'?[34,197,94]:grade==='C'?[245,158,11]:[239,68,68];
-  checkY(14);rect(M,y,W-2*M,13,[242,245,252],3);doc.setFillColor(...pcsCol);doc.rect(M,y,5,13,'F');line(`Portfolio Clarity Score:  ${d.pcs}/100 — Grade ${grade}  ·  ${gradeLabels[grade]||''}`,M+8,y+5.5,8,'bold',[30,42,110]);bar(M+8,y+10,W-2*M-16,2,d.pcs,pcsCol);y+=18;
-  y=sectionBand('KEEP / REVIEW / EXIT — WITH LIQUIDITY',y);y+=3;
-  [['Verdict',M],['Fund / Account',M+20],['Value',M+110],['Category',M+130],['Liquidity',W-M]].forEach(([h,x],i)=>{if(i<4)line(h,x,y,6,'bold',[110,120,140]);else rline(h,W-M,y,6,'bold',[110,120,140]);});y+=3;hline(y,[225,230,238]);y+=3;
-  const vCols2={keep:[34,197,94],review:[245,158,11],exit:[244,63,94]};
-  (_clarityFundData||[]).forEach(({a,verdict,val,pct,cat})=>{checkY(8);const col2=vCols2[verdict]||[120,130,145];rect(M,y-4,14,5.5,col2);doc.setFontSize(5.5);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);doc.text({keep:'KEEP',review:'REVIEW',exit:'EXIT'}[verdict]||verdict,M+1,y);line(_cleanFundName(a.name||'').substring(0,30),M+20,y,6.5,'normal',[30,42,110]);line(priv?`${sym}${Math.round(val||0).toLocaleString()}`:(pct!=null?`${pct>=0?'+':''}${pct.toFixed(0)}%`:'—'),M+110,y,6.5,'normal',[100,115,130]);line((cat||'—').substring(0,18),M+130,y,6,'italic',[156,163,175]);const isL=['mf_elss','epf','ppf','nps','bank_fd','ibond','retirement_401k','retirement_roth','retirement_ira','college_529'].includes(a.type);chip(isL?'LOCKED':'FREE',W-M-22,y,isL?[245,158,11]:[5,150,105]);y+=7;});
-  y+=5;checkY(36);hline(y);y+=5;y=sectionBand('CA / ADVISOR INSTRUCTION — REBALANCING MANDATE',y);y+=3;
+  const pcsCol=grade==='A'||grade==='B'?COL.green:grade==='C'?COL.amber:COL.red;
+  CY(14);rc(M,y,W-2*M,13,[242,245,252],3);doc.setFillColor(...pcsCol);doc.rect(M,y,5,13,'F');ln(`Portfolio Clarity Score:  ${d.pcs}/100 — Grade ${grade}  ·  ${gradeLabels[grade]||''}`,M+8,y+5.5,8,'bold',COL.navy);br(M+8,y+10,W-2*M-16,2,d.pcs,pcsCol);y+=18;
+  y=sb('KEEP / REVIEW / EXIT — WITH LIQUIDITY',y);y+=3;
+  [['Verdict',M],['Fund / Account',M+20],['Value',M+110],['Category',M+130],['Liquidity',W-M]].forEach(([h,x],i)=>{if(i<4)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});
+  y+=3;hl(y,[225,230,238]);y+=3;
+  const vCols={keep:COL.green,review:COL.amber,exit:[244,63,94]};
+  (_clarityFundData||[]).forEach(({a,verdict,val,pct,cat})=>{CY(8);const col=vCols[verdict]||COL.gray;rc(M,y-4,14,5.5,col);doc.setFontSize(5.5);doc.setFont('helvetica','bold');doc.setTextColor(...COL.white);doc.text({keep:'KEEP',review:'REVIEW',exit:'EXIT'}[verdict]||verdict,M+1,y);ln(_cleanFundName(a.name||'').substring(0,30),M+20,y,6.5,'normal',COL.navy);ln(priv?`${sym}${Math.round(val||0).toLocaleString()}`:(pct!=null?`${pct>=0?'+':''}${pct.toFixed(0)}%`:'—'),M+110,y,6.5,'normal',COL.gray);ln((cat||'—').substring(0,18),M+130,y,6,'italic',COL.gray);const isL=['mf_elss','epf','ppf','nps','bank_fd','ibond','retirement_401k','retirement_roth','retirement_ira','college_529'].includes(a.type);ch(isL?'LOCKED':'FREE',W-M-22,y,isL?COL.amber:COL.green);y+=7;});
+  y+=5;CY(36);hl(y);y+=5;y=sb('CA / ADVISOR INSTRUCTION — REBALANCING MANDATE',y);y+=3;
   const ef2=(_clarityFundData||[]).filter(f=>f.verdict==='exit');const kf2=(_clarityFundData||[]).filter(f=>f.verdict==='keep');
-  if(ef2.length>0){const te2=ef2.reduce((s,f)=>s+(f.val||0),0);const il=doc.splitTextToSize(priv?`Exit ${ef2.length} fund(s) valued at ${sym}${Math.round(te2).toLocaleString()} and reinvest into top ${Math.min(kf2.length,5)} performers. Verify exit loads and STCG/LTCG implications before redemption.`:`Exit ${ef2.length} fund(s) and consolidate into top ${Math.min(kf2.length,5)} performers.`,W-2*M);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(30,42,110);doc.text(il,M,y);y+=il.length*5+4;}
-  line('CA / Advisor Signature:',M,y,8,'normal',[80,90,105]);doc.setDrawColor(190,195,205);doc.setLineWidth(0.25);doc.line(M+48,y,W-M-38,y);line('Date:',W-M-34,y,8,'normal',[80,90,105]);doc.line(W-M-18,y,W-M,y);y+=10;
-  line('Approved Actions:',M,y,8,'normal',[80,90,105]);y+=5;[0,1,2].forEach(()=>{doc.line(M,y,W-M,y);y+=6;});
-  if(d.goalMismatchPenalty>0){checkY(16);rect(M,y,W-2*M,14,[255,247,230],3);doc.setDrawColor(245,158,11);doc.setLineWidth(0.5);doc.line(M,y,M,y+14);line('⚠ GOAL-HORIZON MISMATCH',M+4,y+6,7.5,'bold',[146,64,14]);line(`-${d.goalMismatchPenalty} pts. Some goals have mismatched fund types. Review with CA.`,M+4,y+11.5,7,'normal',[146,64,14]);y+=18;}
+  if(ef2.length>0){const te=ef2.reduce((s,f)=>s+(f.val||0),0);const il=doc.splitTextToSize(priv?`Exit ${ef2.length} fund(s) valued at ${sym}${Math.round(te).toLocaleString()} and reinvest into top ${Math.min(kf2.length,5)} performers. Verify exit loads and STCG/LTCG implications before redemption.`:`Exit ${ef2.length} fund(s) and consolidate into top ${Math.min(kf2.length,5)} performers.`,W-2*M);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...COL.navy);doc.text(il,M,y);y+=il.length*5+4;}
+  ln('CA / Advisor Signature:',M,y,8,'normal',COL.gray);doc.setDrawColor(190,195,205);doc.setLineWidth(0.25);doc.line(M+48,y,W-M-38,y);ln('Date:',W-M-34,y,8,'normal',COL.gray);doc.line(W-M-18,y,W-M,y);y+=10;
+  ln('Approved Actions:',M,y,8,'normal',COL.gray);y+=5;[0,1,2].forEach(()=>{doc.line(M,y,W-M,y);y+=6;});
+  if(d.goalMismatchPenalty>0){CY(16);rc(M,y,W-2*M,14,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.5);doc.line(M,y,M,y+14);ln('⚠ GOAL-HORIZON MISMATCH',M+4,y+6,7.5,'bold',[146,64,14]);ln(`-${d.goalMismatchPenalty} pts. Some goals have mismatched fund types. Review with CA.`,M+4,y+11.5,7,'normal',[146,64,14]);y+=18;}
 
-  // ════════════════════════════════════════════════════════════════
-  // PAGE 4 — FOUNDATION SCORES
-  // ════════════════════════════════════════════════════════════════
-  newPage();
-  rect(0,0,W,10,[10,20,65]);doc.setFillColor(79,70,229);doc.rect(0,0,4,10,'F');
-  line('Page 4 — Foundation & Mastery Scores',M,7,8,'bold',[255,255,255]);
-  y=18;
-  rect(M,y,W-2*M,22,fhsCol.map(c=>Math.min(255,c+180)),3);doc.setFillColor(...fhsCol.map(c=>Math.max(0,c-15)));doc.circle(M+14,y+11,10,'F');doc.setFillColor(...fhsCol);doc.circle(M+14,y+11,8.5,'F');doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);doc.text(String(fhsScore),M+14,y+14.5,{align:'center'});doc.setFontSize(5.5);doc.text('/100',M+14,y+19,{align:'center'});line('FINANCIAL HEALTH SCORE',M+28,y+6.5,8,'bold',[30,42,110]);const fhsLStr=fhsScore>=80?'Mastery':fhsScore>=65?'Strong':fhsScore>=50?'Building':'Foundation';line(`Grade ${fhsGrade} — ${fhsLStr}`,M+28,y+13,10,'bold',fhsCol);line(fhs.summaryLine||'',M+28,y+19,6.5,'italic',[80,90,105]);bar(M+28,y+22,W-M-28-M,2.5,fhsScore,fhsCol);y+=30;
-  y=sectionBand('PILLAR SCORES',y);y+=3;
-  const pillarArr=fhs.pillarResults?Object.entries(fhs.pillarResults).map(([k4,p4])=>({label:p4.name||k4,score:p4.result?.score??0})):[];
-  if(pillarArr.length>0){const cols=4;const cW=(W-2*M)/cols;const rH=11;pillarArr.slice(0,12).forEach((p4,i4)=>{const cx=M+(i4%cols)*cW;const cy=y+Math.floor(i4/cols)*rH;const pC=p4.score>=70?[34,197,94]:p4.score>=45?[245,158,11]:[239,68,68];rect(cx,cy-5,cW-3,rH-1,pC.map(c=>Math.min(255,c+190)),2);doc.setFillColor(...pC);doc.rect(cx,cy+5,cW-3,1,'F');doc.setFontSize(5.5);doc.setFont('helvetica','bold');doc.setTextColor(...pC);doc.text(p4.label.substring(0,16),cx+2.5,cy);doc.setFontSize(9.5);doc.text(`${Math.round(p4.score)}`,cx+cW-5,cy,{align:'right'});});y+=Math.ceil(pillarArr.length/cols)*rH+6;}
-  checkY(55);y=sectionBand('FOUNDATION AUDIT DETAIL',y);y+=3;
-  line('Emergency Buffer:',M,y,7.5,'normal',[80,90,105]);
-  const efCf=efR.status!=='inactive';
-  if(!efCf){rline('Tag liquid accounts in Net Worth to activate',W-M,y,7,'bold',[239,68,68]);}
-  else{const ec2=efMonths>=6?[34,197,94]:efMonths>=3?[245,158,11]:[239,68,68];bar(W-M-50,y-3.5,48,3.5,Math.min(efMonths/6*100,100),ec2);rline(`${efMonths.toFixed(1)} / ${efR.emergencyTarget||6} months`,W-M,y,7.5,'bold',ec2);}
-  y+=7;
-  line('Debt-to-Income (CFPB method):',M,y,7.5,'normal',[80,90,105]);
-  if(debtR.dti!=null){const dl2=dtiPct<=20?'Excellent':dtiPct<=28?'Good':dtiPct<=36?'Moderate':dtiPct<=43?'Watch':'High';const dc2=dtiPct<=28?[34,197,94]:dtiPct<=36?[245,158,11]:dtiPct<=43?[249,115,22]:[239,68,68];rline(priv?`${dtiPct.toFixed(1)}% — ${dl2}  (${sym}${Math.round(debtR.monthlyDebt)}/mo)`:`${dtiPct.toFixed(1)}% — ${dl2}`,W-M,y,7.5,'bold',dc2);}
-  else{rline('Add monthly payment to loan accounts',W-M,y,7,'italic',[156,163,175]);}
-  y+=7;
-  line('Savings Rate (6-month avg):',M,y,7.5,'normal',[80,90,105]);bar(W-M-50,y-3.5,48,3.5,savRate,savRate>=30?[34,197,94]:savRate>=15?[245,158,11]:[239,68,68]);rline(`${savRate}%${savRate>=40?' — High performer':savRate>=20?' — Solid':''}`,W-M,y,7.5,'bold',savRate>=30?[34,197,94]:savRate>=15?[245,158,11]:[239,68,68]);y+=7;
-  if(snaps.length>=2){const ls=snaps[snaps.length-1];const ps2=snaps[snaps.length-2];const nwD=snapValue(ls)-(snapValue(ps2)||0);const ds=avgExp>0?avgExp/30:0;const db=ds>0?Math.round(nwD/ds/365*30):null;if(db!=null&&!isNaN(db)){line('NW Velocity (12m — freedom days):',M,y,7.5,'normal',[80,90,105]);rline(`${db>0?'+':''}${db} days`,W-M,y,7.5,'bold',db>0?[34,197,94]:[239,68,68]);y+=7;}}
-  line('Estate & Legacy:',M,y,7.5,'normal',[80,90,105]);y+=5;let ex4=M;[['Will',hasWill],['Power of Attorney',hasPOA],['Nominees',hasNominees]].forEach(([lbl2,done2])=>{chip((done2?'✓ ':'✗ ')+lbl2,ex4,y,done2?[5,150,105]:[220,38,38]);ex4+=doc.getTextWidth((done2?'✓ ':'✗ ')+lbl2)+11;});y+=12;
-  if(priv){checkY(22);hline(y);y+=5;y=sectionBand('NET WORTH SNAPSHOT',y);y+=3;kv('Total Assets',maskAmt(nw.totalAssets),y,[30,42,110]);y+=6.5;kv('Total Liabilities',maskAmt(nw.liabTotal),y,[220,38,38]);y+=5;hline(y,[200,205,215],0.4);y+=4;doc.setFontSize(9.5);doc.setFont('helvetica','bold');doc.setTextColor(30,42,110);doc.text('Net Worth',M,y);doc.text(maskAmt(nw.netWorth),W-M,y,{align:'right'});y+=10;}
+  // ══════════════════════════════════════════════════════════════
+  // PAGE 5 — TAX & INSURANCE AUDIT
+  // ══════════════════════════════════════════════════════════════
+  NP();PH('Page 5 — Tax & Insurance Audit: Shelter Utilisation & Liability Gaps','The Protection View');y=18;
 
-  // ── Footers ─────────────────────────────────────────────────────
+  // Tax shelters
+  y=sb('TAX SHELTER UTILISATION',y);y+=3;
+  const acbt=(types,aliases)=>{const ac=(data._nwAccounts||[]).filter(a=>{if(types.includes(a.type))return true;if(a.type==='retirement'&&aliases){const sub=(a.meta?.subtype||'').toLowerCase();return aliases.some(al=>sub.includes(al));}return false;});return ac.reduce((s,a)=>{const y2=a.meta?.monthlyContribution||0;const e=a.meta?.employerContribution||0;return s+((y2+e)||a._monthlyTotal||0)*12;},0);};
+  const anft=(types,aliases)=>(data._nwAccounts||[]).filter(a=>{if(types.includes(a.type))return true;if(a.type==='retirement'&&aliases){const sub=(a.meta?.subtype||'').toLowerCase();return aliases.some(al=>sub.includes(al));}return false;}).map(a=>a.name||a.type).join(', ')||null;
+  const shelters=region==='IN'?[{name:'80C (ELSS+EPF+PPF)',limit:150000,used:(()=>{const inv=(data[viewMonth]?.investments||[]);const tx=inv.filter(i=>['ELSS','EPF','PPF'].some(t=>i.category?.includes(t))).reduce((s,i)=>s+convertAmt(i.amount,i.currency),0)*12;return Math.max(tx,acbt(['mf_elss','epf','ppf']));})(),note:'Net Worth → ELSS/EPF/PPF → Monthly Contribution',accts:anft(['mf_elss','epf','ppf'])},{name:'80D Health Insurance',limit:25000,used:(profile.healthCover||0)>0?25000:0,note:'Score → Edit Profile → Health Insurance Cover',accts:null},{name:'NPS 80CCD(1B)',limit:50000,used:acbt(['nps'],['nps']),note:'Net Worth → NPS → Monthly Contribution',accts:anft(['nps'],['nps'])}]:[{name:'401(k)',limit:23000,used:acbt(['retirement_401k'],['401k','401(k)']),note:'Net Worth → 401(k) → Your + Employer Contribution',accts:anft(['retirement_401k'],['401k','401(k)'])},{name:'IRA / Roth IRA',limit:7000,used:acbt(['retirement_ira','retirement_roth'],['ira','roth']),note:'Net Worth → IRA/Roth → Monthly Contribution',accts:anft(['retirement_ira','retirement_roth'],['ira','roth'])},{name:'HSA',limit:3850,used:acbt(['hsa'],['hsa']),note:'Net Worth → HSA → Monthly Contribution',accts:anft(['hsa'],['hsa'])}];
+  [['Shelter',M],['Used',M+68],['Limit',M+96],['Utilisation',W-M]].forEach(([h,x],i)=>{if(i<3)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});y+=3;hl(y,[225,230,238]);y+=4;
+  shelters.forEach(sh=>{CY(15);const cp=Math.min(sh.used||0,sh.limit);const pt=sh.limit>0?cp/sh.limit*100:0;const hd=(sh.used||0)>0;const bc=!hd?COL.lightGray:pt>=80?COL.green:pt>=40?COL.amber:COL.red;ln(sh.name,M,y,7.5,'normal',COL.navy);ln(priv&&hd?`${sym}${Math.round(cp).toLocaleString()}`:(hd?'Present':'—'),M+68,y,7,'normal',hd?COL.navy:COL.gray);ln(priv?`${sym}${sh.limit.toLocaleString()}`:'—',M+96,y,7,'normal',COL.gray);br(M+116,y-3.5,W-2*M-116,4,pt,bc);rln(hd?`${pt.toFixed(0)}%`:'No data',W-M,y,7,'bold',!hd?COL.gray:bc);y+=5;if(sh.accts){ln(`Accounts: ${sh.accts}`,M+2,y,5.5,'italic',COL.gray);y+=3.5;}ln(`${!hd?'⚠ ':'ℹ '}${sh.note}`,M+2,y,5.5,'italic',!hd?COL.red:COL.gray);y+=7;});
+
+  // Asset location efficiency
+  CY(40);y=sb('TAX-EFFICIENT PLACEMENT AUDIT (ASSET LOCATION)',y);y+=3;
+  rc(M,y,W-2*M,10,[238,242,252],2);ln('Principle: High-tax assets → Tax-deferred (401k/IRA). Low-tax assets → Taxable accounts.',M+4,y+7,7,'italic',COL.navy);y+=14;
+  const placementRows=[];
+  const allInvAccts=(data._nwAccounts||[]).filter(a=>!['loan','credit_card','other_liability','checking','savings_acc','cash','emergency','bank_checking_us'].includes(a.type)&&(a.balance||0)>0);
+  const isRetAcct=a=>['retirement','retirement_401k','retirement_roth','retirement_ira','hsa','epf','ppf','nps','college_529','mf_elss'].includes(a.type);
+  const isTaxableAcct=a=>['brokerage','brokerage_taxable','stocks_direct','mf_equity','mf_debt','mf_hybrid','mf_gold','mf_index','bonds_fd','bank_fd'].includes(a.type);
+  const isHighTaxAsset=a=>['bonds_fd','bank_fd','mf_debt','ibond'].includes(a.type); // high ordinary income
+  const isHighGrowth=a=>['mf_equity','mf_index','brokerage','brokerage_taxable','stocks_direct','mf_hybrid','retirement_401k','retirement_roth','retirement_ira'].includes(a.type);
+  let locationIssues=0;
+  allInvAccts.forEach(a=>{
+    const val=nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);
+    const inRet=isRetAcct(a);const inTax=isTaxableAcct(a);const isHT=isHighTaxAsset(a);const isHG=isHighGrowth(a);
+    let status='OK',note='',urgent=false;
+    if(isHT&&inTax&&taxR.retTotal>0){status='SUBOPTIMAL';note='High-tax bonds in taxable account — move to tax-deferred to reduce ordinary income tax drag';urgent=true;locationIssues++;}
+    else if(isHT&&inRet){status='OPTIMAL';note='High-tax bonds correctly sheltered in tax-deferred account ✓';}
+    else if(isHG&&inRet){status='OPTIMAL';note='Growth assets in tax-deferred — compound tax-free ✓';}
+    else if(isHG&&inTax){status='REVIEW';note='Growth in taxable — consider index funds here (LTCG-efficient) vs active funds';}
+    else{status='OK';note='';}
+    if(status!=='OK'){placementRows.push({name:(a.name||a.type).substring(0,28),val,status,note,bucket:inRet?'Tax-deferred':inTax?'Taxable':'Other'});}
+  });
+  if(placementRows.length===0){rc(M,y,W-2*M,10,[232,248,240],2);ln('No placement issues detected — asset location appears efficient.',M+4,y+7,7,'normal',[22,101,52]);y+=14;}
+  else{
+    [['Account',M],['Value',M+80],['Bucket',M+108],['Status',M+138],['Action',W-M]].forEach(([h,x],i)=>{if(i<4)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});y+=3;hl(y,[225,230,238]);y+=4;
+    placementRows.slice(0,6).forEach(r=>{CY(10);const sc=r.status==='OPTIMAL'?COL.green:r.status==='SUBOPTIMAL'?COL.red:COL.amber;ln(r.name,M,y,7,'normal',COL.navy);ln(priv?fmt2(r.val):'—',M+80,y,7,'normal',COL.gray);ln(r.bucket,M+108,y,7,'normal',COL.gray);ch(r.status,M+138,y,sc);y+=7;});
+    if(locationIssues>0){CY(14);rc(M,y,W-2*M,12,[255,240,240],2);doc.setDrawColor(...COL.red);doc.setLineWidth(0.5);doc.line(M,y,M,y+12);ln(`${locationIssues} placement issue${locationIssues>1?'s':''} detected — moving misplaced bonds to tax-deferred could reduce annual tax drag.`,M+4,y+7,7,'bold',[180,30,30]);y+=16;}
+  }
+
+  // Human Capital Protection Audit
+  CY(50);y=sb('HUMAN CAPITAL PROTECTION AUDIT',y);y+=3;
+  const termCover=profile?.insuranceCover||0;
+  const annualInc2=(agg?.avgInc||0)*12;
+  const totalDebt=nw.liabTotal||0;
+  const tenYrLifestyle=(agg?.avgExp||0)*12*10;
+  const liquidAssets=(data._nwAccounts||[]).filter(a=>['checking','savings_acc','cash','emergency'].includes(a.type)).reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0)),0);
+  const protectionNeeded=totalDebt+tenYrLifestyle;
+  const protectionHave=termCover+liquidAssets;
+  const protectionGap=protectionNeeded-protectionHave;
+  const isCatastrophicGap=protectionGap>annualInc2*3;
+
+  // Formula display
+  rc(M,y,W-2*M,28,[245,247,252],3);doc.setDrawColor(...COL.navy);doc.setLineWidth(0.5);doc.line(M,y,M,y+28);
+  ln('Protection Math: (Total Debt + 10 Years Lifestyle) − (Term Insurance + Liquid Assets)',M+4,y+6,6.5,'bold',COL.navy);
+  if(priv){
+    ln(`Total Debt: ${fmt2(totalDebt)}  ·  10-yr Lifestyle: ${fmt2(tenYrLifestyle)}  =  Needs: ${fmt2(protectionNeeded)}`,M+4,y+12,7,'normal',COL.gray);
+    ln(`Term Cover: ${fmt2(termCover)}  ·  Liquid Assets: ${fmt2(liquidAssets)}  =  Have: ${fmt2(protectionHave)}`,M+4,y+18,7,'normal',COL.gray);
+    const gapCol=protectionGap>0?(isCatastrophicGap?COL.red:COL.amber):COL.green;
+    rln(protectionGap>0?`Gap: ${fmt2(protectionGap)}${isCatastrophicGap?' — CATASTROPHIC':''}`:` Fully protected (+${fmt2(Math.abs(protectionGap))})`,W-M,y+18,8,'bold',gapCol);
+  } else {
+    rln(protectionGap>0?(isCatastrophicGap?'Catastrophic gap — urgent review':'Protection gap exists'):' Family is mathematically protected ✓',W-M,y+12,8,'bold',protectionGap>0?(isCatastrophicGap?COL.red:COL.amber):COL.green);
+  }
+  y+=34;
+
+  if(isCatastrophicGap&&protectionGap>0){
+    CY(16);rc(M,y,W-2*M,14,[255,235,235],3);doc.setDrawColor(...COL.red);doc.setLineWidth(0.8);doc.line(M,y,M,y+14);ln('⚠ CATASTROPHIC PROTECTION GAP',M+4,y+6,8,'bold',[180,30,30]);ln(priv?`Family shortfall: ${fmt2(protectionGap)} — increase term cover by at least ${fmt2(protectionGap-liquidAssets)} immediately.`:'Family is not mathematically protected. Increase term insurance before any new investment.',M+4,y+11.5,7,'normal',[180,30,30]);y+=18;}
+  else if(protectionGap>0){
+    CY(14);rc(M,y,W-2*M,12,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.5);doc.line(M,y,M,y+12);ln('Protection gap exists — review term cover adequacy with CA.',M+4,y+7,7,'normal',[146,64,14]);y+=16;}
+  else{CY(12);rc(M,y,W-2*M,10,[232,248,240],2);ln('Family is mathematically protected across debt + lifestyle obligations. ✓',M+4,y+7,7,'normal',[22,101,52]);y+=14;}
+
+  // Unrealized gains
+  CY(18);hl(y);y+=5;
+  const ga3=(data._nwAccounts||[]).filter(a=>a.investedAmount!=null&&a.investedAmount>0&&!['loan','credit_card','other_liability'].includes(a.type));
+  const tg=ga3.reduce((s,a)=>{const c=nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0);const v=nwConvert?nwConvert(a.investedAmount||0,a.currency):(a.investedAmount||0);return s+(c-v);},0);
+  const tc=ga3.reduce((s,a)=>s+(nwConvert?nwConvert(a.investedAmount||0,a.currency):(a.investedAmount||0)),0);
+  const gp=tc>0?tg/tc*100:0;
+  ln('Estimated Unrealised Gains:',M,y,7.5,'normal',COL.gray);rln(priv?`${sym}${Math.round(tg).toLocaleString()} (${gp>=0?'+':''}${gp.toFixed(1)}%)`:`${gp>=0?'+':''}${gp.toFixed(1)}%`,W-M,y,7.5,'bold',tg>=0?COL.green:COL.red);y+=5;ln('Use broker statements for STCG/LTCG split before any redemption.',M,y,6,'italic',COL.gray);y+=8;
+
+  // ══════════════════════════════════════════════════════════════
+  // PAGE 6 — WITHDRAWAL & GLIDE PATH
+  // ══════════════════════════════════════════════════════════════
+  NP();PH('Page 6 — Withdrawal & Glide Path: How Money Becomes Freedom','The Future View');y=18;
+
+  // SWR stress test
+  y=sb('SWR & SEQUENCE OF RETURNS STRESS TEST',y);y+=3;
+  rc(M,y,W-2*M,10,[238,242,252],2);ln('Safe Withdrawal Rate = % of corpus withdrawn annually in retirement. Lower = more conservative = longer runway.',M+4,y+7,7,'italic',COL.navy);y+=14;
+
+  const monthlyLifestyle=(profile?.fireLifestyle||5000);
+  const annualLifestyle=monthlyLifestyle*12;
+  const swrScenarios=[
+    {label:'Conservative',swr:3,mult:33,color:COL.green},
+    {label:'Standard',swr:4,mult:25,color:COL.indigo},
+    {label:'Aggressive',swr:5,mult:20,color:COL.amber},
+  ];
+
+  // Header
+  ['Scenario','SWR','Corpus Needed','Current','Gap / Surplus','Runway (yrs)'].forEach((h,i)=>{
+    const xs=[M,M+30,M+60,M+100,M+140,W-M];
+    if(i<5)ln(h,xs[i],y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);
+  });y+=3;hl(y,[225,230,238]);y+=5;
+  swrScenarios.forEach(s=>{
+    CY(10);
+    const needed=annualLifestyle*(100/s.swr);
+    const gap=needed-fireCorpus;
+    const runway=fireCorpus>0&&annualLifestyle>0?fireCorpus/annualLifestyle:0;
+    const funded=fireCorpus/needed*100;
+    const sc=funded>=90?COL.green:funded>=60?COL.amber:COL.red;
+    ln(s.label,M,y,7.5,'normal',COL.navy);
+    ln(`${s.swr}%`,M+30,y,7.5,'normal',COL.gray);
+    ln(priv?fmt2(needed):`${s.mult}× exp`,M+60,y,7.5,'normal',COL.gray);
+    ln(priv?fmt2(fireCorpus):`${Math.round(funded)}%`,M+100,y,7.5,'bold',sc);
+    ln(priv?(gap>0?`-${fmt2(gap)}`:`+${fmt2(Math.abs(gap))}`):(gap>0?'Gap':'Surplus'),M+140,y,7.5,'bold',gap>0?COL.red:COL.green);
+    rln(`${runway.toFixed(1)} yrs`,W-M,y,7.5,'normal',COL.gray);
+    // Mini funded bar
+    br(M+60,y+2,36,2,Math.min(funded,100),sc);
+    y+=9;
+  });
+  y+=4;
+
+  // Cash buffer recommendation
+  CY(40);y=sb('SEQUENCE-OF-RETURNS RISK & CASH BUFFER STRATEGY',y);y+=3;
+  const cashBuffer2Yr=(agg?.avgExp||0)*24;
+  const currentCash=(data._nwAccounts||[]).filter(a=>['checking','savings_acc','cash','emergency'].includes(a.type)).reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0)),0);
+  const bufferGap=Math.max(0,cashBuffer2Yr-currentCash);
+  rc(M,y,W-2*M,22,[248,250,255],3);doc.setDrawColor(...COL.indigo);doc.setLineWidth(0.6);doc.line(M,y,M,y+22);
+  ln('Why a cash buffer matters:',M+4,y+6,7,'bold',COL.navy);
+  ln('If markets crash in your first 2 years of retirement, selling equities to fund living expenses locks in losses permanently.',M+4,y+11,7,'normal',COL.gray);
+  ln('A 2-year cash buffer lets equities recover without forced selling — this is the single most powerful retirement risk mitigation.',M+4,y+17,7,'normal',COL.gray);
+  y+=26;
+  kv('2-Year Cash Buffer Target',priv?fmt2(cashBuffer2Yr):'2× annual expenses',y,COL.navy);y+=7;
+  kv('Current Liquid Cash',priv?fmt2(currentCash):'—',y,currentCash>=cashBuffer2Yr?COL.green:COL.amber);y+=7;
+  const bufC=bufferGap<=0?COL.green:bufferGap<cashBuffer2Yr*0.5?COL.amber:COL.red;
+  kv('Buffer Gap',priv?(bufferGap<=0?`Fully funded (+${fmt2(currentCash-cashBuffer2Yr)})`:`${fmt2(bufferGap)} to build`):(bufferGap<=0?'Funded':'Gap exists'),y,bufC,true);y+=10;
+
+  // Glide path / decumulation sequence
+  CY(50);y=sb('DECUMULATION SEQUENCE — HOW TO DRAW DOWN',y);y+=3;
+  const drawdownRows=isUS?[
+    {step:1,bucket:'Taxable Brokerage',action:'Withdraw first — pay LTCG (15-20%) which is lower than ordinary income rates',timing:'Years 1–5 of retirement'},
+    {step:2,bucket:'Tax-Deferred (401k/IRA)',action:'Withdraw next — triggers ordinary income tax; do Roth conversions in low-income years',timing:'Years 5–20'},
+    {step:3,bucket:'Tax-Free (Roth IRA)',action:'Withdraw last — zero tax; leave to compound longest; avoids future RMDs',timing:'Late retirement / legacy'},
+    {step:4,bucket:'HSA',action:'Use for healthcare expenses tax-free at any age; penalty-free after 65 for any purpose',timing:'Healthcare first'},
+  ]:[
+    {step:1,bucket:'Liquid savings / FD',action:'Withdraw first — fully accessible, no lock-in or tax complexity',timing:'Years 1–3 of retirement'},
+    {step:2,bucket:'Debt MF / Bonds',action:'Withdraw next — relatively low volatility; index gains taxed at slab after 3yr holding',timing:'Years 3–7'},
+    {step:3,bucket:'Equity MF (non-ELSS)',action:'Allow equities to compound longest — LTCG at 10% above ₹1L; highest growth potential',timing:'Years 7+'},
+    {step:4,bucket:'PPF / EPF / NPS',action:'Withdraw last — fully tax-exempt at maturity; do not touch early',timing:'Legacy or final years'},
+  ];
+  drawdownRows.forEach(r=>{
+    CY(12);
+    rc(M,y-4,W-2*M,12,[242,245,252],2);doc.setFillColor(...COL.indigo);doc.rect(M,y-4,5,12,'F');
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...COL.white);doc.text(String(r.step),M+2.5,y+3,{align:'center'});
+    ln(r.bucket,M+8,y+1,7,'bold',COL.navy);
+    rln(r.timing,W-M,y+1,6,'italic',COL.gray);
+    ln(r.action,M+8,y+7,6.5,'normal',COL.gray);
+    y+=16;
+  });
+  y+=4;
+
+  // Retirement corpus trajectory
+  if(fireTarget>0&&retYears>0){
+    CY(35);y=sb('CORPUS TRAJECTORY TO RETIREMENT',y);y+=3;
+    const pts=[];const intervals=Math.min(5,retYears);
+    for(let i=0;i<=intervals;i++){const yr=Math.round(i*retYears/intervals);const proj=fireCorpus*Math.pow(1.1,yr)+(sipToCloseGap>0?(sipToCloseGap*12)*((Math.pow(1.10,yr)-1)/0.10):0);pts.push({yr,proj});}
+    const maxProj=pts[pts.length-1]?.proj||fireTarget;
+    const chartX=M;const chartW=W-2*M;const chartH=28;
+    doc.setFillColor(245,247,252);doc.rect(chartX,y,chartW,chartH,'F');
+    // Draw bars
+    const bw=Math.floor(chartW/(pts.length+1));
+    pts.forEach((p,i)=>{
+      const bh=Math.min((p.proj/Math.max(maxProj,fireTarget))*chartH,chartH);
+      const bx=chartX+bw/2+i*bw;const byy=y+chartH-bh;
+      const bc=p.proj>=fireTarget?COL.green:p.proj>=fireTarget*0.8?COL.amber:COL.indigo;
+      doc.setFillColor(...bc);doc.rect(bx,byy,bw-3,bh,'F');
+      doc.setFontSize(5.5);doc.setFont('helvetica','normal');doc.setTextColor(...COL.gray);doc.text(`yr ${p.yr}`,bx+(bw-3)/2,y+chartH+4,{align:'center'});
+      if(priv){doc.setFontSize(5);doc.text(`${sym}${Math.round(p.proj/1000)}k`,bx+(bw-3)/2,byy-1,{align:'center'});}
+    });
+    // Target line
+    const targetY=y+chartH-(fireTarget/Math.max(maxProj,fireTarget))*chartH;
+    doc.setDrawColor(...COL.red);doc.setLineWidth(0.4);doc.setLineDash([2,1]);doc.line(chartX,targetY,chartX+chartW,targetY);doc.setLineDash([]);
+    doc.setFontSize(6);doc.setTextColor(...COL.red);doc.text('Target',chartX+chartW-16,targetY-1);
+    y+=chartH+12;
+  }
+
+  // ── Footers on all pages ───────────────────────────────────────
   const totalPgs=doc.getNumberOfPages();
   for(let pg=1;pg<=totalPgs;pg++){
     doc.setPage(pg);
-    doc.setFillColor(10,20,65);doc.rect(0,287,W,10,'F');doc.setFillColor(79,70,229);doc.rect(0,287,4,10,'F');
+    doc.setFillColor(...COL.navy);doc.rect(0,287,W,10,'F');doc.setFillColor(...COL.indigo);doc.rect(0,287,4,10,'F');
     doc.setFontSize(5.5);doc.setFont('helvetica','normal');doc.setTextColor(160,175,225);
     doc.text(`MoneyFi · Advisor Strategic Brief · ${today}`,M,293);
     doc.text('Indicative only — not financial advice. Verify all figures with your CA/advisor.',W/2,293,{align:'center'});
@@ -12332,54 +12541,28 @@ function generateClarityPDF() {
     if(pwEnabled){doc.setFontSize(5);doc.setTextColor(100,115,165);doc.text('🔐 Password protected',W-M,290,{align:'right'});}
   }
 
-  // ════════════════════════════════════════════════════════════════
-  // PASSWORD ENCRYPTION (pdf-lib AES-128)
-  // Note: macOS Preview does NOT enforce PDF encryption by design.
-  // Password protection is enforced by: Chrome PDF viewer, Adobe
-  // Acrobat Reader, Foxit, and most Windows/Android PDF apps.
-  // ════════════════════════════════════════════════════════════════
+  // ── Password encryption ────────────────────────────────────────
   const filename=`MoneyFi_Advisor_Brief_${priv?'Private':'Shareable'}_${today.replace(/ /g,'_')}.pdf`;
-
   if(pwEnabled){
-    if(!window.PDFLib){
-      // Library not yet loaded — save unprotected and warn
-      doc.save(filename);
-      showToast('⚠️ Encryption library not ready — PDF saved without password. Reload and try again.', 4000);
-      return;
-    }
-    showToast('🔐 Encrypting PDF…', 1500);
-    const pdfBytes = doc.output('arraybuffer');
-    window.PDFLib.PDFDocument.load(pdfBytes, { ignoreEncryption: true }).then(async pdfDoc => {
-      const encBytes = await pdfDoc.save({
-        userPassword: pw1,
-        ownerPassword: pw1 + '_owner_mfi_' + Date.now(),
-        permissions: {
-          printing: 'highResolution',
-          modifying: false,
-          copying: false,
-          annotating: true,
-          fillingForms: true,
-          contentAccessibility: true,
-          documentAssembly: false,
-        },
-        useObjectStreams: false,   // Critical for broad PDF viewer compatibility
+    if(!window.PDFLib){doc.save(filename);showToast('⚠️ Encryption library not ready — PDF saved without password.',4000);return;}
+    showToast('🔐 Encrypting PDF…',1500);
+    const pdfBytes=doc.output('arraybuffer');
+    window.PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true}).then(async pdfDoc=>{
+      const encBytes=await pdfDoc.save({
+        userPassword:pw1,ownerPassword:pw1+'_owner_mfi_'+Date.now(),
+        permissions:{printing:'highResolution',modifying:false,copying:false,annotating:true,fillingForms:true,contentAccessibility:true,documentAssembly:false},
+        useObjectStreams:false,
       });
-      const blob = new Blob([encBytes], { type: 'application/pdf' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
-      showToast('🔐 Encrypted PDF saved. Open in Chrome, Adobe or Foxit — macOS Preview bypasses PDF passwords by design.', 5000);
-    }).catch(err => {
-      console.warn('[MoneyFi] PDF encryption failed:', err);
-      doc.save(filename);
-      showToast('⚠️ Encryption failed — unprotected PDF saved. Check console for details.', 4000);
-    });
+      const blob=new Blob([encBytes],{type:'application/pdf'});const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
+      showToast('🔐 Encrypted PDF saved. Open in Chrome or Adobe Acrobat — macOS Preview bypasses PDF passwords.',5000);
+    }).catch(err=>{console.warn('[MoneyFi] PDF encryption failed:',err);doc.save(filename);showToast('⚠️ Encryption failed — unprotected PDF saved.',4000);});
   } else {
     doc.save(filename);
-    showToast('📄 Advisor PDF downloaded!', 3000);
+    showToast('📄 Advisor PDF downloaded!',3000);
   }
 }
+
 
 
 function generateBeforeAfterCard() {
