@@ -6314,6 +6314,28 @@ const DEFAULT_SPEND_CARDS = [
   { key:'other',      label:'Additional',      icon:'🎁', color:'#64B5F6', cls:'other-cat',  subcats:['Entertainment','Travel','Insurance','Other'] },
 ];
 
+// Map card keys/labels to i18n keys for translation
+const _CARD_I18N = {
+  // by key
+  'food':'foodDrink','transport':'transportation','housing':'housing',
+  'health':'health','shopping':'shopping','groceries':'groceries',
+  'giving':'giving','other':'additional',
+  // by label (for user-saved cards that stored English label)
+  'Food & Drink':'foodDrink','Food & Dining':'foodDrink','FastFood':'fastFood',
+  'Transportation':'transportation','Transport':'transportation',
+  'Housing':'housing','Mortgage':'mortgage','Rent':'rent',
+  'Health':'health','Health Care':'healthCare','Healthcare':'healthCare',
+  'Shopping':'shopping','Groceries':'groceries','Grocery':'groceries',
+  'Giving':'giving','Additional':'additional','Others':'others',
+  'Utility':'utility','Utilities':'utility','Gas':'gas',
+  'Insurance':'insurance','Education':'educationGoal','Entertainment':'entertainment',
+  'Salary':'salary','Gifts':'gifts','Gift':'gifts','Other':'others',
+};
+function tCard(card) {
+  const key = _CARD_I18N[card.key] || _CARD_I18N[card.label];
+  if (key && (STRINGS[_lang]?.[key] || STRINGS.en[key])) return t(key);
+  return card.label; // user custom card — return as-is
+}
 function getHomeSpendCards() {
   if(!data._homeSpendCards) return DEFAULT_SPEND_CARDS.map(c=>({...c,visible:true}));
   return data._homeSpendCards;
@@ -8116,7 +8138,7 @@ function renderHome() {
         oncontextmenu="event.preventDefault();goToBudgetDetail('${card.key||card.label}')"
         title="Tap to add · Hold to view transactions">
         <div class="cat-icon" style="background:${card.color}22;">${card.icon}</div>
-        <div class="cat-name">${card.label}</div>
+        <div class="cat-name">${tCard(card)}</div>
         <div class="cat-amount">${fmt(amt)}</div>
         <div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${card.color};"></div></div>
       </div>`;
@@ -12595,6 +12617,10 @@ const STRINGS = {
     noDataPeriod: 'No data for this period', mtdSpent: 'MTD Spent',
     mtdEarned: 'MTD Earned', mtdInvested: 'MTD Invested',
     ytdSpent: 'YTD Spent', ytdEarned: 'YTD Earned', ytdInvested: 'YTD Invested',
+    foodDrink:'Food & Drink', transportation:'Transportation', housing:'Housing',
+    health:'Health', groceries:'Groceries', giving:'Giving', additional:'Additional',
+    fastFood:'FastFood', rent:'Rent', healthCare:'Health Care', utility:'Utility',
+    gas:'Gas', insurance:'Insurance', entertainment:'Entertainment',
     netDeficit: 'Net Deficit', biggestSpend: 'Biggest spend',
     greatSavingsRate: 'Great savings rate!', decentSavingsRate: 'Decent savings rate',
     lowSavingsRate: 'Low savings rate', spendingExceedsIncome: 'Spending exceeds income',
@@ -12663,6 +12689,10 @@ const STRINGS = {
     noDataPeriod: 'इस अवधि के लिए डेटा नहीं', mtdSpent: 'माहवार खर्च',
     mtdEarned: 'माहवार आय', mtdInvested: 'माहवार निवेश',
     ytdSpent: 'वार्षिक खर्च', ytdEarned: 'वार्षिक आय', ytdInvested: 'वार्षिक निवेश',
+    foodDrink:'खाना-पीना', transportation:'परिवहन', housing:'आवास',
+    health:'स्वास्थ्य', groceries:'किराना', giving:'दान/सहायता', additional:'अन्य',
+    fastFood:'फास्ट फूड', rent:'किराया', healthCare:'स्वास्थ्य देखभाल', utility:'उपयोगिता',
+    gas:'ईंधन', insurance:'बीमा', entertainment:'मनोरंजन',
     netDeficit: 'शुद्ध घाटा', biggestSpend: 'सबसे बड़ा खर्च',
     greatSavingsRate: 'बेहतरीन बचत दर!', decentSavingsRate: 'ठीक-ठाक बचत दर',
     lowSavingsRate: 'कम बचत दर', spendingExceedsIncome: 'खर्च आय से अधिक',
@@ -12731,6 +12761,10 @@ const STRINGS = {
     noDataPeriod: 'Sin datos para este período', mtdSpent: 'Gastado MTD',
     mtdEarned: 'Ganado MTD', mtdInvested: 'Invertido MTD',
     ytdSpent: 'Gastado YTD', ytdEarned: 'Ganado YTD', ytdInvested: 'Invertido YTD',
+    foodDrink:'Comida y Bebida', transportation:'Transporte', housing:'Vivienda',
+    health:'Salud', groceries:'Supermercado', giving:'Donaciones', additional:'Adicional',
+    fastFood:'Comida Rápida', rent:'Alquiler', healthCare:'Atención Médica', utility:'Servicios',
+    gas:'Combustible', insurance:'Seguro', entertainment:'Entretenimiento',
     netDeficit: 'Déficit Neto', biggestSpend: 'Mayor gasto',
     greatSavingsRate: '¡Excelente tasa de ahorro!', decentSavingsRate: 'Tasa de ahorro decente',
     lowSavingsRate: 'Tasa de ahorro baja', spendingExceedsIncome: 'Gastos superan ingresos',
@@ -12799,6 +12833,10 @@ const STRINGS = {
     noDataPeriod: 'ఈ కాలానికి డేటా లేదు', mtdSpent: 'నెల ఖర్చు',
     mtdEarned: 'నెల ఆదాయం', mtdInvested: 'నెల పెట్టుబడి',
     ytdSpent: 'సంవత్సర ఖర్చు', ytdEarned: 'సంవత్సర ఆదాయం', ytdInvested: 'సంవత్సర పెట్టుబడి',
+    foodDrink:'తినుబండారాలు', transportation:'రవాణా', housing:'గృహావసరాలు',
+    health:'ఆరోగ్యం', groceries:'కిరాణా', giving:'దానాలు', additional:'ఇతరత్రా',
+    fastFood:'ఫాస్ట్ ఫుడ్', rent:'అద్దె', healthCare:'ఆరోగ్య సంరక్షణ', utility:'యుటిలిటీ',
+    gas:'ఇంధనం', insurance:'బీమా', entertainment:'వినోదం',
     netDeficit: 'నికర లోటు', biggestSpend: 'అతిపెద్ద ఖర్చు',
     greatSavingsRate: 'అద్భుతమైన పొదుపు దర!', decentSavingsRate: 'సరైన పొదుపు దర',
     lowSavingsRate: 'తక్కువ పొదుపు దర', spendingExceedsIncome: 'ఖర్చు ఆదాయాన్ని మించింది',
@@ -12867,6 +12905,10 @@ const STRINGS = {
     noDataPeriod: 'இந்த காலத்திற்கு தரவு இல்லை', mtdSpent: 'மாத செலவு',
     mtdEarned: 'மாத வருமானம்', mtdInvested: 'மாத முதலீடு',
     ytdSpent: 'ஆண்டு செலவு', ytdEarned: 'ஆண்டு வருமானம்', ytdInvested: 'ஆண்டு முதலீடு',
+    foodDrink:'உணவு & பானம்', transportation:'போக்குவரத்து', housing:'வீட்டு செலவு',
+    health:'சுகாதாரம்', groceries:'மளிகை', giving:'கொடுப்பனவுகள்', additional:'கூடுதல்',
+    fastFood:'துரித உணவு', rent:'வாடகை', healthCare:'சுகாதார பராமரிப்பு', utility:'பயன்பாட்டு சேவைகள்',
+    gas:'எரிபொருள்', insurance:'காப்பீடு', entertainment:'பொழுதுபோக்கு',
     netDeficit: 'நிகர பற்றாக்குறை', biggestSpend: 'மிகப்பெரிய செலவு',
     greatSavingsRate: 'சிறந்த சேமிப்பு விகிதம்!', decentSavingsRate: 'நல்ல சேமிப்பு விகிதம்',
     lowSavingsRate: 'குறைந்த சேமிப்பு விகிதம்', spendingExceedsIncome: 'செலவு வருமானத்தை மீறியது',
@@ -27704,7 +27746,7 @@ _auth.onAuthStateChanged(async user => {
       'pnraghukishore@gmail.com',
       'swathikishore12@gmail.com',
       'skanda.penujuri@gmail.com',
-      'psatyanarayana252@gmail.com',
+      'suja81@gmail.com',
       'charlesakl@gmail.com',
       'narasimha.neo@gmail.com',
       'ping2rupesh@gmail.com',
