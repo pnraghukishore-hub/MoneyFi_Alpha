@@ -2585,10 +2585,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
   <!-- Time Period Selector -->
   <div class="time-period-bar" id="time-period-bar">
-    <button class="period-tab" onclick="setPeriod('day',this)">Day</button>
-    <button class="period-tab active" onclick="setPeriod('month',this)">Month</button>
-    <button class="period-tab" onclick="setPeriod('week',this)">Week</button>
-    <button class="period-tab" onclick="setPeriod('year',this)">Year</button>
+    <button class="period-tab" data-i18n="day" onclick="setPeriod('day',this)">Day</button>
+    <button class="period-tab active" data-i18n="month" onclick="setPeriod('month',this)">Month</button>
+    <button class="period-tab" data-i18n="week" onclick="setPeriod('week',this)">Week</button>
+    <button class="period-tab" data-i18n="year" onclick="setPeriod('year',this)">Year</button>
   </div>
   <!-- Day chips (shown in day/week mode) -->
   <div class="period-detail" id="period-detail"></div>
@@ -2601,14 +2601,14 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
   <!-- Spending / Investment Tab Toggle -->
   <div class="home-tab-bar">
-    <button class="home-tab-btn active" id="htab-spending" onclick="setHomeTab('spending')">💸 Spending</button>
-    <button class="home-tab-btn" id="htab-invest" onclick="setHomeTab('invest')">📈 Investing</button>
+    <button class="home-tab-btn active" id="htab-spending" data-i18n="spending" onclick="setHomeTab('spending')">💸 <span data-i18n="spending">Spending</span></button>
+    <button class="home-tab-btn" id="htab-invest" data-i18n="investing" onclick="setHomeTab('invest')">📈 <span data-i18n="investing">Investing</span></button>
   </div>
 
   <!-- ── SPENDING SECTION ── -->
   <div class="home-section active" id="hsec-spending">
     <div class="spending-hero">
-      <div class="spending-label">💸 Total Spending</div>
+      <div class="spending-label">💸 <span data-i18n="totalSpending">Total Spending</span></div>
       <div class="spending-amount" id="home-spending">$0</div>
     </div>
     <div class="budget-grid" id="budget-grid"></div>
@@ -2618,7 +2618,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       <div class="insights-header" onclick="toggleInsights()">
         <div class="insights-header-left">
           <span style="font-size:1.2em;">💡</span>
-          <span class="insights-title">Monthly Insights</span>
+          <span class="insights-title" data-i18n="monthlyInsights">Monthly Insights</span>
         </div>
         <span class="insights-toggle" id="insights-toggle-arrow">▾</span>
       </div>
@@ -2649,26 +2649,26 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
     <div class="home-income-section">
       <div class="home-income-header">
-        <div class="home-income-title">💵 Income</div>
+        <div class="home-income-title">💵 <span data-i18n="income">Income</span></div>
         <div class="home-income-total" id="home-income">$0</div>
       </div>
       <div class="income-sub-grid">
         <div class="income-sub-card" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;"
           ontouchstart="homeCardTouchStart(event,'Salary','income','Salary')"
           ontouchend="homeCardTouchEnd(event)" ontouchmove="homeCardTouchMove(event)">
-          <div class="isc-icon">💼</div><div class="isc-name">Salary</div>
+          <div class="isc-icon">💼</div><div class="isc-name" data-i18n="salary">Salary</div>
           <div class="isc-amount" id="home-salary">$0</div>
         </div>
         <div class="income-sub-card" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;"
           ontouchstart="homeCardTouchStart(event,'Gift','income','Gift')"
           ontouchend="homeCardTouchEnd(event)" ontouchmove="homeCardTouchMove(event)">
-          <div class="isc-icon">🎁</div><div class="isc-name">Gifts</div>
+          <div class="isc-icon">🎁</div><div class="isc-name" data-i18n="gifts">Gifts</div>
           <div class="isc-amount" id="home-gifts">$0</div>
         </div>
         <div class="income-sub-card" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;"
           ontouchstart="homeCardTouchStart(event,'Other','income','Other')"
           ontouchend="homeCardTouchEnd(event)" ontouchmove="homeCardTouchMove(event)">
-          <div class="isc-icon">💰</div><div class="isc-name">Others</div>
+          <div class="isc-icon">💰</div><div class="isc-name" data-i18n="others">Others</div>
           <div class="isc-amount" id="home-other-income">$0</div>
         </div>
       </div>
@@ -2819,7 +2819,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 <!-- ══════════════ STATS ══════════════ -->
 <div class="screen" id="screen-stats">
   <div class="chart-card">
-    <div class="chart-title">Spending Trend (6 months)</div>
+    <div class="chart-title" data-i18n="spendingTrend">Spending Trend (6 months)</div>
     <div class="chart-container"><canvas id="trendChart"></canvas></div>
     <div style="display:flex;gap:20px;margin-top:12px;justify-content:center;">
       <div style="display:flex;align-items:center;gap:6px;font-size:0.82em;font-weight:700;color:var(--expenses);"><div style="width:24px;height:3px;background:var(--expenses);border-radius:2px;"></div>Spending <span id="stat-spending-total">$0</span></div>
@@ -2827,18 +2827,18 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     </div>
   </div>
   <div class="spending-tops">
-    <div class="chart-title">Top 5 Spending Categories</div>
+    <div class="chart-title" data-i18n="top5Categories">Top 5 Spending Categories</div>
     <div style="display:flex;gap:20px;align-items:center;">
       <div style="position:relative;width:120px;height:120px;flex-shrink:0;"><canvas id="donutChart"></canvas></div>
       <div id="top5-list" style="flex:1;"></div>
     </div>
   </div>
   <div class="chart-card">
-    <div class="chart-title">Budget vs Spent</div>
+    <div class="chart-title" data-i18n="budgetVsSpent">Budget vs Spent</div>
     <div id="budget-bars"></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title">Account Breakdown</div>
+    <div class="chart-title" data-i18n="accountBreakdown">Account Breakdown</div>
     <div style="display:flex;gap:20px;align-items:center;">
       <canvas id="accountChart" width="120" height="120" style="width:120px;height:120px;flex-shrink:0;"></canvas>
       <div id="account-breakdown" style="flex:1;"></div>
@@ -5576,8 +5576,8 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
       <!-- Reversibility -->
       <div style="display:flex;gap:8px;margin-bottom:16px;">
-        <button id="ld-rev-yes" onclick="ldSetRev(true)" style="flex:1;padding:8px;border:1.5px solid #E5E7EB;border-radius:10px;font-family:Nunito,sans-serif;font-size:0.78em;font-weight:800;cursor:pointer;background:#F9FAFB;color:#6B7280;">↩ Reversible</button>
-        <button id="ld-rev-no" onclick="ldSetRev(false)" style="flex:1;padding:8px;border:1.5px solid #E5E7EB;border-radius:10px;font-family:Nunito,sans-serif;font-size:0.78em;font-weight:800;cursor:pointer;background:#F9FAFB;color:#6B7280;">🔒 Commitment</button>
+        <button id="ld-rev-yes" data-i18n="reversible" onclick="ldSetRev(true)" style="flex:1;padding:8px;border:1.5px solid #E5E7EB;border-radius:10px;font-family:Nunito,sans-serif;font-size:0.78em;font-weight:800;cursor:pointer;background:#F9FAFB;color:#6B7280;">↩ Reversible</button>
+        <button id="ld-rev-no" data-i18n="commitment" onclick="ldSetRev(false)" style="flex:1;padding:8px;border:1.5px solid #E5E7EB;border-radius:10px;font-family:Nunito,sans-serif;font-size:0.78em;font-weight:800;cursor:pointer;background:#F9FAFB;color:#6B7280;">🔒 Commitment</button>
       </div>
 
       <!-- Live preview strip -->
@@ -5607,31 +5607,31 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
       <!-- AI narrative -->
       <div style="background:#F8FAFF;border-radius:12px;padding:12px 14px;margin-bottom:14px;border-left:3px solid #6366F1;">
-        <div style="font-size:0.68em;font-weight:800;color:#6366F1;text-transform:uppercase;margin-bottom:5px;">MoneyFi Advisor Says</div>
+        <div style="font-size:0.68em;font-weight:800;color:#6366F1;text-transform:uppercase;margin-bottom:5px;" data-i18n="moneyfiAdvisorSays">MoneyFi Advisor Says</div>
         <div id="ld-narrative" style="font-size:0.8em;font-weight:600;color:#1E2A6E;line-height:1.55;"></div>
       </div>
 
       <!-- FHS impact -->
       <div id="ld-fhs-impact" style="display:none;background:#FFF7ED;border-radius:12px;padding:10px 14px;margin-bottom:14px;border-left:3px solid #F59E0B;">
-        <div style="font-size:0.68em;font-weight:800;color:#B45309;text-transform:uppercase;margin-bottom:5px;">FHS Score Impact</div>
+        <div style="font-size:0.68em;font-weight:800;color:#B45309;text-transform:uppercase;margin-bottom:5px;" data-i18n="fhsScoreImpact">FHS Score Impact</div>
         <div id="ld-fhs-impact-text" style="font-size:0.8em;font-weight:700;color:#92400E;line-height:1.4;"></div>
       </div>
 
       <!-- FIRE timeline impact -->
       <div id="ld-fire-impact" style="display:none;background:#FFF1F2;border-radius:12px;padding:10px 14px;margin-bottom:14px;border-left:3px solid #F43F5E;">
-        <div style="font-size:0.68em;font-weight:800;color:#9F1239;text-transform:uppercase;margin-bottom:5px;">FIRE Timeline Impact</div>
+        <div style="font-size:0.68em;font-weight:800;color:#9F1239;text-transform:uppercase;margin-bottom:5px;" data-i18n="fireTimelineImpact">FIRE Timeline Impact</div>
         <div id="ld-fire-impact-text" style="font-size:0.8em;font-weight:700;color:#9F1239;line-height:1.4;"></div>
       </div>
 
       <!-- Opportunity cost -->
       <div id="ld-opp-cost" style="display:none;background:#F0FDF4;border-radius:12px;padding:10px 14px;margin-bottom:14px;border-left:3px solid #22C55E;">
-        <div style="font-size:0.68em;font-weight:800;color:#15803D;text-transform:uppercase;margin-bottom:5px;">Opportunity Cost (If Invested Instead)</div>
+        <div style="font-size:0.68em;font-weight:800;color:#15803D;text-transform:uppercase;margin-bottom:5px;" data-i18n="oppCostTitle">Opportunity Cost (If Invested Instead)</div>
         <div id="ld-opp-cost-text" style="font-size:0.8em;font-weight:700;color:#166534;line-height:1.4;"></div>
       </div>
 
       <!-- Smart wait recommendation -->
       <div id="ld-wait-rec" style="display:none;background:#EFF6FF;border-radius:12px;padding:10px 14px;margin-bottom:14px;border-left:3px solid #3B82F6;">
-        <div style="font-size:0.68em;font-weight:800;color:#1D4ED8;text-transform:uppercase;margin-bottom:5px;">Smart Timing</div>
+        <div style="font-size:0.68em;font-weight:800;color:#1D4ED8;text-transform:uppercase;margin-bottom:5px;" data-i18n="smartTiming">Smart Timing</div>
         <div id="ld-wait-rec-text" style="font-size:0.8em;font-weight:700;color:#1E3A8A;line-height:1.4;"></div>
       </div>
 
@@ -6827,7 +6827,7 @@ function updatePeriodLabel() {
     topbadge.textContent = getDisplayMonth(viewMonth);
   } else if(currentPeriod === 'year') {
     const [y] = viewMonth.split('-');
-    lbl.textContent = 'Year ' + y;
+    lbl.textContent = t('year') + ' ' + y;
     topbadge.textContent = y;
   } else if(currentPeriod === 'week') {
     const d = selectedDay ? new Date(selectedDay+'T00:00:00') : new Date();
@@ -6835,7 +6835,7 @@ function updatePeriodLabel() {
     const end = new Date(start); end.setDate(start.getDate() + 6);
     const fmt2 = dt => dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
     lbl.textContent = fmt2(start)+' – '+fmt2(end);
-    topbadge.textContent = 'Week';
+    topbadge.textContent = t('week');
   } else if(currentPeriod === 'day') {
     const d = selectedDay ? new Date(selectedDay+'T00:00:00') : new Date();
     lbl.textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
@@ -8152,9 +8152,9 @@ function renderHomeInsights(expenses, income, investments) {
 
   // ── KPI strip (3 always-visible numbers) ──
   const kpis = [
-    { val: fmt(net),  label: net >= 0 ? 'Net Saved' : 'Net Deficit', color: net >= 0 ? 'var(--income)' : 'var(--expenses)' },
-    { val: savingsRate.toFixed(0) + '%', label: 'Savings Rate', color: savingsRate >= 20 ? 'var(--income)' : savingsRate >= 10 ? '#F59E0B' : 'var(--expenses)' },
-    { val: fmt(totalInv), label: 'Invested', color: '#7C3AED' },
+    { val: fmt(net),  label: net >= 0 ? t('netSaved') : t('netDeficit'), color: net >= 0 ? 'var(--income)' : 'var(--expenses)' },
+    { val: savingsRate.toFixed(0) + '%', label: t('savingsRate'), color: savingsRate >= 20 ? 'var(--income)' : savingsRate >= 10 ? '#F59E0B' : 'var(--expenses)' },
+    { val: fmt(totalInv), label: t('invested'), color: '#7C3AED' },
   ];
   kpiStrip.innerHTML = `<div class="insights-kpi-row">${
     kpis.map(k => `<div class="insights-kpi">
@@ -8173,23 +8173,23 @@ function renderHomeInsights(expenses, income, investments) {
   if (topCats.length > 0) {
     const [topCat, topAmt] = topCats[0];
     const pct = totalExp > 0 ? (topAmt/totalExp*100).toFixed(0) : 0;
-    chips.push({ type: pct > 30 ? 'warn' : 'neutral', icon: '🏆', title: `Biggest spend: ${topCat}`, sub: `${fmt(topAmt)} — ${pct}% of total spending this period` });
+    chips.push({ type: pct > 30 ? 'warn' : 'neutral', icon: '🏆', title: `${t('biggestSpend')}: ${topCat}`, sub: `${fmt(topAmt)} — ${pct}% of total spending this period` });
   }
 
   // 2. Savings rate verdict
   if (totalInc > 0) {
-    if (savingsRate >= 20) chips.push({ type:'good',  icon:'🌟', title:'Great savings rate!', sub:`You're saving ${savingsRate.toFixed(0)}% of income — above the 20% benchmark` });
-    else if (savingsRate >= 10) chips.push({ type:'warn',  icon:'💛', title:'Decent savings rate', sub:`${savingsRate.toFixed(0)}% saved — aim for 20% to build wealth faster` });
-    else if (savingsRate > 0)   chips.push({ type:'alert', icon:'⚠️', title:'Low savings rate', sub:`Only ${savingsRate.toFixed(0)}% saved this period — review top spending categories` });
-    else if (net < 0)           chips.push({ type:'alert', icon:'🚨', title:'Spending exceeds income', sub:`${fmt(Math.abs(net))} more spent than earned — review your budget` });
+    if (savingsRate >= 20) chips.push({ type:'good',  icon:'🌟', title:t('greatSavingsRate'), sub:`You're saving ${savingsRate.toFixed(0)}% of income — above the 20% benchmark` });
+    else if (savingsRate >= 10) chips.push({ type:'warn',  icon:'💛', title:t('decentSavingsRate'), sub:`${savingsRate.toFixed(0)}% saved — aim for 20% to build wealth faster` });
+    else if (savingsRate > 0)   chips.push({ type:'alert', icon:'⚠️', title:t('lowSavingsRate'), sub:`Only ${savingsRate.toFixed(0)}% saved this period — review top spending categories` });
+    else if (net < 0)           chips.push({ type:'alert', icon:'🚨', title:t('spendingExceedsIncome'), sub:`${fmt(Math.abs(net))} more spent than earned — review your budget` });
   }
 
   // 3. Investment discipline
   if (totalInc > 0) {
     const invRate = (totalInv / totalInc * 100);
-    if (invRate >= 15) chips.push({ type:'good',   icon:'📈', title:'Strong investment habit', sub:`${invRate.toFixed(0)}% of income going to investments — excellent discipline` });
-    else if (invRate > 0) chips.push({ type:'neutral', icon:'📊', title:`${invRate.toFixed(0)}% invested`, sub:`${fmt(totalInv)} invested this period — consider increasing to 15%+` });
-    else chips.push({ type:'neutral', icon:'💡', title:'No investments this period', sub:'Consider allocating a portion of income to investments' });
+    if (invRate >= 15) chips.push({ type:'good',   icon:'📈', title:t('strongInvestHabit'), sub:`${invRate.toFixed(0)}% of income going to investments — excellent discipline` });
+    else if (invRate > 0) chips.push({ type:'neutral', icon:'📊', title:`${invRate.toFixed(0)}% ${t('invested')}`, sub:`${fmt(totalInv)} invested this period — consider increasing to 15%+` });
+    else chips.push({ type:'neutral', icon:'💡', title:t('noInvestPeriod'), sub:'Consider allocating a portion of income to investments' });
   }
 
   // 4. Budget goal check — find most over-budget category
@@ -8204,7 +8204,7 @@ function renderHomeInsights(expenses, income, investments) {
       const worst = overBudget[0];
       chips.push({ type:'alert', icon:'🎯', title:`${worst.name} over budget`, sub:`${fmt(worst.over)} over limit — ${worst.pct.toFixed(0)}% of budget used` });
     } else if (expGoals.length > 0) {
-      chips.push({ type:'good', icon:'✅', title:'All categories within budget', sub:'Great job staying on track this period!' });
+      chips.push({ type:'good', icon:'✅', title:t('allWithinBudget'), sub:'Great job staying on track this period!' });
     }
   }
 
@@ -8226,7 +8226,7 @@ function renderHomeInsights(expenses, income, investments) {
 
   // 6. No-spend / low-spend encouragement
   if (totalExp === 0 && totalInc === 0) {
-    chips.push({ type:'neutral', icon:'🌱', title:'No data yet for this period', sub:'Add transactions or import your Excel files from the Import tab' });
+    chips.push({ type:'neutral', icon:'🌱', title:t('noDataPeriod'), sub:'Add transactions or import your Excel files from the Import tab' });
   }
 
   chipsEl.innerHTML = chips.map(c => `
@@ -12587,6 +12587,20 @@ const STRINGS = {
     back: 'Back', next: 'Next', confirm: 'Confirm', generate: 'Generate',
     month: 'Month', year: 'Year', week: 'Week', allTime: 'All-Time',
     // Template names
+    // Period / home tabs
+    day: 'Day', week: 'Week', spending: 'Spending', investing: 'Investing',
+    totalSpending: 'Total Spending', totalIncome: 'Total Income',
+    spendingTrend: 'Spending Trend (6 months)', top5Categories: 'Top 5 Spending Categories',
+    budgetVsSpent: 'Budget vs Spent', accountBreakdown: 'Account Breakdown',
+    noDataPeriod: 'No data for this period', mtdSpent: 'MTD Spent',
+    mtdEarned: 'MTD Earned', mtdInvested: 'MTD Invested',
+    ytdSpent: 'YTD Spent', ytdEarned: 'YTD Earned', ytdInvested: 'YTD Invested',
+    netDeficit: 'Net Deficit', biggestSpend: 'Biggest spend',
+    greatSavingsRate: 'Great savings rate!', decentSavingsRate: 'Decent savings rate',
+    lowSavingsRate: 'Low savings rate', spendingExceedsIncome: 'Spending exceeds income',
+    strongInvestHabit: 'Strong investment habit', noInvestPeriod: 'No investments this period',
+    allWithinBudget: 'All categories within budget',
+    netSavedFull: 'Net Saved', savingsRateFull: 'Savings Rate',
     tplPet: 'Adopt a Pet', tplCar: 'Buy a Car', tplLifestyle: 'Lifestyle Upgrade',
     tplGadget: 'New Gadget', tplHome: 'Move to Bigger Home', tplHobby: 'Start a Hobby',
   },
@@ -12642,6 +12656,19 @@ const STRINGS = {
     edit: 'संपादित करें', delete: 'हटाएँ', add: 'जोड़ें', close: 'बंद करें', done: 'हो गया',
     back: 'वापस', next: 'आगे', confirm: 'पुष्टि करें', generate: 'बनाएँ',
     month: 'महीना', year: 'वर्ष', week: 'सप्ताह', allTime: 'सभी समय',
+    day: 'दिन', week: 'सप्ताह', spending: 'खर्च', investing: 'निवेश',
+    totalSpending: 'कुल खर्च', totalIncome: 'कुल आय',
+    spendingTrend: 'खर्च प्रवृत्ति (6 महीने)', top5Categories: 'शीर्ष 5 खर्च श्रेणियाँ',
+    budgetVsSpent: 'बजट बनाम खर्च', accountBreakdown: 'खाता विवरण',
+    noDataPeriod: 'इस अवधि के लिए डेटा नहीं', mtdSpent: 'माहवार खर्च',
+    mtdEarned: 'माहवार आय', mtdInvested: 'माहवार निवेश',
+    ytdSpent: 'वार्षिक खर्च', ytdEarned: 'वार्षिक आय', ytdInvested: 'वार्षिक निवेश',
+    netDeficit: 'शुद्ध घाटा', biggestSpend: 'सबसे बड़ा खर्च',
+    greatSavingsRate: 'बेहतरीन बचत दर!', decentSavingsRate: 'ठीक-ठाक बचत दर',
+    lowSavingsRate: 'कम बचत दर', spendingExceedsIncome: 'खर्च आय से अधिक',
+    strongInvestHabit: 'मजबूत निवेश आदत', noInvestPeriod: 'इस अवधि में निवेश नहीं',
+    allWithinBudget: 'सभी श्रेणियाँ बजट में',
+    netSavedFull: 'कुल बचत', savingsRateFull: 'बचत दर',
     tplPet: 'पालतू जानवर अपनाएँ', tplCar: 'कार खरीदें', tplLifestyle: 'जीवनशैली अपग्रेड',
     tplGadget: 'नया गैजेट', tplHome: 'बड़े घर में जाएँ', tplHobby: 'नया शौक शुरू करें',
   },
@@ -12697,6 +12724,19 @@ const STRINGS = {
     edit: 'Editar', delete: 'Eliminar', add: 'Agregar', close: 'Cerrar', done: 'Listo',
     back: 'Atrás', next: 'Siguiente', confirm: 'Confirmar', generate: 'Generar',
     month: 'Mes', year: 'Año', week: 'Semana', allTime: 'Todo el Tiempo',
+    day: 'Día', week: 'Semana', spending: 'Gastos', investing: 'Inversiones',
+    totalSpending: 'Gasto Total', totalIncome: 'Ingreso Total',
+    spendingTrend: 'Tendencia de Gastos (6 meses)', top5Categories: 'Top 5 Categorías de Gasto',
+    budgetVsSpent: 'Presupuesto vs Gastado', accountBreakdown: 'Desglose de Cuentas',
+    noDataPeriod: 'Sin datos para este período', mtdSpent: 'Gastado MTD',
+    mtdEarned: 'Ganado MTD', mtdInvested: 'Invertido MTD',
+    ytdSpent: 'Gastado YTD', ytdEarned: 'Ganado YTD', ytdInvested: 'Invertido YTD',
+    netDeficit: 'Déficit Neto', biggestSpend: 'Mayor gasto',
+    greatSavingsRate: '¡Excelente tasa de ahorro!', decentSavingsRate: 'Tasa de ahorro decente',
+    lowSavingsRate: 'Tasa de ahorro baja', spendingExceedsIncome: 'Gastos superan ingresos',
+    strongInvestHabit: 'Sólido hábito de inversión', noInvestPeriod: 'Sin inversiones este período',
+    allWithinBudget: 'Todas las categorías dentro del presupuesto',
+    netSavedFull: 'Ahorro Neto', savingsRateFull: 'Tasa de Ahorro',
     tplPet: 'Adoptar una Mascota', tplCar: 'Comprar un Auto', tplLifestyle: 'Mejora de Estilo de Vida',
     tplGadget: 'Nuevo Gadget', tplHome: 'Casa más Grande', tplHobby: 'Iniciar un Hobby',
   },
@@ -12752,6 +12792,19 @@ const STRINGS = {
     edit: 'సవరించండి', delete: 'తొలగించండి', add: 'జోడించండి', close: 'మూసివేయండి', done: 'పూర్తయింది',
     back: 'వెనక్కి', next: 'తర్వాత', confirm: 'నిర్ధారించండి', generate: 'రూపొందించండి',
     month: 'నెల', year: 'సంవత్సరం', week: 'వారం', allTime: 'అన్ని సమయం',
+    day: 'రోజు', week: 'వారం', spending: 'ఖర్చులు', investing: 'పెట్టుబడులు',
+    totalSpending: 'మొత్తం ఖర్చులు', totalIncome: 'మొత్తం ఆదాయం',
+    spendingTrend: 'ఖర్చు ధోరణి (6 నెలలు)', top5Categories: 'అగ్ర 5 ఖర్చు వర్గాలు',
+    budgetVsSpent: 'బడ్జెట్ vs ఖర్చు', accountBreakdown: 'ఖాతా వివరణ',
+    noDataPeriod: 'ఈ కాలానికి డేటా లేదు', mtdSpent: 'నెల ఖర్చు',
+    mtdEarned: 'నెల ఆదాయం', mtdInvested: 'నెల పెట్టుబడి',
+    ytdSpent: 'సంవత్సర ఖర్చు', ytdEarned: 'సంవత్సర ఆదాయం', ytdInvested: 'సంవత్సర పెట్టుబడి',
+    netDeficit: 'నికర లోటు', biggestSpend: 'అతిపెద్ద ఖర్చు',
+    greatSavingsRate: 'అద్భుతమైన పొదుపు దర!', decentSavingsRate: 'సరైన పొదుపు దర',
+    lowSavingsRate: 'తక్కువ పొదుపు దర', spendingExceedsIncome: 'ఖర్చు ఆదాయాన్ని మించింది',
+    strongInvestHabit: 'బలమైన పెట్టుబడి అలవాటు', noInvestPeriod: 'ఈ కాలంలో పెట్టుబడులు లేవు',
+    allWithinBudget: 'అన్ని వర్గాలు బడ్జెట్‌లో ఉన్నాయి',
+    netSavedFull: 'నికర పొదుపు', savingsRateFull: 'పొదుపు రేటు',
     tplPet: 'పెంపుడు జంతువును దత్తత తీసుకోండి', tplCar: 'కారు కొనండి', tplLifestyle: 'జీవనశైలి అప్‌గ్రేడ్',
     tplGadget: 'కొత్త గ్యాడ్జెట్', tplHome: 'పెద్ద ఇంటికి మారండి', tplHobby: 'కొత్త అభిరుచి ప్రారంభించండి',
   },
@@ -12807,6 +12860,19 @@ const STRINGS = {
     edit: 'திருத்து', delete: 'நீக்கு', add: 'சேர்', close: 'மூடு', done: 'முடிந்தது',
     back: 'திரும்பு', next: 'அடுத்து', confirm: 'உறுதிப்படுத்து', generate: 'உருவாக்கு',
     month: 'மாதம்', year: 'ஆண்டு', week: 'வாரம்', allTime: 'எல்லா நேரமும்',
+    day: 'நாள்', week: 'வாரம்', spending: 'செலவுகள்', investing: 'முதலீடுகள்',
+    totalSpending: 'மொத்த செலவு', totalIncome: 'மொத்த வருமானம்',
+    spendingTrend: 'செலவு போக்கு (6 மாதங்கள்)', top5Categories: 'சிறந்த 5 செலவு வகைகள்',
+    budgetVsSpent: 'பட்ஜெட் vs செலவு', accountBreakdown: 'கணக்கு விவரம்',
+    noDataPeriod: 'இந்த காலத்திற்கு தரவு இல்லை', mtdSpent: 'மாத செலவு',
+    mtdEarned: 'மாத வருமானம்', mtdInvested: 'மாத முதலீடு',
+    ytdSpent: 'ஆண்டு செலவு', ytdEarned: 'ஆண்டு வருமானம்', ytdInvested: 'ஆண்டு முதலீடு',
+    netDeficit: 'நிகர பற்றாக்குறை', biggestSpend: 'மிகப்பெரிய செலவு',
+    greatSavingsRate: 'சிறந்த சேமிப்பு விகிதம்!', decentSavingsRate: 'நல்ல சேமிப்பு விகிதம்',
+    lowSavingsRate: 'குறைந்த சேமிப்பு விகிதம்', spendingExceedsIncome: 'செலவு வருமானத்தை மீறியது',
+    strongInvestHabit: 'வலுவான முதலீட்டு பழக்கம்', noInvestPeriod: 'இந்த காலத்தில் முதலீடு இல்லை',
+    allWithinBudget: 'அனைத்து வகைகளும் பட்ஜெட்டுக்குள்',
+    netSavedFull: 'நிகர சேமிப்பு', savingsRateFull: 'சேமிப்பு விகிதம்',
     tplPet: 'செல்லப்பிராணி தத்தெடுக்கவும்', tplCar: 'கார் வாங்கவும்', tplLifestyle: 'வாழ்க்கை முறை மேம்படுத்தல்',
     tplGadget: 'புதிய கேஜெட்', tplHome: 'பெரிய வீட்டிற்கு செல்லவும்', tplHobby: 'புதிய பொழுதுபோக்கு தொடங்கவும்',
   },
@@ -12832,7 +12898,6 @@ function setLanguage(lang) {
   _applyLanguageToStaticElements();
   try { renderHome(); } catch(e) {}
   try { renderSettings(); } catch(e) {}
-  // Update AI advisor language instruction
   _updateAILanguage(lang);
   showToast('🌐 ' + { en:'Language set to English', hi:'भाषा हिंदी में बदली गई', es:'Idioma cambiado a Español', te:'భాష తెలుగుకు మార్చబడింది', ta:'மொழி தமிழுக்கு மாற்றப்பட்டது' }[lang]);
 }
@@ -12874,39 +12939,27 @@ function _applyLanguageToStaticElements() {
     const key = span.getAttribute('data-tpl');
     if (key) span.textContent = t(key);
   });
-  // Reversible / commitment buttons
-  const revBtn = document.getElementById('ld-rev-yes');
-  const comBtn = document.getElementById('ld-rev-no');
-  if (revBtn) revBtn.textContent = t('reversible');
-  if (comBtn) comBtn.textContent = t('commitment');
-  // Analyse button
-  const runBtn = document.getElementById('ld-run-btn');
-  if (runBtn) { const span = runBtn.querySelector('span:last-child'); if(span) span.textContent = t('analyseDecision'); }
-  // Result section labels
-  const resultLbls = {
-    'ld-fhs-impact': 'fhsScoreImpact', 'ld-fire-impact': 'fireTimelineImpact',
-    'ld-opp-cost': 'oppCostTitle', 'ld-wait-rec': 'smartTiming',
-  };
-  Object.entries(resultLbls).forEach(([id, key]) => {
-    const el = document.getElementById(id);
-    if (el) { const lbl = el.querySelector('div:first-child'); if(lbl) lbl.textContent = t(key); }
-  });
-  // Ask advisor / new decision buttons
+  // ── Global data-i18n sweep — single pass for ALL tagged elements ──
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
-    if (key && STRINGS[_lang]?.[key]) {
-      // Preserve emoji prefix if present
-      const txt = el.textContent;
-      const emojiMatch = txt.match(/^([\u{1F000}-\u{1FFFF}\u2600-\u26FF\u2700-\u27BF][\uFE0F\u20E3]?\s*)/u);
-      el.textContent = emojiMatch ? emojiMatch[1] + t(key) : t(key);
+    const translated = STRINGS[_lang]?.[key] || STRINGS.en[key];
+    if (!translated) return;
+    if (el.tagName === 'INPUT' && 'placeholder' in el) {
+      el.placeholder = translated;
+    } else if (el.tagName === 'BUTTON') {
+      // buttons that contain child spans — let the child spans handle it
+      if (!el.querySelector('[data-i18n]')) el.textContent = translated;
+    } else {
+      el.textContent = translated;
     }
   });
   // Settings
   const settingsSync = document.getElementById('settings-sync-status');
   if (settingsSync && !window._fbUser) settingsSync.textContent = t('signIn');
-  // Update SMS auth copy if needed
   const notSignedEl = document.getElementById('firebase-user-display');
   if (notSignedEl && !window._fbUser) notSignedEl.textContent = t('notSignedIn');
+  // Refresh period label (translates "Week" / "Year" badge)
+  if (typeof updatePeriodLabel === 'function') { try { updatePeriodLabel(); } catch(e) {} }
 }
 
 // Tell the AI advisor to respond in the user's language
@@ -27651,7 +27704,7 @@ _auth.onAuthStateChanged(async user => {
       'pnraghukishore@gmail.com',
       'swathikishore12@gmail.com',
       'skanda.penujuri@gmail.com',
-      'psatyanarayana252@gmail.com',
+      'suja81@gmail.com',
       'charlesakl@gmail.com',
       'narasimha.neo@gmail.com',
       'ping2rupesh@gmail.com',
