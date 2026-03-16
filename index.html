@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.2.4 -->
+<!-- MoneyFi v4.2.3 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -32,22 +32,7 @@ LEGAL BOUNDARY — NEVER CROSS:
 
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.17.0
-  Changes  : v3.17.0 — Import Engine + Reset fixes (2026-03-16):
-               • Bank/CSV Import: smart header-row scanner (skips Axis/HDFC metadata rows)
-               • Bank/CSV Import: DD/MM/YY two-digit year support for HDFC date format
-               • Bank/CSV Import: U_COL_HINTS extended for Axis (DR/CR/BAL/PARTICULARS/Tran Date)
-                 and HDFC (Withdrawal Amt./Deposit Amt./Closing Balance/Narration/Value Dt)
-               • Bank/CSV Import: auto-skip ***separator*** and Legend: rows from Indian banks
-               • Bank/CSV Import: category rules for NIPPONMUTUALFUND, INVESTNOW, CWDR, P2AMOB
-               • Reset/Delete: 🏦 Bank/CSV Import row added with transaction count + Clear button
-               • Reset/Delete: source field fix (r.source vs r._source) for correct count/delete
-               • Txns List view: swipe-to-edit no longer triggers month navigation
-               • Budget module: edit-budget-popup moved to body level (was hidden inside
-                 screen-import); +Add and ✏️ Edit now work correctly in Expenses/Savings tabs
-               • Investment cards: subcats aggregation in renderInvestHome() + DEFAULT_INV_CARDS
-                 seeded with alias lists (ETF/MF catches SIP, MF, Mutual Fund, ELSS etc.)
-               • Settings: 🏷 tag editor added to Spending and Investment card rows
+  Version  : 3.16.0
   Changes  : v3.15.0 — AI Quality Engine:
                • classifyScheme() — SEBI keyword classifier for Indian MF (asset class, tax bucket, liquidity, lock-in)
                • classifyUSAccount() — US account name → tax bucket / liquidity map
@@ -66,7 +51,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
                support CAS Excel column layout, skip zero-amount admin rows.
   v3.14.1 — NW sections auto-open, viewMonth after restore.
   v3.14.0 — Import Engine v2, duplicate flagging, NW auto-detect, AI Privacy Consent modal.
-  Built    : 2026-03-16
+  Built    : 2026-03-09
   Session  : Phase 5d — 12 fixes: Tx search, NW imported accounts, FIRE gap ₹→$, employment type, spouse status, education inflation label, monthly contrib + return fields on all accounts, Settings WhatsApp redesign, Data Mgmt consolidation, Import region picker
 
   Changelog:
@@ -5288,7 +5273,6 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
             <select id="iuniversal-date-fmt" class="nw-sheet-select" style="font-size:0.8em;padding:8px;">
               <option value="auto">Auto-detect</option>
               <option value="dmy">DD/MM/YYYY</option>
-              <option value="dmy_2y">DD/MM/YY (Indian banks)</option>
               <option value="mdy">MM/DD/YYYY (US)</option>
               <option value="ymd">YYYY-MM-DD</option>
               <option value="dmy_slash">DD-Mon-YYYY</option>
@@ -5355,8 +5339,21 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div id="iuniversal-dup-list"></div>
       </div>
 
-      <div style="overflow-x:auto;margin-top:8px;">
-        <table class="import-preview-table" style="width:100%;">
+      <!-- Select-all toolbar -->
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#F8F8F8;border-radius:10px;margin-bottom:6px;">
+        <input type="checkbox" id="iuniversal-select-all" checked
+          onchange="uImportToggleAll(this.checked)"
+          style="width:16px;height:16px;cursor:pointer;accent-color:#059669;">
+        <label for="iuniversal-select-all" style="font-size:0.82em;font-weight:800;color:var(--text-dark);cursor:pointer;flex:1;">
+          Select All
+        </label>
+        <span id="iuniversal-selected-count" style="font-size:0.78em;font-weight:700;color:#059669;white-space:nowrap;"></span>
+      </div>
+
+      <!-- Scrollable transaction table -->
+      <div style="overflow-x:auto;max-height:55vh;overflow-y:auto;border:1px solid #EEE;border-radius:10px;">
+        <table class="import-preview-table" style="width:100%;border-collapse:collapse;">
+          <thead id="iuniversal-preview-head" style="position:sticky;top:0;z-index:2;background:var(--bg-secondary);"></thead>
           <tbody id="iuniversal-preview-table"></tbody>
         </table>
       </div>
@@ -5364,7 +5361,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       <div style="margin-top:14px;display:flex;gap:10px;">
         <button onclick="confirmUniversalImport()"
                 style="flex:1;padding:13px;background:#059669;color:white;border:none;border-radius:12px;font-size:0.9em;font-weight:900;cursor:pointer;">
-          ✅ Import Transactions
+          ✅ Import Selected
         </button>
         <button onclick="resetUniversalImport()"
                 style="padding:13px 18px;background:var(--bg-secondary);color:var(--text-dark);border:1px solid var(--border);border-radius:12px;font-size:0.88em;font-weight:800;cursor:pointer;">
@@ -24266,33 +24263,9 @@ function _loadUniversalFile(file) {
       const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array', cellDates:true });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rawRows = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:'' });
-      // Smart header-row detection: scan up to row 30 for the row that looks most like
-      // column headers. Axis/HDFC prepend 6-13 metadata rows before real headers.
-      const _HDR_HINTS = [
-        /^date$/i, /tran.*date/i, /value.*dt/i, /^dt$/i,
-        /narrat/i, /particular/i, /^desc/i, /detail/i, /remark/i,
-        /withdrawal/i, /\bdr\b/i, /debit/i,
-        /deposit/i, /\bcr\b/i, /credit/i,
-        /amount/i, /\bamt\b/i,
-        /balance/i, /\bbal\b/i,
-        /chq/i, /ref.*no/i, /sl.*no/i, /srl/i,
-      ];
-      function _scoreHeaderRow(row) {
-        return row.filter(v => {
-          const s = String(v || '').trim();
-          return s && _HDR_HINTS.some(re => re.test(s));
-        }).length;
-      }
-      let startRow = 0, bestScore = 0;
-      for (let i = 0; i < Math.min(rawRows.length, 30); i++) {
-        const score = _scoreHeaderRow(rawRows[i]);
-        if (score > bestScore) { bestScore = score; startRow = i; }
-      }
-      // Fallback: if no row scored ≥2 keyword matches, use first non-empty row
-      if (bestScore < 2) {
-        startRow = 0;
-        while (startRow < rawRows.length && !rawRows[startRow].some(v => v && String(v).trim())) startRow++;
-      }
+      // Skip fully-empty leading rows (some banks have logo/address rows)
+      let startRow = 0;
+      while (startRow < rawRows.length && !rawRows[startRow].some(v => v && String(v).trim())) startRow++;
       const headers = (rawRows[startRow] || []).map(h => String(h || '').trim());
       const rows = rawRows.slice(startRow + 1).filter(r => r.some(v => v !== null && v !== undefined && String(v).trim()));
       if (!headers.length) { showToast('❌ Could not read headers'); return; }
@@ -24596,17 +24569,12 @@ function confirmPortfolioImport() {
 
 // ── Column auto-detection ─────────────────────────────────────────────────
 const U_COL_HINTS = {
-  // Axis: 'Tran Date'   HDFC: 'Date', 'Value Dt'
-  date:        [/tran.*date/i, /^date$/i, /value.*dt/i, /dt$/i, /^date/i, /trans.*date/i, /posting/i],
-  // Axis: 'PARTICULARS'   HDFC: 'Narration'
-  description: [/particular/i, /narrat/i, /desc/i, /detail/i, /remarks/i, /memo/i, /payee/i, /reference/i],
+  date:        [/date/i, /dt$/i, /^date/i, /trans.*date/i, /value.*date/i, /posting/i],
+  description: [/desc/i, /narrat/i, /particular/i, /detail/i, /remarks/i, /memo/i, /payee/i, /reference/i],
   amount:      [/amount/i, /amt/i, /^net$/i, /transaction.*amt/i, /^value$/i],
-  // Axis: 'DR '   HDFC: 'Withdrawal Amt.'
-  debit:       [/withdrawal/i, /^dr\s*$/i, /debit/i, /\bdr\b/i, /paid/i, /expense/i],
-  // Axis: 'CR '   HDFC: 'Deposit Amt.'
-  credit:      [/deposit/i, /^cr\s*$/i, /credit/i, /\bcr\b/i, /received/i],
-  // Axis: 'BAL '   HDFC: 'Closing Balance'
-  balance:     [/closing.*bal/i, /^bal\s*$/i, /balance/i, /running/i, /avail/i],
+  debit:       [/debit/i, /dr\b/i, /withdrawal/i, /paid/i, /expense/i],
+  credit:      [/credit/i, /cr\b/i, /deposit/i, /received/i],
+  balance:     [/balance/i, /running/i, /avail/i],
   category:    [/categor/i, /type/i, /mode/i, /channel/i],
 };
 
@@ -24678,7 +24646,7 @@ function _guessDateFormat(samples) {
       return parseInt(parts[0]) > 12 ? 'dmy' : 'mdy';
     }
     if (/^\d{2}-[A-Za-z]{3}-\d{4}/.test(s)) return 'dmy_slash';
-    if (/^\d{2}\/\d{2}\/\d{2}$/.test(s)) return 'dmy_2y'; // Indian banks: DD/MM/YY
+    if (/^\d{2}\/\d{2}\/\d{2}$/.test(s)) return 'mdy';
     if (/^\d{1,2}-\d{1,2}-\d{4}/.test(s)) {
       const parts = s.split('-');
       return parseInt(parts[0]) > 12 ? 'dmy' : 'mdy';
@@ -24722,10 +24690,6 @@ function runUniversalParse() {
     if (skipWords.some(w => w && descLow.includes(w))) continue;
     // Auto-skip obvious balance/summary rows
     if (/^(opening|closing|total|sub.?total|balance b\/?[fd])/i.test(desc)) continue;
-    // Auto-skip separator and legend rows from Indian bank statements
-    if (/^\*{4,}/.test(desc.trim())) continue;
-    if (/^-{4,}/.test(desc.trim())) continue;
-    if (/^(legend\s*:|statement summary|generated (on|by)|requesting branch)/i.test(desc)) continue;
 
     const date = _parseUniversalDate(rawDate, dateFmt);
     if (!date) continue;
@@ -24776,12 +24740,6 @@ function _parseUniversalDate(raw, fmt) {
   const s = raw.trim();
   try {
     if (fmt === 'ymd' || /^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
-    if (fmt === 'dmy_2y' || (fmt === 'auto' && /^\d{2}[\/\-]\d{2}[\/\-]\d{2}$/.test(s))) {
-      // DD/MM/YY → YYYY-MM-DD  (e.g. HDFC: 07/03/26 → 2026-03-07)
-      const [d, m, y] = s.split(/[\/\-]/);
-      const fullYear = parseInt(y) + (parseInt(y) <= 50 ? 2000 : 1900);
-      return `${fullYear}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-    }
     if (fmt === 'dmy' || (fmt === 'auto' && /^\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(s) && parseInt(s.substring(0,2)) > 12)) {
       const [d,m,y] = s.split(/[\/\-]/);
       return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
@@ -24800,22 +24758,19 @@ function _parseUniversalDate(raw, fmt) {
 
 // ── Category inference from description ──────────────────────────────────
 const U_CAT_RULES = [
-  { cat:'food',         re:/swiggy|zomato|uber.?eat|domino|pizza|mcdonald|kfc|restaurant|cafe|food|grocery|bigbasket|blinkit|zepto|dunzo|instamart/i },
-  { cat:'transport',    re:/uber|ola|rapido|metro|irctc|railway|petrol|fuel|fastag|toll|parking|airline|spicejet|indigo|goair/i },
-  { cat:'shopping',     re:/amazon|flipkart|myntra|ajio|nykaa|meesho|shop|mall|retail|mart/i },
-  { cat:'utilities',    re:/electricity|water|gas|broadband|internet|airtel|jio|vi |vodafone|bsnl|bill|recharge|dth/i },
-  { cat:'health',       re:/hospital|clinic|doctor|pharmacy|medical|apollo|manipal|health|medicine|lab|diagnostic/i },
-  { cat:'education',    re:/school|college|university|tuition|course|udemy|coursera|fee/i },
+  { cat:'food',        re:/swiggy|zomato|uber.?eat|domino|pizza|mcdonald|kfc|restaurant|cafe|food|grocery|bigbasket|blinkit|zepto|dunzo|instamart/i },
+  { cat:'transport',   re:/uber|ola|rapido|metro|irctc|railway|petrol|fuel|fastag|toll|parking|airline|spicejet|indigo|goair/i },
+  { cat:'shopping',    re:/amazon|flipkart|myntra|ajio|nykaa|meesho|shop|mall|retail|mart/i },
+  { cat:'utilities',   re:/electricity|water|gas|broadband|internet|airtel|jio|vi |vodafone|bsnl|bill|recharge|dth/i },
+  { cat:'health',      re:/hospital|clinic|doctor|pharmacy|medical|apollo|manipal|health|medicine|lab|diagnostic/i },
+  { cat:'education',   re:/school|college|university|tuition|course|udemy|coursera|fee/i },
   { cat:'entertainment',re:/netflix|hotstar|prime|spotify|youtube|gaming|movie|theatre|concert|bookmyshow/i },
-  // Investment patterns — specific Indian MF/broker narrations first
-  { cat:'investment',   re:/nipponmutualfund|investnow.*ip|upi.*mutual.*fund|ach.*mutual|fd through mobile|prin and int auto|int\. auto_redemption|axis.*mf|sbi.*mf|hdfc.*mf/i },
-  { cat:'investment',   re:/mutual fund|mf\b|zerodha|groww|kuvera|coin|ipo|nse|bse|stock|demat|invest|sip\b|elss|nps\b/i },
-  { cat:'salary',       re:/salary|payroll|employer|payslip|ctc|compensation/i },
-  { cat:'rent',         re:/rent|lease|landlord|housing/i },
-  { cat:'insurance',    re:/insurance|lic|premium|policy/i },
-  { cat:'atm',          re:/atm|cwdr|cash withdrawal|cash deposit/i },
-  // Generic transfer — after investment rules so MF/SIP gets caught first
-  { cat:'transfer',     re:/neft|imps|rtgs|upi|transfer|sent to|received from|payment to|payment from|p2a|p2mob/i },
+  { cat:'transfer',    re:/neft|imps|rtgs|upi|transfer|sent to|received from|payment to|payment from/i },
+  { cat:'investment',  re:/mutual fund|sip|zerodha|groww|kuvera|coin|ipo|nse|bse|stock|demat|invest/i },
+  { cat:'salary',      re:/salary|payroll|employer|payslip|ctc|compensation/i },
+  { cat:'rent',        re:/rent|lease|landlord|housing/i },
+  { cat:'insurance',   re:/insurance|lic|premium|policy/i },
+  { cat:'atm',         re:/atm|cash withdrawal|cash deposit/i },
 ];
 
 function _inferCategoryFromDesc(desc, amount) {
@@ -24847,40 +24802,136 @@ function _showUniversalReview(records) {
       ).join('') + (dups.length > 5 ? `<div style="font-size:0.72em;color:var(--text-light)">…and ${dups.length-5} more</div>` : '');
   }
 
-  const preview = records.slice(0, 25);
-  document.getElementById('iuniversal-preview-table').innerHTML =
-    `<tr style="background:var(--bg-secondary);font-size:0.72em;font-weight:800;color:var(--text-light);">
-      <td style="padding:6px 8px;">DATE</td><td>DESCRIPTION</td><td>AMOUNT</td><td>TYPE</td><td>CATEGORY</td></tr>` +
-    preview.map(r =>
-      `<tr style="font-size:0.78em;border-bottom:1px solid var(--border);">
-        <td style="padding:5px 8px;white-space:nowrap;">${r.date}</td>
-        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.description.substring(0,45)}</td>
-        <td style="font-weight:800;color:${r.type==='income'?'#059669':'#DC2626'};">${r.type==='income'?'+':'−'}${fmt(r.amount)}</td>
-        <td><span style="font-size:0.85em;background:${r.type==='income'?'#ECFDF5':r.type==='investment'?'#EFF6FF':'#FEF2F2'};padding:2px 7px;border-radius:6px;">${r.type}</span></td>
-        <td style="font-size:0.85em;color:var(--text-light);">${r.category}</td>
-      </tr>`
-    ).join('') +
-    (records.length > 25 ? `<tr><td colspan="5" style="text-align:center;padding:8px;color:var(--text-light);font-size:0.78em;font-style:italic;">…and ${records.length-25} more rows</td></tr>` : '');
+  // Type options for inline dropdown
+  const TYPE_OPTS = ['expense','income','investment','additional'];
+  // Category options per type (pulled from app's category system)
+  function _getCats(type) {
+    try { return getCatsForType(type === 'investment' ? 'investment' : type) || []; } catch(e) { return []; }
+  }
+
+  // Build sticky header
+  const selStyle = 'padding:2px 4px;font-size:0.75em;font-weight:700;border:1.5px solid #DDD;border-radius:6px;font-family:inherit;background:white;color:var(--text-dark);cursor:pointer;';
+  document.getElementById('iuniversal-preview-head').innerHTML = `
+    <tr style="font-size:0.72em;font-weight:800;color:var(--text-light);">
+      <th style="padding:7px 8px;text-align:left;font-weight:800;">✓</th>
+      <th style="padding:7px 8px;text-align:left;font-weight:800;">DATE</th>
+      <th style="padding:7px 8px;text-align:left;font-weight:800;">DESCRIPTION</th>
+      <th style="padding:7px 8px;text-align:right;font-weight:800;">AMOUNT</th>
+      <th style="padding:7px 8px;text-align:left;font-weight:800;">TYPE</th>
+      <th style="padding:7px 8px;text-align:left;font-weight:800;">CATEGORY</th>
+    </tr>`;
+
+  // Render all rows (not just 25) with checkbox + inline edits
+  document.getElementById('iuniversal-preview-table').innerHTML = records.map((r, i) => {
+    const isDup = dups.some(d => d.date === r.date && d.description === r.description && d.amount === r.amount);
+    const rowBg = isDup ? '#FFF8F0' : 'white';
+    const amtColor = r.type === 'income' ? '#059669' : '#DC2626';
+    const amtPrefix = r.type === 'income' ? '+' : '−';
+
+    // Type select
+    const typeSelect = `<select onchange="uImportSetType(${i},this.value)" style="${selStyle}">` +
+      TYPE_OPTS.map(t => `<option value="${t}"${t===r.type?' selected':''}>${t}</option>`).join('') +
+      `</select>`;
+
+    // Category select — populated for the current type
+    const cats = _getCats(r.type);
+    const catSelect = `<select id="uicat-${i}" onchange="uImportSetCat(${i},this.value)" style="${selStyle}min-width:90px;">` +
+      (cats.includes(r.category) ? '' : `<option value="${r.category}" selected>${r.category}</option>`) +
+      cats.map(c => `<option value="${c}"${c===r.category?' selected':''}>${c}</option>`).join('') +
+      `</select>`;
+
+    return `<tr id="uirow-${i}" style="background:${rowBg};border-bottom:1px solid #F0F0F0;">
+      <td style="padding:5px 8px;">
+        <input type="checkbox" class="uimport-chk" data-idx="${i}" checked
+          onchange="uImportUpdateCount()"
+          style="width:15px;height:15px;cursor:pointer;accent-color:#059669;">
+      </td>
+      <td style="padding:5px 8px;white-space:nowrap;font-size:0.78em;">${r.date}</td>
+      <td style="padding:5px 8px;font-size:0.78em;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.description}">${r.description}</td>
+      <td style="padding:5px 8px;font-weight:800;font-size:0.82em;color:${amtColor};text-align:right;white-space:nowrap;">${amtPrefix}${fmt(r.amount)}</td>
+      <td style="padding:5px 6px;">${typeSelect}</td>
+      <td style="padding:5px 6px;">${catSelect}</td>
+    </tr>`;
+  }).join('');
+
+  // Initialise selected count display
+  uImportUpdateCount();
+
+  // Reset select-all checkbox to checked
+  const saChk = document.getElementById('iuniversal-select-all');
+  if (saChk) saChk.checked = true;
 
   // Go to step 2
   document.querySelectorAll('#isec-universal .import-step').forEach(s => s.classList.remove('active'));
   document.getElementById('iuniversal-step2').classList.add('active');
-  showToast(`✅ ${records.length} transactions ready to review`);
+  showToast(`✅ ${records.length} transactions ready — deselect any to skip`);
 }
 
-// ── Confirm import ────────────────────────────────────────────────────────
+// ── Import review helpers ─────────────────────────────────────────────────
+
+function uImportUpdateCount() {
+  const all   = document.querySelectorAll('.uimport-chk');
+  const checked = document.querySelectorAll('.uimport-chk:checked');
+  const el = document.getElementById('iuniversal-selected-count');
+  if (el) el.textContent = `${checked.length} of ${all.length} selected`;
+  // Sync the select-all checkbox state
+  const sa = document.getElementById('iuniversal-select-all');
+  if (sa) {
+    sa.indeterminate = checked.length > 0 && checked.length < all.length;
+    sa.checked = checked.length === all.length;
+  }
+}
+
+function uImportToggleAll(checked) {
+  document.querySelectorAll('.uimport-chk').forEach(c => { c.checked = checked; });
+  uImportUpdateCount();
+}
+
+function uImportSetType(idx, newType) {
+  // Update the record in state
+  if (_universalState.records[idx]) {
+    _universalState.records[idx].type = newType;
+  }
+  // Rebuild the category dropdown for the new type
+  const catSel = document.getElementById(`uicat-${idx}`);
+  if (!catSel) return;
+  let cats = [];
+  try { cats = getCatsForType(newType === 'investment' ? 'investment' : newType) || []; } catch(e) {}
+  const curCat = _universalState.records[idx]?.category || '';
+  catSel.innerHTML =
+    (cats.includes(curCat) ? '' : `<option value="${curCat}" selected>${curCat}</option>`) +
+    cats.map(c => `<option value="${c}"${c===curCat?' selected':''}>${c}</option>`).join('');
+  // Update row highlight colour
+  const row = document.getElementById(`uirow-${idx}`);
+  if (row) row.style.background = 'white';
+}
+
+function uImportSetCat(idx, newCat) {
+  if (_universalState.records[idx]) {
+    _universalState.records[idx].category = newCat;
+  }
+}
+
+// ── Confirm import — only imports checked rows ────────────────────────────
 function confirmUniversalImport() {
   const records = _universalState.records;
   if (!records.length) { showToast('Nothing to import'); return; }
 
-  const now = new Date();
+  // Collect only the checked rows
+  const checkedBoxes = document.querySelectorAll('.uimport-chk:checked');
+  const selectedIndices = new Set([...checkedBoxes].map(c => parseInt(c.dataset.idx)));
+
+  if (selectedIndices.size === 0) { showToast('❌ No transactions selected'); return; }
+
   let added = 0;
 
-  records.forEach(r => {
+  records.forEach((r, i) => {
+    if (!selectedIndices.has(i)) return; // skip unchecked rows
+
     const mk = r.date.substring(0,7);
     if (!data[mk]) data[mk] = { income:[], expenses:[], investments:[] };
-    const arr = r.type === 'income' ? data[mk].income
-              : r.type === 'investment' ? data[mk].investments
+    const arr = r.type === 'income'      ? data[mk].income
+              : r.type === 'investment'  ? data[mk].investments
               : data[mk].expenses;
     arr.push({
       id: `univ_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
@@ -24896,7 +24947,8 @@ function confirmUniversalImport() {
   });
 
   save();
-  showToast(`✅ ${added} transactions imported`);
+  const skipped = records.length - added;
+  showToast(`✅ ${added} imported${skipped > 0 ? ` · ${skipped} skipped` : ''}`);
   resetUniversalImport();
   setTimeout(() => switchScreen('tx', null), 800);
 }
