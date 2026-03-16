@@ -2573,15 +2573,16 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   </div>
 </div>
 
+<!-- ── MoneyFi Pulse Stories panel — outside screens, works from any page ── -->
+<div id="pulse-panel" class="pulse-panel">
+  <div id="pulse-row" class="pulse-row"></div>
+</div>
+
+<!-- Story full-screen overlay (hidden, outside screens) -->
+<div id="story-overlay" class="story-overlay" style="display:none;"></div>
+
 <!-- ══════════════ HOME ══════════════ -->
 <div class="screen active" id="screen-home">
-  <!-- ── MoneyFi Pulse Stories panel (collapsed by default) ── -->
-  <div id="pulse-panel" class="pulse-panel">
-    <div id="pulse-row" class="pulse-row"></div>
-  </div>
-
-  <!-- Story full-screen overlay (hidden) -->
-  <div id="story-overlay" class="story-overlay" style="display:none;"></div>
 
   <!-- Time Period Selector -->
   <div class="time-period-bar" id="time-period-bar">
@@ -3920,6 +3921,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
 <!-- FAB LAUNCHER MENU -->
 <div class="fab-menu" id="fab-menu">
+  <div class="fab-menu-item" id="fmi-ai">
+    <div class="fab-menu-label">✨ AI Advisor</div>
+    <button class="fab-menu-btn" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);color:white;" onclick="closeFabMenu();openAIAdvisor();">✨</button>
+  </div>
   <div class="fab-menu-item" id="fmi-sms">
     <div class="fab-menu-label">📱 SMS Import</div>
     <button class="fab-menu-btn" style="background:#4F46E5;color:white;" onclick="closeFabMenu();switchScreen('import',null);setTimeout(()=>{const t=document.querySelector('.import-tab[onclick*=\'sms\']');if(t)t.click();},300);">📱</button>
@@ -6128,7 +6133,21 @@ let invModalType = 'Stocks';
 let invModalTemplate = 'Stocks';
 let invCurrencyTarget = 'inv'; // which context opened currency picker
 // Currency state — persisted separately for fast init
-let currentCurrency = JSON.parse(localStorage.getItem('mf_currency') || 'null') || {code:'USD',symbol:'$',name:'US Dollar',flag:'🇺🇸',country:'United States'};
+let currentCurrency = (function() {
+  const saved = JSON.parse(localStorage.getItem('mf_currency') || 'null');
+  if (saved) return saved;
+  // First launch: auto-detect from browser locale — saves the user from having to change it
+  const lang = (navigator.language || navigator.languages?.[0] || '').toLowerCase();
+  const tz = Intl?.DateTimeFormat?.()?.resolvedOptions?.()?.timeZone || '';
+  const isIndia = lang.includes('hi') || lang.includes('te') || lang.includes('ta') ||
+                  lang.includes('kn') || lang.includes('ml') || lang.includes('bn') ||
+                  lang.includes('mr') || lang.endsWith('-in') || tz.startsWith('Asia/Kolkata') ||
+                  tz.startsWith('Asia/Calcutta');
+  const isUAE   = tz.startsWith('Asia/Dubai') || lang.endsWith('-ae');
+  if (isIndia) return {code:'INR',symbol:'₹',name:'Indian Rupee',flag:'🇮🇳',country:'India'};
+  if (isUAE)   return {code:'AED',symbol:'د.إ',name:'UAE Dirham',flag:'🇦🇪',country:'UAE'};
+  return {code:'USD',symbol:'$',name:'US Dollar',flag:'🇺🇸',country:'United States'};
+})();
 
 function saveCurrency(c) {
   currentCurrency = c;
@@ -7685,6 +7704,34 @@ function _generatePulseStories() {
     if(_tld===0&&_phld&&snaps.length>0){const cv=_copyVariant('debtFree');stories.push({id:'debt_free_'+new Date().toISOString().slice(0,7),type:'debtFree',icon:'\u{1F4B3}',ringClass:'ring-gold',ringEffect:'glow',gradFrom:'#0F172A',gradTo:'#7C3AED',badge:'Debt-Free',headline:cv.h,subtext:cv.s,detail:cv.d,label:'Debt-Free',shareMetric:'Officially debt-free',cta:'See Net Worth \u2192',ctaAction:()=>{closePulsePlayer();goToScreen('networth');}});}
   } catch(e) {}
 
+  // ── 20. Motivational Card (always available, gym-card style) ─────
+  try {
+    const _motCards = [
+      { h: "I used to dread looking at my bank balance.", s: "Then I started tracking every rupee. Now I make money decisions with confidence — not fear.", badge: "💡 Money Mindset" },
+      { h: "I thought budgeting was for people bad with money.", s: "Turns out it is for people who want to be great with money. MoneyFi changed how I see every purchase.", badge: "🧠 Shift Happened" },
+      { h: "Fitness taught me consistency beats intensity.", s: "Same goes for wealth. Small SIPs, tracked monthly, compounding quietly — that is the real flex.", badge: "💪 Wealth Fitness" },
+      { h: "I hated cardio until I saw the results.", s: "I hated tracking money until I saw my net worth grow. Same principle — show up, stay consistent, watch the numbers change.", badge: "🏋️ Track & Grow" },
+    ];
+    const _mi = Math.floor(new Date().getDate() / 8) % _motCards.length; // rotates weekly
+    const _mc = _motCards[_mi];
+    stories.push({
+      id: 'motivational_' + _mi,
+      type: 'motivational',
+      icon: '✨',
+      ringClass: 'ring-indigo',
+      ringEffect: 'pulse',
+      gradFrom: '#1A1035', gradTo: '#312E81',
+      badge: _mc.badge,
+      headline: _mc.h,
+      subtext: _mc.s,
+      detail: "Tap the + button to log today's financial move.",
+      label: 'Inspire',
+      shareMetric: null,
+      cta: 'Log a Transaction →',
+      ctaAction: () => { closePulsePlayer(); setTimeout(() => openQuickAdd('expense', null), 300); },
+    });
+  } catch(e) {}
+
   // Sort: unseen first, then by impact
   const seen = _getPulseSeen();
   const order = [
@@ -7693,7 +7740,7 @@ function _generatePulseStories() {
     'freedomGain','fridayFreedom','shieldStrength','savingsStreak',
     'nwVelocity','monthBetterThanLast','spendLessWeek',
     'incomeGrowth','fhsRise','goalSurge','firstInvestment',
-    'weeklyStrategy','clarityWin','pillarBreakthrough'
+    'weeklyStrategy','clarityWin','pillarBreakthrough','motivational'
   ];
   stories.sort((a,b) => {
     const aS = seen.includes(a.id) ? 1 : 0;
@@ -8382,6 +8429,10 @@ function openQuickAdd(type, subCat) {
   if (_recCheck) _recCheck.checked = false;
   if (_recOpts) _recOpts.style.display = 'none';
   document.getElementById('quick-add-modal').classList.add('open');
+  // Hide AI FAB so it doesn't overlap form fields
+  const _qaf = document.getElementById('ai-fab'), _qat = document.getElementById('ai-fab-tooltip');
+  if (_qaf) _qaf.style.display = 'none';
+  if (_qat) _qat.style.display = 'none';
 }
 
 // ── Open Quick Add in EDIT mode pre-filled with existing transaction ───────
@@ -8790,7 +8841,16 @@ let invFieldCurrency = {...currentCurrency};
 
 function openInvModal(type) {
   invModalType = type || 'Stocks';
-  invFieldCurrency = {...currentCurrency};
+  // Default currency: prefer profile-inferred currency over global currentCurrency
+  // This avoids the USD default when profile is IN but currency hasn't been set yet
+  const _prof = getFHSProfile ? getFHSProfile() : null;
+  if (_prof && _prof.region === 'IN' && currentCurrency.code === 'USD') {
+    // Profile says India but currency still at default USD — switch display to INR
+    const _inrEntry = CURRENCIES ? CURRENCIES.find(c => c.code === 'INR') : null;
+    invFieldCurrency = _inrEntry ? {..._inrEntry} : {...currentCurrency};
+  } else {
+    invFieldCurrency = {...currentCurrency};
+  }
   document.getElementById('inv-modal-date').value = localDateStr();
   document.getElementById('inv-modal-note').value = '';
   document.getElementById('inv-computed-total').textContent = sym()+'0';
@@ -8799,6 +8859,10 @@ function openInvModal(type) {
   _rebuildInvModalTabs(type);
   renderInvFields();
   document.getElementById('inv-quick-modal').classList.add('open');
+  // Hide AI FAB so it doesn't overlap form fields
+  const _iaf = document.getElementById('ai-fab'), _iat = document.getElementById('ai-fab-tooltip');
+  if (_iaf) _iaf.style.display = 'none';
+  if (_iat) _iat.style.display = 'none';
 }
 
 function _rebuildInvModalTabs(activeKey) {
@@ -9469,13 +9533,18 @@ function switchScreen(name, btn) {
   const fabScreens = ['home','tx','add'];
   const fab = document.getElementById('fab-add-btn');
   if(fab) fab.style.display = fabScreens.includes(name) ? 'flex' : 'none';
-  // Raise AI FAB above add-FAB on pages where add-FAB is visible
+  // AI FAB: hide on transactions screen (overlaps edit/delete actions) and when modals may be open
   const aiFab = document.getElementById('ai-fab');
   const aiFabTip = document.getElementById('ai-fab-tooltip');
   if (aiFab) {
-    const raised = fabScreens.includes(name);
-    aiFab.classList.toggle('ai-fab--raised', raised);
-    if (aiFabTip) aiFabTip.classList.toggle('ai-fab-tooltip--raised', raised);
+    // Hide AI FAB on tx (overlaps actions) and on FAB-menu screens (AI is in FAB menu there)
+    const hideAI = (name === 'tx') || fabScreens.includes(name);
+    aiFab.style.display = hideAI ? 'none' : '';
+    if (aiFabTip) aiFabTip.style.display = hideAI ? 'none' : '';
+    if (!hideAI) {
+      aiFab.classList.remove('ai-fab--raised');
+      if (aiFabTip) aiFabTip.classList.remove('ai-fab-tooltip--raised');
+    }
   }
   if(name==='stats') renderStats();
   if(name==='account') renderAccount();
@@ -10827,7 +10896,18 @@ function saveAccount() {
   save(); closeModal('add-account-modal'); renderAccount(); try { renderNetWorth(); renderHome(); } catch(e){} showToast('Account added!');
 }
 function editAccount(id) { const acc=getAccountsList().find(a=>a.id===id); if(!acc) return; const nb=prompt(`Balance for ${acc.name}:`,acc.balance); if(nb===null) return; acc.balance=parseFloat(nb)||0; save(); renderAccount(); try { renderNetWorth(); renderHome(); } catch(e){} }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  // Restore AI FAB visibility when all modals are closed
+  setTimeout(() => {
+    const anyOpen = document.querySelectorAll('.modal-overlay.open').length > 0;
+    if (!anyOpen) {
+      const af = document.getElementById('ai-fab'), at = document.getElementById('ai-fab-tooltip');
+      if (af) af.style.display = '';
+      if (at) at.style.display = '';
+    }
+  }, 50);
+}
 
 // ══════════════════════════════════════════════════════
 // DATA SCREEN
@@ -12583,15 +12663,11 @@ function ldAskAdvisor() {
   if (!_ldLastResult) return;
   const r = _ldLastResult;
   const fmtN = (n) => `${r.sym}${Math.round(n).toLocaleString()}`;
-  const prompt = `I'm considering: "${r.name}" — one-time cost ${fmtN(r.oneTime)}, monthly recurring ${fmtN(r.monthly)}/mo. MoneyFi says: ${r.verdict}. My surplus after = ${fmtN(r.newSurplus)}/mo, FHS ${r.fhsScore} → ${r.newFhs}, FIRE delayed ~${r.monthsDelayed} months. Is this a good financial decision for me? What should I consider?`;
+  const prompt = `I am considering: "${r.name}" — one-time cost ${fmtN(r.oneTime)}, monthly recurring ${fmtN(r.monthly)}/mo. MoneyFi analysis: verdict is "${r.verdict}". After this purchase: surplus = ${fmtN(r.newSurplus)}/mo, FHS score ${r.fhsScore} → ${r.newFhs}, FIRE timeline delayed ~${r.monthsDelayed} months. Please analyse whether this is a smart financial move and what I should carefully consider before deciding.`;
+  // Store globally so _doOpenAIAdvisor picks it up — even if consent overlay shows first
+  window._aiPendingContextPrompt = prompt;
   closeLifeDecision();
-  // Pre-fill AI advisor with the question
-  const aiInput = document.getElementById('ai-input');
-  if (aiInput) {
-    aiInput.value = prompt;
-    if (typeof openAIAdvisorSheet === 'function') openAIAdvisorSheet();
-    else if (typeof sendAIMessage === 'function') setTimeout(() => sendAIMessage(), 300);
-  }
+  openAIAdvisor();
 }
 
 // Show the Life Decisions card on Home once profile is loaded
@@ -27126,6 +27202,10 @@ function dismissOnboarding() {
     startCoachTour();
   }, 600);
   localStorage.setItem(OB_SEEN_KEY, '1');
+  // Persist the locale-detected currency on first launch so next load uses it
+  if (!localStorage.getItem('mf_currency')) {
+    localStorage.setItem('mf_currency', JSON.stringify(currentCurrency));
+  }
 }
 
 function obGoTo(idx) {
@@ -33505,7 +33585,19 @@ function _doOpenAIAdvisor() {
     }
   }
   updateAILimitBadge();
-  setTimeout(() => document.getElementById('ai-input')?.focus(), 300);
+
+  // If a context prompt was queued (e.g. from Life Decision "Ask AI"), inject + auto-send it
+  const _pending = window._aiPendingContextPrompt;
+  if (_pending) {
+    window._aiPendingContextPrompt = null;
+    setTimeout(() => {
+      const aiInput = document.getElementById('ai-input');
+      if (aiInput) { aiInput.value = _pending; aiInput.style.height = 'auto'; }
+      if (typeof sendAIMessage === 'function') sendAIMessage();
+    }, 350);
+  } else {
+    setTimeout(() => document.getElementById('ai-input')?.focus(), 300);
+  }
 }
 
 // Shared close logic — restores FAB with correct raised state
@@ -33624,7 +33716,7 @@ function closeAIAdvisor(e) {
   onmouseenter="document.getElementById('ai-fab-tooltip').style.opacity='1'"
   onmouseleave="document.getElementById('ai-fab-tooltip').style.opacity='0'"
   title="Ask AI Financial Advisor">
-  🤖
+  ✨
 </button>
 
 <!-- ── AI Financial Advisor Sheet ──────────────────────────────── -->
