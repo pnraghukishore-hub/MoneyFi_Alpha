@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.2.3 -->
+<!-- MoneyFi v4.2.4 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -32,7 +32,28 @@ LEGAL BOUNDARY — NEVER CROSS:
 
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.16.0
+  Version  : 3.17.0
+  Changes  : v3.17.0 — Bug fixes & Import Engine improvements (2026-03-16):
+               • Bank/CSV Import — smart header-row scanner (Axis + HDFC multi-row metadata headers)
+               • Bank/CSV Import — DD/MM/YY two-digit year support (HDFC date format)
+               • Bank/CSV Import — extended U_COL_HINTS for Axis (DR/CR/BAL/PARTICULARS/Tran Date)
+                 and HDFC (Withdrawal Amt./Deposit Amt./Closing Balance/Narration/Value Dt)
+               • Bank/CSV Import — auto-skip separator rows (HDFC ******, Axis Legend: rows)
+               • Bank/CSV Import — enhanced category inference (NIPPONMUTUALFUND, INVESTNOW,
+                 UPI-AXIS MUTUAL FUNDS, INT. AUTO_REDEMPTION, CWDR, P2AMOB patterns)
+               • Reset/Delete — 🏦 Bank/CSV Import row added; Clear button wipes all
+                 universal_csv-tagged transactions across all months
+               • Reset/Delete — fixed source field check (r.source vs r._source) so
+                 Bank/CSV imported transactions are correctly counted and deleted
+               • Txns List view — swipe-to-edit/delete no longer triggers month navigation;
+                 calSwipeStart/End disabled when calViewMode === 'list'
+               • Budget module — edit-budget-popup moved to body level (was trapped inside
+                 screen-import display:none); +Add and Edit now work correctly
+               • Investment cards — subcats aggregation added to renderInvestHome() matching
+                 spending card pattern; DEFAULT_INV_CARDS seeded with alias lists
+               • Settings — 🏷 tag editor added to both Spending and Investment card rows
+  Built    : 2026-03-16
+  Session  : Phase 6 — Import engine (Axis/HDFC XLS), Reset/Delete Bank CSV, swipe conflict fix
   Changes  : v3.15.0 — AI Quality Engine:
                • classifyScheme() — SEBI keyword classifier for Indian MF (asset class, tax bucket, liquidity, lock-in)
                • classifyUSAccount() — US account name → tax bucket / liquidity map
@@ -26965,6 +26986,7 @@ function renderResetSummary() {
 // Build import source clear-rows dynamically in both reset panels
 function _renderImportSourceRows() {
   const IMPORT_SOURCE_CONFIG = [
+    { id: 'universal_csv', emoji: '🏦', label: 'Bank / CSV Import',  sourcePrefix: 'universal_csv', clearType: 'universal_csv' },
     { id: 'cams',      emoji: '📄', label: 'CAMS / MF Import',   sourcePrefix: 'cams',      clearType: 'cams'      },
     { id: 'zerodha',   emoji: '📈', label: 'Zerodha Import',      sourcePrefix: 'zerodha',   clearType: 'zerodha'   },
     { id: 'epf',       emoji: '🏛️', label: 'EPF (EPFO) Import',  sourcePrefix: 'epf',       clearType: 'epf'       },
@@ -26979,7 +27001,7 @@ function _renderImportSourceRows() {
     let txCount = 0;
     monthKeys2.forEach(mk => {
       ['expenses','income','investments'].forEach(t => {
-        txCount += (data[mk][t]||[]).filter(r => String(r._source||'').startsWith(cfg.sourcePrefix)).length;
+        txCount += (data[mk][t]||[]).filter(r => String(r._source||r.source||'').startsWith(cfg.sourcePrefix)).length;
       });
     });
     const nwCount = (data._nwAccounts||[]).filter(a =>
@@ -27124,7 +27146,7 @@ function clearDataset(type) {
   if (type === 'networth')   { data._nwAccounts = []; }
 
   // Source-tagged import deletions — handles all parser types generically
-  const SOURCE_CLEAR_TYPES = ['zerodha','cams','epf','fidelity','schwab','robinhood'];
+  const SOURCE_CLEAR_TYPES = ['universal_csv','zerodha','cams','epf','fidelity','schwab','robinhood'];
   if (SOURCE_CLEAR_TYPES.includes(type)) {
     const prefix = type;
     const monthKeys = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k));
@@ -27132,7 +27154,8 @@ function clearDataset(type) {
     monthKeys.forEach(mk => {
       ['expenses','income','investments'].forEach(t => {
         const before = (data[mk][t]||[]).length;
-        data[mk][t] = (data[mk][t]||[]).filter(r => !String(r._source||'').startsWith(prefix));
+        // Check both `_source` (most importers) and `source` (Bank/CSV uses no underscore)
+        data[mk][t] = (data[mk][t]||[]).filter(r => !String(r._source||r.source||'').startsWith(prefix));
         txRemoved += before - (data[mk][t]||[]).length;
       });
     });
@@ -27146,6 +27169,7 @@ function clearDataset(type) {
     renderMonthsList();
     try { renderNetWorth(); } catch(e) {}
     try { renderHome(); } catch(e) {}
+    try { renderTransactions(); } catch(e) {}
     showToast(`🧹 ${txRemoved} transactions + ${nwRemoved} NW accounts cleared`);
     return;
   }
