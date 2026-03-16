@@ -9679,15 +9679,23 @@ function renderCalListView(container) {
       const label = typeLabels[t._type] || t._type;
       const prefix = t._type === 'income' ? '+' : '-';
       const tIdx = all.indexOf(t);
-      html += `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #F5F5F5;">
-        <div style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0;"></div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:0.85em;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.description||t.category||'—'}</div>
-          <div style="font-size:0.72em;font-weight:600;color:var(--text-light);">${t.category||''} · ${label}</div>
+      html += `<div class="swipe-wrap">
+        <div class="swipe-actions-right">
+          <button class="swipe-btn swipe-btn-edit" onclick="listEditTx('${mk}','${t._type}',${t._idx})">
+            <span class="swipe-btn-icon">✏️</span>Edit
+          </button>
+          <button class="swipe-btn swipe-btn-del" onclick="listDeleteTx('${mk}','${t._type}',${t._idx})">
+            <span class="swipe-btn-icon">🗑️</span>Delete
+          </button>
         </div>
-        <div style="font-weight:900;font-size:0.88em;color:${color};flex-shrink:0;margin-right:4px;">${prefix}${fmt(toDisp(t))}</div>
-        <button onclick="listEditTx('${mk}','${t._type}',${t._idx})" style="background:#F0F4FF;border:none;border-radius:7px;padding:4px 7px;font-size:0.7em;color:var(--primary);cursor:pointer;flex-shrink:0;">✏️</button>
-        <button onclick="listDeleteTx('${mk}','${t._type}',${t._idx})" style="background:#FFF0F0;border:none;border-radius:7px;padding:4px 7px;font-size:0.7em;color:var(--expenses);cursor:pointer;flex-shrink:0;">✕</button>
+        <div class="swipe-row" style="border-radius:0;box-shadow:none;border-bottom:1px solid #F5F5F5;padding:9px 12px;">
+          <div style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:0.85em;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.description||t.category||'—'}</div>
+            <div style="font-size:0.72em;font-weight:600;color:var(--text-light);">${t.category||''} · ${label}</div>
+          </div>
+          <div style="font-weight:900;font-size:0.88em;color:${color};flex-shrink:0;">${prefix}${fmt(toDisp(t))}</div>
+        </div>
       </div>`;
     });
     html += `</div>`;
@@ -9695,6 +9703,8 @@ function renderCalListView(container) {
 
   if (dateKeys.length === 0) html += `<div style="text-align:center;padding:30px;color:var(--text-light);font-weight:700;">No transactions this month</div>`;
   container.innerHTML = html;
+  // Wire swipe gestures on list view rows
+  setTimeout(() => { if (window.initSwipeRows) initSwipeRows(container); }, 0);
 }
 
 // ── Calendar swipe gesture ──────────────────────────────────────
@@ -10002,13 +10012,14 @@ function openRecurringPopup(monthKey, type, idx) {
     </div>`;
 
   const modal = document.getElementById('recurring-popup-modal');
-  if (modal) { modal.style.display = 'flex'; modal.classList.add('open'); }
+  if (modal) { modal.style.display = 'flex'; modal.classList.add('open'); hideAIFab(); }
 }
 
 function closeRecurringPopup() {
   const modal = document.getElementById('recurring-popup-modal');
   if (modal) { modal.style.display = 'none'; modal.classList.remove('open'); }
   _recPopupMonth = null; _recPopupType = null; _recPopupIdx = null;
+  restoreAIFab();
 }
 
 function saveRecurringFromPopup() {
@@ -10901,12 +10912,25 @@ function closeModal(id) {
   // Restore AI FAB visibility when all modals are closed
   setTimeout(() => {
     const anyOpen = document.querySelectorAll('.modal-overlay.open').length > 0;
-    if (!anyOpen) {
-      const af = document.getElementById('ai-fab'), at = document.getElementById('ai-fab-tooltip');
-      if (af) af.style.display = '';
-      if (at) at.style.display = '';
-    }
+    if (!anyOpen) restoreAIFab();
   }, 50);
+}
+
+// ── Global AI FAB hide/restore — call these from any sheet/popup opener/closer ──
+function hideAIFab() {
+  const af = document.getElementById('ai-fab'), at = document.getElementById('ai-fab-tooltip');
+  if (af) af.style.display = 'none';
+  if (at) at.style.display = 'none';
+}
+function restoreAIFab() {
+  // Only restore if we're not on a screen where it should stay hidden (tx)
+  const screen = window._currentScreen || '';
+  if (screen === 'tx') return;
+  const fabScreens = ['home', 'tx', 'add'];
+  if (fabScreens.includes(screen)) return; // AI is in FAB menu on these screens
+  const af = document.getElementById('ai-fab'), at = document.getElementById('ai-fab-tooltip');
+  if (af) af.style.display = '';
+  if (at) at.style.display = '';
 }
 
 // ══════════════════════════════════════════════════════
@@ -11703,6 +11727,7 @@ function openMetalPriceSheet() {
     backdrop.style.opacity = '1';
     sheet.style.transform = 'translateY(0%)';
   }));
+  hideAIFab();
 }
 
 function closeMetalPriceSheet() {
@@ -11714,6 +11739,7 @@ function closeMetalPriceSheet() {
   setTimeout(() => {
     sheet.style.display = 'none';
     backdrop.style.display = 'none';
+    restoreAIFab();
   }, 320);
 }
 
@@ -12364,10 +12390,12 @@ let _ldLastResult = null;
 function openLifeDecision() {
   ldReset();
   document.getElementById('ld-overlay').style.display = 'block';
+  hideAIFab();
   setTimeout(() => document.getElementById('ld-desc')?.focus(), 200);
 }
 function closeLifeDecision() {
   document.getElementById('ld-overlay').style.display = 'none';
+  restoreAIFab();
 }
 
 function ldSetRev(val) {
@@ -19099,6 +19127,7 @@ function openGoalSheet(editId) {
 
   document.getElementById('goal-sheet').style.display = 'block';
   document.getElementById('goal-sheet-overlay').style.display = 'block';
+  hideAIFab();
 }
 
 function toggleGoalTypeFields() {
@@ -19124,6 +19153,7 @@ function toggleGoalTypeFields() {
 function closeGoalSheet() {
   document.getElementById('goal-sheet').style.display = 'none';
   document.getElementById('goal-sheet-overlay').style.display = 'none';
+  restoreAIFab();
 }
 
 function closeGoalsPanelBack() {
@@ -19607,7 +19637,16 @@ function renderGoalsPanel() {
         </div>
       </div>` : '';
 
-    return `<div style="background:white;border-radius:16px;padding:14px 16px;margin-bottom:10px;
+    return `<div class="swipe-wrap" style="margin-bottom:10px;">
+      <div class="swipe-actions-right">
+        <button class="swipe-btn swipe-btn-edit" onclick="openGoalSheet('${g.id}')">
+          <span class="swipe-btn-icon">✏️</span>Edit
+        </button>
+        <button class="swipe-btn swipe-btn-del" onclick="deleteGoal('${g.id}')">
+          <span class="swipe-btn-icon">🗑️</span>Delete
+        </button>
+      </div>
+      <div class="swipe-row" style="background:white;border-radius:16px;padding:14px 16px;
         box-shadow:0 2px 10px rgba(0,0,0,0.06);border:1.5px solid ${achieved?'#10B981':'#F0F0F0'};">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;flex:1;min-width:0;">
@@ -19616,10 +19655,7 @@ function renderGoalsPanel() {
           ${goalTypeBadge}
           ${dateTag}
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
-          <button onclick="openGoalSheet('${g.id}')" style="background:#F0F4FF;border:none;border-radius:8px;padding:5px 9px;font-size:0.75em;font-weight:800;color:var(--primary);cursor:pointer;">✏️</button>
-          <button onclick="deleteGoal('${g.id}')" style="background:#FFF0F0;border:none;border-radius:8px;padding:5px 9px;font-size:0.75em;font-weight:800;color:var(--expenses);cursor:pointer;">✕</button>
-        </div>
+        <div style="font-size:0.7em;color:var(--text-light);font-weight:600;flex-shrink:0;padding:4px 6px;opacity:0.6;">← swipe</div>
       </div>
       ${g.desc ? `<div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-bottom:8px;">${g.desc}</div>` : ''}
       ${achievedBanner}
@@ -19639,8 +19675,11 @@ function renderGoalsPanel() {
       </div>
       ${!achieved ? `<div style="font-size:0.72em;font-weight:700;color:var(--text-light);margin-top:3px;">${goalType === 'reduce' ? 'Still to reduce: ' + fmtVal(remaining) : 'Still need: ' + fmtVal(remaining)}</div>` : ''}
       ${(g.mappedAccounts||[]).length > 0 ? `<div style="font-size:0.7em;font-weight:600;color:var(--text-light);margin-top:5px;border-top:1px solid #F5F5F5;padding-top:5px;">📊 ${g.mappedAccounts.length} account${g.mappedAccounts.length>1?'s':''} mapped</div>` : ''}
+      </div>
     </div>`;
   }).join('');
+  // Wire swipe gestures on goal cards
+  setTimeout(() => { if (window.initSwipeRows) initSwipeRows(el); }, 0);
 }
 
 // ── Home card long press → Budget detail ────────────────────────
@@ -20342,8 +20381,7 @@ const BUDGET_EMOJI_PANEL_OPTS = ['💸','🛒','🚗','🏠','💊','🎭','🍔
 
 function openEditBudgetPopup(goalKey, forceType) {
   editingBudgetKey = goalKey || null;
-  editingBudgetType = forceType || currentBudgetTab === 'savings' ? 'savings' : 'expense';
-  if (forceType) editingBudgetType = forceType;
+  editingBudgetType = forceType || (currentBudgetTab === 'savings' ? 'savings' : 'expense');
 
   const popup = document.getElementById('edit-budget-popup');
   const delBtn = document.getElementById('ebp-del-btn');
@@ -20380,6 +20418,7 @@ function openEditBudgetPopup(goalKey, forceType) {
   ).join('');
 
   popup.classList.add('open');
+  hideAIFab();
 }
 
 function pickBudgetEmoji(e) {
@@ -20390,6 +20429,7 @@ function pickBudgetEmoji(e) {
 
 function closeEditBudgetPopup() {
   document.getElementById('edit-budget-popup').classList.remove('open');
+  restoreAIFab();
 }
 
 function saveEditedBudget() {
@@ -22167,6 +22207,7 @@ function openNWSheet(type, editId) {
 
   document.getElementById('nw-sheet-overlay').classList.add('open');
   document.getElementById('nw-sheet').classList.add('open');
+  hideAIFab();
   document.getElementById('nw-sheet').scrollTop = 0;
 }
 
@@ -22427,6 +22468,7 @@ function editREProperty(idx) {
 function closeNWSheet() {
   document.getElementById('nw-sheet-overlay').classList.remove('open');
   document.getElementById('nw-sheet').classList.remove('open');
+  restoreAIFab();
   setTimeout(() => {
     const pick = document.getElementById('nws-phase-pick');
     const form = document.getElementById('nws-phase-form');
@@ -31078,6 +31120,7 @@ function openFHSPickerSheet(key) {
     sheet.style.transform = 'translateY(0)';
     sheet.style.transition = 'transform 0.3s cubic-bezier(0.32,0.72,0,1)';
   });
+  hideAIFab();
 }
 
 function closeFHSPickerSheet() {
@@ -31087,6 +31130,7 @@ function closeFHSPickerSheet() {
     document.getElementById('fhs-picker-overlay').style.display = 'none';
     sheet.style.display = 'none';
     sheet.style.transform = '';
+    restoreAIFab();
     // Recalculate score once after sheet closes
     renderFHS();
     _fhsPickerKey = null;
