@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.2.5 -->
+<!-- MoneyFi v4.2.6 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -32,7 +32,7 @@ LEGAL BOUNDARY — NEVER CROSS:
 
 CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, target, % funded, years left, monthly SIP needed, and linked account names. NEVER ask 'which accounts are tagged?' or 'what is currently funded?' — it is RIGHT THERE. Cite the exact numbers.Fi clarity for your financial life
   ═══════════════════════════════════════════════
-  Version  : 3.18.0
+  Version  : 3.18.1
   Changes  : v3.15.0 — AI Quality Engine:
                • classifyScheme() — SEBI keyword classifier for Indian MF (asset class, tax bucket, liquidity, lock-in)
                • classifyUSAccount() — US account name → tax bucket / liquidity map
@@ -8425,6 +8425,15 @@ function openEditTx(monthKey, type, idx) {
   document.getElementById('qa-amount-display').value = qaAmountStr;
   document.getElementById('qa-date-input').value = tx.date || localDateStr();
   document.getElementById('qa-note-input').value = tx.description || '';
+  // Set currency symbol from the transaction's saved currency, falling back to profile currency
+  const _editSym = document.getElementById('qa-currency-sym');
+  if (_editSym) {
+    const txCurrency = tx.currency || currentCurrency?.code;
+    // Look up the symbol for the saved currency so imported USD txns show $ not ₹ and vice versa
+    const allCurrencies = typeof CURRENCIES !== 'undefined' ? CURRENCIES : [];
+    const matchedCur = allCurrencies.find(cur => cur.code === txCurrency);
+    _editSym.textContent = matchedCur ? matchedCur.symbol : (currentCurrency?.symbol || '$');
+  }
 
   qaRenderSubCats();
   qaRenderNumpad();
