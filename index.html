@@ -174,6 +174,44 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       background: #E0F4FF !important;
     }
 
+    /* ── Life Decision card — theme-aware gradients ── */
+    #life-decision-card {
+      background: linear-gradient(135deg,#0F172A,#1E2A6E,#4F46E5) !important;
+      box-shadow: 0 4px 20px rgba(30,42,110,0.35) !important;
+    }
+    body.theme-looney #life-decision-card {
+      background: linear-gradient(135deg,#3B0764,#7E22CE,#C026D3) !important;
+      box-shadow: 0 4px 20px rgba(124,34,207,0.35) !important;
+    }
+    body.theme-jungle #life-decision-card {
+      background: linear-gradient(135deg,#052E16,#14532D,#166534) !important;
+      box-shadow: 0 4px 20px rgba(20,83,45,0.35) !important;
+    }
+    body.theme-space #life-decision-card {
+      background: linear-gradient(135deg,#1E0A4A,#4C1D95,#7C3AED) !important;
+      box-shadow: 0 4px 20px rgba(124,58,237,0.4) !important;
+    }
+    body.theme-ocean #life-decision-card {
+      background: linear-gradient(135deg,#023E5C,#0369A1,#0EA5E9) !important;
+      box-shadow: 0 4px 20px rgba(3,105,161,0.35) !important;
+    }
+    /* Modal header follows same palette */
+    #ld-modal-header {
+      background: linear-gradient(135deg,#0F172A,#1E2A6E,#4F46E5);
+    }
+    body.theme-looney #ld-modal-header {
+      background: linear-gradient(135deg,#3B0764,#7E22CE,#C026D3);
+    }
+    body.theme-jungle #ld-modal-header {
+      background: linear-gradient(135deg,#052E16,#14532D,#166534);
+    }
+    body.theme-space #ld-modal-header {
+      background: linear-gradient(135deg,#1E0A4A,#4C1D95,#7C3AED);
+    }
+    body.theme-ocean #ld-modal-header {
+      background: linear-gradient(135deg,#023E5C,#0369A1,#0EA5E9);
+    }
+
 
     body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text-dark); min-height: 100vh; position: relative; overflow-x: hidden; }
 
@@ -2591,7 +2629,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   </div>
 
     <!-- ══ LIFE DECISIONS CARD ══ -->
-    <div onclick="openLifeDecision()" id="life-decision-card" style="display:none;background:linear-gradient(135deg,#0D1B2A,#1B3A4B,#0E7490);border-radius:16px;padding:14px 18px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 20px rgba(14,116,144,0.35);position:relative;overflow:hidden;">
+    <div onclick="openLifeDecision()" id="life-decision-card" style="display:none;border-radius:16px;padding:14px 18px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;">
       <div style="position:absolute;top:-18px;right:60px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.05);"></div>
       <div>
         <div style="font-size:0.62em;font-weight:800;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">AI-Powered Financial Clarity</div>
@@ -5440,7 +5478,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <div style="margin:20px auto;max-width:420px;background:#fff;border-radius:22px;padding:0 0 24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
 
     <!-- Header -->
-    <div style="background:linear-gradient(135deg,#0D1B2A,#1B3A4B,#0E7490);padding:18px 20px 16px;position:relative;">
+    <div id="ld-modal-header" style="padding:18px 20px 16px;position:relative;">
       <div style="font-size:0.65em;font-weight:800;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:1px;">Life Decision Simulator</div>
       <div style="font-size:1.05em;font-weight:900;color:#fff;margin-top:2px;">🧭 Can I Afford This?</div>
       <button onclick="closeLifeDecision()" style="position:absolute;top:14px;right:16px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:1.1em;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
