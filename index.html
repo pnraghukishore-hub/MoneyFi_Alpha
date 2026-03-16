@@ -5273,7 +5273,6 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
             <select id="iuniversal-date-fmt" class="nw-sheet-select" style="font-size:0.8em;padding:8px;">
               <option value="auto">Auto-detect</option>
               <option value="dmy">DD/MM/YYYY</option>
-              <option value="dmy_2y">DD/MM/YY (Indian banks)</option>
               <option value="mdy">MM/DD/YYYY (US)</option>
               <option value="ymd">YYYY-MM-DD</option>
               <option value="dmy_slash">DD-Mon-YYYY</option>
@@ -9712,10 +9711,14 @@ function renderCalListView(container) {
 let _calSwipeX = null;
 
 function calSwipeStart(e) {
+  // Disable month-navigation swipe in list mode — row swipe handles gestures there
+  if (calViewMode === 'list') { _calSwipeX = null; return; }
   _calSwipeX = e.touches ? e.touches[0].clientX : null;
 }
 
 function calSwipeEnd(e) {
+  // Guard for list mode (belt-and-suspenders alongside calSwipeStart check)
+  if (calViewMode === 'list') { _calSwipeX = null; return; }
   if (_calSwipeX === null) return;
   const endX = e.changedTouches ? e.changedTouches[0].clientX : null;
   if (endX === null) return;
@@ -24247,35 +24250,9 @@ function _loadUniversalFile(file) {
       const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array', cellDates:true });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rawRows = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:'' });
-      // Smart header-row detection: scan up to row 30 for the row that looks most
-      // like column headers (contains ≥2 recognisable field-name keywords).
-      // Banks like Axis and HDFC prepend 5–15 metadata rows before the real headers.
-      const _HDR_HINTS = [
-        /^date$/i, /tran.*date/i, /value.*dt/i, /^dt$/i,
-        /narrat/i, /particular/i, /^desc/i, /detail/i, /remark/i,
-        /withdrawal/i, /\bdr\b/i, /debit/i,
-        /deposit/i, /\bcr\b/i, /credit/i,
-        /amount/i, /\bamt\b/i,
-        /balance/i, /\bbal\b/i,
-        /chq/i, /ref.*no/i, /sl.*no/i, /srl/i,
-      ];
-      function _scoreHeaderRow(row) {
-        return row.filter(v => {
-          const s = String(v || '').trim();
-          return s && _HDR_HINTS.some(re => re.test(s));
-        }).length;
-      }
+      // Skip fully-empty leading rows (some banks have logo/address rows)
       let startRow = 0;
-      let bestScore = 0;
-      for (let i = 0; i < Math.min(rawRows.length, 30); i++) {
-        const score = _scoreHeaderRow(rawRows[i]);
-        if (score > bestScore) { bestScore = score; startRow = i; }
-      }
-      // Fallback: if no row scored ≥2 matches, use first non-empty row
-      if (bestScore < 2) {
-        startRow = 0;
-        while (startRow < rawRows.length && !rawRows[startRow].some(v => v && String(v).trim())) startRow++;
-      }
+      while (startRow < rawRows.length && !rawRows[startRow].some(v => v && String(v).trim())) startRow++;
       const headers = (rawRows[startRow] || []).map(h => String(h || '').trim());
       const rows = rawRows.slice(startRow + 1).filter(r => r.some(v => v !== null && v !== undefined && String(v).trim()));
       if (!headers.length) { showToast('❌ Could not read headers'); return; }
@@ -24579,17 +24556,12 @@ function confirmPortfolioImport() {
 
 // ── Column auto-detection ─────────────────────────────────────────────────
 const U_COL_HINTS = {
-  // Axis: 'Tran Date'  HDFC: 'Date', 'Value Dt'
-  date:        [/tran.*date/i, /^date$/i, /value.*dt/i, /dt$/i, /^date/i, /trans.*date/i, /posting/i],
-  // Axis: 'PARTICULARS'  HDFC: 'Narration'
-  description: [/particular/i, /narrat/i, /desc/i, /detail/i, /remarks/i, /memo/i, /payee/i, /reference/i],
+  date:        [/date/i, /dt$/i, /^date/i, /trans.*date/i, /value.*date/i, /posting/i],
+  description: [/desc/i, /narrat/i, /particular/i, /detail/i, /remarks/i, /memo/i, /payee/i, /reference/i],
   amount:      [/amount/i, /amt/i, /^net$/i, /transaction.*amt/i, /^value$/i],
-  // Axis: 'DR '  HDFC: 'Withdrawal Amt.'
-  debit:       [/withdrawal/i, /^dr\s*$/i, /debit/i, /\bdr\b/i, /paid/i, /expense/i],
-  // Axis: 'CR '  HDFC: 'Deposit Amt.'
-  credit:      [/deposit/i, /^cr\s*$/i, /credit/i, /\bcr\b/i, /received/i],
-  // Axis: 'BAL '  HDFC: 'Closing Balance'
-  balance:     [/closing.*bal/i, /^bal\s*$/i, /balance/i, /running/i, /avail/i],
+  debit:       [/debit/i, /dr\b/i, /withdrawal/i, /paid/i, /expense/i],
+  credit:      [/credit/i, /cr\b/i, /deposit/i, /received/i],
+  balance:     [/balance/i, /running/i, /avail/i],
   category:    [/categor/i, /type/i, /mode/i, /channel/i],
 };
 
@@ -24661,11 +24633,7 @@ function _guessDateFormat(samples) {
       return parseInt(parts[0]) > 12 ? 'dmy' : 'mdy';
     }
     if (/^\d{2}-[A-Za-z]{3}-\d{4}/.test(s)) return 'dmy_slash';
-    if (/^\d{2}\/\d{2}\/\d{2}$/.test(s)) {
-      // Two-digit year: DD/MM/YY (Indian banks like HDFC) vs MM/DD/YY (US)
-      const parts = s.split('/');
-      return parseInt(parts[0]) > 12 ? 'dmy_2y' : 'dmy_2y'; // Indian banks always DD/MM/YY
-    }
+    if (/^\d{2}\/\d{2}\/\d{2}$/.test(s)) return 'mdy';
     if (/^\d{1,2}-\d{1,2}-\d{4}/.test(s)) {
       const parts = s.split('-');
       return parseInt(parts[0]) > 12 ? 'dmy' : 'mdy';
@@ -24709,10 +24677,6 @@ function runUniversalParse() {
     if (skipWords.some(w => w && descLow.includes(w))) continue;
     // Auto-skip obvious balance/summary rows
     if (/^(opening|closing|total|sub.?total|balance b\/?[fd])/i.test(desc)) continue;
-    // Auto-skip separator and legend rows from Indian bank statements (HDFC ******, Axis Legend:)
-    if (/^\*{4,}/.test(desc.trim())) continue;
-    if (/^-{4,}/.test(desc.trim())) continue;
-    if (/^(legend\s*:|statement summary|generated (on|by)|requesting branch)/i.test(desc)) continue;
 
     const date = _parseUniversalDate(rawDate, dateFmt);
     if (!date) continue;
@@ -24763,12 +24727,6 @@ function _parseUniversalDate(raw, fmt) {
   const s = raw.trim();
   try {
     if (fmt === 'ymd' || /^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
-    if (fmt === 'dmy_2y' || (fmt === 'auto' && /^\d{2}[\/\-]\d{2}[\/\-]\d{2}$/.test(s))) {
-      // DD/MM/YY → YYYY-MM-DD  (e.g. HDFC: 07/03/26 → 2026-03-07)
-      const [d, m, y] = s.split(/[\/\-]/);
-      const fullYear = parseInt(y) + (parseInt(y) <= 50 ? 2000 : 1900);
-      return `${fullYear}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-    }
     if (fmt === 'dmy' || (fmt === 'auto' && /^\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(s) && parseInt(s.substring(0,2)) > 12)) {
       const [d,m,y] = s.split(/[\/\-]/);
       return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
@@ -24794,14 +24752,12 @@ const U_CAT_RULES = [
   { cat:'health',      re:/hospital|clinic|doctor|pharmacy|medical|apollo|manipal|health|medicine|lab|diagnostic/i },
   { cat:'education',   re:/school|college|university|tuition|course|udemy|coursera|fee/i },
   { cat:'entertainment',re:/netflix|hotstar|prime|spotify|youtube|gaming|movie|theatre|concert|bookmyshow/i },
-  // Indian bank transfer patterns — IMPS, NEFT, UPI, ACH
-  { cat:'investment',  re:/mutual fund|mf\b|zerodha|groww|kuvera|coin|ipo|nse|bse|stock|demat|invest|nipponmutualfund|investnow|axis.*mf|sip\b|elss|nps\b/i },
-  { cat:'investment',  re:/upi-axis mutual|upi.*mutual.*fund|ach.*mutual|fd through mobile|prin and int auto|int\. auto_redemption/i },
+  { cat:'transfer',    re:/neft|imps|rtgs|upi|transfer|sent to|received from|payment to|payment from/i },
+  { cat:'investment',  re:/mutual fund|sip|zerodha|groww|kuvera|coin|ipo|nse|bse|stock|demat|invest/i },
   { cat:'salary',      re:/salary|payroll|employer|payslip|ctc|compensation/i },
   { cat:'rent',        re:/rent|lease|landlord|housing/i },
   { cat:'insurance',   re:/insurance|lic|premium|policy/i },
-  { cat:'atm',         re:/atm|cwdr|cash withdrawal|cash deposit/i },
-  { cat:'transfer',    re:/neft|imps|rtgs|upi|transfer|sent to|received from|payment to|payment from|p2a|p2mob/i },
+  { cat:'atm',         re:/atm|cash withdrawal|cash deposit/i },
 ];
 
 function _inferCategoryFromDesc(desc, amount) {
