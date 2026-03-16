@@ -8262,18 +8262,18 @@ function renderHomeInsights(expenses, income, investments) {
 }
 const DEFAULT_INV_CARDS = [
   // ── Visible by default — universal investment types ──
-  { key:'Stocks',        label:'Stocks',           icon:'📊', color:'#4A9EFF', bg:'#EEF5FF', fieldTemplate:'Stocks',      visible:true  },
-  { key:'ETF/MF',        label:'ETF / Mutual Fund',icon:'🗂',  color:'#7C3AED', bg:'#F3EEFF', fieldTemplate:'ETF/MF',      visible:true  },
-  { key:'Crypto',        label:'Crypto',            icon:'🪙', color:'#F59E0B', bg:'#FFFBEE', fieldTemplate:'Crypto',      visible:true  },
-  { key:'Metals',        label:'Gold & Metals',     icon:'🥇', color:'#C8900A', bg:'#FFF8E0', fieldTemplate:'Metals',      visible:true  },
-  { key:'Real Estate',   label:'Real Estate',       icon:'🏡', color:'#10B981', bg:'#F0FBF3', fieldTemplate:'Real Estate', visible:true  },
-  { key:'Retirement',    label:'Retirement',        icon:'🏛️', color:'#0EA5E9', bg:'#E0F2FE', fieldTemplate:'General',     visible:true  },
+  { key:'Stocks',        label:'Stocks',           icon:'📊', color:'#4A9EFF', bg:'#EEF5FF', fieldTemplate:'Stocks',      visible:true,  subcats:['Stocks','Stock','Equity','Share','Shares','Direct Equity','NSE','BSE','US Stocks'] },
+  { key:'ETF/MF',        label:'ETF / Mutual Fund',icon:'🗂',  color:'#7C3AED', bg:'#F3EEFF', fieldTemplate:'ETF/MF',      visible:true,  subcats:['ETF/MF','ETF','MF','Mutual Fund','SIP','ELSS','Index Fund','NFO','Liquid Fund','Debt Fund','Hybrid Fund','FOF'] },
+  { key:'Crypto',        label:'Crypto',            icon:'🪙', color:'#F59E0B', bg:'#FFFBEE', fieldTemplate:'Crypto',      visible:true,  subcats:['Crypto','Bitcoin','BTC','ETH','Ethereum','Altcoin','DeFi','Staking','Web3'] },
+  { key:'Metals',        label:'Gold & Metals',     icon:'🥇', color:'#C8900A', bg:'#FFF8E0', fieldTemplate:'Metals',      visible:true,  subcats:['Metals','Gold','Silver','Platinum','SGB','Gold ETF','Digital Gold'] },
+  { key:'Real Estate',   label:'Real Estate',       icon:'🏡', color:'#10B981', bg:'#F0FBF3', fieldTemplate:'Real Estate', visible:true,  subcats:['Real Estate','Property','Land','House','Flat','REITs','REIT','Rental'] },
+  { key:'Retirement',    label:'Retirement',        icon:'🏛️', color:'#0EA5E9', bg:'#E0F2FE', fieldTemplate:'General',     visible:true,  subcats:['Retirement','401k','IRA','Roth IRA','Pension','Provident Fund','Gratuity','Superannuation'] },
   // ── Hidden by default — enable in Settings → Investments ──
-  { key:'Fixed Deposit', label:'Fixed Deposit',     icon:'🏦', color:'#D97706', bg:'#FFFBEB', fieldTemplate:'General',     visible:false },
-  { key:'PPF/PF',        label:'PPF / PF / EPF',    icon:'📮', color:'#059669', bg:'#ECFDF5', fieldTemplate:'General',     visible:false },
-  { key:'NPS',           label:'NPS / Pension',     icon:'🧓', color:'#8B5CF6', bg:'#F3EEFF', fieldTemplate:'General',     visible:false },
-  { key:'Bonds',         label:'Bonds & T-Bills',   icon:'📜', color:'#64748B', bg:'#F1F5F9', fieldTemplate:'General',     visible:false },
-  { key:'Insurance',     label:'Insurance Policy',  icon:'🛡️', color:'#DC2626', bg:'#FEF2F2', fieldTemplate:'General',     visible:false },
+  { key:'Fixed Deposit', label:'Fixed Deposit',     icon:'🏦', color:'#D97706', bg:'#FFFBEB', fieldTemplate:'General',     visible:false, subcats:['Fixed Deposit','FD','RD','Recurring Deposit','Term Deposit'] },
+  { key:'PPF/PF',        label:'PPF / PF / EPF',    icon:'📮', color:'#059669', bg:'#ECFDF5', fieldTemplate:'General',     visible:false, subcats:['PPF/PF','PPF','PF','EPF','VPF','GPF'] },
+  { key:'NPS',           label:'NPS / Pension',     icon:'🧓', color:'#8B5CF6', bg:'#F3EEFF', fieldTemplate:'General',     visible:false, subcats:['NPS','National Pension','Pension Fund','APY','Atal Pension'] },
+  { key:'Bonds',         label:'Bonds & T-Bills',   icon:'📜', color:'#64748B', bg:'#F1F5F9', fieldTemplate:'General',     visible:false, subcats:['Bonds','Bond','T-Bill','Treasury','Debenture','NCD','Government Bond'] },
+  { key:'Insurance',     label:'Insurance Policy',  icon:'🛡️', color:'#DC2626', bg:'#FEF2F2', fieldTemplate:'General',     visible:false, subcats:['Insurance','ULIP','Life Insurance','Term Plan','LIC','Endowment'] },
 ];
 
 // INV_CATS kept as an alias for any legacy reads
@@ -8314,7 +8314,9 @@ function renderInvestHome(investments) {
   const cards = getHomeInvCards().filter(c=>c.visible!==false);
   const grid = document.getElementById('invest-cat-grid');
   grid.innerHTML = cards.map(card=>{
-    const amt = totals[card.key]||0;
+    // Use subcats aliases if defined (same pattern as spending cards), else fall back to card.key
+    const subcats = card.subcats && card.subcats.length > 0 ? card.subcats : [card.key];
+    const amt = subcats.reduce((s,sc)=>s+(totals[sc]||0),0);
     const pct = grandTotal>0?Math.min(amt/grandTotal*100,100):0;
     return `<div class="invest-cat-card" style="background:${card.bg||'#F8F8F8'};user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;"
       ontouchstart="homeCardTouchStart(event,'${card.key}','investment','${card.key}')"
@@ -9226,6 +9228,7 @@ function renderInvCardSettings() {
         <div class="home-card-item-label" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.label||c.key}</div>
         <div style="font-size:0.68em;color:var(--text-light);font-weight:600;">${templateLabel} ${c.fieldTemplate||'General'}</div>
       </div>
+      <button class="home-card-toggle" onclick="openSubcatEditor('invest',${i})" title="Edit match tags" style="font-size:0.78em;" aria-label="Edit tags">🏷</button>
       <button class="home-card-toggle ${c.visible!==false?'on':''}" onclick="toggleInvCard(${i})" title="${c.visible!==false?'Visible — click to hide':'Hidden — click to show'}">
         ${c.visible!==false?'✓':'○'}
       </button>
@@ -9288,6 +9291,102 @@ function addInvCard() {
 }
 
 // ══════════════════════════════════════════════════════
+// SUBCATS TAG EDITOR (Spending + Investment cards)
+// ══════════════════════════════════════════════════════
+function openSubcatEditor(cardType, idx) {
+  // Lazily create the modal once
+  let modal = document.getElementById('subcat-editor-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'subcat-editor-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;background:rgba(0,0,0,0.45);';
+    document.body.appendChild(modal);
+  }
+
+  const cards = cardType === 'invest' ? getHomeInvCards() : getHomeSpendCards();
+  const card  = cards[idx];
+  if (!card) return;
+  const subcats = card.subcats || [];
+  const accentColor = card.color || '#7C3AED';
+
+  const tagPills = subcats.map((sc, ti) =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:${accentColor}18;color:${accentColor};
+      border:1.5px solid ${accentColor}40;border-radius:20px;padding:4px 8px 4px 12px;
+      font-size:0.78em;font-weight:800;cursor:default;">
+      ${sc}
+      <button onclick="removeSubcatFromCard('${cardType}',${idx},${ti})"
+        style="background:none;border:none;cursor:pointer;font-size:1em;color:${accentColor};
+               padding:0 0 0 2px;line-height:1;opacity:0.75;" title="Remove tag">✕</button>
+    </span>`
+  ).join('');
+
+  modal.innerHTML = `
+    <div style="background:white;border-radius:20px 20px 0 0;padding:20px 18px 32px;width:100%;max-height:80vh;overflow-y:auto;">
+      <div style="width:36px;height:4px;background:#E0E0E0;border-radius:2px;margin:0 auto 16px;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-weight:900;font-size:1em;color:var(--text-dark,#1E2A6E);">
+          ${card.icon} <span style="color:${accentColor};">${card.label||card.key}</span> — Match Tags
+        </div>
+        <button onclick="closeSubcatEditor()" style="background:#F5F5F5;border:none;border-radius:8px;
+          width:28px;height:28px;cursor:pointer;font-size:0.9em;font-weight:900;color:#666;">✕</button>
+      </div>
+      <div style="font-size:0.74em;color:#888;font-weight:600;margin-bottom:12px;line-height:1.5;">
+        Transactions whose category matches <em>any</em> tag below will roll up into this card on the Home screen.
+      </div>
+      <div id="subcat-tags-wrap" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px;margin-bottom:14px;">
+        ${tagPills || '<span style="font-size:0.78em;color:#BBB;font-style:italic;padding:4px 0;">No tags yet — add one below</span>'}
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input id="subcat-new-tag-input" type="text" placeholder="e.g. SIP, Mutual Fund, MF…"
+          style="flex:1;padding:10px 12px;border:1.5px solid #E0E0E0;border-radius:10px;
+                 font-family:Nunito,sans-serif;font-weight:700;font-size:0.85em;
+                 color:var(--text-dark,#1E2A6E);outline:none;"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addSubcatToCard('${cardType}',${idx});}">
+        <button onclick="addSubcatToCard('${cardType}',${idx})"
+          style="background:${accentColor};color:white;border:none;border-radius:10px;
+                 padding:10px 16px;font-weight:900;font-size:0.85em;cursor:pointer;white-space:nowrap;">+ Add</button>
+      </div>
+    </div>`;
+
+  modal.style.display = 'flex';
+  modal.onclick = e => { if (e.target === modal) closeSubcatEditor(); };
+  setTimeout(() => document.getElementById('subcat-new-tag-input')?.focus(), 120);
+}
+
+function closeSubcatEditor() {
+  const modal = document.getElementById('subcat-editor-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function addSubcatToCard(cardType, idx) {
+  const input = document.getElementById('subcat-new-tag-input');
+  const tag = (input?.value || '').trim();
+  if (!tag) { showToast('Enter a tag name ❌'); return; }
+  const cards = cardType === 'invest' ? getHomeInvCards() : getHomeSpendCards();
+  if (!cards[idx]) return;
+  if (!cards[idx].subcats) cards[idx].subcats = [];
+  if (cards[idx].subcats.some(s => s.toLowerCase() === tag.toLowerCase())) {
+    showToast('Tag already exists ⚠️'); return;
+  }
+  cards[idx].subcats.push(tag);
+  if (cardType === 'invest') { saveHomeInvCards(cards); renderInvCardSettings(); }
+  else                       { saveHomeSpendCards(cards); renderHomeCardSettings(); }
+  renderHome();
+  openSubcatEditor(cardType, idx); // re-render modal with updated tags
+}
+
+function removeSubcatFromCard(cardType, idx, tagIdx) {
+  const cards = cardType === 'invest' ? getHomeInvCards() : getHomeSpendCards();
+  if (!cards[idx]?.subcats) return;
+  const removed = cards[idx].subcats.splice(tagIdx, 1)[0];
+  if (cardType === 'invest') { saveHomeInvCards(cards); renderInvCardSettings(); }
+  else                       { saveHomeSpendCards(cards); renderHomeCardSettings(); }
+  renderHome();
+  openSubcatEditor(cardType, idx); // re-render modal
+  showToast(`🗑️ "${removed}" tag removed`);
+}
+
+// ══════════════════════════════════════════════════════
 // HOME CARD MANAGER (Spending)
 const EMOJI_OPTS = ['🍔','🛒','🏠','🚗','💊','🎓','⚡','🌊','✈️','🎬','👗','💆','🐾','🧹','📱','☕','🎮','📚','🍕','🎁','💪','🌱','🔧','🎵'];
 let pickedEmoji = '🛒';
@@ -9300,6 +9399,7 @@ function renderHomeCardSettings() {
     <div class="home-card-item">
       <span class="home-card-item-icon">${c.icon}</span>
       <span class="home-card-item-label">${c.label}</span>
+      <button class="home-card-toggle" onclick="openSubcatEditor('spend',${i})" title="Edit match tags" style="font-size:0.78em;" aria-label="Edit tags">🏷</button>
       <button class="home-card-toggle ${c.visible!==false?'on':''}" onclick="toggleHomeCard(${i})" title="${c.visible!==false?'Visible':'Hidden'}">
         ${c.visible!==false?'✓':'○'}
       </button>
@@ -27746,7 +27846,7 @@ _auth.onAuthStateChanged(async user => {
       'pnraghukishore@gmail.com',
       'swathikishore12@gmail.com',
       'skanda.penujuri@gmail.com',
-      'psatyanarayana252@gmail.com',
+      'suja81@gmail.com',
       'charlesakl@gmail.com',
       'narasimha.neo@gmail.com',
       'ping2rupesh@gmail.com',
