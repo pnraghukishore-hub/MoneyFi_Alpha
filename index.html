@@ -19646,7 +19646,7 @@ function renderGoalsPanel() {
           <span class="swipe-btn-icon">🗑️</span>Delete
         </button>
       </div>
-      <div class="swipe-row" style="background:white;border-radius:16px;padding:14px 16px;
+      <div class="swipe-row" style="display:block;background:white;border-radius:16px;padding:14px 16px;
         box-shadow:0 2px 10px rgba(0,0,0,0.06);border:1.5px solid ${achieved?'#10B981':'#F0F0F0'};">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;flex:1;min-width:0;">
@@ -19655,7 +19655,7 @@ function renderGoalsPanel() {
           ${goalTypeBadge}
           ${dateTag}
         </div>
-        <div style="font-size:0.7em;color:var(--text-light);font-weight:600;flex-shrink:0;padding:4px 6px;opacity:0.6;">← swipe</div>
+
       </div>
       ${g.desc ? `<div style="font-size:0.75em;color:var(--text-light);font-weight:600;margin-bottom:8px;">${g.desc}</div>` : ''}
       ${achievedBanner}
