@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.2.24 -->
+<!-- MoneyFi v4.2.25 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -5852,7 +5852,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         </div>
       </div>
 
-      <button onclick="generateClarityPDF()" style="width:100%;margin-top:16px;background:linear-gradient(135deg,#1E2A6E,#4F46E5);color:#fff;border:none;border-radius:14px;padding:14px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.9em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <button onclick="generateClarityPDF().catch(e=>{console.error('PDF error:',e);showToast('PDF generation failed — try again',3000);})" style="width:100%;margin-top:16px;background:linear-gradient(135deg,#1E2A6E,#4F46E5);color:#fff;border:none;border-radius:14px;padding:14px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.9em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
         <span>📄</span><span id="pdf-generate-label">Generate PDF</span>
       </button>
     </div>
@@ -13477,7 +13477,38 @@ function setPDFMode(mode) {
   }
 }
 
-function generateClarityPDF() {
+
+// ── Inter font cache — loaded once, reused across PDF generations ──────────
+window._interFonts = null;  // { regular: base64, bold: base64 } or null
+
+async function _loadInterFonts() {
+  if (window._interFonts) return window._interFonts; // cached
+  try {
+    const toBase64 = async (url) => {
+      const resp = await fetch(url, {mode:'cors'});
+      if (!resp.ok) throw new Error('Font fetch failed: ' + resp.status);
+      const buf  = await resp.arrayBuffer();
+      const arr  = new Uint8Array(buf);
+      let bin = '';
+      for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+      return btoa(bin);
+    };
+    // jsDelivr CDN — reliable CORS, ~50KB each (Latin subset WOFF)
+    const BASE = 'https://cdn.jsdelivr.net/npm/@fontsource/inter@5/files/';
+    const [regular, bold, italic] = await Promise.all([
+      toBase64(BASE + 'inter-latin-400-normal.woff'),
+      toBase64(BASE + 'inter-latin-700-normal.woff'),
+      toBase64(BASE + 'inter-latin-400-italic.woff'),
+    ]);
+    window._interFonts = { regular, bold, italic };
+    return window._interFonts;
+  } catch(e) {
+    console.warn('Inter font load failed — using Helvetica fallback:', e.message);
+    return null;
+  }
+}
+
+async function generateClarityPDF() {
   const jsPDFLib = window.jspdf?.jsPDF;
   if (!jsPDFLib) { showToast('⏳ PDF library loading — try again in 2 seconds'); return; }
 
@@ -13569,7 +13600,7 @@ function generateClarityPDF() {
         const sepMax=Math.round(Math.min((profile.annualCompensation||avgInc*12)*0.25,66000));
         lines.push(priv&&sepMax>0?`As a self-employed filer, the SEP-IRA allows up to ${fmt2(sepMax)}/yr (25% of net earnings), or a Solo 401(k) allows up to $66,000 combined — confirm vehicle before year-end.`:`Self-employed — eligible for SEP-IRA or Solo 401(k) with higher limits than W-2. Confirm vehicle before year-end.`);
       } else if (empType==='retired') {
-        lines.push(`Client is in distribution phase — discuss RMD timeline (begins age 73), Roth conversion ladder, and tax-efficient withdrawal sequence: taxable → tax-deferred → tax-free.`);
+        lines.push(`Client is in distribution phase — discuss RMD timeline (begins age 73), Roth conversion ladder, and tax-efficient withdrawal sequence: taxable -> tax-deferred -> tax-free.`);
       } else {
         const mp=profile.employerMatchPct||0;
         lines.push(mp>0?`Ensure 401(k) contributions reach the ${mp}% employer match threshold — that is ${priv?fmt2(((profile.annualCompensation||avgInc*12)*mp/100)):`${mp}% of salary`} in annual free money. Then layer IRA ($7,000) and HSA ($4,150 triple-tax) in order of tax efficiency.`:`Maximise 401(k) to the $23,000 cap, then layer Roth IRA ($7,000) and HSA ($4,150 triple-tax-advantaged) before using taxable accounts.`);
@@ -13602,10 +13633,10 @@ function generateClarityPDF() {
       const sm=Math.round(Math.min((profile.annualCompensation||avgInc*12)*0.25,66000));
       return {label:'Recommended Tax Vehicle',rec:'SEP-IRA or Solo 401(k)',detail:priv&&sm>0?`SEP-IRA: ${fmt2(sm)}/yr (25% net earnings). Solo 401k: $66,000 employee+employer combined. Solo 401k preferred if income >$100k.`:`Self-employed: both vehicles exceed the $23,000 W-2 limit. Confirm before filing.`,col:[79,70,229]};
     } else if (empType==='retired'){
-      return {label:'Distribution Strategy',rec:'RMD + Roth Ladder',detail:'RMDs begin age 73. Roth conversions in low-income years reduce future RMD burden. Withdrawal order: taxable → tax-deferred → tax-free.',col:[5,150,105]};
+      return {label:'Distribution Strategy',rec:'RMD + Roth Ladder',detail:'RMDs begin age 73. Roth conversions in low-income years reduce future RMD burden. Withdrawal order: taxable -> tax-deferred -> tax-free.',col:[5,150,105]};
     } else {
       const mp=profile.employerMatchPct||0;
-      return {label:'Recommended Tax Vehicle',rec:'401(k) → Roth IRA → HSA',detail:priv&&mp>0?`Contribute at least ${mp}% to capture full employer match (${fmt2(((profile.annualCompensation||avgInc*12)*mp/100))} free/yr). Then Roth IRA ($7,000). HSA if HDHP eligible ($4,150).`:`Max employer 401(k) match first (free money), then Roth IRA ($7,000), then HSA ($4,150 triple-tax-advantaged).`,col:[30,42,110]};
+      return {label:'Recommended Tax Vehicle',rec:'401(k) -> Roth IRA -> HSA',detail:priv&&mp>0?`Contribute at least ${mp}% to capture full employer match (${fmt2(((profile.annualCompensation||avgInc*12)*mp/100))} free/yr). Then Roth IRA ($7,000). HSA if HDHP eligible ($4,150).`:`Max employer 401(k) match first (free money), then Roth IRA ($7,000), then HSA ($4,150 triple-tax-advantaged).`,col:[30,42,110]};
     }
   })() : (()=>{
     const has80C=(taxR.shelterUtil||0)>=0.5;
@@ -13629,7 +13660,31 @@ function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.23';  // single source — update here only
+  const APP_VER = 'v4.2.26';  // single source — update here only
+
+  // ── Load and register Inter font (premium fintech typeface) ──────────────
+  let _PDF_FONT = 'helvetica';  // fallback
+  let _fontsLoaded = false;
+  try {
+    const fonts = await _loadInterFonts();
+    if (fonts && fonts.regular && fonts.bold) {
+      doc.addFileToVFS('Inter-Regular.woff', fonts.regular);
+      doc.addFont('Inter-Regular.woff', 'Inter', 'normal');
+      doc.addFileToVFS('Inter-Bold.woff', fonts.bold);
+      doc.addFont('Inter-Bold.woff', 'Inter', 'bold');
+      if (fonts.italic) {
+        doc.addFileToVFS('Inter-Italic.woff', fonts.italic);
+        doc.addFont('Inter-Italic.woff', 'Inter', 'italic');
+      }
+      _PDF_FONT = 'Inter';
+      _fontsLoaded = true;
+      console.log('Inter font loaded for PDF ✓');
+    }
+  } catch(e) {
+    console.warn('Font registration failed — using Helvetica:', e);
+  }
+  // Shorthand: use _PDF_FONT everywhere instead of hardcoded 'helvetica'
+  const _F = _PDF_FONT;  // 'Inter' or 'helvetica'
   let y=0;
   const fhsCol=fhsScore>=80?[34,197,94]:fhsScore>=65?[245,158,11]:fhsScore>=50?[249,115,22]:[239,68,68];
   const COL = {
@@ -13645,26 +13700,37 @@ function generateClarityPDF() {
     white:     [255,255,255],
   };
 
-  const ln  = (t,x,yy,sz,st='normal',col=[30,42,110])=>{doc.setFontSize(sz);doc.setFont('helvetica',st);doc.setTextColor(...col);doc.text(String(t),x,yy);};
-  const rln = (t,x,yy,sz,st='normal',col=[30,42,110])=>{doc.setFontSize(sz);doc.setFont('helvetica',st);doc.setTextColor(...col);doc.text(String(t),x,yy,{align:'right'});};
+  const ln  = (t,x,yy,sz,st='normal',col=[30,42,110])=>{doc.setFontSize(sz);doc.setFont(_F,st);doc.setTextColor(...col);doc.text(String(t),x,yy);};
+  const rln = (t,x,yy,sz,st='normal',col=[30,42,110])=>{doc.setFontSize(sz);doc.setFont(_F,st);doc.setTextColor(...col);doc.text(String(t),x,yy,{align:'right'});};
   const hl  = (yy,col=[210,215,225],thick=0.25)=>{doc.setDrawColor(...col);doc.setLineWidth(thick);doc.line(M,yy,W-M,yy);};
   const rc  = (x,yy,w,h,fill,r=2)=>{doc.setFillColor(...fill);doc.roundedRect(x,yy,w,h,r,r,'F');};
-  const ch  = (t,x,yy,bg,tc=[255,255,255])=>{const tw=doc.getTextWidth(t)+5;rc(x,yy-4.5,tw,6,bg);doc.setFontSize(6);doc.setFont('helvetica','bold');doc.setTextColor(...tc);doc.text(t,x+2.5,yy);};
+  const ch  = (t,x,yy,bg,tc=[255,255,255])=>{const tw=doc.getTextWidth(t)+5;rc(x,yy-4.5,tw,6,bg);doc.setFontSize(6);doc.setFont(_F,'bold');doc.setTextColor(...tc);doc.text(t,x+2.5,yy);};
   // badge(): plain colored text, no background pill — cleaner alignment
-  const badge = (t,x,yy,col,sz=6.5,st='bold')=>{doc.setFontSize(sz);doc.setFont('helvetica',st);doc.setTextColor(...col);doc.text(String(t),x,yy);};
-  const rbadge= (t,x,yy,col,sz=6.5,st='bold')=>{doc.setFontSize(sz);doc.setFont('helvetica',st);doc.setTextColor(...col);doc.text(String(t),x,yy,{align:'right'});};
+  const badge = (t,x,yy,col,sz=6.5,st='bold')=>{doc.setFontSize(sz);doc.setFont(_F,st);doc.setTextColor(...col);doc.text(String(t),x,yy);};
+  const rbadge= (t,x,yy,col,sz=6.5,st='bold')=>{doc.setFontSize(sz);doc.setFont(_F,st);doc.setTextColor(...col);doc.text(String(t),x,yy,{align:'right'});};
   const sb  = (title,yy)=>{rc(M,yy-5,W-2*M,7,[238,242,252]);doc.setDrawColor(...COL.navy);doc.setLineWidth(0.5);doc.line(M,yy-5,M,yy+2);ln(title,M+4,yy,7.5,'bold',COL.navy);return yy+5;};
   const kv  = (l,v,yy,vc=COL.navy,bold=false)=>{ln(l,M,yy,7.5,'normal',COL.gray);rln(v,W-M,yy,7.5,bold?'bold':'normal',vc);};
   const br  = (x,yy,w,h,pct,fc,bg=COL.lightGray)=>{doc.setFillColor(...bg);doc.rect(x,yy,w,h,'F');doc.setFillColor(...fc);doc.rect(x,yy,Math.max(0.5,Math.min(pct/100*w,w)),h,'F');};
   let _inMetalsSection = false;  // flag for metals continuation header
+  let _inCASection     = false;  // flag for CA instruction continuation
+  let _pageContextLabel = '';   // generic continuation label
   const NP  = ()=>{
     doc.addPage();
     y = M+6;
-    // If we're mid-metals, add a subtle continuation note
     if(_inMetalsSection){
-      doc.setFontSize(6); doc.setFont('helvetica','italic');
+      doc.setFontSize(6); doc.setFont(_F,'italic');
       doc.setTextColor(...COL.gray);
-      doc.text('Physical Metals (continued)', M, y, {});
+      doc.text('Physical Metals (continued)', M, y);
+      y += 5;
+    } else if(_inCASection){
+      doc.setFontSize(6); doc.setFont(_F,'italic');
+      doc.setTextColor(...COL.gray);
+      doc.text('Portfolio Consolidation (continued)', M, y);
+      y += 5;
+    } else if(_pageContextLabel){
+      doc.setFontSize(6); doc.setFont(_F,'italic');
+      doc.setTextColor(...COL.gray);
+      doc.text(_pageContextLabel + ' (continued)', M, y);
       y += 5;
     }
   };
@@ -13693,13 +13759,24 @@ function generateClarityPDF() {
     LINE_H:   4.5,   // wrapped text line height
     MAX_Y:    275,   // safe bottom before footer
     COL_W:    W - 2*M,  // usable column width
+    // ── Type scale — professional fintech hierarchy (Inter font) ──
+    // Inter: 400=normal, 600/700=bold — significantly more legible than Helvetica
+    SZ_HERO:    22,   // NW / key number — Inter Bold
+    SZ_H1:      11,   // page section heading
+    SZ_H2:       9,   // sub-section heading
+    SZ_BODY:   7.5,   // standard body text
+    SZ_DATA:     7,   // data table values
+    SZ_LABEL:  6.5,   // labels / captions
+    SZ_MICRO:    6,   // footnotes / badge text
+    SZ_TABLE_H:  6,   // table header row
+    SZ_TABLE_B: 6.5,  // table body row
   };
 
   // ── safeText(): wraps long strings to fit column width ───────────────────
   const safeText = (text, x, yy, maxW, sz=7, style='normal', col=COL.navy) => {
     const str = String(text||'');
     const lines = doc.splitTextToSize(str, maxW);
-    doc.setFontSize(sz); doc.setFont('helvetica', style); doc.setTextColor(...col);
+    doc.setFontSize(sz); doc.setFont(_F, style); doc.setTextColor(...col);
     lines.forEach((line, i) => doc.text(line, x, yy + i * PDF.LINE_H));
     return yy + lines.length * PDF.LINE_H;
   };
@@ -13741,7 +13818,7 @@ function generateClarityPDF() {
     // Single centred diagonal — opacity low enough to not distract
     doc.setGState(new doc.GState({ opacity: 0.04 }));
     doc.setFontSize(11);
-    doc.setFont('helvetica','bold');
+    doc.setFont(_F,'bold');
     doc.setTextColor(30,42,110);
     doc.text(`Audit generated by MoneyFi FHS Engine ${APP_VER}`, W/2, 148, {align:'center', angle:35});
     doc.restoreGraphicsState();
@@ -13792,18 +13869,18 @@ function generateClarityPDF() {
   y=46;
 
   // Mission
-  if(mission){rc(M,y,W-2*M,13,[232,241,255],3);doc.setDrawColor(...COL.navy);doc.setLineWidth(1.5);doc.line(M,y,M,y+13);ln('CLIENT OBJECTIVE',M+4,y+5,5.5,'bold',COL.navy);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(...COL.navy);doc.text(doc.splitTextToSize(mission,W-2*M-10)[0],M+4,y+11);y+=19;}
+  if(mission){rc(M,y,W-2*M,13,[232,241,255],3);doc.setDrawColor(...COL.navy);doc.setLineWidth(1.5);doc.line(M,y,M,y+13);ln('CLIENT OBJECTIVE',M+4,y+5,5.5,'bold',COL.navy);doc.setFontSize(7.5);doc.setFont(_F,'normal');doc.setTextColor(...COL.navy);doc.text(doc.splitTextToSize(mission,W-2*M-10)[0],M+4,y+11);y+=19;}
 
   // Snapshot strip
   const snap4=[{l:'Net Worth',v:maskAmt(nw.netWorth),c:COL.navy},{l:'Monthly Surplus',v:priv?`${sym}${Math.round(surplus).toLocaleString()}`:`${savRate}% saved`,c:surplus>=0?COL.green:COL.red},{l:'FIRE Progress',v:`${firePct}%`,c:firePct>=80?COL.green:firePct>=40?COL.amber:COL.red},{l:`FHS  ${fhsGrade}`,v:`${fhsScore}/100`,c:fhsCol}];
   const sw=(W-2*M)/4;
-  snap4.forEach((s,i)=>{const sx=M+i*sw;rc(sx,y,sw-2,18,[242,245,252],3);doc.setFillColor(...s.c);doc.rect(sx,y+15,sw-2,1,'F');ln(s.l,sx+3,y+6,5.5,'normal',COL.gray);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...s.c);doc.text(String(s.v),sx+3,y+14);});
+  snap4.forEach((s,i)=>{const sx=M+i*sw;rc(sx,y,sw-2,18,[242,245,252],3);doc.setFillColor(...s.c);doc.rect(sx,y+15,sw-2,1,'F');ln(s.l,sx+3,y+6,5.5,'normal',COL.gray);doc.setFontSize(9);doc.setFont(_F,'bold');doc.setTextColor(...s.c);doc.text(String(s.v),sx+3,y+14);});
   y+=24;
 
   // Advisor narrative
   CY(30);y=sb('ADVISOR BRIEFING — WHAT TO SAY IN THE FIRST 5 MINUTES',y);y+=3;
   const nbH=narrativeLines.length*9+6;rc(M,y,W-2*M,nbH,[248,250,255],3);doc.setDrawColor(...COL.indigo);doc.setLineWidth(0.6);doc.line(M,y,M,y+nbH);
-  narrativeLines.forEach((s,i)=>{const wl=doc.splitTextToSize(s,W-2*M-10);doc.setFontSize(7.5);doc.setFont('helvetica',i===0?'bold':'normal');doc.setTextColor(...COL.navy);doc.text(wl,M+4,y+6+i*9);});
+  narrativeLines.forEach((s,i)=>{const wl=doc.splitTextToSize(s,W-2*M-10);doc.setFontSize(7.5);doc.setFont(_F,i===0?'bold':'normal');doc.setTextColor(...COL.navy);doc.text(wl,M+4,y+6+i*9);});
   y+=nbH+10;
 
   // FIRE gap bar
@@ -13824,14 +13901,14 @@ function generateClarityPDF() {
     CY(14);
     rc(M,y-4,W-2*M,11,item.col.map(c=>Math.min(255,c+195)),3);
     // Priority number in item color
-    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...item.col);
+    doc.setFontSize(9);doc.setFont(_F,'bold');doc.setTextColor(...item.col);
     doc.text(`${i+1}`,M+3,y+2);
     // Tag text in item color, bold
     doc.setFontSize(7.5);doc.text(item.tag,M+9,y+2);
     const tagW=3+4+doc.getTextWidth(item.tag)+4;
     // Body text in dark
     const tl=doc.splitTextToSize(item.text,W-2*M-tagW-4);
-    doc.setFont('helvetica','normal');doc.setTextColor(35,45,65);doc.setFontSize(7.5);
+    doc.setFont(_F,'normal');doc.setTextColor(35,45,65);doc.setFontSize(7.5);
     doc.text(tl,M+tagW+2,y);
     y+=Math.max(11,tl.length*4.5+5);
   });}
@@ -13855,7 +13932,7 @@ function generateClarityPDF() {
   const fhsLStr=fhsScore>=80?'Mastery':fhsScore>=65?'Strong':fhsScore>=50?'Building':'Foundation';
   rc(M,y,W-2*M,22,fhsCol.map(c=>Math.min(255,c+180)),3);
   doc.setFillColor(...fhsCol.map(c=>Math.max(0,c-15)));doc.circle(M+14,y+11,10,'F');doc.setFillColor(...fhsCol);doc.circle(M+14,y+11,8.5,'F');
-  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...COL.white);doc.text(String(fhsScore),M+14,y+14.5,{align:'center'});doc.setFontSize(5.5);doc.text('/100',M+14,y+19,{align:'center'});
+  doc.setFontSize(14);doc.setFont(_F,'bold');doc.setTextColor(...COL.white);doc.text(String(fhsScore),M+14,y+14.5,{align:'center'});doc.setFontSize(5.5);doc.text('/100',M+14,y+19,{align:'center'});
   ln('FINANCIAL HEALTH SCORE',M+28,y+6.5,8,'bold',COL.navy);ln(`Grade ${fhsGrade} — ${fhsLStr}`,M+28,y+13,10,'bold',fhsCol);
   ln(fhs.summaryLine||'',M+28,y+19,6.5,'italic',COL.gray);br(M+28,y+22,W-M-28-M,2.5,fhsScore,fhsCol);y+=30;
 
@@ -13887,7 +13964,7 @@ function generateClarityPDF() {
       ln(left.label,M+5,rowY,7,'normal',COL.navy);
       // Score: large colored number, bold
       doc.setFontSize(left.status==='inactive'||left.status==='na'?7:9);
-      doc.setFont('helvetica','bold');doc.setTextColor(...lcol);
+      doc.setFont(_F,'bold');doc.setTextColor(...lcol);
       doc.text(left.status==='inactive'||left.status==='na'?'N/A':`${Math.round(left.score)}`,M+colW2-1,rowY,{align:'right'});
       // Right column
       if(right){
@@ -13896,7 +13973,7 @@ function generateClarityPDF() {
         doc.setFillColor(...rcol);doc.rect(rx,rowY-4,2.5,rH2-1,'F');
         ln(right.label,rx+5,rowY,7,'normal',COL.navy);
         doc.setFontSize(right.status==='inactive'||right.status==='na'?7:9);
-        doc.setFont('helvetica','bold');doc.setTextColor(...rcol);
+        doc.setFont(_F,'bold');doc.setTextColor(...rcol);
         doc.text(right.status==='inactive'||right.status==='na'?'N/A':`${Math.round(right.score)}`,rx+colW2-1,rowY,{align:'right'});
       }
     }
@@ -13991,7 +14068,7 @@ function generateClarityPDF() {
   // Tax vehicle
   CY(24);rc(M,y,W-2*M,24,vehicleData.col.map(c=>Math.min(255,c+193)),3);doc.setDrawColor(...vehicleData.col);doc.setLineWidth(1.2);doc.line(M,y,M,y+24);
   ln(vehicleData.label,M+4,y+6,6,'bold',vehicleData.col);ln(`Recommended: ${vehicleData.rec}`,M+4,y+13,8,'bold',COL.navy);
-  const vl=doc.splitTextToSize(vehicleData.detail,W-2*M-10);doc.setFontSize(6.5);doc.setFont('helvetica','normal');doc.setTextColor(60,70,90);doc.text(vl[0]||'',M+4,y+20);y+=30;
+  const vl=doc.splitTextToSize(vehicleData.detail,W-2*M-10);doc.setFontSize(6.5);doc.setFont(_F,'normal');doc.setTextColor(60,70,90);doc.text(vl[0]||'',M+4,y+20);y+=30;
 
   // Goals
   CY(16+Math.min(goals.length,6)*10);y=sb('GOALS FUNDING STATUS',y);y+=3;
@@ -14030,8 +14107,8 @@ function generateClarityPDF() {
     const owLines=doc.splitTextToSize(otherWarning,W-2*M-8);
     const owH=owLines.length*4.5+(otherBreakdown?8:4)+4;
     CY(owH+4);rc(M,y,W-2*M,owH,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.4);doc.line(M,y,M,y+owH);
-    doc.setFontSize(6.5);doc.setFont('helvetica','bold');doc.setTextColor(146,64,14);doc.text(owLines,M+3,y+5);
-    if(otherBreakdown){const bdLines=doc.splitTextToSize(`Accounts: ${otherBreakdown}${otherAccts.length>4?` + ${otherAccts.length-4} more`:''}`,W-2*M-8);doc.setFontSize(6);doc.setFont('helvetica','italic');doc.text(bdLines,M+3,y+owLines.length*4.5+6);}
+    doc.setFontSize(6.5);doc.setFont(_F,'bold');doc.setTextColor(146,64,14);doc.text(owLines,M+3,y+5);
+    if(otherBreakdown){const bdLines=doc.splitTextToSize(`Accounts: ${otherBreakdown}${otherAccts.length>4?` + ${otherAccts.length-4} more`:''}`,W-2*M-8);doc.setFontSize(6);doc.setFont(_F,'italic');doc.text(bdLines,M+3,y+owLines.length*4.5+6);}
     y+=owH+4;
   }
   y+=4;
@@ -14040,6 +14117,7 @@ function generateClarityPDF() {
   const gradeLabels={A:'Clean & Focused',B:'Good Shape',C:'Fragmented',D:'Significant Overlap',F:'Critical — Act Now'};
   const pcsCol=grade==='A'||grade==='B'?COL.green:grade==='C'?COL.amber:COL.red;
   CY(14);rc(M,y,W-2*M,13,[242,245,252],3);doc.setFillColor(...pcsCol);doc.rect(M,y,5,13,'F');ln(`Portfolio Clarity Score:  ${d.pcs}/100 — Grade ${grade}  ·  ${gradeLabels[grade]||''}`,M+8,y+5.5,8,'bold',COL.navy);br(M+8,y+10,W-2*M-16,2,d.pcs,pcsCol);y+=18;
+  _inCASection = true;
   y=sb('KEEP / REVIEW / EXIT — WITH LIQUIDITY',y);y+=PDF.SEC_GAP;
   // Ensure _clarityFundData is populated — user may not have visited Clarity tab
   if(!_clarityFundData||_clarityFundData.length===0){
@@ -14075,7 +14153,7 @@ function generateClarityPDF() {
       if(fundTableBody.length > 0) return fundTableBody;
       return [[
         {content:'—',styles:{textColor:COL.gray,cellPadding:3}},
-        {content:'Open the Lab → Clarity tab to generate fund recommendations',styles:{textColor:COL.gray,fontStyle:'italic',fontSize:6,cellPadding:3}},
+        {content:'Open the Lab -> Clarity tab to generate fund recommendations',styles:{textColor:COL.gray,fontStyle:'italic',fontSize:6,cellPadding:3}},
         {content:'—',styles:{textColor:COL.gray,cellPadding:3,halign:'right'}},
         {content:'—',styles:{textColor:COL.gray,cellPadding:3}},
         {content:'—',styles:{textColor:COL.gray,cellPadding:3,halign:'center'}},
@@ -14088,15 +14166,81 @@ function generateClarityPDF() {
     theme:'grid',
   });
   y+=5;CY(36);hl(y);y+=5;y=sb('CA / ADVISOR INSTRUCTION — REBALANCING MANDATE',y);y+=3;
-  const ef2=(_clarityFundData||[]).filter(f=>f.verdict==='exit');const kf2=(_clarityFundData||[]).filter(f=>f.verdict==='keep');
+  const ef2=(_clarityFundData||[]).filter(f=>f.verdict==='exit');
+  const rv2=(_clarityFundData||[]).filter(f=>f.verdict==='review');
+  const kf2=(_clarityFundData||[]).filter(f=>f.verdict==='keep');
   if(ef2.length>0){
     const te=ef2.reduce((s,f)=>s+(f.val||0),0);
     const mandateText=priv
       ?`Exit ${ef2.length} fund(s) valued at ${sym}${Math.round(te).toLocaleString()} and reinvest into top ${Math.min(kf2.length,5)} performers. Verify exit loads and STCG/LTCG implications before redemption.`
       :`Exit ${ef2.length} fund(s) and consolidate into top ${Math.min(kf2.length,5)} performers. Verify exit loads before execution.`;
     const il=doc.splitTextToSize(mandateText,W-2*M-4);
-    doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(...COL.navy);doc.text(il,M,y);
-    y+=il.length*5+4;
+    doc.setFontSize(7.5);doc.setFont(_F,'normal');doc.setTextColor(...COL.navy);doc.text(il,M,y);
+    y+=il.length*5+6;
+  }
+
+  // ── WHY THESE VERDICTS — advisor explanation for REVIEW + EXIT ───────────
+  const actionFunds = [...ef2,...rv2];
+  if(actionFunds.length > 0){
+    CY(14);
+    y=sb('WHY THESE VERDICTS — SCORING RATIONALE',y);y+=PDF.SEC_GAP;
+    // Helper: generate plain-English reason from fund data
+    const _verdictReason = (f) => {
+      const reasons = [];
+      if(f.pct != null && f.pct < -10) reasons.push(`down ${Math.abs(f.pct.toFixed(0))}% from cost`);
+      else if(f.pct != null && f.pct < 0) reasons.push(`negative return (${f.pct.toFixed(0)}%)`);
+      else if(f.pct != null && f.pct < 10) reasons.push(`low return (${f.pct.toFixed(0)}%)`);
+      if(!f.isActive) reasons.push('no recent SIP activity');
+      if(f.score < 20) reasons.push('significantly underperforms category peers');
+      else if(f.score < 30) reasons.push('underperforms category peers');
+      if(f.cat && (f.cat.toLowerCase().includes('sectoral')||f.cat.toLowerCase().includes('thematic'))) reasons.push('high-risk sectoral exposure');
+      if(reasons.length === 0) reasons.push(f.verdict==='exit'?'low overall score vs portfolio peers':'moderate score — monitor performance');
+      return reasons.slice(0,2).join('; ');
+    };
+
+    // Table header
+    const vColW = [18, 68, 30, 18, 38];  // Verdict | Fund | Value | ROI | Reason
+    const vHeaders = ['Verdict','Fund / Account','Value','ROI','Why flagged'];
+    CY(10);
+    vHeaders.forEach((h,i)=>{
+      if(i < vHeaders.length-1) ln(h, M + vColW.slice(0,i).reduce((a,b)=>a+b,0), y, PDF.SZ_TABLE_H,'bold',COL.gray);
+      else rln(h, W-M, y, PDF.SZ_TABLE_H,'bold',COL.gray);
+    });
+    y+=3; hl(y,[225,230,238],0.3); y+=4;
+
+    actionFunds.forEach(f=>{
+      CY(PDF.ROW_H + 2);
+      const vCol = f.verdict==='exit' ? COL.red : COL.amber;
+      const vLabel = f.verdict==='exit' ? 'EXIT' : 'REVIEW';
+      const fundName = _cleanFundName(f.a.name||'').substring(0,28);
+      const valStr = priv ? `${sym}${Math.round(f.val||0).toLocaleString()}` : '—';
+      const roiStr = f.pct!=null ? `${f.pct>=0?'+':''}${f.pct.toFixed(0)}%` : '—';
+      const reason = _verdictReason(f);
+
+      // Verdict badge
+      rc(M, y-3.5, 16, 5.5, vCol.map(c=>Math.min(255,c+185)), 1.5);
+      doc.setFontSize(5.5);doc.setFont(_F,'bold');doc.setTextColor(...vCol);
+      doc.text(vLabel, M+2, y);
+
+      // Fund name
+      ln(fundName, M+18, y, PDF.SZ_TABLE_B,'normal',COL.navy);
+
+      // Value
+      rln(valStr, M+18+68+30, y, PDF.SZ_TABLE_B,'normal',COL.gray);
+
+      // ROI
+      const roiCol = f.pct==null?COL.gray:f.pct>=0?COL.green:COL.red;
+      rln(roiStr, M+18+68+30+18, y, PDF.SZ_TABLE_B,'bold',roiCol);
+
+      // Reason — right-aligned, italic, muted
+      const reasonLines = doc.splitTextToSize(reason, 38);
+      doc.setFontSize(6);doc.setFont(_F,'italic');doc.setTextColor(...COL.gray);
+      reasonLines.forEach((rl,ri)=>doc.text(rl, W-M, y+(ri*4), {align:'right'}));
+
+      y += Math.max(PDF.ROW_H, reasonLines.length * 4 + 1);
+      hl(y,[240,242,248],0.2); y+=1;
+    });
+    y += PDF.SECT_SEP;
   }
   ln('CA / Advisor Signature:',M,y,8,'normal',COL.gray);doc.setDrawColor(190,195,205);doc.setLineWidth(0.25);doc.line(M+48,y,W-M-58,y);ln('Date:',W-M-54,y,8,'normal',COL.gray);doc.line(W-M-38,y,W-M-28,y);y+=10;
   ln('Approved Actions:',M,y,8,'normal',COL.gray);y+=5;[0,1,2].forEach(()=>{doc.line(M,y,W-M-30,y);y+=6;});
@@ -14107,9 +14251,9 @@ function generateClarityPDF() {
   const qrSize = 24;
   rc(W-M-qrSize-4, qrY-2, qrSize+8, qrSize+10, [245,247,252], 3);
   // Attempt async QR — draw placeholder synchronously first, fill in if QR resolves
-  doc.setFontSize(4.5); doc.setFont('helvetica','normal'); doc.setTextColor(...COL.navy);
+  doc.setFontSize(4.5); doc.setFont(_F,'normal'); doc.setTextColor(...COL.navy);
   doc.text('Scan to view',W-M-qrSize/2-2, qrY+qrSize+2, {align:'center'});
-  doc.text('live NW →',W-M-qrSize/2-2, qrY+qrSize+5.5, {align:'center'});
+  doc.text('live NW ->',W-M-qrSize/2-2, qrY+qrSize+5.5, {align:'center'});
   buildQR(qrUrl, qrSize).then(dataUrl => {
     if(dataUrl){
       const pgCount=doc.getNumberOfPages();
@@ -14124,30 +14268,35 @@ function generateClarityPDF() {
   y+=2;
   if(d.goalMismatchPenalty>0){
     const mmTxt=`-${d.goalMismatchPenalty} pts: Some goals are linked to funds too volatile for their timeline. Switch to lower-risk fund categories before the next review.`;
-    const mmL=doc.splitTextToSize(mmTxt,W-2*M-10);
-    const mmH=Math.max(16,mmL.length*4.5+10);
-    CY(mmH+4);rc(M,y,W-2*M,mmH,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.5);doc.line(M,y,M,y+mmH);
-    ln('⚠ GOAL-HORIZON MISMATCH',M+4,y+6,7.5,'bold',[146,64,14]);
-    doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(146,64,14);doc.text(mmL,M+4,y+12);
-    y+=mmH+4;
+    const mmL=doc.splitTextToSize(mmTxt,W-2*M-14);
+    const mmH=Math.max(14,mmL.length*4.5+12);
+    // Ensure box doesn't collide with QR/signature area below
+    CY(mmH+8);
+    rc(M,y,W-2*M,mmH,[255,247,230],3);
+    doc.setDrawColor(...COL.amber);doc.setLineWidth(0.8);doc.line(M,y,M,y+mmH);
+    ln('! GOAL-HORIZON MISMATCH',M+4,y+6,7,'bold',[146,64,14]);
+    doc.setFontSize(6.5);doc.setFont(_F,'normal');doc.setTextColor(146,64,14);
+    doc.text(mmL,M+4,y+11);
+    y+=mmH+6;
   }
 
   // ══════════════════════════════════════════════════════════════
   // PAGE 5 — TAX & INSURANCE AUDIT
   // ══════════════════════════════════════════════════════════════
+  _inCASection = false;
   NP();PH('Page 5 — Tax & Insurance Audit: Shelter Utilisation & Liability Gaps','The Protection View');y=18;
 
   // Tax shelters
   y=sb('TAX SHELTER UTILISATION',y);y+=PDF.SEC_GAP;
   const acbt=(types,aliases)=>{const ac=(data._nwAccounts||[]).filter(a=>{if(types.includes(a.type))return true;if(a.type==='retirement'&&aliases){const sub=(a.meta?.subtype||'').toLowerCase();return aliases.some(al=>sub.includes(al));}return false;});return ac.reduce((s,a)=>{const y2=a.meta?.monthlyContribution||0;const e=a.meta?.employerContribution||0;return s+((y2+e)||a._monthlyTotal||0)*12;},0);};
   const anft=(types,aliases)=>(data._nwAccounts||[]).filter(a=>{if(types.includes(a.type))return true;if(a.type==='retirement'&&aliases){const sub=(a.meta?.subtype||'').toLowerCase();return aliases.some(al=>sub.includes(al));}return false;}).map(a=>a.name||a.type).join(', ')||null;
-  const shelters=region==='IN'?[{name:'80C (ELSS+EPF+PPF)',limit:150000,used:(()=>{const inv=(data[viewMonth]?.investments||[]);const tx=inv.filter(i=>['ELSS','EPF','PPF'].some(t=>i.category?.includes(t))).reduce((s,i)=>s+convertAmt(i.amount,i.currency),0)*12;return Math.max(tx,acbt(['mf_elss','epf','ppf']));})(),note:'Net Worth → ELSS/EPF/PPF → Monthly Contribution',accts:anft(['mf_elss','epf','ppf'])},{name:'80D Health Insurance',limit:25000,used:(profile.healthCover||0)>0?25000:0,note:'Score → Edit Profile → Health Insurance Cover',accts:null},{name:'NPS 80CCD(1B)',limit:50000,used:acbt(['nps'],['nps']),note:'Net Worth → NPS → Monthly Contribution',accts:anft(['nps'],['nps'])}]:[{name:'401(k)',limit:23000,used:acbt(['retirement_401k'],['401k','401(k)']),note:'Net Worth → 401(k) → Your + Employer Contribution',accts:anft(['retirement_401k'],['401k','401(k)'])},{name:'IRA / Roth IRA',limit:7000,used:acbt(['retirement_ira','retirement_roth'],['ira','roth']),note:'Net Worth → IRA/Roth → Monthly Contribution',accts:anft(['retirement_ira','retirement_roth'],['ira','roth'])},{name:'HSA',limit:3850,used:acbt(['hsa'],['hsa']),note:'Net Worth → HSA → Monthly Contribution',accts:anft(['hsa'],['hsa'])}];
+  const shelters=region==='IN'?[{name:'80C (ELSS+EPF+PPF)',limit:150000,used:(()=>{const inv=(data[viewMonth]?.investments||[]);const tx=inv.filter(i=>['ELSS','EPF','PPF'].some(t=>i.category?.includes(t))).reduce((s,i)=>s+convertAmt(i.amount,i.currency),0)*12;return Math.max(tx,acbt(['mf_elss','epf','ppf']));})(),note:'Net Worth -> ELSS/EPF/PPF -> Monthly Contribution',accts:anft(['mf_elss','epf','ppf'])},{name:'80D Health Insurance',limit:25000,used:(profile.healthCover||0)>0?25000:0,note:'Score -> Edit Profile -> Health Insurance Cover',accts:null},{name:'NPS 80CCD(1B)',limit:50000,used:acbt(['nps'],['nps']),note:'Net Worth -> NPS -> Monthly Contribution',accts:anft(['nps'],['nps'])}]:[{name:'401(k)',limit:23000,used:acbt(['retirement_401k'],['401k','401(k)']),note:'Net Worth -> 401(k) -> Your + Employer Contribution',accts:anft(['retirement_401k'],['401k','401(k)'])},{name:'IRA / Roth IRA',limit:7000,used:acbt(['retirement_ira','retirement_roth'],['ira','roth']),note:'Net Worth -> IRA/Roth -> Monthly Contribution',accts:anft(['retirement_ira','retirement_roth'],['ira','roth'])},{name:'HSA',limit:3850,used:acbt(['hsa'],['hsa']),note:'Net Worth -> HSA -> Monthly Contribution',accts:anft(['hsa'],['hsa'])}];
   [['Shelter',M],['Used',M+68],['Limit',M+96],['Utilisation',W-M]].forEach(([h,x],i)=>{if(i<3)ln(h,x,y,6,'bold',COL.gray);else rln(h,W-M,y,6,'bold',COL.gray);});y+=3;hl(y,[225,230,238]);y+=4;
   shelters.forEach(sh=>{CY(15);const cp=Math.min(sh.used||0,sh.limit);const pt=sh.limit>0?cp/sh.limit*100:0;const hd=(sh.used||0)>0;const bc=!hd?COL.lightGray:pt>=80?COL.green:pt>=40?COL.amber:COL.red;ln(sh.name,M,y,7.5,'normal',COL.navy);ln(priv&&hd?`${sym}${Math.round(cp).toLocaleString()}`:(hd?'Present':'—'),M+68,y,7,'normal',hd?COL.navy:COL.gray);ln(priv?`${sym}${sh.limit.toLocaleString()}`:'—',M+96,y,7,'normal',COL.gray);br(M+116,y-3.5,W-2*M-116,4,pt,bc);rln(hd?`${pt.toFixed(0)}%`:'No data',W-M,y,7,'bold',!hd?COL.gray:bc);y+=5;if(sh.accts){ln(`Accounts: ${sh.accts}`,M+2,y,5.5,'italic',COL.gray);y+=3.5;}ln(`${!hd?'⚠ ':'ℹ '}${sh.note}`,M+2,y,5.5,'italic',!hd?COL.red:COL.gray);y+=7;});
 
   // Asset location efficiency
   CY(40);y=sb('TAX-EFFICIENT PLACEMENT AUDIT (ASSET LOCATION)',y);y+=PDF.SEC_GAP;
-  rc(M,y,W-2*M,10,[238,242,252],2);ln('Principle: High-tax assets → Tax-deferred (401k/IRA). Low-tax assets → Taxable accounts.',M+4,y+7,7,'italic',COL.navy);y+=14;
+  rc(M,y,W-2*M,10,[238,242,252],2);ln('Principle: High-tax assets -> Tax-deferred (401k/IRA). Low-tax assets -> Taxable accounts.',M+4,y+7,7,'italic',COL.navy);y+=14;
   const placementRows=[];
   const allInvAccts=(data._nwAccounts||[]).filter(a=>!['loan','credit_card','other_liability','checking','savings_acc','cash','emergency','bank_checking_us'].includes(a.type)&&(a.balance||0)>0);
   const isRetAcct=a=>['retirement','retirement_401k','retirement_roth','retirement_ira','hsa','epf','ppf','nps','college_529','mf_elss'].includes(a.type);
@@ -14284,7 +14433,7 @@ function generateClarityPDF() {
   drawdownRows.forEach(r=>{
     CY(12);
     rc(M,y-4,W-2*M,12,[242,245,252],2);doc.setFillColor(...COL.indigo);doc.rect(M,y-4,5,12,'F');
-    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...COL.white);doc.text(String(r.step),M+2.5,y+3,{align:'center'});
+    doc.setFontSize(9);doc.setFont(_F,'bold');doc.setTextColor(...COL.white);doc.text(String(r.step),M+2.5,y+3,{align:'center'});
     ln(r.bucket,M+8,y+1,7,'bold',COL.navy);
     rln(r.timing,W-M,y+1,6,'italic',COL.gray);
     ln(r.action,M+8,y+7,6.5,'normal',COL.gray);
@@ -14307,7 +14456,7 @@ function generateClarityPDF() {
       const bx=chartX+bw/2+i*bw;const byy=y+chartH-bh;
       const bc=p.proj>=fireTarget?COL.green:p.proj>=fireTarget*0.8?COL.amber:COL.indigo;
       doc.setFillColor(...bc);doc.rect(bx,byy,bw-3,bh,'F');
-      doc.setFontSize(5.5);doc.setFont('helvetica','normal');doc.setTextColor(...COL.gray);doc.text(`yr ${p.yr}`,bx+(bw-3)/2,y+chartH+4,{align:'center'});
+      doc.setFontSize(5.5);doc.setFont(_F,'normal');doc.setTextColor(...COL.gray);doc.text(`yr ${p.yr}`,bx+(bw-3)/2,y+chartH+4,{align:'center'});
       if(priv){doc.setFontSize(5);doc.text(`${sym}${Math.round(p.proj/1000)}k`,bx+(bw-3)/2,byy-1,{align:'center'});}
     });
     // Target line
@@ -14371,7 +14520,7 @@ function generateClarityPDF() {
     rbadge(f.risk,W-M,y,rc2,7);
     y+=6;
     const dl=doc.splitTextToSize(f.detail,W-2*M-4);
-    doc.setFontSize(6.5);doc.setFont('helvetica','italic');doc.setTextColor(...COL.gray);doc.text(dl,M,y);
+    doc.setFontSize(6.5);doc.setFont(_F,'italic');doc.setTextColor(...COL.gray);doc.text(dl,M,y);
     y+=dl.length*4+4;
   });
 
@@ -14499,12 +14648,12 @@ function generateClarityPDF() {
     if(priv){ln('Investment-grade (spot-liquidatable):',M,y,7,'normal',COL.gray);rln(fmt2(invGradeTotal),W-M,y,7,'bold',COL.green);y+=6;
     ln('Ornamental (sentimental value only):',M,y,7,'normal',COL.gray);rln(fmt2(ornTotal),W-M,y,7,'normal',COL.amber);y+=6;}
     // Single note below table — no per-row repetition
-    if(ornRows.length>0){y+=2;doc.setFontSize(6.5);doc.setFont('helvetica','italic');doc.setTextColor(...COL.gray);doc.text('ⓘ  Ornamental pieces carry sentimental & cultural value — excluded from liquidatable assets.',M,y);y+=8;}
+    if(ornRows.length>0){y+=2;doc.setFontSize(6.5);doc.setFont(_F,'italic');doc.setTextColor(...COL.gray);doc.text('ⓘ  Ornamental pieces carry sentimental & cultural value — excluded from liquidatable assets.',M,y);y+=8;}
   }
 
   // Net Liquid Worth summary
   CY(26);hl(y);y+=5;_inMetalsSection = false;  // metals section complete
-  y=sb('NET LIQUID WORTH — CRISIS-ACCESSIBLE CAPITAL',y);y+=PDF.SEC_GAP;
+  CY(35);y=sb('NET LIQUID WORTH — CRISIS-ACCESSIBLE CAPITAL',y);y+=PDF.SEC_GAP;
   const liquidInDays=(accs,days)=>accs.reduce((s,a)=>s+(nwConvert?nwConvert(a.balance||0,a.currency):(a.balance||0)),0);
   const immediate=(data._nwAccounts||[]).filter(a=>['checking','savings_acc','cash','emergency'].includes(a.type));
   const within7d=(data._nwAccounts||[]).filter(a=>['metals','brokerage','brokerage_taxable','mf_equity','mf_debt','mf_hybrid','mf_index','mf_gold','stocks_direct'].includes(a.type));
@@ -14594,7 +14743,9 @@ function generateClarityPDF() {
 
   y=sb('HOW TAX-LOSS HARVESTING WORKS',y);y+=3;
   rc(M,y,W-2*M,18,[238,242,252],3);doc.setDrawColor(...COL.indigo);doc.setLineWidth(0.6);doc.line(M,y,M,y+18);
-  ln('Tax-loss harvesting: sell a fund at a loss → the loss offsets gains from winners → you pay tax only on the NET gain.',M+4,y+6,7,'normal',COL.navy);
+  const _taxIntroLines = doc.splitTextToSize('Tax-loss harvesting: sell a fund at a loss -> the loss offsets gains from winners -> you pay tax only on the NET gain.',W-2*M-8);
+  doc.setFontSize(7);doc.setFont(_F,'normal');doc.setTextColor(...COL.navy);
+  doc.text(_taxIntroLines,M+4,y+6);
   ln('Example: Fund A gains +$10,000. Fund B has an unrealized loss of -$4,000. Selling B reduces taxable gain to $6,000.',M+4,y+12,6.5,'italic',COL.gray);
   ln(isUS?'US: Short-term losses offset short-term gains first (ordinary income rate). Long-term losses offset long-term gains (15-20% rate).'
          :'India: STCL offsets STCG. LTCL only offsets LTCG. Cannot offset salary income. Carry forward unused losses for 8 years.',M+4,y+17,6,'normal',COL.gray);
@@ -14621,7 +14772,7 @@ function generateClarityPDF() {
     {l:'Net Taxable Gain',v:priv?fmt2(netTaxableGain):'After offset',c:netTaxableGain<totalGainAmt?COL.amber:COL.red},
     {l:'Est. Tax Saving',v:priv&&taxSaving>0?fmt2(taxSaving):'Calculate with CA',c:taxSaving>0?COL.green:COL.gray},
   ];
-  hCards.forEach((s,i)=>{const sx=M+i*hcW;rc(sx,y,hcW-2,18,[242,245,252],3);doc.setFillColor(...s.c);doc.rect(sx,y+15,hcW-2,1,'F');ln(s.l,sx+3,y+6,5.5,'normal',COL.gray);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...s.c);doc.text(String(s.v),sx+3,y+14);});
+  hCards.forEach((s,i)=>{const sx=M+i*hcW;rc(sx,y,hcW-2,18,[242,245,252],3);doc.setFillColor(...s.c);doc.rect(sx,y+15,hcW-2,1,'F');ln(s.l,sx+3,y+6,5.5,'normal',COL.gray);doc.setFontSize(9);doc.setFont(_F,'bold');doc.setTextColor(...s.c);doc.text(String(s.v),sx+3,y+14);});
   y+=24;
 
   // Losers table — harvestable positions
@@ -14688,7 +14839,7 @@ function generateClarityPDF() {
     doc.setFillColor(...COL.yellow);doc.rect(0,287,4,10,'F');
     // Golden rule above footer
     doc.setFillColor(...COL.yellow);doc.rect(0,286.5,W,0.5,'F');
-    doc.setFontSize(5.5);doc.setFont('helvetica','normal');doc.setTextColor(160,175,225);
+    doc.setFontSize(5.5);doc.setFont(_F,'normal');doc.setTextColor(160,175,225);
     doc.text(`MoneyFi · Advisor Strategic Brief · ${today}`,M,293);
     doc.text('Indicative only — not financial advice. Verify all figures with your CA/advisor.',W/2,293,{align:'center'});
     doc.text(`Page ${pg} of ${totalPgs}`,W-M,293,{align:'right'});
