@@ -13635,7 +13635,7 @@ function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.29';  // single source — update here only
+  const APP_VER = 'v4.2.30';  // single source — update here only
 
   // Font: Helvetica (jsPDF built-in) — premium feel via tight type scale
   const _F = 'helvetica';
@@ -14225,17 +14225,18 @@ if(d.goalMismatchPenalty>0){
   doc.setFontSize(4.5); doc.setFont(_F,'normal'); doc.setTextColor(...COL.navy);
   doc.text('Scan to view',W-M-qrSize/2-2, qrY+qrSize+2, {align:'center'});
   doc.text('live NW ->',W-M-qrSize/2-2, qrY+qrSize+5.5, {align:'center'});
+  // Capture current page number synchronously BEFORE any async
+  const _qrTargetPage = doc.getCurrentPageInfo ? doc.getCurrentPageInfo().pageNumber : doc.getNumberOfPages();
+  const _qrX = W-M-qrSize-2;
+  const _qrYpos = qrY;
   buildQR(qrUrl, qrSize).then(dataUrl => {
     if(dataUrl){
-      const pgCount=doc.getNumberOfPages();
-      // find the page with the mandate (last page with content before footer)
-      for(let pg=pgCount;pg>=1;pg--){
-        doc.setPage(pg);
-        try{doc.addImage(dataUrl,'PNG',W-M-qrSize-2, qrY, qrSize, qrSize);}catch(e){}
-        break;
-      }
+      try{
+        doc.setPage(_qrTargetPage);
+        doc.addImage(dataUrl,'PNG',_qrX,_qrYpos,qrSize,qrSize);
+      }catch(e){ console.warn('QR add failed:',e); }
     }
-  }).catch(()=>{});
+  }).catch(e=>{ console.warn('QR generation failed:',e); });
   y+=2;
     // ══════════════════════════════════════════════════════════════
   // PAGE 5 — TAX & INSURANCE AUDIT
@@ -14293,14 +14294,18 @@ if(d.goalMismatchPenalty>0){
 
   // Formula display
   rc(M,y,W-2*M,28,[245,247,252],3);doc.setDrawColor(...COL.navy);doc.setLineWidth(0.5);doc.line(M,y,M,y+28);
-  ln('Protection Math: (Total Debt + 10 Years Lifestyle) − (Term Insurance + Liquid Assets)',M+4,y+6,6.5,'bold',COL.navy);
+  ln('Protection Math: (Total Debt + 10 Years Lifestyle) - (Term Insurance + Liquid Assets)',M+4,y+6,6.5,'bold',COL.navy);
   if(priv){
     ln(`Total Debt: ${fmt2(totalDebt)}  ·  10-yr Lifestyle: ${fmt2(tenYrLifestyle)}  =  Needs: ${fmt2(protectionNeeded)}`,M+4,y+12,7,'normal',COL.gray);
     ln(`Term Cover: ${fmt2(termCover)}  ·  Liquid Assets: ${fmt2(liquidAssets)}  =  Have: ${fmt2(protectionHave)}`,M+4,y+18,7,'normal',COL.gray);
     const gapCol=protectionGap>0?(isCatastrophicGap?COL.red:COL.amber):COL.green;
     rln(protectionGap>0?`Gap: ${fmt2(protectionGap)}${isCatastrophicGap?' — CATASTROPHIC':''}`:` Fully protected (+${fmt2(Math.abs(protectionGap))})`,W-M,y+18,8,'bold',gapCol);
   } else {
-    rln(protectionGap>0?(isCatastrophicGap?'Catastrophic gap — urgent review':'Protection gap exists'):' Family is mathematically protected ✓',W-M,y+12,8,'bold',protectionGap>0?(isCatastrophicGap?COL.red:COL.amber):COL.green);
+    // Shareable: only show protection status text, not the numbers
+    if(protectionGap > 0){
+      rln(isCatastrophicGap?'Catastrophic gap — urgent review':'Protection gap exists',W-M,y+12,8,'bold',isCatastrophicGap?COL.red:COL.amber);
+    }
+    // When protected, skip inline text — the green box below (line ~14311) is sufficient
   }
   y+=34;
 
@@ -14308,7 +14313,7 @@ if(d.goalMismatchPenalty>0){
     CY(16);rc(M,y,W-2*M,14,[255,235,235],3);doc.setDrawColor(...COL.red);doc.setLineWidth(0.8);doc.line(M,y,M,y+14);ln('⚠ CATASTROPHIC PROTECTION GAP',M+4,y+6,8,'bold',[180,30,30]);ln(priv?`Family shortfall: ${fmt2(protectionGap)} — increase term cover by at least ${fmt2(protectionGap-liquidAssets)} immediately.`:'Family is not mathematically protected. Increase term insurance before any new investment.',M+4,y+11.5,7,'normal',[180,30,30]);y+=18;}
   else if(protectionGap>0){
     CY(14);rc(M,y,W-2*M,12,[255,247,230],3);doc.setDrawColor(...COL.amber);doc.setLineWidth(0.5);doc.line(M,y,M,y+12);ln('Protection gap exists — review term cover adequacy with CA.',M+4,y+7,7,'normal',[146,64,14]);y+=16;}
-  else{CY(12);rc(M,y,W-2*M,10,[232,248,240],2);ln('Family is mathematically protected across debt + lifestyle obligations. ✓',M+4,y+7,7,'normal',[22,101,52]);y+=14;}
+  else{CY(12);rc(M,y,W-2*M,10,[232,248,240],2);ln('Family is mathematically protected across debt + lifestyle obligations.',M+4,y+7,7,'normal',[22,101,52]);y+=14;}
 
   // Unrealized gains
   CY(18);hl(y);y+=5;
@@ -14806,19 +14811,31 @@ if(d.goalMismatchPenalty>0){
   // ── Password encryption ────────────────────────────────────────
   const filename=`MoneyFi_Advisor_Brief_${priv?'Private':'Shareable'}_${today.replace(/ /g,'_')}.pdf`;
   if(pwEnabled){
-    if(!window.PDFLib){doc.save(filename);showToast('⚠️ Encryption library not ready — PDF saved without password.',4000);return;}
-    showToast('🔐 Encrypting PDF…',1500);
+    const _PDFLib = window.PDFLib || window.pdfLib;
+    if(!_PDFLib || !_PDFLib.PDFDocument){
+      doc.save(filename);
+      showToast('Encryption library not loaded — PDF saved without password. Try refreshing.',4000);
+      return;
+    }
+    showToast('Encrypting PDF...',2000);
     const pdfBytes=doc.output('arraybuffer');
-    window.PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true}).then(async pdfDoc=>{
+    _PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true}).then(async pdfDoc=>{
       const encBytes=await pdfDoc.save({
         userPassword:pw1,ownerPassword:pw1+'_owner_mfi_'+Date.now(),
         permissions:{printing:'highResolution',modifying:false,copying:false,annotating:true,fillingForms:true,contentAccessibility:true,documentAssembly:false},
         useObjectStreams:false,
       });
-      const blob=new Blob([encBytes],{type:'application/pdf'});const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
-      showToast('🔐 Encrypted PDF saved. Open in Chrome or Adobe Acrobat — macOS Preview bypasses PDF passwords.',5000);
-    }).catch(err=>{console.warn('[MoneyFi] PDF encryption failed:',err);doc.save(filename);showToast('⚠️ Encryption failed — unprotected PDF saved.',4000);});
+      const blob=new Blob([encBytes],{type:'application/pdf'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download=filename;
+      document.body.appendChild(a);a.click();
+      setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+      showToast('Encrypted PDF saved — open in Adobe Acrobat or Chrome.',5000);
+    }).catch(err=>{
+      console.warn('[MoneyFi] PDF encryption failed:',err);
+      doc.save(filename);
+      showToast('Encryption failed: '+err.message+' — unprotected PDF saved.',5000);
+    });
   } else {
     doc.save(filename);
     showToast('📄 Advisor PDF downloaded!',3000);
