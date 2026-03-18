@@ -13493,17 +13493,17 @@ async function _loadInterFonts() {
       for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
       return btoa(bin);
     };
-    // jsDelivr CDN — reliable CORS, ~50KB each (Latin subset WOFF)
-    const BASE = 'https://cdn.jsdelivr.net/npm/@fontsource/inter@5/files/';
+    // jsDelivr Fontsource CDN — correct URL pattern, reliable CORS
+    const BASE = 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/';
     const [regular, bold, italic] = await Promise.all([
-      toBase64(BASE + 'inter-latin-400-normal.woff'),
-      toBase64(BASE + 'inter-latin-700-normal.woff'),
-      toBase64(BASE + 'inter-latin-400-italic.woff'),
+      toBase64(BASE + 'latin-400-normal.woff'),
+      toBase64(BASE + 'latin-700-normal.woff'),
+      toBase64(BASE + 'latin-400-italic.woff'),
     ]);
     window._interFonts = { regular, bold, italic };
     return window._interFonts;
   } catch(e) {
-    console.warn('Inter font load failed — using Helvetica fallback:', e.message);
+    console.warn('%c⚠ Inter font failed — PDF using Helvetica fallback: ' + e.message, 'color:#D97706');
     return null;
   }
 }
@@ -13660,7 +13660,7 @@ async function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.26';  // single source — update here only
+  const APP_VER = 'v4.2.26b';  // single source — update here only
 
   // ── Load and register Inter font (premium fintech typeface) ──────────────
   let _PDF_FONT = 'helvetica';  // fallback
@@ -13678,7 +13678,7 @@ async function generateClarityPDF() {
       }
       _PDF_FONT = 'Inter';
       _fontsLoaded = true;
-      console.log('Inter font loaded for PDF ✓');
+      console.log('%c✓ Inter font loaded for PDF', 'color:#059669;font-weight:bold');
     }
   } catch(e) {
     console.warn('Font registration failed — using Helvetica:', e);
