@@ -13635,7 +13635,7 @@ function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.28';  // single source — update here only
+  const APP_VER = 'v4.2.29';  // single source — update here only
 
   // Font: Helvetica (jsPDF built-in) — premium feel via tight type scale
   const _F = 'helvetica';
@@ -14196,6 +14196,23 @@ function generateClarityPDF() {
     });
     y += PDF.SECT_SEP;
   }
+if(d.goalMismatchPenalty>0){
+    const mmTxt=`-${d.goalMismatchPenalty} pts: Some goals are linked to funds too volatile for their timeline. Switch to lower-risk fund categories before the next review.`;
+    const mmL=doc.splitTextToSize(mmTxt,W-2*M-14);
+    const mmH=Math.max(14,mmL.length*4.5+12);
+    // Ensure box doesn't collide with QR/signature area below
+    CY(mmH+8);
+    rc(M,y,W-2*M,mmH,[255,247,230],3);
+    doc.setDrawColor(...COL.amber);doc.setLineWidth(0.8);doc.line(M,y,M,y+mmH);
+    ln('! GOAL-HORIZON MISMATCH',M+4,y+6,7,'bold',[146,64,14]);
+    doc.setFontSize(6.5);doc.setFont(_F,'normal');doc.setTextColor(146,64,14);
+    doc.text(mmL,M+4,y+11);
+    y+=mmH+6;
+  }
+
+
+  // Signature + QR — keep together with CY guard
+  CY(55);
   ln('CA / Advisor Signature:',M,y,8,'normal',COL.gray);doc.setDrawColor(190,195,205);doc.setLineWidth(0.25);doc.line(M+48,y,W-M-58,y);ln('Date:',W-M-54,y,8,'normal',COL.gray);doc.line(W-M-38,y,W-M-28,y);y+=10;
   ln('Approved Actions:',M,y,8,'normal',COL.gray);y+=5;[0,1,2].forEach(()=>{doc.line(M,y,W-M-30,y);y+=6;});
 
@@ -14220,21 +14237,7 @@ function generateClarityPDF() {
     }
   }).catch(()=>{});
   y+=2;
-  if(d.goalMismatchPenalty>0){
-    const mmTxt=`-${d.goalMismatchPenalty} pts: Some goals are linked to funds too volatile for their timeline. Switch to lower-risk fund categories before the next review.`;
-    const mmL=doc.splitTextToSize(mmTxt,W-2*M-14);
-    const mmH=Math.max(14,mmL.length*4.5+12);
-    // Ensure box doesn't collide with QR/signature area below
-    CY(mmH+8);
-    rc(M,y,W-2*M,mmH,[255,247,230],3);
-    doc.setDrawColor(...COL.amber);doc.setLineWidth(0.8);doc.line(M,y,M,y+mmH);
-    ln('! GOAL-HORIZON MISMATCH',M+4,y+6,7,'bold',[146,64,14]);
-    doc.setFontSize(6.5);doc.setFont(_F,'normal');doc.setTextColor(146,64,14);
-    doc.text(mmL,M+4,y+11);
-    y+=mmH+6;
-  }
-
-  // ══════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
   // PAGE 5 — TAX & INSURANCE AUDIT
   // ══════════════════════════════════════════════════════════════
   _inCASection = false;
