@@ -5852,7 +5852,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         </div>
       </div>
 
-      <button onclick="generateClarityPDF().catch(e=>{console.error('PDF error:',e);showToast('PDF generation failed — try again',3000);})" style="width:100%;margin-top:16px;background:linear-gradient(135deg,#1E2A6E,#4F46E5);color:#fff;border:none;border-radius:14px;padding:14px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.9em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <button onclick="generateClarityPDF()" style="width:100%;margin-top:16px;background:linear-gradient(135deg,#1E2A6E,#4F46E5);color:#fff;border:none;border-radius:14px;padding:14px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.9em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
         <span>📄</span><span id="pdf-generate-label">Generate PDF</span>
       </button>
     </div>
@@ -13478,37 +13478,12 @@ function setPDFMode(mode) {
 }
 
 
-// ── Inter font cache — loaded once, reused across PDF generations ──────────
-window._interFonts = null;  // { regular: base64, bold: base64 } or null
+// ── PDF font — helvetica with premium layout styling ───────────────────────
+// Custom font embedding deferred to v5 (requires pre-converted base64 TTF)
+// Premium feel achieved through tight type scale + consistent spacing
+async function _loadInterFonts() { return null; }
 
-async function _loadInterFonts() {
-  if (window._interFonts) return window._interFonts; // cached
-  try {
-    const toBase64 = async (url) => {
-      const resp = await fetch(url, {mode:'cors'});
-      if (!resp.ok) throw new Error('Font fetch failed: ' + resp.status);
-      const buf  = await resp.arrayBuffer();
-      const arr  = new Uint8Array(buf);
-      let bin = '';
-      for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
-      return btoa(bin);
-    };
-    // Google Fonts static CDN — TTF format required by jsPDF (not WOFF)
-    // Inter v4 static TTF files — stable URLs, reliable CORS
-    const [regular, bold, italic] = await Promise.all([
-      toBase64('https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.ttf'),
-      toBase64('https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYAZ9hiA.ttf'),
-      toBase64('https://fonts.gstatic.com/s/inter/v13/UcCM3FwrK3iLTcvneQg7Ca725JhhKnNqk4j1ebLhAm8SrXTc2dphjZ-Ek-_EeA.ttf'),
-    ]);
-    window._interFonts = { regular, bold, italic };
-    return window._interFonts;
-  } catch(e) {
-    console.warn('%c⚠ Inter font failed — PDF using Helvetica fallback: ' + e.message, 'color:#D97706');
-    return null;
-  }
-}
-
-async function generateClarityPDF() {
+function generateClarityPDF() {
   const jsPDFLib = window.jspdf?.jsPDF;
   if (!jsPDFLib) { showToast('⏳ PDF library loading — try again in 2 seconds'); return; }
 
@@ -13521,10 +13496,6 @@ async function generateClarityPDF() {
     if (pw1 !== pw2) { showToast('⚠️ Passwords do not match', 2500); return; }
     if (pw1.length < 6) { showToast('⚠️ Password must be at least 6 characters', 2500); return; }
   }
-  // ── Pre-load Inter font BEFORE closing modal (so modal stays open if it fails) ──
-  showToast('📄 Preparing PDF…', 1500);
-  const _preloadedFonts = await _loadInterFonts();
-
   closeAdvisorPDFModal();
 
   // ── Gather all data ────────────────────────────────────────────
@@ -13664,32 +13635,10 @@ async function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.27';  // single source — update here only
+  const APP_VER = 'v4.2.28';  // single source — update here only
 
-  // ── Load and register Inter font (premium fintech typeface) ──────────────
-  let _PDF_FONT = 'helvetica';  // fallback
-  let _fontsLoaded = false;
-  try {
-    const fonts = _preloadedFonts;  // already fetched before modal closed
-    if (fonts && fonts.regular && fonts.bold) {
-      doc.addFileToVFS('Inter-Regular.ttf', fonts.regular);
-      doc.addFont('Inter-Regular.ttf', 'Inter', 'normal');
-      doc.addFileToVFS('Inter-Bold.ttf', fonts.bold);
-      doc.addFont('Inter-Bold.ttf', 'Inter', 'bold');
-      if (fonts.italic) {
-        doc.addFileToVFS('Inter-Italic.ttf', fonts.italic);
-        doc.addFont('Inter-Italic.ttf', 'Inter', 'italic');
-      }
-      _PDF_FONT = 'Inter';
-      _fontsLoaded = true;
-      console.log('%c✓ Inter font loaded for PDF', 'color:#059669;font-weight:bold');
-    }
-  } catch(e) {
-    console.warn('Font registration failed — using Helvetica fallback:', e.message || e);
-    // Non-fatal — PDF continues with Helvetica
-  }
-  // Shorthand: use _PDF_FONT everywhere instead of hardcoded 'helvetica'
-  const _F = _PDF_FONT;  // 'Inter' or 'helvetica'
+  // Font: Helvetica (jsPDF built-in) — premium feel via tight type scale
+  const _F = 'helvetica';
   let y=0;
   const fhsCol=fhsScore>=80?[34,197,94]:fhsScore>=65?[245,158,11]:fhsScore>=50?[249,115,22]:[239,68,68];
   const COL = {
