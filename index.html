@@ -13635,7 +13635,7 @@ function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.30';  // single source — update here only
+  const APP_VER = 'v4.2.31';  // single source — update here only
 
   // Font: Helvetica (jsPDF built-in) — premium feel via tight type scale
   const _F = 'helvetica';
@@ -14820,21 +14820,33 @@ if(d.goalMismatchPenalty>0){
     showToast('Encrypting PDF...',2000);
     const pdfBytes=doc.output('arraybuffer');
     _PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true}).then(async pdfDoc=>{
-      const encBytes=await pdfDoc.save({
-        userPassword:pw1,ownerPassword:pw1+'_owner_mfi_'+Date.now(),
-        permissions:{printing:'highResolution',modifying:false,copying:false,annotating:true,fillingForms:true,contentAccessibility:true,documentAssembly:false},
-        useObjectStreams:false,
+      // Correct pdf-lib API: call encrypt() on the document BEFORE save()
+      // NOT as options to save() — that's the common mistake
+      pdfDoc.encrypt({
+        userPassword: pw1,
+        ownerPassword: pw1 + '_owner_mfi_' + Date.now(),
+        permissions: {
+          printing: 'highResolution',
+          modifying: false,
+          copying: false,
+          annotating: true,
+          fillingForms: true,
+          contentAccessibility: true,
+          documentAssembly: false,
+        },
       });
-      const blob=new Blob([encBytes],{type:'application/pdf'});
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');a.href=url;a.download=filename;
-      document.body.appendChild(a);a.click();
-      setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
-      showToast('Encrypted PDF saved — open in Adobe Acrobat or Chrome.',5000);
+      const encBytes = await pdfDoc.save({ useObjectStreams: false });
+      const blob = new Blob([encBytes], {type:'application/pdf'});
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+      showToast('PDF encrypted and saved — open in Adobe Acrobat or Chrome PDF viewer.', 5000);
     }).catch(err=>{
-      console.warn('[MoneyFi] PDF encryption failed:',err);
+      console.warn('[MoneyFi] PDF encryption failed:', err);
       doc.save(filename);
-      showToast('Encryption failed: '+err.message+' — unprotected PDF saved.',5000);
+      showToast('Encryption failed (' + err.message + ') — saved without password.', 5000);
     });
   } else {
     doc.save(filename);
