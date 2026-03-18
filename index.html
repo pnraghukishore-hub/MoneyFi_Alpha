@@ -13493,12 +13493,12 @@ async function _loadInterFonts() {
       for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
       return btoa(bin);
     };
-    // jsDelivr Fontsource CDN — correct URL pattern, reliable CORS
-    const BASE = 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/';
+    // Google Fonts static CDN — TTF format required by jsPDF (not WOFF)
+    // Inter v4 static TTF files — stable URLs, reliable CORS
     const [regular, bold, italic] = await Promise.all([
-      toBase64(BASE + 'latin-400-normal.woff'),
-      toBase64(BASE + 'latin-700-normal.woff'),
-      toBase64(BASE + 'latin-400-italic.woff'),
+      toBase64('https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.ttf'),
+      toBase64('https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYAZ9hiA.ttf'),
+      toBase64('https://fonts.gstatic.com/s/inter/v13/UcCM3FwrK3iLTcvneQg7Ca725JhhKnNqk4j1ebLhAm8SrXTc2dphjZ-Ek-_EeA.ttf'),
     ]);
     window._interFonts = { regular, bold, italic };
     return window._interFonts;
@@ -13521,6 +13521,10 @@ async function generateClarityPDF() {
     if (pw1 !== pw2) { showToast('⚠️ Passwords do not match', 2500); return; }
     if (pw1.length < 6) { showToast('⚠️ Password must be at least 6 characters', 2500); return; }
   }
+  // ── Pre-load Inter font BEFORE closing modal (so modal stays open if it fails) ──
+  showToast('📄 Preparing PDF…', 1500);
+  const _preloadedFonts = await _loadInterFonts();
+
   closeAdvisorPDFModal();
 
   // ── Gather all data ────────────────────────────────────────────
@@ -13660,28 +13664,29 @@ async function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.26b';  // single source — update here only
+  const APP_VER = 'v4.2.27';  // single source — update here only
 
   // ── Load and register Inter font (premium fintech typeface) ──────────────
   let _PDF_FONT = 'helvetica';  // fallback
   let _fontsLoaded = false;
   try {
-    const fonts = await _loadInterFonts();
+    const fonts = _preloadedFonts;  // already fetched before modal closed
     if (fonts && fonts.regular && fonts.bold) {
-      doc.addFileToVFS('Inter-Regular.woff', fonts.regular);
-      doc.addFont('Inter-Regular.woff', 'Inter', 'normal');
-      doc.addFileToVFS('Inter-Bold.woff', fonts.bold);
-      doc.addFont('Inter-Bold.woff', 'Inter', 'bold');
+      doc.addFileToVFS('Inter-Regular.ttf', fonts.regular);
+      doc.addFont('Inter-Regular.ttf', 'Inter', 'normal');
+      doc.addFileToVFS('Inter-Bold.ttf', fonts.bold);
+      doc.addFont('Inter-Bold.ttf', 'Inter', 'bold');
       if (fonts.italic) {
-        doc.addFileToVFS('Inter-Italic.woff', fonts.italic);
-        doc.addFont('Inter-Italic.woff', 'Inter', 'italic');
+        doc.addFileToVFS('Inter-Italic.ttf', fonts.italic);
+        doc.addFont('Inter-Italic.ttf', 'Inter', 'italic');
       }
       _PDF_FONT = 'Inter';
       _fontsLoaded = true;
       console.log('%c✓ Inter font loaded for PDF', 'color:#059669;font-weight:bold');
     }
   } catch(e) {
-    console.warn('Font registration failed — using Helvetica:', e);
+    console.warn('Font registration failed — using Helvetica fallback:', e.message || e);
+    // Non-fatal — PDF continues with Helvetica
   }
   // Shorthand: use _PDF_FONT everywhere instead of hardcoded 'helvetica'
   const _F = _PDF_FONT;  // 'Inter' or 'helvetica'
