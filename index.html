@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MoneyFi v4.2.20 -->
+<!-- MoneyFi v4.2.21 -->
 <!-- -
   MoneyFi — Hi
 PORTFOLIO STRATEGY FRAMEWORKS (use as reference benchmarks — always cite source):
@@ -3319,6 +3319,11 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
             <div class="lab-card-title">📋 Consolidated Stock Ledger</div>
             <div class="lab-card-badge lab-badge-blue" id="eq-ledger-badge">—</div>
           </div>
+          <!-- Account filter chips -->
+          <div id="eq-account-filter-row" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"></div>
+          <!-- Last updated info -->
+          <div id="eq-last-updated" style="font-size:0.62em;font-weight:700;color:#9CA3AF;margin-bottom:8px;display:flex;align-items:center;gap:4px;"></div>
+          <!-- Sort buttons -->
           <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
             <button class="lab-sort-btn lab-sort-active" id="eqbtn-value"  onclick="sortEquityLedger('value')">💰 Value</button>
             <button class="lab-sort-btn" id="eqbtn-pnl"    onclick="sortEquityLedger('pnl')">📈 P&L</button>
@@ -12097,6 +12102,7 @@ let _roiSimRate      = 10;
 let _roiTimelineMode = 'invested';
 
 function switchInvTab(tab) {
+  if (tab !== 'equity') _eqAccountFilter = 'all'; // reset filter when leaving equity tab
   const fundsEl   = document.getElementById('inv-sub-funds');
   const sipEl     = document.getElementById('inv-sub-sip');
   const equityEl  = document.getElementById('inv-sub-equity');
@@ -16974,17 +16980,100 @@ function _saveEquitySector(normKey) {
   showToast('✅ Sector updated: ' + normKey + ' → ' + select.value);
 }
 
+// Track active account filter
+let _eqAccountFilter = 'all';
+
+function _eqSetAccountFilter(acctName) {
+  _eqAccountFilter = acctName;
+  // Update chip active states
+  document.querySelectorAll('.eq-acct-chip').forEach(c => {
+    c.style.background = c.dataset.acct === acctName ? '#1E2A6E' : '#F0F4FF';
+    c.style.color      = c.dataset.acct === acctName ? 'white'   : '#1E2A6E';
+  });
+  // Re-render body only
+  if (_equityLedgerData) {
+    _renderLedgerRows(_equityLedgerData, currentCurrency?.symbol || '₹', _equityLedgerSort || 'value');
+  }
+}
+
 function _renderUnifiedLedger(ledger, sym, sortBy) {
   _equityLedgerData = ledger;
   const body   = document.getElementById('eq-ledger-body');
   const badge  = document.getElementById('eq-ledger-badge');
   if (!body) return;
 
-  const { stocks, totalVal, accountCount } = ledger;
+  const { stocks, totalVal, accountCount, accounts } = ledger;
   badge.textContent = stocks.length + ' stocks · ' + accountCount + ' accounts';
 
+  // ── Build account filter chips ──
+  const filterRow = document.getElementById('eq-account-filter-row');
+  if (filterRow && accounts && accounts.length > 1) {
+    filterRow.innerHTML = [
+      `<button class="eq-acct-chip lab-sort-btn ${_eqAccountFilter==='all'?'lab-sort-active':''}"
+        data-acct="all"
+        style="background:${_eqAccountFilter==='all'?'#1E2A6E':'#F0F4FF'};color:${_eqAccountFilter==='all'?'white':'#1E2A6E'};font-size:0.68em;padding:4px 10px;"
+        onclick="_eqSetAccountFilter('all')">All Accounts</button>`,
+      ...accounts.map(a => {
+        const cnt   = stocks.filter(s => s.accounts.includes(a.name)).length;
+        const isOn  = _eqAccountFilter === a.name;
+        const date  = a.lastUpdated ? new Date(a.lastUpdated+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+        return `<button class="eq-acct-chip lab-sort-btn ${isOn?'lab-sort-active':''}"
+          data-acct="${a.name}"
+          style="background:${isOn?'#1E2A6E':'#F0F4FF'};color:${isOn?'white':'#1E2A6E'};font-size:0.68em;padding:4px 10px;"
+          onclick="_eqSetAccountFilter('${a.name.replace(/'/g,"\'")}')">
+          ${a.name.length > 18 ? a.name.slice(0,16)+'…' : a.name} <span style="opacity:0.7">(${cnt})</span>
+        </button>`;
+      })
+    ].join('');
+    filterRow.style.display = 'flex';
+  } else if (filterRow) {
+    filterRow.style.display = 'none';
+  }
+
+  // ── Last updated per account ──
+  const updEl = document.getElementById('eq-last-updated');
+  if (updEl && accounts && accounts.length > 0) {
+    const acctDates = accounts
+      .filter(a => a.lastUpdated)
+      .map(a => ({
+        name: a.name,
+        date: a.lastUpdated,
+        display: new Date(a.lastUpdated+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+      }))
+      .sort((a,b) => b.date.localeCompare(a.date));
+
+    if (acctDates.length > 0) {
+      const isStale = acctDates.some(d => {
+        const days = (Date.now() - new Date(d.date+'T00:00:00').getTime()) / 86400000;
+        return days > 7;
+      });
+      const staleIcon = isStale ? '⚠️' : '🟢';
+      const staleTip  = isStale ? 'Prices may be outdated — reimport for latest values' : 'Recently updated';
+      updEl.innerHTML = acctDates.map(d =>
+        `<span title="${staleTip}">${staleIcon} <strong>${d.name.length>15?d.name.slice(0,13)+'…':d.name}</strong>: prices as of ${d.display}</span>`
+      ).join('<span style="margin:0 4px;color:#E5E7EB;">·</span>');
+      updEl.style.display = 'flex';
+    } else {
+      updEl.innerHTML = '<span>📅 Import date not recorded — reimport to track freshness</span>';
+      updEl.style.display = 'flex';
+    }
+  }
+
+  _renderLedgerRows(ledger, sym, sortBy);
+}
+
+function _renderLedgerRows(ledger, sym, sortBy) {
+  const body = document.getElementById('eq-ledger-body');
+  if (!body) return;
+  const { stocks, totalVal, accounts } = ledger;
+
+  // Apply account filter
+  const filteredStocks = _eqAccountFilter === 'all'
+    ? stocks
+    : stocks.filter(s => s.accounts.includes(_eqAccountFilter));
+
   // Sort
-  const sorted = [...stocks].sort((a, b) => {
+  const sorted = [...filteredStocks].sort((a, b) => {
     if (sortBy === 'pnl')    return b.totalPnl - a.totalPnl;
     if (sortBy === 'sector') return (a.sector || '').localeCompare(b.sector || '');
     if (sortBy === 'name')   return a.symbol.localeCompare(b.symbol);
@@ -17001,6 +17090,12 @@ function _renderUnifiedLedger(ledger, sym, sortBy) {
     const dupeFlag = s.accounts.length > 1
       ? `<span style="font-size:0.58em;font-weight:800;background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;margin-left:4px;">${s.accounts.length} accounts</span>`
       : '';
+    // Account tag — show which account this stock is in (when filtered or single account)
+    const acctTag = _eqAccountFilter !== 'all'
+      ? ''
+      : s.accounts.length === 1
+        ? `<span style="font-size:0.56em;font-weight:700;background:#F0F4FF;color:#4B5563;border-radius:4px;padding:1px 5px;margin-left:3px;">${s.accounts[0].length>14?s.accounts[0].slice(0,12)+'…':s.accounts[0]}</span>`
+        : '';
     const costRoi  = s.totalCost > 0
       ? ((s.totalVal - s.totalCost) / s.totalCost * 100).toFixed(1)
       : null;
@@ -17020,7 +17115,7 @@ function _renderUnifiedLedger(ledger, sym, sortBy) {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
         <div style="min-width:0;flex:1;">
           <div style="font-size:0.82em;font-weight:900;color:#1E2A6E;display:flex;align-items:center;flex-wrap:wrap;gap:3px;">
-            ${s.symbol}${dupeFlag}
+            ${s.symbol}${dupeFlag}${acctTag}
           </div>
           <div style="font-size:0.62em;font-weight:700;color:#6B7280;margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
             <span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${sColor};flex-shrink:0;"></span>
