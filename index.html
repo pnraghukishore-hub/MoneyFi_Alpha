@@ -13785,8 +13785,19 @@ function generateClarityPDF() {
   // ── autoTable wrapper (falls back to manual rows if plugin not loaded) ─────
   const safeAutoTable = (opts) => {
     if(typeof doc.autoTable === 'function'){
-      doc.autoTable(opts);
-      y = doc.lastAutoTable.finalY + 6;
+      try {
+        doc.autoTable(opts);
+        y = (doc.lastAutoTable?.finalY || y) + 6;
+      } catch(atErr) {
+        console.warn('[MoneyFi] autoTable render error (using manual fallback):', atErr.message);
+        const headers = opts.head?.[0] || [];
+        const rows = opts.body || [];
+        const colW2 = (W-2*M)/Math.max(headers.length,1);
+        headers.forEach((h,i)=>ln(String(h),M+i*colW2,y,6,'bold',COL.gray));
+        y+=3; hl(y,[225,230,238]); y+=3;
+        rows.forEach(row=>{ CY(8); row.forEach((cell,i)=>ln(String(cell||'').substring(0,22),M+i*colW2,y,6.5,'normal',COL.navy)); y+=7; });
+        y+=4;
+      }
     } else {
       // Fallback: manual rows
       const headers = opts.head?.[0] || [];
@@ -14817,16 +14828,32 @@ if(d.goalMismatchPenalty>0){
   if(pwEnabled){
     // pdf-lib@1.17.1 via cdn.jsdelivr.net exports as window.PDFLib (capital L, capital D)
     const _PDFLib = window.PDFLib;
+    console.log('[MoneyFi] PDFLib check:', !!_PDFLib, !!_PDFLib?.PDFDocument, !!_PDFLib?.PDFDocument?.load);
     if(!_PDFLib || !_PDFLib.PDFDocument){
       doc.save(filename);
       showToast('⚠️ Encryption library not loaded — PDF saved without password. Please refresh and retry.',4000);
       return;
     }
     showToast('🔐 Encrypting PDF…',2000);
-    const pdfBytes=doc.output('arraybuffer');
+    let pdfBytes;
+    try {
+      pdfBytes = doc.output('arraybuffer');
+    } catch(outputErr) {
+      console.warn('[MoneyFi] doc.output failed:', outputErr);
+      showToast('⚠️ PDF build error — try again or disable password.', 4000);
+      return;
+    }
+    if (!pdfBytes || pdfBytes.byteLength < 100) {
+      doc.save(filename);
+      showToast('⚠️ PDF output invalid — saved without password.', 4000);
+      return;
+    }
     _PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true}).then(async pdfDoc=>{
-      // encrypt() must be awaited — returns a Promise in pdf-lib v1.17
-      await pdfDoc.encrypt({
+      // pdf-lib v1.17: encrypt() is synchronous, returns 'this'. Safe to await (no-op on non-Promise).
+      if (typeof pdfDoc.encrypt !== 'function') {
+        throw new Error('pdf-lib encrypt() not available — version mismatch');
+      }
+      pdfDoc.encrypt({
         userPassword: pw1,
         ownerPassword: pw1 + '_owner_mfi_' + Date.now(),
         permissions: {
