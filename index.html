@@ -35477,38 +35477,41 @@ const DISC_THEMES = [
     { id:'what_if_explainer',
       label:'What-If Simulator',
       nav:()=>{
-        goToScreen('roi');
+        // Navigate to FHS screen (where the What-If FAB lives under the hero card)
+        switchScreen('fhs', document.querySelectorAll('.nav-item')[4]);
         setTimeout(()=>{
           try { openWhatIf(); } catch(e) {}
+          // Wait for screen switch (~300ms) + sheet slide-up animation (~320ms) + render buffer
           setTimeout(()=>{
-            const sheet = document.getElementById('wi-sheet');
             const title = document.querySelector('.wi-title');
-            if (title) setTimeout(()=>_discSpotlight(title,
-              'The What-If Simulator lets you model life changes — increase savings, cut expenses, plan a career switch, or stress-test a market crash — and instantly see how your Financial Health Score would shift. Tap the Variables tab to move sliders, or Scenarios for pre-built life events.',
-              'What-If Simulator'), 400);
-          }, 400);
-        }, 350);
+            if (title) _discSpotlight(title,
+              'The What-If Simulator lets you model life changes — increase savings, cut expenses, plan a career switch, or stress-test a market crash — and see instantly how your Financial Health Score shifts. Use the Variables tab to move sliders, or pick a pre-built life Scenario.',
+              'What-If Simulator');
+          }, 750);
+        }, 300);
       },
-      spot:'#wi-sheet', tip:'What-If Simulator — model life changes and see their impact on your FHS score in real time.' },
+      spot:'.wi-fab', tip:'What-If Simulator — model life changes and see their real-time impact on your FHS score.' },
 
     { id:'what_if_save_goal',
       label:'Save Simulation as Goal',
       nav:()=>{
-        goToScreen('roi');
+        // Navigate to FHS screen first, open the sheet, then switch to Scenarios tab
+        switchScreen('fhs', document.querySelectorAll('.nav-item')[4]);
         setTimeout(()=>{
           try { openWhatIf(); } catch(e) {}
           setTimeout(()=>{
             wiSetTab('scenarios');
+            // Wait for tab switch + sheet fully open, then spotlight the Save as Goal button
             setTimeout(()=>{
               const goalBtn = document.getElementById('wi-goal-btn');
-              if (goalBtn) setTimeout(()=>_discSpotlight(goalBtn,
-                'After running any simulation, tap "Save as Goal" to turn it into a real Goal in your Goals tab. MoneyFi will track your progress, link it to accounts, and calculate how funded you are over time.',
-                'Save Simulation as Goal'), 400);
-            }, 300);
-          }, 400);
-        }, 350);
+              if (goalBtn) _discSpotlight(goalBtn,
+                'After running any simulation, tap Save as Goal to turn it into a tracked Goal. It appears in your Goals tab — with target amount, timeline, and funding progress linked to your accounts.',
+                'Save Simulation as Goal');
+            }, 400);
+          }, 750);
+        }, 300);
       },
-      spot:'#wi-goal-btn', tip:'Run a What-If simulation, then tap Save as Goal — it lands in your Goals tab with funding tracked automatically.' },
+      spot:'#wi-goal-btn', tip:'Run a What-If simulation then Save as Goal — it lands in Goals tab with funding tracked automatically.' },
 
     { id:'fhs_edit_profile',   label:'Edit FHS Profile', nav:()=>{ switchScreen('fhs',document.querySelectorAll('.nav-item')[4]); setTimeout(()=>openFHSOnboard(),400); }, spot:'#screen-fhs', tip:'Keep your profile updated — age, income, family size affect your FHS scores.' },
     { id:'goals_active_tab',   label:'Active Goals',     nav:()=>{ switchScreen('budget',document.querySelectorAll('.nav-item')[2]); setTimeout(()=>{ setBudgetTab('goals',null); setTimeout(()=>setGoalsTab('active'),300); },300); }, spot:'#screen-budget', tip:'Active goals show funded %, SIP needed, and time to target.' },
