@@ -2593,7 +2593,15 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     return out;
   }
 
-  function md5(b){
+  function md5b(arr){
+    // Correct bytes-in, bytes-out MD5 (verified against test vectors)
+    var b=Array.from(arr),byteLen=b.length,words=[];
+    for(var i=0;i<b.length;i++) words[i>>2]=(words[i>>2]||0)|(b[i]<<((i&3)*8));
+    var bitLen=byteLen*8;
+    words[byteLen>>2]=(words[byteLen>>2]||0)|(0x80<<((byteLen&3)*8));
+    var padLen=((byteLen+8)>>>6)*16+14;
+    while(words.length<padLen+2)words.push(0);
+    words[padLen]=bitLen>>>0;words[padLen+1]=Math.floor(bitLen/0x100000000);
     function add(x,y){var l=(x&0xffff)+(y&0xffff);return(((x>>16)+(y>>16)+(l>>16))<<16)|(l&0xffff);}
     function rol(n,c){return(n<<c)|(n>>>(32-c));}
     function cmn(q,a,b,x,s,t){return add(rol(add(add(a,q),add(x,t)),s),b);}
@@ -2601,12 +2609,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     function gg(a,b,c,d,x,s,t){return cmn((b&d)|(c&~d),a,b,x,s,t);}
     function hh(a,b,c,d,x,s,t){return cmn(b^c^d,a,b,x,s,t);}
     function ii(a,b,c,d,x,s,t){return cmn(c^(b|~d),a,b,x,s,t);}
-    var bs=8*b.length;b.push(0x80);
-    while(b.length%16!==14)b.push(0);
-    b.push(bs&0xffffffff);b.push(Math.floor(bs/0x100000000));
     var a=0x67452301,bv=0xefcdab89,c=0x98badcfe,d=0x10325476;
-    for(var i=0;i<b.length;i+=16){
-      var oa=a,ob=bv,oc=c,od=d,x=b.slice(i,i+16);
+    for(var i=0;i<words.length;i+=16){
+      var oa=a,ob=bv,oc=c,od=d,x=words.slice(i,i+16);
+      while(x.length<16)x.push(0);
       a=ff(a,bv,c,d,x[0],7,-680876936);d=ff(d,a,bv,c,x[1],12,-389564586);c=ff(c,d,a,bv,x[2],17,606105819);bv=ff(bv,c,d,a,x[3],22,-1044525330);
       a=ff(a,bv,c,d,x[4],7,-176418897);d=ff(d,a,bv,c,x[5],12,1200080426);c=ff(c,d,a,bv,x[6],17,-1473231341);bv=ff(bv,c,d,a,x[7],22,-45705983);
       a=ff(a,bv,c,d,x[8],7,1770035416);d=ff(d,a,bv,c,x[9],12,-1958414417);c=ff(c,d,a,bv,x[10],17,-42063);bv=ff(bv,c,d,a,x[11],22,-1990404162);
@@ -2629,13 +2635,6 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     [a,bv,c,d].forEach(function(v,k){out[k*4]=v&255;out[k*4+1]=(v>>8)&255;out[k*4+2]=(v>>16)&255;out[k*4+3]=(v>>24)&255;});
     return out;
   }
-
-  function md5b(arr){
-    var words=[],i;
-    for(i=0;i<arr.length;i++)words[i>>2]|=arr[i]<<((i%4)*8);
-    return md5(words);
-  }
-
   var PAD=new Uint8Array([40,191,78,94,78,117,138,65,100,0,78,86,255,250,1,8,46,46,0,182,208,104,62,128,47,12,169,254,100,83,105,122]);
 
   function padPw(pw){
@@ -13862,7 +13861,7 @@ function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.39';  // single source — update here only
+  const APP_VER = 'v4.2.40';  // single source — update here only
 
   // Font: Helvetica (jsPDF built-in) — premium feel via tight type scale
   const _F = 'helvetica';
