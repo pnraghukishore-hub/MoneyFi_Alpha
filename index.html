@@ -2654,19 +2654,43 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   }
 
   function computeEncKey(uPw,O,perms,fid){
-    var buf=new Uint8Array(32+32+4+fid.length);
-    buf.set(padPw(uPw),0);buf.set(O,32);
-    buf[64]=perms&255;buf[65]=(perms>>8)&255;buf[66]=(perms>>16)&255;buf[67]=(perms>>24)&255;
-    buf.set(fid,68);
-    var digest=md5b(buf);
-    for(var i=0;i<50;i++)digest=md5b(digest);
-    return digest;
+    // PDF spec §3.5.2 Algorithm 2 — compute 128-bit encryption key
+    // Input: padded user pw (32) + O entry (32) + perms as LE int32 (4) + file ID (16)
+    var pw32=padPw(uPw);
+    var words=[], i, v;
+    // pad password (32 bytes)
+    for(i=0;i<32;i++) words[i>>2]|=pw32[i]<<((i%4)*8);
+    // O entry (32 bytes)  
+    for(i=0;i<32;i++) words[(32+i)>>2]|=O[i]<<(((32+i)%4)*8);
+    // permissions as little-endian int32
+    words[16]=(perms&0xffffffff);
+    // file ID first element (16 bytes)
+    for(i=0;i<Math.min(fid.length,16);i++) words[(68+i)>>2]|=fid[i]<<(((68+i)%4)*8);
+    // MD5 of concatenation
+    var bArr=new Uint8Array((32+32+4+16));
+    bArr.set(pw32,0);bArr.set(O,32);
+    v=perms|0;
+    bArr[64]=v&255;bArr[65]=(v>>8)&255;bArr[66]=(v>>16)&255;bArr[67]=(v>>24)&255;
+    bArr.set(fid.slice(0,16),68);
+    var digest=md5b(bArr);
+    // 50 rounds of MD5 on first 16 bytes (keylength=16 for RC4-128)
+    for(i=0;i<50;i++)digest=md5b(digest);
+    return digest.slice(0,16);
   }
 
-  function computeU(ek){
-    var result=rc4(ek,PAD);
-    for(var i=1;i<=19;i++){var k=ek.map(function(b){return b^i;});result=rc4(k,result);}
-    var U=new Uint8Array(32);U.set(result.slice(0,16));return U;
+  function computeU(ek, fid){
+    // PDF spec §3.5.2 Algorithm 4 — Revision 3
+    // Step 1: MD5 of (standard padding + first 16 bytes of file ID)
+    var padWords=[], i;
+    for(i=0;i<PAD.length;i++) padWords[i>>2]|=PAD[i]<<((i%4)*8);
+    for(i=0;i<Math.min(fid.length,16);i++) padWords[(PAD.length+i)>>2]|=fid[i]<<(((PAD.length+i)%4)*8);
+    var digest=md5(padWords.slice());
+    // Step 2: RC4 encrypt digest with encryption key
+    var result=rc4(ek,digest);
+    // Step 3: 19 additional RC4 passes with key XOR'd with pass number
+    for(i=1;i<=19;i++){var k=ek.map(function(b){return b^i;});result=rc4(k,result);}
+    // Step 4: pad to 32 bytes
+    var U=new Uint8Array(32);U.set(result);return U;
   }
 
   function toHex(arr){return Array.from(arr).map(function(b){return('0'+b.toString(16)).slice(-2);}).join('');}
@@ -2680,14 +2704,16 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     crypto.getRandomValues(fid);
     var fidHex=toHex(fid);
 
-    // Permissions: allow printing, deny modification/copying
-    var perms=0xFFFFFF00|0xC0|0x04; // bits 3,7,8 set = print allowed
-    perms=perms|(-4&0xFFFFFFFF);    // standard protection flags
+    // PDF spec §3.5.2 Table 3.20 — Permission flags
+    // Bits 1-2: reserved (must be 0), Bits 3-32: permissions
+    // -4 = 0xFFFFFFFC = all bits 1 except bits 1,2 = standard restricted
+    // Add bit 3 (print), bit 12 (print high-res) = -4|4|2048 = -3948
+    var perms = -3948; // allow printing, deny copy/modify/extract
 
     // Compute security handler values
     var O=computeO(userPw,ownerPw);
     var ek=computeEncKey(userPw,O,perms,fid);
-    var U=computeU(ek);
+    var U=computeU(ek,fid);
 
     var oHex=toHex(O),uHex=toHex(U);
     var permStr=String(perms|0); // signed 32-bit
@@ -13824,7 +13850,7 @@ function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.36';  // single source — update here only
+  const APP_VER = 'v4.2.37';  // single source — update here only
 
   // Font: Helvetica (jsPDF built-in) — premium feel via tight type scale
   const _F = 'helvetica';
