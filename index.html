@@ -5540,6 +5540,12 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
 
 
+
+<!-- ══ IMPORT FOOTER DISCLAIMER ══ -->
+<div style="margin:8px 0 24px;padding:12px 14px;background:#FFFBEA;border:1.5px solid #FCD34D;border-radius:12px;font-size:0.73em;line-height:1.6;color:#78350F;">
+  <span style="font-weight:900;color:#92400E;">📋 Parser Availability — </span>Dedicated parsers (CAS · Zerodha · EPF · Fidelity · Schwab · Robinhood · SMS) are available for <strong>🇮🇳 India</strong> and <strong>🇺🇸 US</strong> users only. For other regions, use the <strong>Bank/CSV</strong> or <strong>Transactions</strong> tab to upload your Income, Expenses, and Investments.
+</div>
+
 <!-- ══ MODALS ══ -->
 <div class="modal-overlay" id="add-account-modal">
   <div class="modal">
@@ -24581,10 +24587,6 @@ function renderImportTabs() {
           <option value="US" ${selectedRegion==='US'?'selected':''}>🇺🇸 United States (Fidelity · Schwab)</option>
           <option value="BOTH" ${selectedRegion==='BOTH'?'selected':''}>🌐 Multi-country (show all)</option>
         </select>
-      <div style="margin-top:8px;padding:10px 13px;background:#FFFBEA;border:1.5px solid #FCD34D;border-radius:12px;font-size:0.75em;line-height:1.55;">
-        <div style="font-weight:900;color:#92400E;margin-bottom:3px;">📋 Parser Availability</div>
-        <div style="color:#78350F;font-weight:600;">Dedicated parsers (CAS · Zerodha · EPF · Fidelity · Schwab · Robinhood · SMS) are available for <strong>🇮🇳 India</strong> and <strong>🇺🇸 US</strong> users only. For other regions, use the <strong>Bank/CSV</strong> or <strong>Transactions</strong> tab to upload your Income, Expenses, and Investments.</div>
-      </div>
       </div>`;
   }
 
