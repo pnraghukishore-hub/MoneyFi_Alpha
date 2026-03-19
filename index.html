@@ -3188,6 +3188,8 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   </div>
 
   <div class="lab-body">
+  <!-- Lab module disclaimer -->
+  <div id="lab-disclaimer-bar" style="margin:0 0 12px;padding:9px 13px;background:#FFFBEA;border:1.5px solid #FCD34D;border-radius:10px;font-size:0.72em;line-height:1.5;color:#78350F;"><span style="font-weight:900;">⚠️ Experimental Module — </span>Projections are illustrative and based on assumed rates. Please consult a qualified financial advisor before finalising any investment or retirement decision.</div>
 
     <!-- ══ OVERVIEW TAB ══ -->
     <div id="roi-panel-story">
@@ -5657,6 +5659,9 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 <!-- ── FHS SCREEN ── -->
 <div class="screen" id="screen-fhs">
   <div style="padding:14px 14px 90px;" id="fhs-root">
+  <!-- FHS disclaimer -->
+  <div style="margin:0 0 14px;padding:9px 13px;background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;font-size:0.72em;line-height:1.5;color:#1E40AF;"><span style="font-weight:900;">ℹ️ Advisory — </span>Your Financial Health Score is based on the data you've entered and public financial frameworks. It is for awareness and education only. Please consult a SEBI-registered investment advisor (RIA) or CFP before making financial decisions.</div>
+
     <!-- Content rendered by renderFHS() -->
     <div style="text-align:center;padding:60px 20px;color:var(--text-light);font-weight:700;">Loading Financial Health Score…</div>
   </div>
@@ -18281,7 +18286,7 @@ function onRetireRealToggle() {
   const wrap  = document.getElementById('retire-inflation-slider-wrap');
   if (track) track.style.background = window._showRealValue ? '#059669' : '#D1D5DB';
   if (thumb) thumb.style.left = window._showRealValue ? '21px' : '3px';
-  if (badge) badge.textContent = window._showRealValue ? 'Real ₹' : 'Nominal';
+  if (badge) badge.textContent = window._showRealValue ? `Real ${currentCurrency?.symbol || '₹'}` : 'Nominal';
   if (wrap)  wrap.style.display = window._showRealValue ? '' : 'none';
   _syncRetireInflationLabel();
   renderROIRetireSummary();
@@ -18342,12 +18347,18 @@ function renderROIRetireSummary() {
   const projDisplay = _retireRealAdj(projected, yearsLeft);
   const totalInvAll = (data._nwAccounts||[]).reduce((s,a) => s + (nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0)), 0);
   const retirePct = totalInvAll > 0 ? (totalRet / totalInvAll * 100) : 0;
-  const realNote = window._showRealValue ? ` <span style="font-size:.75em;color:#059669;">(today's ₹)</span>` : '';
+  const _inflSym = currentCurrency?.symbol || '₹';
+  const realNote = window._showRealValue
+    ? ` <span style="font-size:.75em;color:#059669;">(today's ${_inflSym}, inflation-adjusted)</span>`
+    : '';
 
   el.innerHTML = `<div class="lab-retire-hero">
     <div class="lab-retire-eyebrow">RETIREMENT CORPUS TODAY</div>
     <div class="lab-retire-corpus">${sym}${Math.round(totalRet).toLocaleString()}</div>
-    <div class="lab-retire-proj">→ Grows to <b>${sym}${Math.round(projDisplay).toLocaleString()}</b>${realNote} by age ${retAge} at ${r}% p.a.</div>
+    <div class="lab-retire-proj">${window._showRealValue
+      ? `→ Value in today\'s money: <b>${sym}${Math.round(projDisplay).toLocaleString()}</b> by age ${retAge} ${realNote}`
+      : `→ Grows to <b>${sym}${Math.round(projDisplay).toLocaleString()}</b> by age ${retAge} at ${r}% p.a.`
+    }</div>
     <div class="lab-retire-sub">${retAccs.length} retirement account${retAccs.length!==1?'s':''} · ${yearsLeft}y to retirement · ${retirePct.toFixed(0)}% of total portfolio</div>
   </div>`;
 }
