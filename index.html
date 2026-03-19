@@ -13483,6 +13483,179 @@ function setPDFMode(mode) {
 // Premium feel achieved through tight type scale + consistent spacing
 async function _loadInterFonts() { return null; }
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// PDF RC4-128 ENCRYPTION ENGINE — Pure JS (PDF Spec 1.7 §3.5, Rev 3)
+// pdf-lib v1.17.1 has no encrypt() — this replaces it with a native impl.
+// Standard Security Handler V=2 R=3 128-bit, designed for jsPDF output.
+// ════════════════════════════════════════════════════════════════════════════
+function _pdfRC4Encrypt(pdfBuffer, userPwd, ownerPwd) {
+
+  // ── MD5 (RFC 1321) ──────────────────────────────────────────────────────
+  function md5(u8) {
+    const add=(a,b)=>(a+b)>>>0, rol=(v,n)=>(v<<n)|(v>>>(32-n));
+    const m=[...u8]; m.push(0x80);
+    while(m.length%64!==56) m.push(0);
+    for(let i=0,L=u8.length*8;i<8;i++) m.push((L>>>(i*8))&255);
+    const T=Array.from({length:64},(_,i)=>(Math.abs(Math.sin(i+1))*2**32)>>>0);
+    const R=[7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
+    let a=0x67452301,b=0xEFCDAB89,c=0x98BADCFE,d=0x10325476;
+    for(let i=0;i<m.length;i+=64){
+      const W=Array.from({length:16},(_,j)=>m[i+j*4]|(m[i+j*4+1]<<8)|(m[i+j*4+2]<<16)|(m[i+j*4+3]<<24));
+      let[A,B,C,D]=[a,b,c,d];
+      for(let j=0;j<64;j++){
+        let f,g;
+        if(j<16){f=(B&C)|(~B&D);g=j;}else if(j<32){f=(D&B)|(~D&C);g=(5*j+1)%16;}
+        else if(j<48){f=B^C^D;g=(3*j+5)%16;}else{f=C^(B|~D);g=7*j%16;}
+        f=add(add(add(A,f),T[j]),W[g]);A=D;D=C;C=B;B=add(B,rol(f,R[j]));
+      }
+      a=add(a,A);b=add(b,B);c=add(c,C);d=add(d,D);
+    }
+    const o=new Uint8Array(16);
+    [a,b,c,d].forEach((v,i)=>{o[i*4]=v&255;o[i*4+1]=(v>>8)&255;o[i*4+2]=(v>>16)&255;o[i*4+3]=(v>>24)&255;});
+    return o;
+  }
+
+  // ── RC4 cipher ──────────────────────────────────────────────────────────
+  function rc4(key,data){
+    const S=Uint8Array.from({length:256},(_,i)=>i);
+    for(let i=0,j=0;i<256;i++){j=(j+S[i]+key[i%key.length])&255;[S[i],S[j]]=[S[j],S[i]];}
+    const o=new Uint8Array(data.length);
+    for(let i=0,x=0,y=0;i<data.length;i++){x=(x+1)&255;y=(y+S[x])&255;[S[x],S[y]]=[S[y],S[x]];o[i]=data[i]^S[(S[x]+S[y])&255];}
+    return o;
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  const PAD=new Uint8Array([0x28,0xBF,0x4E,0x5E,0x4E,0x75,0x8A,0x41,0x64,0x00,0x4E,0x56,0xFF,0xFA,0x01,0x08,0x2E,0x2E,0x00,0xB6,0xD0,0x68,0x3E,0x80,0x2F,0x0C,0xA9,0xFE,0x64,0x53,0x69,0x7A]);
+  const padP=s=>{const b=new TextEncoder().encode(s||'').subarray(0,32),r=new Uint8Array(32);r.set(b);for(let i=b.length;i<32;i++)r[i]=PAD[i-b.length];return r;};
+  const b2h=a=>[...a].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+  const h2b=s=>new Uint8Array((s.match(/../g)||[]).map(h=>parseInt(h,16)));
+
+  // ── Key derivation (PDF §3.5.2 Algorithms 3.2, 3.3, 3.5) ───────────────
+  const n=16; // 128-bit key
+  const PERM=-3904; // 0xFFFFF0C0: required bits + allow print, restrict rest
+  const permB=new Uint8Array(4);
+  permB[0]=PERM&255; permB[1]=(PERM>>8)&255; permB[2]=(PERM>>16)&255; permB[3]=(PERM>>24)&255;
+
+  // Decode PDF as latin1 (binary-safe: byte N → char code N, round-trips perfectly)
+  const srcBytes=new Uint8Array(pdfBuffer);
+  const s=[...srcBytes].map(b=>String.fromCharCode(b)).join('');
+
+  // File ID from trailer (or generate random 16 bytes)
+  const idM=s.match(/\/ID\s*\[\s*<([0-9A-Fa-f]+)>/i);
+  const fidHex=idM?idM[1].slice(0,32).padEnd(32,'0'):[...crypto.getRandomValues(new Uint8Array(16))].map(v=>v.toString(16).padStart(2,'0')).join('');
+  const fid=h2b(fidHex);
+
+  // Alg 3.3: compute /O (owner password hash)
+  function mkO(op,up){let k=md5(padP(op)).slice(0,n);for(let i=0;i<50;i++)k=md5(k).slice(0,n);let v=padP(up);for(let i=0;i<=19;i++)v=rc4(k.map(b=>b^i),v);return v;}
+
+  // Alg 3.2: compute encryption key
+  function mkEK(up,O){const buf=new Uint8Array(68+fid.length);buf.set(padP(up));buf.set(O,32);buf.set(permB,64);buf.set(fid,68);let k=md5(buf).slice(0,n);for(let i=0;i<50;i++)k=md5(k).slice(0,n);return k;}
+
+  // Alg 3.5: compute /U (user password hash, revision 3)
+  function mkU(ek){let h=md5(new Uint8Array([...PAD,...fid]));for(let i=0;i<=19;i++)h=rc4(ek.map(b=>b^i),h);const U=new Uint8Array(32);U.set(h);return U;}
+
+  // Per-object RC4 key: MD5(encKey + objNum[3] + genNum[2]), truncated to 16 bytes
+  function oKey(ek,num,gen){const b=new Uint8Array(ek.length+5);b.set(ek);b[ek.length]=num&255;b[ek.length+1]=(num>>8)&255;b[ek.length+2]=(num>>16)&255;b[ek.length+3]=gen&255;b[ek.length+4]=(gen>>8)&255;return md5(b).slice(0,Math.min(ek.length+5,16));}
+
+  const O=mkO(ownerPwd,userPwd);
+  const ek=mkEK(userPwd,O);
+  const U=mkU(ek);
+
+  // ── Parse PDF objects (/Length-aware — handles binary streams correctly) ─
+  function parseObjs(s){
+    const list=[],hRe=/(\d+)\s+(\d+)\s+obj\b/g;let m;
+    while((m=hRe.exec(s))!==null){
+      const num=parseInt(m[1]),gen=parseInt(m[2]),bStart=m.index+m[0].length;
+      const chunk=s.slice(bStart,bStart+131072); // 128KB window per object
+      const endobjM=chunk.match(/\bendobj\b/);
+      if(!endobjM){hRe.lastIndex=bStart+1;continue;}
+      const objBody=chunk.slice(0,endobjM.index);
+      const streamM=objBody.match(/\bstream(\r\n|\n)/);
+      if(streamM){
+        const dictStr=objBody.slice(0,streamM.index),eol=streamM[1];
+        const sAbsStart=bStart+streamM.index+streamM[0].length;
+        const lenM=dictStr.match(/\/Length\s+(\d+)/);
+        const sLen=lenM?parseInt(lenM[1]):0;
+        list.push({num,gen,dictStr,eol,sAbsStart,sLen,hasStream:true});
+        hRe.lastIndex=bStart+endobjM.index+endobjM[0].length;
+      } else {
+        list.push({num,gen,bodyStr:objBody,hasStream:false});
+        hRe.lastIndex=bStart+endobjM.index+endobjM[0].length;
+      }
+    }
+    return list;
+  }
+
+  // Encrypt all PDF strings (literal + hex) in a dict/body with per-object key
+  function encStrs(str,k){
+    let r='',i=0;
+    while(i<str.length){
+      if(str[i]==='('){
+        // Literal string: decode escapes → encrypt bytes → output as <hexhex>
+        let depth=1,j=i+1,raw='';
+        while(j<str.length&&depth>0){
+          if(str[j]==='\\'){raw+=str[j]+str[j+1];j+=2;}
+          else if(str[j]==='('){depth++;raw+=str[j++];}
+          else if(str[j]===')'){depth--;if(depth>0)raw+=str[j];j++;}
+          else raw+=str[j++];
+        }
+        const dec=raw.replace(/\\([0-7]{1,3})/g,(_,o)=>String.fromCharCode(parseInt(o,8)))
+                     .replace(/\\n/g,'\n').replace(/\\r/g,'\r').replace(/\\t/g,'\t').replace(/\\(.)/g,'$1');
+        r+='<'+b2h(rc4(k,new Uint8Array([...dec].map(c=>c.charCodeAt(0)))))+'>';
+        i=j;
+      } else if(str[i]==='<'&&str[i+1]!=='<'&&str[i+1]!=='>'){
+        // Hex string: decode → encrypt → output as <hexhex>
+        const e=str.indexOf('>',i+1);
+        if(e>i){const hex=str.slice(i+1,e).replace(/\s/g,'');r+='<'+b2h(rc4(k,h2b(hex.length%2?hex+'0':hex)))+'>';i=e+1;}
+        else r+=str[i++];
+      } else r+=str[i++];
+    }
+    return r;
+  }
+
+  // ── Rebuild PDF with all content encrypted ──────────────────────────────
+  const objs=parseObjs(s);
+  if(!objs.length) throw new Error('PDF parse failed — no objects found');
+  const encObjNum=Math.max(...objs.map(o=>o.num))+1;
+
+  let body='%PDF-1.6\n%\xE2\xE3\xCF\xD3\n'; // PDF 1.6 supports V=2 R=3 128-bit RC4
+  const offs=new Map();
+
+  for(const obj of objs){
+    offs.set(obj.num,body.length);
+    const k=oKey(ek,obj.num,obj.gen);
+    if(obj.hasStream){
+      const sd=srcBytes.subarray(obj.sAbsStart,obj.sAbsStart+obj.sLen);
+      const encSd=rc4(k,sd);
+      const encSdStr=[...encSd].map(b=>String.fromCharCode(b)).join('');
+      body+=`${obj.num} ${obj.gen} obj\n${encStrs(obj.dictStr,k)}stream${obj.eol}${encSdStr}\nendstream\nendobj\n`;
+    } else {
+      body+=`${obj.num} ${obj.gen} obj\n${encStrs(obj.bodyStr,k)}endobj\n`;
+    }
+  }
+
+  // /Encrypt dict is NOT itself encrypted (PDF spec requirement)
+  offs.set(encObjNum,body.length);
+  body+=`${encObjNum} 0 obj\n<< /Filter /Standard /V 2 /R 3 /Length 128 /P ${PERM} /O <${b2h(O)}> /U <${b2h(U)}> >>\nendobj\n`;
+
+  // Xref table — each entry is exactly 20 bytes: nnnnnnnnnn ggggg n \n
+  const xrefOff=body.length;
+  const maxN=Math.max(...offs.keys());
+  let xref=`xref\n0 ${maxN+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<=maxN;i++)
+    xref+=offs.has(i)?`${String(offs.get(i)).padStart(10,'0')} 00000 n \n`:`0000000000 00000 f \n`;
+  body+=xref;
+
+  // Trailer with /Encrypt reference and /ID
+  const rootM=s.match(/\/Root\s+(\d+)\s+(\d+)\s+R/);
+  const infoM=s.match(/\/Info\s+(\d+)\s+(\d+)\s+R/);
+  body+=`trailer\n<< /Size ${maxN+1} /Root ${rootM?rootM[1]+' '+rootM[2]+' R':'1 0 R'} ${infoM?'/Info '+infoM[1]+' '+infoM[2]+' R ':''}/Encrypt ${encObjNum} 0 R /ID [<${fidHex}><${fidHex}>] >>\nstartxref\n${xrefOff}\n%%EOF\n`;
+
+  // Convert latin1 JS string back to byte buffer (charCodeAt gives exact byte values 0-255)
+  return new Uint8Array([...body].map(c=>c.charCodeAt(0))).buffer;
+}
+
 function generateClarityPDF() {
   const jsPDFLib = window.jspdf?.jsPDF;
   if (!jsPDFLib) {
@@ -14823,65 +14996,35 @@ if(d.goalMismatchPenalty>0){
     if(pwEnabled){doc.setFontSize(5);doc.setTextColor(...COL.yellow);doc.text('🔐 Password protected',W-M,290,{align:'right'});}
   }
 
-  // ── Password encryption ────────────────────────────────────────
+  // ── Password encryption (Pure JS RC4-128 — PDF Spec 1.7 §3.5) ──────────
   const filename=`MoneyFi_Advisor_Brief_${priv?'Private':'Shareable'}_${today.replace(/ /g,'_')}.pdf`;
   if(pwEnabled){
-    // pdf-lib@1.17.1 via cdn.jsdelivr.net exports as window.PDFLib (capital L, capital D)
-    const _PDFLib = window.PDFLib;
-    console.log('[MoneyFi] PDFLib check:', !!_PDFLib, !!_PDFLib?.PDFDocument, !!_PDFLib?.PDFDocument?.load);
-    if(!_PDFLib || !_PDFLib.PDFDocument){
-      doc.save(filename);
-      showToast('⚠️ Encryption library not loaded — PDF saved without password. Please refresh and retry.',4000);
-      return;
-    }
-    showToast('🔐 Encrypting PDF…',2000);
-    let pdfBytes;
+    showToast('🔐 Encrypting PDF…', 2000);
+    let rawBytes;
     try {
-      pdfBytes = doc.output('arraybuffer');
-    } catch(outputErr) {
-      console.warn('[MoneyFi] doc.output failed:', outputErr);
-      showToast('⚠️ PDF build error — try again or disable password.', 4000);
-      return;
+      rawBytes = doc.output('arraybuffer');
+    } catch(e) {
+      console.warn('[MoneyFi] doc.output error:', e);
+      showToast('⚠️ PDF build error — saved without password.', 4000);
+      doc.save(filename); return;
     }
-    if (!pdfBytes || pdfBytes.byteLength < 100) {
-      doc.save(filename);
-      showToast('⚠️ PDF output invalid — saved without password.', 4000);
-      return;
-    }
-    _PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true}).then(async pdfDoc=>{
-      // pdf-lib v1.17: encrypt() is synchronous, returns 'this'. Safe to await (no-op on non-Promise).
-      if (typeof pdfDoc.encrypt !== 'function') {
-        throw new Error('pdf-lib encrypt() not available — version mismatch');
-      }
-      pdfDoc.encrypt({
-        userPassword: pw1,
-        ownerPassword: pw1 + '_owner_mfi_' + Date.now(),
-        permissions: {
-          printing: 'highResolution',
-          modifying: false,
-          copying: false,
-          annotating: true,
-          fillingForms: true,
-          contentAccessibility: true,
-          documentAssembly: false,
-        },
-      });
-      const encBytes = await pdfDoc.save({ useObjectStreams: false });
-      const blob = new Blob([encBytes], {type:'application/pdf'});
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
+    try {
+      const encBuffer = _pdfRC4Encrypt(rawBytes, pw1, pw1 + '_owner_mfi');
+      const blob = new Blob([encBuffer], {type:'application/pdf'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
       a.href = url; a.download = filename;
       document.body.appendChild(a); a.click();
       setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
-      showToast('✅ PDF encrypted and saved — open in Adobe Acrobat or Chrome to verify password.', 5000);
-    }).catch(err=>{
-      console.warn('[MoneyFi] PDF encryption failed:', err);
+      showToast('✅ PDF encrypted — open in Acrobat or Chrome, enter your password.', 5000);
+    } catch(encErr) {
+      console.warn('[MoneyFi] PDF encryption error:', encErr);
       doc.save(filename);
-      showToast('⚠️ Encryption failed (' + err.message + ') — saved without password.', 5000);
-    });
+      showToast('⚠️ Encryption failed (' + encErr.message + ') — saved without password.', 4000);
+    }
   } else {
     doc.save(filename);
-    showToast('📄 Advisor PDF downloaded!',3000);
+    showToast('📄 Advisor PDF downloaded!', 3000);
   }
 }
 
