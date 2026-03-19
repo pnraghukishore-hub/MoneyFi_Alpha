@@ -2704,89 +2704,93 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     crypto.getRandomValues(fid);
     var fidHex=toHex(fid);
 
-    // PDF spec §3.5.2 Table 3.20 — Permission flags
-    // Bits 1-2: reserved (must be 0), Bits 3-32: permissions
-    // -4 = 0xFFFFFFFC = all bits 1 except bits 1,2 = standard restricted
-    // Add bit 3 (print), bit 12 (print high-res) = -4|4|2048 = -3948
-    var perms = -3948; // allow printing, deny copy/modify/extract
+    // PDF spec permission flags — signed 32-bit LE
+    // Allow printing (bit 3), deny modify/copy/extract
+    var perms=-3904; // 0xFFFFF0C0 = standard restricted + print allowed
 
-    // Compute security handler values
+    // Compute security values per PDF spec §3.5.2
     var O=computeO(userPw,ownerPw);
     var ek=computeEncKey(userPw,O,perms,fid);
     var U=computeU(ek,fid);
 
     var oHex=toHex(O),uHex=toHex(U);
-    var permStr=String(perms|0); // signed 32-bit
+    var permStr=String(perms);
 
-    // Convert PDF bytes to string (latin1 — safe for binary PDF)
-    // We will ONLY modify ASCII portions (trailer, xref area)
-    // and NOT touch any binary stream data to avoid corruption
-    var pdfStr=bytesToStr(pdfBytes);
+    // Convert PDF to string (latin1) — only touch ASCII trailer area
+    var pdfStr='';
+    for(var i=0;i<pdfBytes.length;i++) pdfStr+=String.fromCharCode(pdfBytes[i]);
 
-    // Find max object number for new encrypt object
+    // Find max object number
     var maxObj=0;
-    var objRe=/^(\d+)\s+\d+\s+obj/gm,m;
-    while((m=objRe.exec(pdfStr))!==null){var n=parseInt(m[1]);if(n>maxObj)maxObj=n;}
+    pdfStr.replace(/^(\d+)\s+\d+\s+obj/gm,function(_,n){var v=parseInt(n);if(v>maxObj)maxObj=v;});
     var encObjNum=maxObj+1;
 
-    // Build encrypt dictionary object
-    var encDict=[
-      encObjNum+' 0 obj',
-      '<<',
-      '/Filter /Standard',
-      '/V 2',
-      '/R 3',
-      '/Length 128',
-      '/P '+permStr,
-      '/O <'+oHex+'>',
-      '/U <'+uHex+'>',
-      '>>',
-      'endobj'
-    ].join('\n');
+    // Build the /Encrypt object
+    var NL='\n';
+    var encObj=encObjNum+' 0 obj'+NL+
+      '<<'+NL+
+      '/Filter /Standard'+NL+
+      '/V 2'+NL+
+      '/R 3'+NL+
+      '/Length 128'+NL+
+      '/P '+permStr+NL+
+      '/O <'+oHex+'>'+NL+
+      '/U <'+uHex+'>'+NL+
+      '>>'+NL+
+      'endobj'+NL;
 
-    // Find the last xref/startxref to inject before it
-    // Strategy: append encrypt object at end, update trailer
-    // This is the safest approach — no binary data touched
-    var trailerIdx=pdfStr.lastIndexOf('trailer');
-    if(trailerIdx<0){
-      // No trailer found — fallback: just save without encryption
-      console.warn('PDF trailer not found — cannot encrypt');
-      return pdfBytes;
+    // Find the last startxref value (byte offset of xref)
+    var sxMatch=pdfStr.match(/startxref\s+(\d+)\s+%%EOF/);
+    if(!sxMatch){
+      console.warn('[mfi] No startxref found'); return pdfBytes;
     }
 
-    // Insert /Encrypt ref into trailer dictionary
-    var trailerEnd=pdfStr.indexOf('>>',trailerIdx);
-    var trailerContent=pdfStr.slice(trailerIdx,trailerEnd);
+    // Find the last trailer dict
+    var trIdx=pdfStr.lastIndexOf('trailer');
+    if(trIdx<0){console.warn('[mfi] No trailer'); return pdfBytes;}
+    var trDictStart=pdfStr.indexOf('<<',trIdx);
+    var trDictEnd=pdfStr.indexOf('>>',trDictStart)+2;
+    var trDict=pdfStr.slice(trDictStart,trDictEnd);
 
-    // Add /Encrypt and /ID to trailer
-    var newTrailerContent=trailerContent;
-    if(newTrailerContent.indexOf('/Encrypt')<0){
-      newTrailerContent=newTrailerContent.replace('trailer',
-        'trailer').replace(/<</, '<</Encrypt '+encObjNum+' 0 R');
-    }
-    if(newTrailerContent.indexOf('/ID')<0){
-      newTrailerContent=newTrailerContent.replace(/<</,
-        '<<\n/ID [<'+fidHex+'><'+fidHex+'>]');
-    }
+    // Build new trailer with /Encrypt and /ID added
+    var newTrDict=trDict.replace('<<',
+      '<<'+NL+
+      '/Encrypt '+encObjNum+' 0 R'+NL+
+      '/ID [<'+fidHex+'><'+fidHex+'>]'+NL
+    );
+    // Remove any existing /ID from original (avoid duplicates)
+    newTrDict=newTrDict.replace(/\/ID\s*\[[^\]]*\]/,'');
+    // Remove any existing /Encrypt
+    newTrDict=newTrDict.replace(/\/Encrypt\s+\d+\s+\d+\s+R/,'');
+    // Clean up double newlines
+    newTrDict=newTrDict.replace(/\n\n+/,'\n');
 
-    // Find startxref position to fix after appending encrypt object
-    var startxrefIdx=pdfStr.lastIndexOf('startxref');
-    var startxrefEnd=pdfStr.indexOf('%%EOF',startxrefIdx);
-    if(startxrefEnd<0)startxrefEnd=pdfStr.length;
+    // Compute offset of encrypt object (appended after %%EOF)
+    var eofIdx=pdfStr.lastIndexOf('%%EOF');
+    var encObjOffset=eofIdx+5; // after %%EOF
+    // But we'll append before %%EOF for cleanliness
+    // Actually: append after whole file, then add new xref section
+    
+    // Build incremental update xref
+    // Byte offset of encObj = current file length
+    var baseOffset=pdfBytes.length;
+    var xrefEntry=('0000000000'+String(baseOffset)).slice(-10)+' 00000 n \n';
+    var newXref='xref'+NL+
+      encObjNum+' 1'+NL+
+      xrefEntry;
+    var newTrailer='trailer'+NL+newTrDict+NL;
+    var newStartxref='startxref'+NL+String(baseOffset+encObj.length)+NL+'%%EOF'+NL;
 
-    // Build new PDF:
-    // [original content up to trailer] + [new trailer with /Encrypt] + [startxref + encrypt obj + %%EOF]
-    var newStartxref=pdfStr.length; // encrypt object will be at current end
-    var newPdf=
-      pdfStr.slice(0,trailerIdx)+
-      newTrailerContent+
-      pdfStr.slice(trailerEnd,startxrefIdx)+
-      'startxref\n'+newStartxref+'\n%%EOF\n'+
-      '\n'+encDict+'\n';
+    // Concatenate: original PDF + encrypt object + new xref + new trailer + startxref
+    // PDF incremental update — viewers handle this correctly
+    var appendStr=NL+encObj+NL+newXref+newTrailer+newStartxref;
 
-    return strToBytes(newPdf);
+    // Convert back to Uint8Array
+    var result=new Uint8Array(pdfBytes.length+appendStr.length);
+    result.set(pdfBytes);
+    for(var j=0;j<appendStr.length;j++) result[pdfBytes.length+j]=appendStr.charCodeAt(j)&255;
+    return result;
   }
-
   window._mfiEncryptPDF=encryptPDF;
 })();
   </script>
@@ -13850,7 +13854,7 @@ function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.37';  // single source — update here only
+  const APP_VER = 'v4.2.38';  // single source — update here only
 
   // Font: Helvetica (jsPDF built-in) — premium feel via tight type scale
   const _F = 'helvetica';
