@@ -28776,20 +28776,13 @@ function signInWithGoogle() {
   provider.addScope('email');
   provider.addScope('profile');
 
-  _auth.signInWithPopup(provider)
+  // Use redirect — GitHub Pages COOP headers block popup close
+  if (statusEl) statusEl.textContent = 'Redirecting to Google...';
+  _auth.signInWithRedirect(provider)
     .catch(err => {
-      console.warn('Popup sign-in failed, trying redirect...', err.code);
-      // Popup was blocked or closed — fall back to redirect flow
-      if (err.code === 'auth/popup-blocked' ||
-          err.code === 'auth/popup-closed-by-user' ||
-          err.code === 'auth/cancelled-popup-request') {
-        if (statusEl) statusEl.textContent = 'Redirecting to Google...';
-        _auth.signInWithRedirect(provider);
-      } else {
-        console.error('Sign in error:', err);
-        if (btn) btn.disabled = false;
-        if (statusEl) statusEl.textContent = `Sign in failed (${err.code}) — please try again`;
-      }
+      console.error('Sign in error:', err);
+      if (btn) btn.disabled = false;
+      if (statusEl) statusEl.textContent = 'Sign in failed — please try again';
     });
 }
 
@@ -62173,20 +62166,13 @@ function signInWithGoogle() {
   provider.addScope('email');
   provider.addScope('profile');
 
-  _auth.signInWithPopup(provider)
+  // Use redirect — GitHub Pages COOP headers block popup close
+  if (statusEl) statusEl.textContent = 'Redirecting to Google...';
+  _auth.signInWithRedirect(provider)
     .catch(err => {
-      console.warn('Popup sign-in failed, trying redirect...', err.code);
-      // Popup was blocked or closed — fall back to redirect flow
-      if (err.code === 'auth/popup-blocked' ||
-          err.code === 'auth/popup-closed-by-user' ||
-          err.code === 'auth/cancelled-popup-request') {
-        if (statusEl) statusEl.textContent = 'Redirecting to Google...';
-        _auth.signInWithRedirect(provider);
-      } else {
-        console.error('Sign in error:', err);
-        if (btn) btn.disabled = false;
-        if (statusEl) statusEl.textContent = `Sign in failed (${err.code}) — please try again`;
-      }
+      console.error('Sign in error:', err);
+      if (btn) btn.disabled = false;
+      if (statusEl) statusEl.textContent = 'Sign in failed — please try again';
     });
 }
 

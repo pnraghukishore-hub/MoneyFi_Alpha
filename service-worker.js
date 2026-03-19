@@ -1,99 +1,115 @@
-// MoneyFi Service Worker
-// Caches the app shell for full offline support
+// MoneyFi Service Worker v4.2.42
+// Fixes: chrome-extension cache errors, POST cache errors, failed network response errors
 
-const CACHE_NAME = 'moneyfi-v1';
-const CACHE_VERSION = '1.0.0';
+const CACHE_NAME = 'moneyfi-v4.2.42';
 
-// Files to cache on install
 const PRECACHE_URLS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
 ];
 
-// ── Install: pre-cache the app shell ──────────────────────────
+// ── Install: precache app shell ──
 self.addEventListener('install', event => {
-  console.log('[MoneyFi SW] Installing v' + CACHE_VERSION);
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('[MoneyFi SW] Pre-caching app shell');
-      return cache.addAll(PRECACHE_URLS);
+      return Promise.allSettled(
+        PRECACHE_URLS.map(url =>
+          cache.add(url).catch(err => {
+            console.warn('[SW] Precache skip:', url, err.message);
+          })
+        )
+      );
     }).then(() => self.skipWaiting())
   );
 });
 
-// ── Activate: clean up old caches ────────────────────────────
+// ── Activate: delete old caches ──
 self.addEventListener('activate', event => {
-  console.log('[MoneyFi SW] Activating');
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames
-          .filter(name => name !== CACHE_NAME)
-          .map(name => {
-            console.log('[MoneyFi SW] Deleting old cache:', name);
-            return caches.delete(name);
-          })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+      )
+    ).then(() => self.clients.claim())
   );
 });
 
-// ── Fetch: Cache-first for app, network-first for external ───
+// ── Fetch: cache-first for app shell, network-first for API calls ──
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
+  const req = event.request;
 
-  // Only handle same-origin requests (the app itself)
-  if (url.origin !== location.origin) {
-    // For external resources (CDN fonts, etc.) — network with cache fallback
+  // ── Guard: skip non-cacheable requests ──
+  // 1. Only cache GET requests (POST, PUT, DELETE etc. cannot be cached)
+  if (req.method !== 'GET') return;
+
+  // 2. Only cache http/https — skip chrome-extension://, data:, blob: etc.
+  const url = new URL(req.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+  // 3. Skip external API calls that have CORS issues — let them go direct
+  const skipDomains = [
+    'data-asg.goldprice.org',    // CORS blocked
+    'api.metals.live',            // sometimes fails
+    'firestore.googleapis.com',   // Firebase handles its own caching
+    'identitytoolkit.googleapis.com',
+    'securetoken.googleapis.com',
+    'api.anthropic.com',          // AI API — never cache
+    'cdn.jsdelivr.net',           // CDN — network only
+  ];
+  if (skipDomains.some(d => url.hostname.includes(d))) return;
+
+  // 4. Skip Firebase POST/streaming endpoints
+  if (url.hostname.includes('googleapis.com')) return;
+
+  // ── Strategy: Cache-first for same-origin, network-first for CDN assets ──
+  const isSameOrigin = url.origin === self.location.origin;
+
+  if (isSameOrigin) {
+    // Cache-first: serve from cache, update in background
     event.respondWith(
-      fetch(event.request)
+      caches.match(req).then(cached => {
+        const networkFetch = fetch(req)
+          .then(response => {
+            // Only cache valid, non-opaque GET responses
+            if (
+              response &&
+              response.status === 200 &&
+              response.type !== 'opaque' &&
+              req.method === 'GET'          // POST requests cannot be cached
+            ) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then(cache => {
+                cache.put(req, clone).catch(() => {});  // silently ignore
+              });
+            }
+            return response;
+          })
+          .catch(() => null); // Network failed — fall back to cache
+
+        return cached || networkFetch;
+      })
+    );
+  } else {
+    // Network-first for external CDN resources (fonts, Chart.js, etc.)
+    event.respondWith(
+      fetch(req)
         .then(response => {
-          if (response && response.status === 200) {
+          if (
+            response &&
+            response.status === 200 &&
+            response.type !== 'opaque'
+          ) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(req, clone).catch(() => {});
+            });
           }
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => caches.match(req)) // Network failed — try cache
     );
-    return;
-  }
-
-  // For the app itself — cache-first (works fully offline)
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) {
-        // Return cached version immediately, then update in background
-        const networkFetch = fetch(event.request).then(response => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          }
-          return response;
-        }).catch(() => {});
-        return cached;
-      }
-
-      // Not in cache — fetch from network and cache it
-      return fetch(event.request).then(response => {
-        if (!response || response.status !== 200 || response.type === 'opaque') {
-          return response;
-        }
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        return response;
-      });
-    })
-  );
-});
-
-// ── Message: allow app to trigger cache updates ───────────────
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-  if (event.data && event.data.type === 'GET_VERSION') {
-    event.ports[0].postMessage({ version: CACHE_VERSION });
   }
 });
