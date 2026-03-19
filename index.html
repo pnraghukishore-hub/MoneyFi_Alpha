@@ -2699,96 +2699,104 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   function bytesToStr(b){var s='';for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return s;}
 
   function encryptPDF(pdfBytes,userPw,ownerPw){
-    // Generate random 16-byte file ID
-    var fid=new Uint8Array(16);
-    crypto.getRandomValues(fid);
+    // Convert bytes to latin1 string for parsing
+    var s='';
+    for(var i=0;i<pdfBytes.length;i++) s+=String.fromCharCode(pdfBytes[i]);
+
+    // ── Crypto setup ──────────────────────────────────────────────
+    var fid=new Uint8Array(16); crypto.getRandomValues(fid);
     var fidHex=toHex(fid);
-
-    // PDF spec permission flags — signed 32-bit LE
-    // Allow printing (bit 3), deny modify/copy/extract
-    var perms=-3904; // 0xFFFFF0C0 = standard restricted + print allowed
-
-    // Compute security values per PDF spec §3.5.2
+    var perms=-3904; // allow print, deny copy/modify
     var O=computeO(userPw,ownerPw);
     var ek=computeEncKey(userPw,O,perms,fid);
     var U=computeU(ek,fid);
+    var oHex=toHex(O), uHex=toHex(U);
 
-    var oHex=toHex(O),uHex=toHex(U);
-    var permStr=String(perms);
+    // ── Find trailer and inject /Encrypt + /ID ────────────────────
+    // jsPDF writes one trailer at the end — find it
+    var trailIdx=s.lastIndexOf('\ntrailer');
+    if(trailIdx<0){console.warn('[mfi] no trailer');return pdfBytes;}
 
-    // Convert PDF to string (latin1) — only touch ASCII trailer area
-    var pdfStr='';
-    for(var i=0;i<pdfBytes.length;i++) pdfStr+=String.fromCharCode(pdfBytes[i]);
+    // Find the trailer << ... >> block
+    var dictStart=s.indexOf('<<',trailIdx);
+    var dictEnd=s.indexOf('>>',dictStart)+2;
+    var origDict=s.slice(dictStart,dictEnd);
 
-    // Find max object number
+    // Add /Encrypt and /ID into the trailer dict
+    var encEntry='/Encrypt '+( (s.match(/^(\d+)/gm)||[]).reduce((mx,n)=>Math.max(mx,parseInt(n)),0)+1 )+' 0 R';
+    var idEntry='/ID [<'+fidHex+'><'+fidHex+'>]';
+    var newDict=origDict.replace('<<','<<\n'+encEntry+'\n'+idEntry+'\n');
+
+    // ── Build /Encrypt object ─────────────────────────────────────
+    // Find max object number to assign next one
     var maxObj=0;
-    pdfStr.replace(/^(\d+)\s+\d+\s+obj/gm,function(_,n){var v=parseInt(n);if(v>maxObj)maxObj=v;});
+    s.replace(/^(\d+)\s+\d+\s+obj/gm,function(_,n){var v=parseInt(n);if(v>maxObj)maxObj=v;});
     var encObjNum=maxObj+1;
+    var encEntry2='/Encrypt '+encObjNum+' 0 R';
+    // Fix the encEntry in newDict to use correct number
+    newDict=newDict.replace(encEntry,encEntry2);
 
-    // Build the /Encrypt object
     var NL='\n';
-    var encObj=encObjNum+' 0 obj'+NL+
+    var encObjStr=encObjNum+' 0 obj'+NL+
       '<<'+NL+
       '/Filter /Standard'+NL+
-      '/V 2'+NL+
-      '/R 3'+NL+
-      '/Length 128'+NL+
-      '/P '+permStr+NL+
+      '/V 2'+NL+'/R 3'+NL+'/Length 128'+NL+
+      '/P '+String(perms)+NL+
       '/O <'+oHex+'>'+NL+
       '/U <'+uHex+'>'+NL+
-      '>>'+NL+
-      'endobj'+NL;
+      '>>'+NL+'endobj'+NL;
 
-    // Find the last startxref value (byte offset of xref)
-    var sxMatch=pdfStr.match(/startxref\s+(\d+)\s+%%EOF/);
-    if(!sxMatch){
-      console.warn('[mfi] No startxref found'); return pdfBytes;
+    // ── Rebuild the file ──────────────────────────────────────────
+    // Part 1: original content up to (not including) the trailer line
+    var part1=s.slice(0,trailIdx+1); // include the \n before 'trailer'
+
+    // Append /Encrypt object right before trailer
+    var newBody=part1+encObjStr;
+
+    // Part 2: rebuild xref table
+    // Parse existing xref to get all object offsets
+    var xrefIdx=s.lastIndexOf('\nxref');
+    var origXref=s.slice(xrefIdx+1, trailIdx);
+
+    // Parse xref entries: "nnnnnnnnnn ggggg n/f"
+    var xrefLines=origXref.split('\n').filter(function(l){return l.trim();});
+    // xrefLines[0] = "xref"
+    // xrefLines[1] = "0 N" (first object, count)
+    // xrefLines[2..] = 20-char entries
+    var objCount=0;
+    var xrefHeader=xrefLines[1]||'0 1'; // e.g. "0 4"
+    var parts=xrefHeader.trim().split(/\s+/);
+    var firstObj=parseInt(parts[0])||0;
+    objCount=parseInt(parts[1])||0;
+
+    // Build new xref: original entries + new encrypt entry
+    var newXrefOffset=newBody.length;
+    var encObjOffset=part1.length; // where encObj starts in newBody
+
+    var newXref='xref'+NL;
+    // Section 1: objects 0..maxObj (same offsets as before)
+    // Section 2: new encrypt object
+    // For simplicity: write two xref sections
+    newXref+=firstObj+' '+objCount+NL;
+    // Re-use original entries verbatim
+    for(var li=2;li<xrefLines.length;li++){
+      var entry=xrefLines[li];
+      if(entry.trim()) newXref+=entry+NL;
     }
+    // Add encrypt object entry
+    newXref+=encObjNum+' 1'+NL;
+    var offsetStr=('0000000000'+String(encObjOffset)).slice(-10);
+    newXref+=offsetStr+' 00000 n '+NL;
 
-    // Find the last trailer dict
-    var trIdx=pdfStr.lastIndexOf('trailer');
-    if(trIdx<0){console.warn('[mfi] No trailer'); return pdfBytes;}
-    var trDictStart=pdfStr.indexOf('<<',trIdx);
-    var trDictEnd=pdfStr.indexOf('>>',trDictStart)+2;
-    var trDict=pdfStr.slice(trDictStart,trDictEnd);
+    // New trailer
+    var newTrailer='trailer'+NL+newDict+NL;
+    var newStartxref='startxref'+NL+String(newXrefOffset)+NL+'%%EOF'+NL;
 
-    // Build new trailer with /Encrypt and /ID added
-    var newTrDict=trDict.replace('<<',
-      '<<'+NL+
-      '/Encrypt '+encObjNum+' 0 R'+NL+
-      '/ID [<'+fidHex+'><'+fidHex+'>]'+NL
-    );
-    // Remove any existing /ID from original (avoid duplicates)
-    newTrDict=newTrDict.replace(/\/ID\s*\[[^\]]*\]/,'');
-    // Remove any existing /Encrypt
-    newTrDict=newTrDict.replace(/\/Encrypt\s+\d+\s+\d+\s+R/,'');
-    // Clean up double newlines
-    newTrDict=newTrDict.replace(/\n\n+/,'\n');
+    var fullStr=newBody+newXref+newTrailer+newStartxref;
 
-    // Compute offset of encrypt object (appended after %%EOF)
-    var eofIdx=pdfStr.lastIndexOf('%%EOF');
-    var encObjOffset=eofIdx+5; // after %%EOF
-    // But we'll append before %%EOF for cleanliness
-    // Actually: append after whole file, then add new xref section
-    
-    // Build incremental update xref
-    // Byte offset of encObj = current file length
-    var baseOffset=pdfBytes.length;
-    var xrefEntry=('0000000000'+String(baseOffset)).slice(-10)+' 00000 n \n';
-    var newXref='xref'+NL+
-      encObjNum+' 1'+NL+
-      xrefEntry;
-    var newTrailer='trailer'+NL+newTrDict+NL;
-    var newStartxref='startxref'+NL+String(baseOffset+encObj.length)+NL+'%%EOF'+NL;
-
-    // Concatenate: original PDF + encrypt object + new xref + new trailer + startxref
-    // PDF incremental update — viewers handle this correctly
-    var appendStr=NL+encObj+NL+newXref+newTrailer+newStartxref;
-
-    // Convert back to Uint8Array
-    var result=new Uint8Array(pdfBytes.length+appendStr.length);
-    result.set(pdfBytes);
-    for(var j=0;j<appendStr.length;j++) result[pdfBytes.length+j]=appendStr.charCodeAt(j)&255;
+    // Convert back to bytes
+    var result=new Uint8Array(fullStr.length);
+    for(var j=0;j<fullStr.length;j++) result[j]=fullStr.charCodeAt(j)&255;
     return result;
   }
   window._mfiEncryptPDF=encryptPDF;
@@ -13854,7 +13862,7 @@ function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.38';  // single source — update here only
+  const APP_VER = 'v4.2.39';  // single source — update here only
 
   // Font: Helvetica (jsPDF built-in) — premium feel via tight type scale
   const _F = 'helvetica';
