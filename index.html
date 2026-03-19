@@ -35477,39 +35477,63 @@ const DISC_THEMES = [
     { id:'what_if_explainer',
       label:'What-If Simulator',
       nav:()=>{
-        // Navigate to FHS screen (where the What-If FAB lives under the hero card)
+        // Step 1: Go to FHS screen
         switchScreen('fhs', document.querySelectorAll('.nav-item')[4]);
+        // Step 2: Wait for FHS to render, then spotlight the FAB button first
         setTimeout(()=>{
-          try { openWhatIf(); } catch(e) {}
-          // Wait for screen switch (~300ms) + sheet slide-up animation (~320ms) + render buffer
-          setTimeout(()=>{
-            const title = document.querySelector('.wi-title');
-            if (title) _discSpotlight(title,
-              'The What-If Simulator lets you model life changes — increase savings, cut expenses, plan a career switch, or stress-test a market crash — and see instantly how your Financial Health Score shifts. Use the Variables tab to move sliders, or pick a pre-built life Scenario.',
-              'What-If Simulator');
-          }, 750);
-        }, 300);
+          const fab = document.querySelector('.wi-fab');
+          if (fab) {
+            fab.scrollIntoView({ behavior:'smooth', block:'center' });
+            setTimeout(()=>{
+              _discSpotlight(fab,
+                'This is the What-If Simulator — tap it to model life changes like increasing savings, cutting expenses, a career switch, or a market crash, and see instantly how your Financial Health Score would shift.',
+                'What-If Simulator');
+              // Step 3: After spotlight auto-dismisses (5s), open the sheet
+              clearTimeout(window._discSpotTimer);
+              window._discSpotTimer = setTimeout(()=>{
+                discSpotDismiss();
+                setTimeout(()=>{ try { openWhatIf(); } catch(e) {} }, 200);
+              }, 5000);
+            }, 300);
+          }
+        }, 500);
       },
       spot:'.wi-fab', tip:'What-If Simulator — model life changes and see their real-time impact on your FHS score.' },
 
     { id:'what_if_save_goal',
       label:'Save Simulation as Goal',
       nav:()=>{
-        // Navigate to FHS screen first, open the sheet, then switch to Scenarios tab
+        // Step 1: Go to FHS screen
         switchScreen('fhs', document.querySelectorAll('.nav-item')[4]);
+        // Step 2: Spotlight the FAB first with Save as Goal context
         setTimeout(()=>{
-          try { openWhatIf(); } catch(e) {}
-          setTimeout(()=>{
-            wiSetTab('scenarios');
-            // Wait for tab switch + sheet fully open, then spotlight the Save as Goal button
+          const fab = document.querySelector('.wi-fab');
+          if (fab) {
+            fab.scrollIntoView({ behavior:'smooth', block:'center' });
             setTimeout(()=>{
-              const goalBtn = document.getElementById('wi-goal-btn');
-              if (goalBtn) _discSpotlight(goalBtn,
-                'After running any simulation, tap Save as Goal to turn it into a tracked Goal. It appears in your Goals tab — with target amount, timeline, and funding progress linked to your accounts.',
+              _discSpotlight(fab,
+                'Open the What-If Simulator, run any simulation — then tap Save as Goal. It creates a real Goal in your Goals tab with target amount, timeline, and funding progress tracked automatically.',
                 'Save Simulation as Goal');
-            }, 400);
-          }, 750);
-        }, 300);
+              // Step 3: After spotlight, open sheet and switch to Scenarios tab, spotlight goal button
+              clearTimeout(window._discSpotTimer);
+              window._discSpotTimer = setTimeout(()=>{
+                discSpotDismiss();
+                setTimeout(()=>{
+                  try { openWhatIf(); } catch(e) {}
+                  setTimeout(()=>{
+                    wiSetTab('scenarios');
+                    setTimeout(()=>{
+                      const goalBtn = document.getElementById('wi-goal-btn');
+                      if (goalBtn) _discSpotlight(goalBtn,
+                        'After any simulation runs, this button becomes active. Tap it to save the scenario as a Goal — it appears in your Goals tab with funding progress linked to your accounts.',
+                        'Save as Goal Button');
+                    }, 400);
+                  }, 500);
+                }, 200);
+              }, 5000);
+            }, 300);
+          }
+        }, 500);
       },
       spot:'#wi-goal-btn', tip:'Run a What-If simulation then Save as Goal — it lands in Goals tab with funding tracked automatically.' },
 
