@@ -28790,13 +28790,30 @@ function signInWithGoogle() {
   provider.addScope('email');
   provider.addScope('profile');
 
-  // Use redirect — GitHub Pages COOP headers block popup close
-  if (statusEl) statusEl.textContent = 'Redirecting to Google...';
-  _auth.signInWithRedirect(provider)
+  // Try popup first — Firebase handles COOP gracefully since SDK 9.x
+  // Fall back to redirect if popup is blocked
+  _auth.signInWithPopup(provider)
+    .then(() => {
+      // Success handled by onAuthStateChanged
+    })
     .catch(err => {
-      console.error('Sign in error:', err);
-      if (btn) btn.disabled = false;
-      if (statusEl) statusEl.textContent = 'Sign in failed — please try again';
+      console.warn('Popup failed:', err.code);
+      if (err.code === 'auth/popup-blocked' ||
+          err.code === 'auth/popup-closed-by-user' ||
+          err.code === 'auth/cancelled-popup-request') {
+        // Popup blocked — fall back to redirect
+        if (statusEl) statusEl.textContent = 'Redirecting to Google...';
+        _auth.signInWithRedirect(provider);
+      } else if (err.code === 'auth/web-storage-unsupported' ||
+                 err.code === 'auth/operation-not-supported-in-this-environment') {
+        // Incognito/restricted — try redirect
+        if (statusEl) statusEl.textContent = 'Redirecting to Google...';
+        _auth.signInWithRedirect(provider);
+      } else {
+        console.error('Sign in error:', err);
+        if (btn) btn.disabled = false;
+        if (statusEl) statusEl.textContent = 'Sign in failed (' + err.code + ') — try again';
+      }
     });
 }
 
@@ -28810,12 +28827,17 @@ function signOut() {
 }
 
 // Handle redirect result (fires when Google redirects back after signInWithRedirect)
-_auth.getRedirectResult().catch(err => {
+_auth.getRedirectResult().then(result => {
+  if (result && result.user) {
+    console.log('[MoneyFi] Redirect sign-in successful:', result.user.email);
+    // onAuthStateChanged will handle the rest
+  }
+}).catch(err => {
   if (err && err.code) {
     console.error('Redirect sign-in error:', err);
     const statusEl = document.getElementById('login-status');
     const btn = document.getElementById('google-signin-btn');
-    if (statusEl) statusEl.textContent = `Sign in failed (${err.code}) — please try again`;
+    if (statusEl) statusEl.textContent = 'Sign in failed (' + err.code + ') — please try again';
     if (btn) btn.disabled = false;
   }
 });
