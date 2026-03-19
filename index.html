@@ -2675,7 +2675,21 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     // 50 rounds of MD5 on first 16 bytes (keylength=16 for RC4-128)
     for(i=0;i<50;i++)digest=md5b(digest);
     return digest.slice(0,16);
-  }  function toHex(arr){return Array.from(arr).map(function(b){return('0'+b.toString(16)).slice(-2);}).join('');}
+  }
+
+  function computeU(ek,fid){
+    // PDF spec §3.5.2 Algorithm 4 — Revision 3
+    // MD5(PAD + fileId), RC4 with ek, then 19 more RC4 rounds
+    var input=new Uint8Array(48);
+    input.set(PAD,0);
+    input.set(fid.slice(0,16),32);
+    var digest=md5b(input);
+    var result=rc4(ek,digest);
+    for(var i=1;i<=19;i++){var k=ek.map(function(b){return b^i;});result=rc4(k,result);}
+    var U=new Uint8Array(32);U.set(result);return U;
+  }
+
+  function toHex(arr){return Array.from(arr).map(function(b){return('0'+b.toString(16)).slice(-2);}).join('');}
 
   function strToBytes(s){var b=new Uint8Array(s.length);for(var i=0;i<s.length;i++)b[i]=s.charCodeAt(i)&255;return b;}
   function bytesToStr(b){var s='';for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return s;}
