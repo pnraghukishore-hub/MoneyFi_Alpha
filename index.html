@@ -24967,6 +24967,7 @@ function _loadUniversalFile(file) {
       // Smart header-row detection: scan up to row 30 for the row that scores highest
       // against field-name keywords. Axis/HDFC prepend 6-13 metadata rows before headers.
       const _HDR_HINTS = [
+        // Bank / transaction file headers
         /^date$/i, /tran.*date/i, /value.*dt/i, /^dt$/i,
         /narrat/i, /particular/i, /^desc/i, /detail/i, /remark/i,
         /withdrawal/i, /\bdr\b/i, /debit/i,
@@ -24974,6 +24975,12 @@ function _loadUniversalFile(file) {
         /amount/i, /\bamt\b/i,
         /balance/i, /\bbal\b/i,
         /chq/i, /ref.*no/i, /sl.*no/i, /srl/i,
+        // Portfolio / holdings file headers (SBISmart, Zerodha, Groww, etc.)
+        /security/i, /scheme/i, /symbol/i, /scrip/i, /instrument/i,
+        /quantity/i, /\bunits\b/i, /\bqty\b/i, /\bshares\b/i,
+        /\bltp\b/i, /\bnav\b/i, /market.*value/i, /current.*value/i,
+        /value.*cost/i, /cost.*value/i, /invested/i,
+        /\bxirr\b/i, /\bp&l\b/i, /\bgain\b/i, /segment/i,
       ];
       function _scoreHeaderRow(row) {
         return row.filter(v => {
@@ -24987,8 +24994,29 @@ function _loadUniversalFile(file) {
         if (score > bestScore) { bestScore = score; startRow = i; }
       }
       if (bestScore < 2) {
-        startRow = 0;
-        while (startRow < rawRows.length && !rawRows[startRow].some(v => v && String(v).trim())) startRow++;
+        // Fallback: no keyword match — find the best candidate header row heuristically.
+        // Score each row by how many cells look like column labels:
+        //   - non-empty string
+        //   - not purely numeric
+        //   - reasonably short (< 60 chars, avoids title/metadata rows like "58843603 - XIRR REPORT...")
+        //   - bonus if the row has >= 3 populated cells (sparse rows are unlikely headers)
+        function _scoreAsHeader(row) {
+          const cells = row.filter(v => {
+            const s = String(v || '').trim();
+            if (!s) return false;                        // empty
+            if (/^-?[\d,\.%]+$/.test(s)) return false; // purely numeric / percent
+            if (s.length > 60) return false;             // too long — likely a title cell
+            return true;
+          });
+          if (cells.length < 2) return 0;
+          return cells.length + (cells.length >= 3 ? 2 : 0); // bonus for density
+        }
+        let fallbackBest = -1, fallbackScore = 0;
+        for (let i = 0; i < Math.min(rawRows.length, 30); i++) {
+          const s = _scoreAsHeader(rawRows[i]);
+          if (s > fallbackScore) { fallbackScore = s; fallbackBest = i; }
+        }
+        startRow = fallbackBest >= 0 ? fallbackBest : 0;
       }
       const headers = (rawRows[startRow] || []).map(h => String(h || '').trim());
       const rows = rawRows.slice(startRow + 1).filter(r => r.some(v => v !== null && v !== undefined && String(v).trim()));
@@ -25130,7 +25158,7 @@ function _showPortfolioPreview(data, filename) {
   document.getElementById('iuniversal-portfolio-broker').value = guessedName;
 
   // Quick-pick chips for common brokers
-  const COMMON_BROKERS = ['Angel One', 'HDFC Securities', 'ICICIdirect', '5Paisa', 'Motilal Oswal', 'Kotak Securities', 'Groww', 'Upstox'];
+  const COMMON_BROKERS = ['SBI Smart', 'Angel One', 'HDFC Securities', 'ICICIdirect', '5Paisa', 'Motilal Oswal', 'Kotak Securities', 'Groww', 'Upstox'];
   document.getElementById('iuniversal-broker-chips').innerHTML = COMMON_BROKERS.map(b =>
     `<button onclick="document.getElementById('iuniversal-portfolio-broker').value='${b}'"
       style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:20px;padding:4px 11px;font-size:0.72em;font-weight:800;color:#1E40AF;cursor:pointer;font-family:inherit;">${b}</button>`
