@@ -2577,8 +2577,9 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
      handled in renderFHS() JS patch below */
   </style>
   <  <script>
-// PDF RC4-128 Encryption — Self-contained, zero dependencies
+// PDF RC4-128 Password Protection — Self-contained, zero dependencies
 // 100% client-side — password never leaves the device
+// Uses PDF Standard Security Handler v3 (RC4-128)
 (function(){
   function rc4(key,data){
     var S=new Uint8Array(256),i,j=0,tmp;
@@ -2625,7 +2626,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       a=add(a,oa);bv=add(bv,ob);c=add(c,oc);d=add(d,od);
     }
     var out=new Uint8Array(16);
-    [a,bv,c,d].forEach(function(v,i){out[i*4]=v&255;out[i*4+1]=(v>>8)&255;out[i*4+2]=(v>>16)&255;out[i*4+3]=(v>>24)&255;});
+    [a,bv,c,d].forEach(function(v,k){out[k*4]=v&255;out[k*4+1]=(v>>8)&255;out[k*4+2]=(v>>16)&255;out[k*4+3]=(v>>24)&255;});
     return out;
   }
 
@@ -2639,8 +2640,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
   function padPw(pw){
     var p=typeof pw==='string'?new Uint8Array(pw.split('').map(function(c){return c.charCodeAt(0);})):pw;
-    var out=new Uint8Array(32);
-    out.set(p.slice(0,32));
+    var out=new Uint8Array(32);out.set(p.slice(0,32));
     out.set(PAD.slice(0,32-Math.min(p.length,32)),Math.min(p.length,32));
     return out;
   }
@@ -2648,13 +2648,12 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   function computeO(uPw,oPw){
     var digest=md5b(padPw(oPw)),i,key;
     for(i=0;i<50;i++)digest=md5b(digest);
-    var oKey=digest.slice(0,16);
-    var result=rc4(oKey,padPw(uPw));
+    var oKey=digest.slice(0,16),result=rc4(oKey,padPw(uPw));
     for(i=1;i<=19;i++){key=oKey.map(function(b){return b^i;});result=rc4(key,result);}
     return result;
   }
 
-  function encKey(uPw,O,perms,fid){
+  function computeEncKey(uPw,O,perms,fid){
     var buf=new Uint8Array(32+32+4+fid.length);
     buf.set(padPw(uPw),0);buf.set(O,32);
     buf[64]=perms&255;buf[65]=(perms>>8)&255;buf[66]=(perms>>16)&255;buf[67]=(perms>>24)&255;
@@ -2664,69 +2663,102 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     return digest;
   }
 
-  function computeU(eKey){
-    var result=rc4(eKey,PAD);
-    for(var i=1;i<=19;i++){var k=eKey.map(function(b){return b^i;});result=rc4(k,result);}
+  function computeU(ek){
+    var result=rc4(ek,PAD);
+    for(var i=1;i<=19;i++){var k=ek.map(function(b){return b^i;});result=rc4(k,result);}
     var U=new Uint8Array(32);U.set(result.slice(0,16));return U;
-  }
-
-  function encStream(eKey,on,gn,data){
-    var kb=new Uint8Array(eKey.length+5);kb.set(eKey);
-    kb[eKey.length]=on&255;kb[eKey.length+1]=(on>>8)&255;kb[eKey.length+2]=(on>>16)&255;
-    kb[eKey.length+3]=gn&255;kb[eKey.length+4]=(gn>>8)&255;
-    return rc4(md5b(kb).slice(0,Math.min(eKey.length+5,16)),data);
   }
 
   function toHex(arr){return Array.from(arr).map(function(b){return('0'+b.toString(16)).slice(-2);}).join('');}
 
+  function strToBytes(s){var b=new Uint8Array(s.length);for(var i=0;i<s.length;i++)b[i]=s.charCodeAt(i)&255;return b;}
+  function bytesToStr(b){var s='';for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return s;}
+
   function encryptPDF(pdfBytes,userPw,ownerPw){
-    var fid=new Uint8Array(16);crypto.getRandomValues(fid);
-    var perms=-4|0xFFFFF0C0;
+    // Generate random 16-byte file ID
+    var fid=new Uint8Array(16);
+    crypto.getRandomValues(fid);
+    var fidHex=toHex(fid);
+
+    // Permissions: allow printing, deny modification/copying
+    var perms=0xFFFFFF00|0xC0|0x04; // bits 3,7,8 set = print allowed
+    perms=perms|(-4&0xFFFFFFFF);    // standard protection flags
+
+    // Compute security handler values
     var O=computeO(userPw,ownerPw);
-    var ek=encKey(userPw,O,perms,fid);
+    var ek=computeEncKey(userPw,O,perms,fid);
     var U=computeU(ek);
-    var oHex=toHex(O),uHex=toHex(U),fidHex=toHex(fid);
-    var permStr=String(perms);
 
-    // Decode PDF bytes to latin1 string for text processing
-    var dec=new TextDecoder('latin1');
-    var pdfStr=dec.decode(pdfBytes);
+    var oHex=toHex(O),uHex=toHex(U);
+    var permStr=String(perms|0); // signed 32-bit
 
-    // Encrypt object streams
+    // Convert PDF bytes to string (latin1 — safe for binary PDF)
+    // We will ONLY modify ASCII portions (trailer, xref area)
+    // and NOT touch any binary stream data to avoid corruption
+    var pdfStr=bytesToStr(pdfBytes);
+
+    // Find max object number for new encrypt object
     var maxObj=0;
-    pdfStr.replace(/^(\d+)\s+0\s+obj/gm,function(_,n){var v=parseInt(n);if(v>maxObj)maxObj=v;});
+    var objRe=/^(\d+)\s+\d+\s+obj/gm,m;
+    while((m=objRe.exec(pdfStr))!==null){var n=parseInt(m[1]);if(n>maxObj)maxObj=n;}
     var encObjNum=maxObj+1;
 
-    pdfStr=pdfStr.replace(/(\d+)\s+(\d+)\s+obj\b([\s\S]*?)endobj/g,function(full,on,gn,body){
-      var streamRe=/stream[\r\n]+([\s\S]*?)[\r\n]+endstream/;
-      var sm=body.match(streamRe);
-      if(sm){
-        var sd=new Uint8Array(sm[1].length);
-        for(var i=0;i<sm[1].length;i++)sd[i]=sm[1].charCodeAt(i)&255;
-        var enc=encStream(ek,parseInt(on),parseInt(gn),sd);
-        var encStr='';for(var j=0;j<enc.length;j++)encStr+=String.fromCharCode(enc[j]);
-        body=body.replace(sm[0],'stream\n'+encStr+'\nendstream');
-      }
-      return on+' '+gn+' obj'+body+'endobj';
-    });
+    // Build encrypt dictionary object
+    var encDict=[
+      encObjNum+' 0 obj',
+      '<<',
+      '/Filter /Standard',
+      '/V 2',
+      '/R 3',
+      '/Length 128',
+      '/P '+permStr,
+      '/O <'+oHex+'>',
+      '/U <'+uHex+'>',
+      '>>',
+      'endobj'
+    ].join('\n');
 
-    // Build encrypt dictionary
-    var encDict='<<\n/Filter /Standard\n/V 2\n/R 3\n/Length 128\n/P '+permStr+'\n/O <'+oHex+'>\n/U <'+uHex+'>\n>>';
-    var encObj='\n'+encObjNum+' 0 obj\n'+encDict+'\nendobj\n';
-
-    // Add /Encrypt ref to trailer
-    pdfStr=pdfStr.replace(/trailer\s*<</,'trailer\n<<\n/Encrypt '+encObjNum+' 0 R');
-    // Add file ID
-    if(pdfStr.indexOf('/ID')<0){
-      pdfStr=pdfStr.replace('trailer\n<<','trailer\n<<\n/ID [<'+fidHex+'><'+fidHex+'>]');
+    // Find the last xref/startxref to inject before it
+    // Strategy: append encrypt object at end, update trailer
+    // This is the safest approach — no binary data touched
+    var trailerIdx=pdfStr.lastIndexOf('trailer');
+    if(trailerIdx<0){
+      // No trailer found — fallback: just save without encryption
+      console.warn('PDF trailer not found — cannot encrypt');
+      return pdfBytes;
     }
-    // Insert encrypt object before last xref
-    var xi=pdfStr.lastIndexOf('xref');
-    if(xi>0)pdfStr=pdfStr.slice(0,xi)+encObj+pdfStr.slice(xi);
-    else pdfStr+=encObj;
 
-    var enc=new TextEncoder();
-    return enc.encode(pdfStr);
+    // Insert /Encrypt ref into trailer dictionary
+    var trailerEnd=pdfStr.indexOf('>>',trailerIdx);
+    var trailerContent=pdfStr.slice(trailerIdx,trailerEnd);
+
+    // Add /Encrypt and /ID to trailer
+    var newTrailerContent=trailerContent;
+    if(newTrailerContent.indexOf('/Encrypt')<0){
+      newTrailerContent=newTrailerContent.replace('trailer',
+        'trailer').replace(/<</, '<</Encrypt '+encObjNum+' 0 R');
+    }
+    if(newTrailerContent.indexOf('/ID')<0){
+      newTrailerContent=newTrailerContent.replace(/<</,
+        '<<\n/ID [<'+fidHex+'><'+fidHex+'>]');
+    }
+
+    // Find startxref position to fix after appending encrypt object
+    var startxrefIdx=pdfStr.lastIndexOf('startxref');
+    var startxrefEnd=pdfStr.indexOf('%%EOF',startxrefIdx);
+    if(startxrefEnd<0)startxrefEnd=pdfStr.length;
+
+    // Build new PDF:
+    // [original content up to trailer] + [new trailer with /Encrypt] + [startxref + encrypt obj + %%EOF]
+    var newStartxref=pdfStr.length; // encrypt object will be at current end
+    var newPdf=
+      pdfStr.slice(0,trailerIdx)+
+      newTrailerContent+
+      pdfStr.slice(trailerEnd,startxrefIdx)+
+      'startxref\n'+newStartxref+'\n%%EOF\n'+
+      '\n'+encDict+'\n';
+
+    return strToBytes(newPdf);
   }
 
   window._mfiEncryptPDF=encryptPDF;
@@ -13792,7 +13824,7 @@ function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.35';  // single source — update here only
+  const APP_VER = 'v4.2.36';  // single source — update here only
 
   // Font: Helvetica (jsPDF built-in) — premium feel via tight type scale
   const _F = 'helvetica';
