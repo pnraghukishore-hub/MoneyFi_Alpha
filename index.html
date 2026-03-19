@@ -111,6 +111,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@pdfsmaller/pdf-encrypt-lite@1/dist/index.umd.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <!-- Noto Sans for Indic scripts — loaded lazily when language is switched -->
@@ -13635,7 +13636,7 @@ function generateClarityPDF() {
   // ── PDF DOCUMENT ───────────────────────────────────────────────
   const doc = new jsPDFLib({orientation:'portrait', unit:'mm', format:'a4'});
   const W=210, M=18;
-  const APP_VER = 'v4.2.31';  // single source — update here only
+  const APP_VER = 'v4.2.32';  // single source — update here only
 
   // Font: Helvetica (jsPDF built-in) — premium feel via tight type scale
   const _F = 'helvetica';
@@ -14811,43 +14812,32 @@ if(d.goalMismatchPenalty>0){
   // ── Password encryption ────────────────────────────────────────
   const filename=`MoneyFi_Advisor_Brief_${priv?'Private':'Shareable'}_${today.replace(/ /g,'_')}.pdf`;
   if(pwEnabled){
-    const _PDFLib = window.PDFLib || window.pdfLib;
-    if(!_PDFLib || !_PDFLib.PDFDocument){
-      doc.save(filename);
-      showToast('Encryption library not loaded — PDF saved without password. Try refreshing.',4000);
-      return;
-    }
     showToast('Encrypting PDF...',2000);
     const pdfBytes=doc.output('arraybuffer');
-    _PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true}).then(async pdfDoc=>{
-      // Correct pdf-lib API: call encrypt() on the document BEFORE save()
-      // NOT as options to save() — that's the common mistake
-      pdfDoc.encrypt({
-        userPassword: pw1,
-        ownerPassword: pw1 + '_owner_mfi_' + Date.now(),
-        permissions: {
-          printing: 'highResolution',
-          modifying: false,
-          copying: false,
-          annotating: true,
-          fillingForms: true,
-          contentAccessibility: true,
-          documentAssembly: false,
-        },
-      });
-      const encBytes = await pdfDoc.save({ useObjectStreams: false });
-      const blob = new Blob([encBytes], {type:'application/pdf'});
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click();
-      setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
-      showToast('PDF encrypted and saved — open in Adobe Acrobat or Chrome PDF viewer.', 5000);
-    }).catch(err=>{
-      console.warn('[MoneyFi] PDF encryption failed:', err);
+    // Use pdf-encrypt-lite — pdf-lib 1.17.1 has no encrypt() method
+    const _encLib = window.PDFEncryptLite || window.pdfEncryptLite;
+    if(!_encLib || !_encLib.encryptPDF){
+      // Fallback: save without encryption
       doc.save(filename);
-      showToast('Encryption failed (' + err.message + ') — saved without password.', 5000);
-    });
+      showToast('Encryption library not ready — PDF saved without password. Refresh and try again.', 4000);
+      return;
+    }
+    const pdfUint8 = new Uint8Array(pdfBytes);
+    _encLib.encryptPDF(pdfUint8, pw1, pw1 + '_owner_mfi_' + Date.now())
+      .then(encBytes => {
+        const blob = new Blob([encBytes], {type:'application/pdf'});
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+        showToast('PDF encrypted — open in Adobe Acrobat or Chrome. Password: ' + pw1.substring(0,2) + '****', 6000);
+      })
+      .catch(err => {
+        console.warn('[MoneyFi] Encryption failed:', err);
+        doc.save(filename);
+        showToast('Encryption failed — PDF saved without password.', 4000);
+      });
   } else {
     doc.save(filename);
     showToast('📄 Advisor PDF downloaded!',3000);
