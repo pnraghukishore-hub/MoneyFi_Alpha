@@ -3196,7 +3196,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       <div class="lab-scorecard">
         <div class="lab-scorecard-eyebrow">TOTAL INVESTMENT PORTFOLIO</div>
         <div class="lab-scorecard-value" id="roi-hero-value">—</div>
-        <div class="lab-scorecard-gain" id="roi-hero-gain">Import CAMS for full ROI picture</div>
+        <div class="lab-scorecard-gain" id="roi-hero-gain">Import CAS for full ROI picture</div>
         <div class="lab-scorecard-grid">
           <div class="lab-stat-pill">
             <div class="lab-stat-label">INVESTED</div>
@@ -3903,7 +3903,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
     <div onclick="switchScreen('import',null)" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #F5F5F5;">
       <div style="width:36px;height:36px;background:#EDE9FE;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">📥</div>
-      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Import Hub</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">CAMS · Zerodha · EPF · Bank CSV · SMS</div></div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:0.88em;color:#1E2A6E;">Import Hub</div><div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;">CAS · Zerodha · EPF · Bank CSV · SMS</div></div>
       <span style="color:#CCC;font-size:0.85em;">›</span>
     </div>
 
@@ -4816,11 +4816,11 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <div class="import-section" id="isec-cams">
     <div class="import-step active" id="icams-step1">
       <div class="import-card">
-        <div class="import-card-title">📄 CAMS Statement Import</div>
-        <div class="import-card-sub">Upload your CAMS Consolidated Account Statement (PDF or Excel). We auto-detect SIP investments, redemptions, and switch transactions — no column mapping needed.<br><br><strong>How to get it:</strong> Login to camsonline.com → Reports → Statement of Account → Detailed (Excel or PDF).</div>
+        <div class="import-card-title">📄 CAS Statement Import</div>
+        <div class="import-card-sub">Upload your CAS — Consolidated Account Statement (PDF or Excel) from MFCentral.com. We auto-detect SIP investments, redemptions, and switch transactions — no column mapping needed.<br><br><strong>How to get it:</strong> Visit <a href="https://www.mfcentral.com" target="_blank" style="color:#4F46E5;font-weight:900;">MFCentral.com</a> → Reports → CAS (Consolidated Account Statement) → Download as Excel or PDF.</div>
         <div class="import-drop-zone" id="icams-dropzone" onclick="document.getElementById('icams-file').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleNamedParserDrop(event,'cams')">
           <div class="import-drop-icon">📄</div>
-          <div class="import-drop-text">Tap to choose CAMS file</div>
+          <div class="import-drop-text">Tap to choose CAS file</div>
           <div class="import-drop-sub">Excel (.xlsx) or PDF — auto-detected</div>
         </div>
         <input type="file" id="icams-file" accept=".xlsx,.csv,.pdf" style="display:none;" onchange="handleNamedParserFile(this,'cams')">
@@ -4828,7 +4828,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     </div>
     <div class="import-step" id="icams-step2">
       <div class="import-card">
-        <div class="import-card-title">📄 CAMS — Review & Confirm</div>
+        <div class="import-card-title">📄 CAS — Review & Confirm</div>
         <div class="import-card-sub" id="icams-summary-text"></div>
         <div class="import-summary-grid" id="icams-summary-grid"></div>
         <div id="icams-dup-section" style="display:none;margin-bottom:12px;">
@@ -4859,7 +4859,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
           <div id="icams-done-portfolio-list"></div>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="import-btn secondary" style="flex:1;" onclick="clearCAMSImport()">🗑️ Clear CAMS Data</button>
+          <button class="import-btn secondary" style="flex:1;" onclick="clearCAMSImport()">🗑️ Clear CAS Data</button>
           <button class="import-btn" style="flex:1;" onclick="resetNamedParser('cams')">Import Another File</button>
         </div>
       </div>
@@ -15666,8 +15666,8 @@ function _typeToCat(type) {
 
 function triageAction(cls, title) {
   const messages = {
-    'triage-sleeping': '💡 To restart a SIP: open your broker or MF app, locate the fund, and set up a new SIP instruction. Your CAMS/Zerodha account will reflect it within 2–3 business days.',
-    'triage-idle':     '💡 To redeem: log in to your AMC or CAMS portal, select the fund, and place a redemption request. Proceeds typically credit within 3 business days for equity funds.',
+    'triage-sleeping': '💡 To restart a SIP: open your broker or MF app, locate the fund, and set up a new SIP instruction. Your CAS/Zerodha account will reflect it within 2–3 business days.',
+    'triage-idle':     '💡 To redeem: log in to your AMC or MFCentral portal, select the fund, and place a redemption request. Proceeds typically credit within 3 business days for equity funds.',
     'triage-taxsens':  '⏳ Wait until the 1-year holding mark before redeeming — this converts STCG (15%) to LTCG (10%) and could save you meaningful tax. Timing this right could save you thousands.',
     'triage-noise':    '💡 For small balance cleanup: log in to your AMC portal and request full redemption. Many AMCs allow online redemption of small balances with just your folio number.',
   };
@@ -15900,7 +15900,7 @@ function filterClarityFunds(filter) { trackFeature('clarity_filter');
 function _triageGuidance(cls) {
   const g = {
     'triage-sleeping': 'To restart a SIP: open your broker or AMC app and set up a new SIP mandate. Changes reflect in CAMS within 2-3 business days.',
-    'triage-idle':     'To redeem: log in to your AMC or CAMS portal and place a redemption request. Equity fund proceeds credit in 3 business days.',
+    'triage-idle':     'To redeem: log in to your AMC or MFCentral portal and place a redemption request. Equity fund proceeds credit in 3 business days.',
     'triage-taxsens':  'Wait until the 1-year holding mark before redeeming. This converts STCG (15%) to LTCG (10%) and could save meaningful tax.',
     'triage-noise':    'Log in to your AMC portal and request full redemption. Most AMCs allow small-balance redemptions online using your folio number.',
   };
@@ -16389,7 +16389,7 @@ function renderROIStory() {
       gainEl.textContent = (gain >= 0 ? '▲ ' : '▼ ') + sym + Math.round(Math.abs(gain)).toLocaleString() + ' (' + gainPct.toFixed(1) + '%) unrealised gain';
       gainEl.style.color = gainCol;
     } else {
-      gainEl.textContent = totalVal ? 'Add cost basis via CAMS import to see ROI' : 'Import investments to see your story';
+      gainEl.textContent = totalVal ? 'Add cost basis via CAS import to see ROI' : 'Import investments to see your story';
       gainEl.style.color = 'rgba(255,255,255,0.55)';
     }
   }
@@ -16429,7 +16429,7 @@ function _buildAdvisorInsight({ totalVal, totalInv, gain, gainPct, nwAccounts, f
   // Pick the most relevant insight
   let insight = '';
   if (!totalVal) {
-    insight = 'Import your CAMS statement or Zerodha file to unlock your complete wealth picture.';
+    insight = 'Import your CAS statement or Zerodha file to unlock your complete wealth picture.';
   } else if (gainPct != null && gainPct > 100) {
     insight = `Your investments have more than doubled your money — a ${gainPct.toFixed(0)}% return is exceptional. Keep your SIPs going; compounding accelerates dramatically in years 10-20.`;
   } else if (gainPct != null && gainPct > 30) {
@@ -17891,7 +17891,7 @@ function renderROIFunds(sortBy) {
     'bank_fd','savings_acc','cash','checking','bank_checking_us','fd']);
   const accounts = (data._nwAccounts||[]).filter(a => INV_TYPES.has(a.type) && a.balance > 0);
   if (!accounts.length) {
-    el.innerHTML = '<div class="lab-card" style="text-align:center;padding:32px 16px;"><div style="font-size:2em;margin-bottom:8px;">💼</div><div style="font-size:0.85em;font-weight:700;color:#9CA3AF;">Import CAMS or add NW accounts to see fund-by-fund analysis</div></div>';
+    el.innerHTML = '<div class="lab-card" style="text-align:center;padding:32px 16px;"><div style="font-size:2em;margin-bottom:8px;">💼</div><div style="font-size:0.85em;font-weight:700;color:#9CA3AF;">Import CAS or add NW accounts to see fund-by-fund analysis</div></div>';
     if (summaryEl) summaryEl.style.display = 'none';
     return;
   }
@@ -18119,7 +18119,7 @@ function renderROISIPs() {
     return Array.from(nwNames).some(n => n.includes(cleanLow) || cleanLow.includes(n));
   });
   if (!allFunds.length) {
-    el.innerHTML = '<div class="lab-card" style="text-align:center;padding:24px;"><div style="font-size:1.5em;margin-bottom:8px;">🔄</div><div style="font-size:0.85em;font-weight:700;color:#9CA3AF;">Import CAMS transaction history to see your SIP tracker</div></div>';
+    el.innerHTML = '<div class="lab-card" style="text-align:center;padding:24px;"><div style="font-size:1.5em;margin-bottom:8px;">🔄</div><div style="font-size:0.85em;font-weight:700;color:#9CA3AF;">Import CAS transaction history to see your SIP tracker</div></div>';
     if (totEl) totEl.textContent = '—';
     return;
   }
@@ -24577,10 +24577,14 @@ function renderImportTabs() {
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:#F0F4FF;border-radius:12px;box-sizing:border-box;width:100%;">
         <span style="font-size:0.72em;font-weight:900;color:#4F46E5;white-space:nowrap;flex-shrink:0;">🌍 Region</span>
         <select onchange="setImportRegion(this.value)" style="flex:1;min-width:0;border:1.5px solid #E0E7FF;border-radius:8px;padding:6px 8px;font-family:Nunito;font-weight:800;font-size:0.78em;background:white;max-width:100%;">
-          <option value="IN" ${selectedRegion==='IN'?'selected':''}>🇮🇳 India (CAMS · Zerodha · EPF)</option>
+          <option value="IN" ${selectedRegion==='IN'?'selected':''}>🇮🇳 India (CAS · Zerodha · EPF)</option>
           <option value="US" ${selectedRegion==='US'?'selected':''}>🇺🇸 United States (Fidelity · Schwab)</option>
           <option value="BOTH" ${selectedRegion==='BOTH'?'selected':''}>🌐 Multi-country (show all)</option>
         </select>
+      <div style="margin-top:8px;padding:10px 13px;background:#FFFBEA;border:1.5px solid #FCD34D;border-radius:12px;font-size:0.75em;line-height:1.55;">
+        <div style="font-weight:900;color:#92400E;margin-bottom:3px;">📋 Parser Availability</div>
+        <div style="color:#78350F;font-weight:600;">Dedicated parsers (CAS · Zerodha · EPF · Fidelity · Schwab · Robinhood · SMS) are available for <strong>🇮🇳 India</strong> and <strong>🇺🇸 US</strong> users only. For other regions, use the <strong>Bank/CSV</strong> or <strong>Transactions</strong> tab to upload your Income, Expenses, and Investments.</div>
+      </div>
       </div>`;
   }
 
@@ -24591,7 +24595,7 @@ function renderImportTabs() {
   const tabs = [
     { key:'transactions', label:'💸 Transactions', always: true },
     // India-specific
-    { key:'cams',     label:'📄 CAMS',     only:'IN' },
+    { key:'cams',     label:'📄 CAS',      only:'IN' },
     { key:'zerodha',  label:'📈 Zerodha',  only:'IN' },
     { key:'epf',      label:'🏦 EPF/PF',   only:'IN' },
     // US-specific
@@ -24614,6 +24618,24 @@ function renderImportTabs() {
 
 function setImportRegion(val) {
   window._importRegionOverride = val;
+
+  // Auto-sync display currency when region is explicitly selected
+  if (val === 'IN') {
+    const inrEntry = CURRENCIES.find(c => c.code === 'INR');
+    if (inrEntry && currentCurrency.code !== 'INR') {
+      saveCurrency(inrEntry);
+      showToast('🇮🇳 Display currency auto-set to ₹ INR to match India region');
+    }
+  } else if (val === 'US') {
+    const usdEntry = CURRENCIES.find(c => c.code === 'USD');
+    if (usdEntry && currentCurrency.code !== 'USD') {
+      saveCurrency(usdEntry);
+      showToast('🇺🇸 Display currency auto-set to $ USD to match US region');
+    }
+  } else if (val === 'BOTH') {
+    showToast('🌐 Multi-country mode — verify your display currency in Settings matches your primary region', 4000);
+  }
+
   renderImportTabs();
   // Re-activate first tab
   const firstTab = document.querySelector('.import-tab');
@@ -27933,7 +27955,7 @@ function clearCAMSImport() {
   try { renderNetWorth(); } catch(e) {}
   try { renderHome(); } catch(e) {}
   resetNamedParser('cams');
-  showToast(`🧹 ${txRemoved} CAMS transactions + ${nwRemoved} NW accounts cleared`);
+  showToast(`🧹 ${txRemoved} CAS transactions + ${nwRemoved} NW accounts cleared`);
 }
 
 function clearDataset(type) {
