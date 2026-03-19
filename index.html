@@ -35474,6 +35474,42 @@ const DISC_THEMES = [
         }, 600); },
       spot:'.fhs-ring-card', tip:'Tap any pillar ring to expand — see your score breakdown and nudges.' },
 
+    { id:'what_if_explainer',
+      label:'What-If Simulator',
+      nav:()=>{
+        goToScreen('roi');
+        setTimeout(()=>{
+          try { openWhatIf(); } catch(e) {}
+          setTimeout(()=>{
+            const sheet = document.getElementById('wi-sheet');
+            const title = document.querySelector('.wi-title');
+            if (title) setTimeout(()=>_discSpotlight(title,
+              'The What-If Simulator lets you model life changes — increase savings, cut expenses, plan a career switch, or stress-test a market crash — and instantly see how your Financial Health Score would shift. Tap the Variables tab to move sliders, or Scenarios for pre-built life events.',
+              'What-If Simulator'), 400);
+          }, 400);
+        }, 350);
+      },
+      spot:'#wi-sheet', tip:'What-If Simulator — model life changes and see their impact on your FHS score in real time.' },
+
+    { id:'what_if_save_goal',
+      label:'Save Simulation as Goal',
+      nav:()=>{
+        goToScreen('roi');
+        setTimeout(()=>{
+          try { openWhatIf(); } catch(e) {}
+          setTimeout(()=>{
+            wiSetTab('scenarios');
+            setTimeout(()=>{
+              const goalBtn = document.getElementById('wi-goal-btn');
+              if (goalBtn) setTimeout(()=>_discSpotlight(goalBtn,
+                'After running any simulation, tap "Save as Goal" to turn it into a real Goal in your Goals tab. MoneyFi will track your progress, link it to accounts, and calculate how funded you are over time.',
+                'Save Simulation as Goal'), 400);
+            }, 300);
+          }, 400);
+        }, 350);
+      },
+      spot:'#wi-goal-btn', tip:'Run a What-If simulation, then tap Save as Goal — it lands in your Goals tab with funding tracked automatically.' },
+
     { id:'fhs_edit_profile',   label:'Edit FHS Profile', nav:()=>{ switchScreen('fhs',document.querySelectorAll('.nav-item')[4]); setTimeout(()=>openFHSOnboard(),400); }, spot:'#screen-fhs', tip:'Keep your profile updated — age, income, family size affect your FHS scores.' },
     { id:'goals_active_tab',   label:'Active Goals',     nav:()=>{ switchScreen('budget',document.querySelectorAll('.nav-item')[2]); setTimeout(()=>{ setBudgetTab('goals',null); setTimeout(()=>setGoalsTab('active'),300); },300); }, spot:'#screen-budget', tip:'Active goals show funded %, SIP needed, and time to target.' },
     { id:'goals_achieved_tab', label:'Achieved Goals',   nav:()=>{ switchScreen('budget',document.querySelectorAll('.nav-item')[2]); setTimeout(()=>{ setBudgetTab('goals',null); setTimeout(()=>setGoalsTab('achieved'),300); },300); }, spot:'#screen-budget', tip:'Celebrate! Achieved goals are stored here — your financial wins.' },
