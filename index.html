@@ -5106,6 +5106,14 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:0.78em;color:#92400E;font-weight:700;">
           ⚠️ Robinhood CSV has no current prices — imported positions show cost basis only. Update current values in Net Worth after import.
         </div>
+
+        <!-- Clipboard paste option -->
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid #F0F0F0;">
+          <div style="font-size:0.82em;font-weight:900;color:#1E2A6E;margin-bottom:4px;">📋 Paste Portfolio (Easier)</div>
+          <div style="font-size:0.72em;color:#6B7280;font-weight:600;margin-bottom:8px;">On Robinhood web → Account → Investing → select all stocks → copy → paste here. Includes current prices &amp; cost basis.</div>
+          <textarea id="robinhood-paste-input" placeholder="Paste your Robinhood portfolio here..." style="width:100%;height:110px;border:1.5px solid #E0E7FF;border-radius:10px;padding:10px;font-family:Nunito,sans-serif;font-size:0.78em;font-weight:600;color:#1E2A6E;resize:vertical;box-sizing:border-box;outline:none;"></textarea>
+          <button onclick="parseRobinhoodClipboard()" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#22C55E,#16A34A);color:white;border:none;border-radius:10px;padding:11px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.85em;cursor:pointer;">🟢 Parse Portfolio</button>
+        </div>
       </div>
     </div>
     <div class="import-step" id="irobinhood-step2">
@@ -27018,6 +27026,176 @@ function parseSchwabTransactions(rawRows) {
 // Account Type values: "Brokerage", "Traditional IRA", "Roth IRA"
 // Only 1 year of history; crypto/futures NOT included in this file.
 // ══════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════
+// ROBINHOOD CLIPBOARD PASTE PARSER
+// Parses the text copied from Robinhood web → Account → Investing
+// Format per holding (8 lines):
+//   Name, Symbol, Shares, Price($), AvgCost($), blank, TotalReturn($), Equity($)
+// ══════════════════════════════════════════════════════════════════
+function parseRobinhoodClipboard() {
+  const raw = document.getElementById('robinhood-paste-input')?.value?.trim();
+  if (!raw) { showToast('⚠️ Paste your Robinhood portfolio first'); return; }
+
+  const rawLines = raw.split('\n').map(l => l.trimEnd());
+
+  function parseMoney(s) {
+    s = (s||'').trim().replace(/,/g,'').replace(/\$/g,'').replace(/\+/g,'');
+    if (!s) return null;
+    const v = parseFloat(s);
+    return isNaN(v) ? null : v;
+  }
+  function isSymbol(s) { return /^[A-Z]{1,5}([.\-][A-Z]{1,2})?$/.test((s||'').trim()); }
+  function isNumber(s) { return !isNaN(parseFloat((s||'').trim().replace(/,/g,''))); }
+  function isPrice(s)  { return /^-?\$[\d,]+\.\d{2}$/.test((s||'').trim()); }
+
+  // Find start of data — after the 'Equity' column header
+  let start = 0;
+  for (let i = 0; i < rawLines.length; i++) {
+    if (rawLines[i].trim() === 'Equity') { start = i + 1; break; }
+  }
+
+  const data = rawLines.slice(start);
+  const holdings = [];
+  let i = 0;
+
+  while (i < data.length) {
+    const line = data[i].trim();
+    // Skip blank lines and section labels
+    if (!line || ['stocks','options','crypto','etfs','name','symbol','shares',
+                  'price','average cost','total return','equity'].includes(line.toLowerCase())) {
+      i++; continue;
+    }
+
+    if (i + 7 >= data.length) break;
+
+    const name      = data[i].trim();
+    const symbol    = data[i+1].trim();
+    const sharesS   = data[i+2].trim();
+    const priceS    = data[i+3].trim();
+    const avgCostS  = data[i+4].trim();
+    // data[i+5] = blank (total return % placeholder — always empty in copy)
+    const retS      = data[i+6].trim();   // total return $
+    const equityS   = data[i+7].trim();   // current market value
+
+    if (!isSymbol(symbol) || !isNumber(sharesS) || !isPrice(priceS)) { i++; continue; }
+
+    const shares    = parseFloat(sharesS.replace(/,/g,''));
+    const price     = parseMoney(priceS);
+    const avgCost   = parseMoney(avgCostS);
+    const totalRet  = parseMoney(retS);
+    const equity    = parseMoney(equityS);
+    const costBasis = avgCost ? Math.round(avgCost * shares * 100) / 100 : null;
+
+    holdings.push({ name, symbol, shares, price, avgCost, totalRet, equity, costBasis });
+    i += 8;
+  }
+
+  if (holdings.length === 0) {
+    showToast('❌ No holdings found — make sure you copied from Account → Investing');
+    return;
+  }
+
+  // Build a single NW account: "Robinhood Portfolio"
+  const sym  = currentCurrency?.symbol || '$';
+  const totalEquity   = holdings.reduce((s,h) => s + (h.equity   || 0), 0);
+  const totalCost     = holdings.reduce((s,h) => s + (h.costBasis || 0), 0);
+  const totalReturn   = totalEquity - totalCost;
+  const returnPct     = totalCost > 0 ? (totalReturn / totalCost * 100) : 0;
+
+  // Show preview in step2
+  document.getElementById('irobinhood-summary-text').textContent =
+    `${holdings.length} holdings · ${sym}${Math.round(totalEquity).toLocaleString()} current value · ${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(1)}% total return`;
+
+  document.getElementById('irobinhood-summary-grid').innerHTML =
+    `<div class="import-summary-box"><div class="isb-num">${holdings.length}</div><div class="isb-label">Holdings</div></div>` +
+    `<div class="import-summary-box"><div class="isb-num">${sym}${Math.round(totalEquity).toLocaleString()}</div><div class="isb-label">Market Value</div></div>` +
+    `<div class="import-summary-box"><div class="isb-num" style="color:${totalReturn>=0?'#059669':'#DC2626'}">${totalReturn>=0?'+':''}${sym}${Math.abs(Math.round(totalReturn)).toLocaleString()}</div><div class="isb-label">Unrealized P&L</div></div>`;
+
+  // Holdings preview table
+  const table = document.getElementById('irobinhood-preview-table');
+  table.innerHTML =
+    `<tr><th>Symbol</th><th>Name</th><th>Shares</th><th>Price</th><th>Market Value</th><th>Cost Basis</th><th>Return</th></tr>` +
+    holdings.map(h => {
+      const ret = h.costBasis > 0 ? ((h.equity - h.costBasis) / h.costBasis * 100) : 0;
+      const col = ret >= 0 ? '#059669' : '#DC2626';
+      return `<tr>
+        <td style="font-weight:900">${h.symbol}</td>
+        <td>${h.name}</td>
+        <td>${h.shares}</td>
+        <td>${sym}${h.price?.toFixed(2)||'—'}</td>
+        <td style="font-weight:800">${sym}${Math.round(h.equity||0).toLocaleString()}</td>
+        <td>${sym}${Math.round(h.costBasis||0).toLocaleString()}</td>
+        <td style="color:${col};font-weight:800">${ret>=0?'+':''}${ret.toFixed(1)}%</td>
+      </tr>`;
+    }).join('');
+
+  // Store parsed data for confirm step
+  window._robinhoodClipboardData = { holdings, totalEquity, totalCost };
+
+  // Switch to step2 for review
+  document.querySelectorAll('#isec-robinhood .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('irobinhood-step2').classList.add('active');
+
+  // Override confirm button to use clipboard import
+  const confirmBtn = document.querySelector('#isec-robinhood .import-btn[onclick*="confirmNamedImport"]');
+  if (confirmBtn) confirmBtn.onclick = confirmRobinhoodClipboard;
+}
+
+function confirmRobinhoodClipboard() {
+  const d = window._robinhoodClipboardData;
+  if (!d) return;
+  const { holdings, totalEquity, totalCost } = d;
+  const sym = currentCurrency?.symbol || '$';
+  const isUS = (getFHSProfile()?.region || 'IN') === 'US';
+
+  // Create a single NW brokerage account with holdings detail
+  const account = {
+    id:            'nw_' + Date.now(),
+    name:          'Robinhood',
+    type:          'brokerage',
+    balance:       Math.round(totalEquity * 100) / 100,
+    currency:      isUS ? 'USD' : currentCurrency?.code || 'USD',
+    investedAmount: Math.round(totalCost * 100) / 100,
+    assetClass:    'EQUITY',
+    taxBucket:     'taxable',
+    liquidity:     'liquid',
+    importSource:  'robinhood_clipboard',
+    importedAt:    new Date().toISOString(),
+    holdings:      holdings.map(h => ({
+      symbol:    h.symbol,
+      name:      h.name,
+      shares:    h.shares,
+      price:     h.price,
+      avgCost:   h.avgCost,
+      equity:    h.equity,
+      costBasis: h.costBasis,
+    })),
+  };
+
+  // Upsert — update existing Robinhood account or add new
+  const existing = (data._nwAccounts || []).findIndex(a =>
+    a.importSource === 'robinhood_clipboard' || a.name === 'Robinhood');
+
+  if (existing >= 0) {
+    data._nwAccounts[existing] = { ...data._nwAccounts[existing], ...account };
+  } else {
+    if (!data._nwAccounts) data._nwAccounts = [];
+    data._nwAccounts.push(account);
+  }
+  save();
+
+  // Done screen
+  document.querySelectorAll('#isec-robinhood .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('irobinhood-step3').classList.add('active');
+  document.getElementById('irobinhood-done-title').textContent = 'Robinhood Imported!';
+  document.getElementById('irobinhood-done-sub').textContent =
+    `${holdings.length} holdings · ${sym}${Math.round(totalEquity).toLocaleString()} added to Net Worth`;
+
+  showToast(`✅ Robinhood portfolio imported — ${holdings.length} holdings`);
+  window._robinhoodClipboardData = null;
+}
+
 function detectRobinhood(headers) {
   const h = headers.map(c => String(c).trim().toLowerCase());
   return h.some(c => c.includes('activity date') || c.includes('process date')) &&
