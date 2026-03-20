@@ -36178,6 +36178,34 @@ function buildAIContext() {
                 .sort((a,b) => Math.abs(b.diff)-Math.abs(a.diff)).slice(0,3)
                 .map(g => `${g.sec}:user=${g.u}%,${benchName}=${g.b}%`).join(' | ');
               L.push(`EQUITY SECTOR BREAKDOWN: totalEquity=${sym}${Math.round(eqLedger.totalVal).toLocaleString()} | stocks=${eqLedger.stocks.length} | hhi=${hhi?.toFixed(3)||'?'} (${hhiLabel}) | sectors=${sStr}${gapStr ? ' | vsIndex='+gapStr : ''}`);
+              // Individual equity holdings (top 15 by value) — so AI never needs to ask "what are your top stocks?"
+              const topStocks = [...eqLedger.stocks].sort((a, b) => b.totalVal - a.totalVal).slice(0, 15);
+              if (topStocks.length > 0) {
+                const stockLines = topStocks.map(s => {
+                  const pnlPct = s.totalCost > 0 ? ((s.totalVal - s.totalCost) / s.totalCost * 100).toFixed(1) : '?';
+                  const pnlAmt = s.totalPnl != null ? ((s.totalPnl >= 0 ? '+' : '') + sym + Math.abs(Math.round(s.totalPnl)).toLocaleString()) : '?';
+                  return `    ${s.symbol}${s.name && s.name !== s.symbol ? ' (' + s.name + ')' : ''}: val=${sym}${Math.round(s.totalVal).toLocaleString()} | qty=${s.totalQty} | pnl=${pnlPct}% (${pnlAmt}) | sector=${s.sector || 'Unknown'}`;
+                }).join('\n');
+                L.push(`EQUITY HOLDINGS (top ${topStocks.length} of ${eqLedger.stocks.length} by value):\n${stockLines}`);
+              }
+            }
+          } catch(e) {}
+        })();
+        // Crypto holdings for AI advisor — so AI never needs to ask about crypto positions
+        (() => {
+          try {
+            const cxLedger = typeof buildUnifiedCryptoLedger === 'function' ? buildUnifiedCryptoLedger() : null;
+            if (cxLedger && cxLedger.coins && cxLedger.coins.length > 0) {
+              const topCoins = [...cxLedger.coins].sort((a, b) => b.totalVal - a.totalVal).slice(0, 15);
+              const coinLines = topCoins.map(c => {
+                const pnlPct = c.totalCost > 0 ? ((c.totalVal - c.totalCost) / c.totalCost * 100).toFixed(1) : '?';
+                const pnlAmt = (c.totalPnl >= 0 ? '+' : '') + sym + Math.abs(Math.round(c.totalPnl)).toLocaleString();
+                const qtyStr = c.totalQty > 0 ? (c.totalQty < 0.001 ? c.totalQty.toExponential(4) : c.totalQty.toFixed(c.totalQty < 1 ? 6 : 4)) : '?';
+                return `    ${c.symbol}${c.name && c.name !== c.symbol ? ' (' + c.name + ')' : ''}: val=${sym}${Math.round(c.totalVal).toLocaleString()} | qty=${qtyStr} | pnl=${pnlPct}% (${pnlAmt}) | category=${c.category || 'OTHER'} | exchanges=${c.accounts.length}`;
+              }).join('\n');
+              const cexPctRound = Math.round(cxLedger.cexPct || 0);
+              const totalCxPnlSign = (cxLedger.totalPnl || 0) >= 0 ? '+' : '';
+              L.push(`CRYPTO HOLDINGS (${topCoins.length} of ${cxLedger.coins.length} coins by value):\n  totalCrypto=${sym}${Math.round(cxLedger.totalVal).toLocaleString()} | totalPnl=${totalCxPnlSign}${sym}${Math.abs(Math.round(cxLedger.totalPnl || 0)).toLocaleString()} | cexExposure=${cexPctRound}% | accounts=${cxLedger.accountCount}\n${coinLines}`);
             }
           } catch(e) {}
         })();
@@ -36272,8 +36300,8 @@ NEVER say: 'Sell your gold/jewelry and invest in equity' — this is financially
 INSTEAD: treat physical gold as a separate, protected category. If gold is over-allocated vs target, suggest routing NEW savings to equity rather than liquidating gold.
 
 RULE 6 — NEVER ASK FOR DATA ALREADY IN THIS PROMPT (critical):
-The snapshot below contains the user's salary, 401k/retirement contributions, employer match %, insurance cover, goals, portfolio balances, monthly cashflow, and FHS pillar scores. You ALREADY KNOW all of this.
-NEVER ask: "What is your annual income?", "How much are you contributing to your 401k?", "Do you have an HSA?", "What is your employer match?", "What are your goals?", "What is your monthly SIP?", or any question whose answer is already in the snapshot below.
+The snapshot below contains the user's salary, 401k/retirement contributions, employer match %, insurance cover, goals, portfolio balances, monthly cashflow, FHS pillar scores, INDIVIDUAL STOCK HOLDINGS (names, quantities, P&L per stock), and CRYPTO HOLDINGS (individual coin positions, quantities, P&L, exchange breakdown). You ALREADY KNOW all of this.
+NEVER ask: "What is your annual income?", "How much are you contributing to your 401k?", "Do you have an HSA?", "What is your employer match?", "What are your goals?", "What is your monthly SIP?", "What are your top holdings?", "Which stocks do you hold?", "What crypto do you own?", or any question whose answer is already in the snapshot below.
 CRITICAL — ZERO VALUES: If a field shows $0 or 0/mo it means the user has not entered that data yet — NOT that you should ask. Instead say: "Your [field] shows $0 in MoneyFi — if you've set this up, update the [account/profile] card to unlock this insight." Then give your best advice assuming the worst case (no contribution). NEVER end a response by asking for a number shown in the snapshot.
 The wow factor of MoneyFi is: "I already know your numbers — and I tell you what to do with them." Act like it.
 
