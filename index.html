@@ -3276,6 +3276,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <button class="inv-sub-tab inv-sub-active" id="inv-stab-funds"  onclick="switchInvTab('funds');trackFeature('inv_funds_tab')">💼 Funds</button>
         <button class="inv-sub-tab" id="inv-stab-sip"    onclick="switchInvTab('sip');trackFeature('inv_sip_tab')">🔄 SIP Tracker</button>
         <button class="inv-sub-tab" id="inv-stab-equity" onclick="switchInvTab('equity');trackFeature('inv_equity_tab')">📊 Equity</button>
+        <button class="inv-sub-tab" id="inv-stab-crypto" onclick="switchInvTab('crypto');trackFeature('inv_crypto_tab')" style="display:none;">🪙 Crypto</button>
         <button class="inv-sub-tab" id="inv-stab-rebalance" onclick="switchInvTab('rebalance');trackFeature('inv_rebalance_tab')">⚖️ Rebalance</button>
       </div>
 
@@ -3333,6 +3334,64 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
             <button class="lab-sort-btn" id="eqbtn-name"   onclick="sortEquityLedger('name')">🔤 Name</button>
           </div>
           <div id="eq-ledger-body"></div>
+        </div>
+
+      </div>
+
+      <!-- ── Crypto Intelligence sub-panel ── -->
+      <div id="inv-sub-crypto" style="display:none;">
+
+        <!-- Portfolio Summary Card -->
+        <div class="lab-card" id="cx-summary-card">
+          <div class="lab-card-header">
+            <div class="lab-card-title">🪙 Crypto Portfolio</div>
+            <div class="lab-card-badge lab-badge-green" id="cx-summary-badge">—</div>
+          </div>
+          <div id="cx-summary-body"></div>
+        </div>
+
+        <!-- Coin Category Donut -->
+        <div class="lab-card" id="cx-donut-card" style="display:none;">
+          <div class="lab-card-header">
+            <div class="lab-card-title">🧩 Coin Category Breakdown</div>
+            <div class="lab-card-badge lab-badge-blue" id="cx-donut-badge">—</div>
+          </div>
+          <div id="cx-donut-body">
+            <div style="display:flex;gap:14px;align-items:center;padding:8px 0;">
+              <canvas id="cx-donut-canvas" width="110" height="110" style="flex-shrink:0;"></canvas>
+              <div id="cx-donut-legend" style="flex:1;min-width:0;"></div>
+            </div>
+            <div id="cx-donut-nudge" style="margin-top:6px;"></div>
+          </div>
+        </div>
+
+        <!-- Duplicate Coin Alert -->
+        <div class="lab-card" id="cx-dupes-card" style="display:none;">
+          <div class="lab-card-header">
+            <div class="lab-card-title">⚠️ Same Coin, Multiple Exchanges</div>
+            <div class="lab-card-badge lab-badge-warn" id="cx-dupes-badge">—</div>
+          </div>
+          <div id="cx-dupes-body"></div>
+        </div>
+
+        <!-- Unified Coin Ledger -->
+        <div class="lab-card" id="cx-ledger-card" style="display:none;">
+          <div class="lab-card-header">
+            <div class="lab-card-title">📋 Consolidated Coin Ledger</div>
+            <div class="lab-card-badge lab-badge-blue" id="cx-ledger-badge">—</div>
+          </div>
+          <!-- Account filter chips -->
+          <div id="cx-account-filter-row" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"></div>
+          <!-- Last updated info -->
+          <div id="cx-last-updated" style="font-size:0.62em;font-weight:700;color:#9CA3AF;margin-bottom:8px;display:flex;align-items:center;gap:4px;"></div>
+          <!-- Sort buttons -->
+          <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+            <button class="lab-sort-btn lab-sort-active" id="cxbtn-value"    onclick="sortCryptoLedger('value')">💰 Value</button>
+            <button class="lab-sort-btn" id="cxbtn-pnl"      onclick="sortCryptoLedger('pnl')">📈 P&amp;L</button>
+            <button class="lab-sort-btn" id="cxbtn-category" onclick="sortCryptoLedger('category')">🧩 Category</button>
+            <button class="lab-sort-btn" id="cxbtn-name"     onclick="sortCryptoLedger('name')">🔤 Name</button>
+          </div>
+          <div id="cx-ledger-body"></div>
         </div>
 
       </div>
@@ -12301,24 +12360,32 @@ let _roiTimelineMode = 'invested';
 
 function switchInvTab(tab) {
   if (tab !== 'equity') _eqAccountFilter = 'all'; // reset filter when leaving equity tab
+  if (tab !== 'crypto') _cxAccountFilter = 'all'; // reset filter when leaving crypto tab
   const fundsEl   = document.getElementById('inv-sub-funds');
   const sipEl     = document.getElementById('inv-sub-sip');
   const equityEl  = document.getElementById('inv-sub-equity');
   const rebalEl   = document.getElementById('inv-sub-rebalance');
+  const cryptoEl  = document.getElementById('inv-sub-crypto');
   const fBtn      = document.getElementById('inv-stab-funds');
   const sBtn      = document.getElementById('inv-stab-sip');
   const eBtn      = document.getElementById('inv-stab-equity');
-  if (fundsEl)  fundsEl.style.display  = tab === 'funds'  ? '' : 'none';
-  if (sipEl)    sipEl.style.display    = tab === 'sip'    ? '' : 'none';
+  const cBtn      = document.getElementById('inv-stab-crypto');
+  if (fundsEl)  fundsEl.style.display   = tab === 'funds'     ? '' : 'none';
+  if (sipEl)    sipEl.style.display     = tab === 'sip'       ? '' : 'none';
   if (equityEl) equityEl.style.display  = tab === 'equity'    ? '' : 'none';
   if (rebalEl)  rebalEl.style.display   = tab === 'rebalance' ? '' : 'none';
+  if (cryptoEl) cryptoEl.style.display  = tab === 'crypto'    ? '' : 'none';
   if (fBtn) fBtn.classList.toggle('inv-sub-active', tab === 'funds');
   if (sBtn) sBtn.classList.toggle('inv-sub-active', tab === 'sip');
   if (eBtn) eBtn.classList.toggle('inv-sub-active', tab === 'equity');
+  if (cBtn) cBtn.classList.toggle('inv-sub-active', tab === 'crypto');
   const rBtn = document.getElementById('inv-stab-rebalance');
   if (rBtn) rBtn.classList.toggle('inv-sub-active', tab === 'rebalance');
   if (tab === 'equity') {
     renderEquityConcentration();
+  }
+  if (tab === 'crypto') {
+    renderCryptoLab();
   }
   if (tab === 'sip' && sipEl) {
     // Build a fresh SIP shell with the same IDs renderROISIPs() targets.
@@ -12370,7 +12437,8 @@ function switchROITab(tab) {
   if (tab === 'investments') {
     const p = document.getElementById('roi-panel-funds');
     if (p) p.style.display = '';
-    switchInvTab('funds');   // default to Funds sub-tab
+    _updateCryptoTabVisibility(); // show/hide Crypto tab based on holdings data
+    switchInvTab('funds');        // default to Funds sub-tab
     renderROIFunds(_roiFundSort);
   }
   if (tab === 'retire') {
@@ -17889,6 +17957,491 @@ function _renderLedgerRows(ledger, sym, sortBy) {
 }
 // ══════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════
+// CRYPTO INTELLIGENCE LAB — Unified cross-exchange coin ledger
+// Mirrors the Equity Intelligence tab. Auto-shown when crypto holdings
+// are detected in any NW account of type 'crypto'.
+// ══════════════════════════════════════════════════════════════════════
+
+// ── Coin category colour palette ─────────────────────────────────────
+const CRYPTO_CATEGORIES = {
+  BTC:    { label: 'Bitcoin',     color: '#F7931A' },
+  ETH:    { label: 'Ethereum',    color: '#627EEA' },
+  STABLE: { label: 'Stablecoins', color: '#2DBA4E' },
+  LAYER1: { label: 'Layer 1',     color: '#9945FF' },
+  DEFI:   { label: 'DeFi',        color: '#FF6B6B' },
+  MEME:   { label: 'Meme',        color: '#FF9900' },
+  OTHER:  { label: 'Other',       color: '#94A3B8' },
+};
+
+// ── Known coin → category map ─────────────────────────────────────────
+const _CRYPTO_COIN_CAT = {
+  BTC:'BTC', WBTC:'BTC',
+  ETH:'ETH', WETH:'ETH', STETH:'ETH', RETH:'ETH',
+  USDT:'STABLE', USDC:'STABLE', BUSD:'STABLE', DAI:'STABLE', TUSD:'STABLE',
+  FRAX:'STABLE', USDD:'STABLE', GUSD:'STABLE', USDP:'STABLE',
+  SOL:'LAYER1', ADA:'LAYER1', AVAX:'LAYER1', DOT:'LAYER1', ATOM:'LAYER1',
+  MATIC:'LAYER1', NEAR:'LAYER1', ALGO:'LAYER1', XRP:'LAYER1', XLM:'LAYER1',
+  FTM:'LAYER1', ONE:'LAYER1', EGLD:'LAYER1', KAVA:'LAYER1', TRX:'LAYER1',
+  TON:'LAYER1', APT:'LAYER1', SUI:'LAYER1', SEI:'LAYER1', INJ:'LAYER1',
+  UNI:'DEFI', AAVE:'DEFI', COMP:'DEFI', MKR:'DEFI', SNX:'DEFI', SUSHI:'DEFI',
+  CRV:'DEFI', YFI:'DEFI', BAL:'DEFI', LINK:'DEFI', GRT:'DEFI', LDO:'DEFI',
+  DOGE:'MEME', SHIB:'MEME', PEPE:'MEME', BONK:'MEME', FLOKI:'MEME', WIF:'MEME',
+};
+
+// ── CEX name detector ─────────────────────────────────────────────────
+const _CX_CEX_RE = /coinbase|binance|wazirx|kraken|gemini|kucoin|bybit|okx|huobi|bitbns|coindcx|zebpay|bitfinex|gate\.?io|ftx/i;
+
+// ── Sort state ────────────────────────────────────────────────────────
+let _cryptoLedgerSort  = 'value';
+let _cryptoLedgerData  = null;
+let _cxAccountFilter   = 'all';
+
+// ── Build unified ledger from all crypto-type NW accounts ─────────────
+function buildUnifiedCryptoLedger() {
+  const cryptoAccts = (data._nwAccounts || [])
+    .filter(a => a.type === 'crypto' && a.meta && a.meta.holdings && a.meta.holdings.length > 0);
+
+  if (cryptoAccts.length === 0) {
+    return { coins: [], totalVal: 0, totalPnl: 0, totalCost: 0, accountCount: 0, accounts: [], cexPct: 0 };
+  }
+
+  const map = {};
+  let totalCexVal = 0;
+
+  cryptoAccts.forEach(account => {
+    const acctCur = account.currency || (currentCurrency && currentCurrency.code) || 'USD';
+    const isCEX   = _CX_CEX_RE.test(account.name || '');
+
+    (account.meta.holdings || []).forEach(h => {
+      const sym = (h.symbol || '').toUpperCase().trim();
+      if (!sym) return;
+
+      const category = _CRYPTO_COIN_CAT[sym] || 'OTHER';
+      const qty      = Number(h.qty || h.shares || 0);
+      const curVal   = nwConvert ? nwConvert(Number(h.curVal || 0), acctCur) : Number(h.curVal || 0);
+      const pnl      = nwConvert ? nwConvert(Number(h.pnl || 0), acctCur)   : Number(h.pnl || 0);
+      const rawCost  = (h.avgCost && qty) ? Number(h.avgCost) * qty : 0;
+      const cost     = nwConvert ? nwConvert(rawCost, acctCur) : rawCost;
+
+      if (isCEX) totalCexVal += curVal;
+
+      if (!map[sym]) {
+        map[sym] = {
+          symbol: sym,
+          name: h.name || sym,
+          category,
+          totalQty:  0,
+          totalVal:  0,
+          totalPnl:  0,
+          totalCost: 0,
+          accounts:  [],
+          accountDetails: [],
+        };
+      }
+      map[sym].totalQty  += qty;
+      map[sym].totalVal  += curVal;
+      map[sym].totalPnl  += pnl;
+      map[sym].totalCost += cost;
+      if (!map[sym].accounts.includes(account.name)) map[sym].accounts.push(account.name);
+      map[sym].accountDetails.push({ accountName: account.name, qty, curVal, pnl, isCEX });
+    });
+  });
+
+  const coins    = Object.values(map);
+  const totalVal  = coins.reduce((s, c) => s + c.totalVal,  0);
+  const totalPnl  = coins.reduce((s, c) => s + c.totalPnl,  0);
+  const totalCost = coins.reduce((s, c) => s + c.totalCost, 0);
+  const cexPct    = totalVal > 0 ? (totalCexVal / totalVal * 100) : 0;
+
+  return { coins, totalVal, totalPnl, totalCost, accountCount: cryptoAccts.length, accounts: cryptoAccts, cexPct };
+}
+
+// ── Show / hide the Crypto tab button based on data ───────────────────
+function _updateCryptoTabVisibility() {
+  const has = (data._nwAccounts || []).some(
+    a => a.type === 'crypto' && a.meta && a.meta.holdings && a.meta.holdings.length > 0
+  );
+  const btn = document.getElementById('inv-stab-crypto');
+  if (btn) btn.style.display = has ? '' : 'none';
+}
+
+// ── Main render entry point ───────────────────────────────────────────
+function renderCryptoLab() {
+  const sym    = (currentCurrency && currentCurrency.symbol) || '$';
+  const ledger = buildUnifiedCryptoLedger();
+
+  if (ledger.coins.length === 0) {
+    document.getElementById('cx-summary-body').innerHTML =
+      '<div style="text-align:center;padding:20px 10px;color:#9CA3AF;font-size:0.82em;line-height:1.5;">' +
+      'No crypto holdings found.<br>Add a Crypto account in the NW module and import your holdings<br>to see your unified portfolio here.' +
+      '</div>';
+    document.getElementById('cx-donut-card').style.display  = 'none';
+    document.getElementById('cx-dupes-card').style.display  = 'none';
+    document.getElementById('cx-ledger-card').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('cx-donut-card').style.display  = '';
+  document.getElementById('cx-ledger-card').style.display = '';
+  _renderCryptoSummaryCard(ledger, sym);
+  _renderCryptoCategoryDonut(ledger, sym);
+  _renderCryptoDupesCard(ledger, sym);
+  _renderCryptoCoinLedger(ledger, sym, _cryptoLedgerSort);
+}
+
+// ── 1. Portfolio Summary Card ─────────────────────────────────────────
+function _renderCryptoSummaryCard(ledger, sym) {
+  const { coins, totalVal, totalPnl, totalCost, accountCount, cexPct } = ledger;
+  const pnlColor = totalPnl >= 0 ? '#059669' : '#DC2626';
+  const pnlSign  = totalPnl >= 0 ? '\u25b2' : '\u25bc';
+  const totalRoi = totalCost > 0 ? ((totalVal - totalCost) / totalCost * 100).toFixed(1) : null;
+  const selfPct  = 100 - cexPct;
+
+  let custodyColor, custodyLabel, custodyNote;
+  if (cexPct >= 80) {
+    custodyColor = '#DC2626';
+    custodyLabel = 'High CEX Risk';
+    custodyNote  = 'Over 80% of your crypto is on centralised exchanges. Consider moving some to a self-custody wallet (hardware or software) to reduce counterparty risk.';
+  } else if (cexPct >= 50) {
+    custodyColor = '#D97706';
+    custodyLabel = 'Moderate CEX Risk';
+    custodyNote  = cexPct.toFixed(0) + '% of your crypto is on centralised exchanges. A healthy mix — self-custody for long-term holds is recommended for significant amounts.';
+  } else {
+    custodyColor = '#059669';
+    custodyLabel = 'Good Self-Custody';
+    custodyNote  = 'More than half your crypto is in self-custody. This reduces counterparty risk from exchange failures.';
+  }
+
+  const badge = document.getElementById('cx-summary-badge');
+  if (badge) {
+    badge.textContent = coins.length + ' coin' + (coins.length !== 1 ? 's' : '') + ' \u00b7 ' + accountCount + ' wallet' + (accountCount !== 1 ? 's' : '');
+    badge.className   = 'lab-card-badge lab-badge-green';
+  }
+
+  const pnlStrip = totalCost > 0
+    ? '<div style="display:flex;justify-content:space-between;align-items:center;background:#FFFBEB;border-radius:10px;padding:10px 14px;margin-bottom:12px;">'
+        + '<div>'
+          + '<div style="font-size:0.68em;font-weight:800;color:#6B7280;text-transform:uppercase;">Total Crypto Value</div>'
+          + '<div style="font-size:1.05em;font-weight:900;color:#92400E;">' + sym + Math.round(totalVal).toLocaleString() + '</div>'
+        + '</div>'
+        + '<div style="text-align:right;">'
+          + '<div style="font-size:0.68em;font-weight:800;color:#6B7280;text-transform:uppercase;">Unrealized P&amp;L</div>'
+          + '<div style="font-size:1.05em;font-weight:900;color:' + pnlColor + ';">' + pnlSign + ' ' + sym + Math.abs(Math.round(totalPnl)).toLocaleString() + (totalRoi ? ' (' + (totalPnl >= 0 ? '+' : '') + totalRoi + '%)' : '') + '</div>'
+        + '</div>'
+      + '</div>'
+    : '';
+
+  document.getElementById('cx-summary-body').innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">'
+      + '<div style="text-align:center;background:#FFF7ED;border-radius:10px;padding:10px 6px;"><div style="font-size:1.15em;font-weight:900;color:#92400E;">' + coins.length + '</div><div style="font-size:0.6em;font-weight:800;color:#6B7280;text-transform:uppercase;margin-top:2px;">Coins</div></div>'
+      + '<div style="text-align:center;background:#FFF7ED;border-radius:10px;padding:10px 6px;"><div style="font-size:1.15em;font-weight:900;color:#92400E;">' + accountCount + '</div><div style="font-size:0.6em;font-weight:800;color:#6B7280;text-transform:uppercase;margin-top:2px;">Wallets</div></div>'
+      + '<div style="text-align:center;background:#FFF7ED;border-radius:10px;padding:10px 6px;"><div style="font-size:1.15em;font-weight:900;color:' + custodyColor + ';">' + cexPct.toFixed(0) + '%</div><div style="font-size:0.6em;font-weight:800;color:#6B7280;text-transform:uppercase;margin-top:2px;">On CEX</div></div>'
+      + '<div style="text-align:center;background:#FFF7ED;border-radius:10px;padding:10px 6px;"><div style="font-size:1.15em;font-weight:900;color:' + pnlColor + ';">' + (totalRoi ? (totalPnl >= 0 ? '+' : '') + totalRoi + '%' : '\u2014') + '</div><div style="font-size:0.6em;font-weight:800;color:#6B7280;text-transform:uppercase;margin-top:2px;">Total ROI</div></div>'
+    + '</div>'
+    + pnlStrip
+    + '<div style="margin-bottom:4px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
+        + '<div style="font-size:0.72em;font-weight:800;color:#374151;">Custody Risk</div>'
+        + '<div style="font-size:0.72em;font-weight:900;color:' + custodyColor + ';">' + custodyLabel + '</div>'
+      + '</div>'
+      + '<div style="background:#F0F0F0;border-radius:6px;height:8px;overflow:hidden;display:flex;">'
+        + '<div style="height:100%;background:#DC2626;width:' + cexPct.toFixed(0) + '%;transition:width 0.8s;" title="CEX"></div>'
+        + '<div style="height:100%;background:#059669;width:' + selfPct.toFixed(0) + '%;transition:width 0.8s;" title="Self-custody"></div>'
+      + '</div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:0.58em;color:#9CA3AF;margin-top:3px;font-weight:600;">'
+        + '<span>\ud83c\udfe6 CEX ' + cexPct.toFixed(0) + '%</span>'
+        + '<span>\ud83d\udd10 Self-Custody ' + selfPct.toFixed(0) + '%</span>'
+      + '</div>'
+    + '</div>'
+    + '<div style="font-size:0.74em;font-weight:600;color:#374151;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;padding:9px 11px;line-height:1.5;margin-top:10px;">' + custodyNote + '</div>';
+}
+
+// ── 2. Coin Category Donut ────────────────────────────────────────────
+function _renderCryptoCategoryDonut(ledger, sym) {
+  const { coins, totalVal } = ledger;
+  const badge = document.getElementById('cx-donut-badge');
+
+  // Aggregate by category
+  const catMap = {};
+  coins.forEach(c => {
+    catMap[c.category] = (catMap[c.category] || 0) + c.totalVal;
+  });
+  const sorted = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+  if (badge) badge.textContent = sorted.length + ' categor' + (sorted.length === 1 ? 'y' : 'ies');
+
+  // Draw canvas donut
+  const canvas = document.getElementById('cx-donut-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const SIZE = 110;
+  canvas.width  = SIZE * dpr; canvas.height = SIZE * dpr;
+  canvas.style.width = SIZE + 'px'; canvas.style.height = SIZE + 'px';
+  ctx.scale(dpr, dpr);
+
+  const cx = SIZE / 2, cy = SIZE / 2, R = 48, r = 28;
+  let angle = -Math.PI / 2;
+
+  sorted.forEach(function(entry) {
+    var cat = entry[0], val = entry[1];
+    var catDef = CRYPTO_CATEGORIES[cat] || CRYPTO_CATEGORIES.OTHER;
+    var slice = (val / totalVal) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, angle, angle + slice);
+    ctx.closePath();
+    ctx.fillStyle = catDef.color;
+    ctx.fill();
+    angle += slice;
+  });
+  // Donut hole
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  // Centre label
+  ctx.fillStyle = '#92400E';
+  ctx.font = 'bold 9px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(coins.length + ' coins', cx, cy);
+
+  // Legend
+  const legendEl = document.getElementById('cx-donut-legend');
+  if (legendEl) {
+    legendEl.innerHTML = sorted.map(function(entry) {
+      var cat = entry[0], val = entry[1];
+      var catDef = CRYPTO_CATEGORIES[cat] || CRYPTO_CATEGORIES.OTHER;
+      var pct = (val / totalVal * 100).toFixed(1);
+      var flag = parseFloat(pct) >= 60 ? ' \ud83d\udd34' : parseFloat(pct) >= 40 ? ' \ud83d\udfe1' : '';
+      return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">'
+        + '<div style="width:9px;height:9px;border-radius:2px;background:' + catDef.color + ';flex-shrink:0;"></div>'
+        + '<div style="font-size:0.68em;font-weight:800;color:#374151;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + catDef.label + flag + '</div>'
+        + '<div style="font-size:0.68em;font-weight:900;color:#6B7280;flex-shrink:0;">' + pct + '%</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  // Nudge: concentration insights crypto-specific
+  const nudgeEl = document.getElementById('cx-donut-nudge');
+  if (nudgeEl) {
+    const memeEntry = catMap['MEME'];
+    const stableEntry = catMap['STABLE'];
+    const memePct   = memeEntry  ? (memeEntry  / totalVal * 100) : 0;
+    const stablePct = stableEntry ? (stableEntry / totalVal * 100) : 0;
+    var nudges = [];
+    if (memePct >= 20) {
+      nudges.push('<div style="display:flex;gap:8px;align-items:flex-start;background:#FFF7ED;border-left:3px solid #FF9900;border-radius:0 8px 8px 0;padding:8px 10px;margin-bottom:6px;font-size:0.72em;font-weight:700;color:#374151;line-height:1.4;">'
+        + '<strong>Meme ' + memePct.toFixed(0) + '%</strong>\u00a0\u2014 High speculative exposure. Meme coins can drop 80%+ rapidly; consider capping under 10% of total crypto.</div>');
+    }
+    if (stablePct >= 40) {
+      nudges.push('<div style="display:flex;gap:8px;align-items:flex-start;background:#ECFDF5;border-left:3px solid #2DBA4E;border-radius:0 8px 8px 0;padding:8px 10px;margin-bottom:6px;font-size:0.72em;font-weight:700;color:#374151;line-height:1.4;">'
+        + '<strong>Stablecoins ' + stablePct.toFixed(0) + '%</strong>\u00a0\u2014 Large stable position. Make sure it is earning yield (staking, lending) to avoid silent inflation drag.</div>');
+    }
+    if (nudges.length === 0) {
+      nudges.push('<div style="font-size:0.72em;font-weight:700;color:#059669;background:#ECFDF5;border-radius:8px;padding:7px 10px;">\u2705 Allocation looks balanced across categories.</div>');
+    }
+    nudgeEl.innerHTML = nudges.join('');
+  }
+}
+
+// ── 3. Duplicate Coin Alert Card ──────────────────────────────────────
+function _renderCryptoDupesCard(ledger, sym) {
+  const dupes = ledger.coins.filter(c => c.accounts.length > 1);
+  const card  = document.getElementById('cx-dupes-card');
+  const badge = document.getElementById('cx-dupes-badge');
+  const body  = document.getElementById('cx-dupes-body');
+  if (!card) return;
+
+  if (dupes.length === 0) { card.style.display = 'none'; return; }
+
+  card.style.display = '';
+  if (badge) badge.textContent = dupes.length + ' coin' + (dupes.length > 1 ? 's' : '');
+
+  if (body) {
+    body.innerHTML = '<div style="font-size:0.75em;font-weight:600;color:#374151;margin-bottom:10px;line-height:1.4;">'
+      + 'These coins appear across multiple wallets or exchanges. Consolidating simplifies tracking and avoids confusion when computing cost basis for tax purposes.'
+      + '</div>'
+      + dupes.sort(function(a, b) { return b.totalVal - a.totalVal; }).map(function(c) {
+          var pnlCol  = c.totalPnl >= 0 ? '#059669' : '#DC2626';
+          var pnlSign = c.totalPnl >= 0 ? '\u25b2' : '\u25bc';
+          var catDef  = CRYPTO_CATEGORIES[c.category] || CRYPTO_CATEGORIES.OTHER;
+          return '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:10px 12px;margin-bottom:8px;">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+              + '<div style="font-size:0.88em;font-weight:900;color:#92400E;">' + c.symbol
+                + ' <span style="font-size:0.65em;background:' + catDef.color + '20;color:' + catDef.color + ';border-radius:4px;padding:1px 5px;font-weight:800;">' + catDef.label + '</span>'
+              + '</div>'
+              + '<div style="font-size:0.88em;font-weight:900;">' + sym + Math.round(c.totalVal).toLocaleString()
+                + '<span style="font-size:0.8em;font-weight:700;color:' + pnlCol + ';"> ' + pnlSign + ' ' + sym + Math.abs(Math.round(c.totalPnl)).toLocaleString() + '</span>'
+              + '</div>'
+            + '</div>'
+            + '<div style="display:flex;flex-direction:column;gap:3px;">'
+              + c.accountDetails.map(function(d) {
+                  return '<div style="display:flex;justify-content:space-between;font-size:0.70em;font-weight:700;color:#6B7280;">'
+                    + '<span>' + (d.isCEX ? '\ud83c\udfe6' : '\ud83d\udd10') + ' ' + d.accountName + '</span>'
+                    + '<span>' + (d.qty ? d.qty + ' units \u00b7 ' : '') + sym + Math.round(d.curVal).toLocaleString() + '</span>'
+                    + '</div>';
+                }).join('')
+            + '</div>'
+            + '<div style="margin-top:7px;font-size:0.66em;font-weight:700;color:#92400E;background:#FEF3C7;border-radius:6px;padding:5px 8px;">'
+              + '\ud83d\udca1 ' + c.totalQty + ' units across ' + c.accounts.length + ' accounts. Consider consolidating to simplify tax-lot tracking.'
+            + '</div>'
+          + '</div>';
+        }).join('');
+  }
+}
+
+// ── 4. Unified Coin Ledger ────────────────────────────────────────────
+function sortCryptoLedger(by) {
+  trackFeature('crypto_sort');
+  _cryptoLedgerSort = by;
+  ['value', 'pnl', 'category', 'name'].forEach(function(k) {
+    var btn = document.getElementById('cxbtn-' + k);
+    if (btn) btn.classList.toggle('lab-sort-active', k === by);
+  });
+  if (_cryptoLedgerData) {
+    _renderCryptoCoinLedger(_cryptoLedgerData, (currentCurrency && currentCurrency.symbol) || '$', by);
+  }
+}
+
+function _cxSetAccountFilter(acctName) {
+  _cxAccountFilter = acctName;
+  document.querySelectorAll('.cx-acct-chip').forEach(function(c) {
+    c.style.background = c.dataset.acct === acctName ? '#92400E' : '#FFF7ED';
+    c.style.color      = c.dataset.acct === acctName ? 'white'   : '#92400E';
+  });
+  if (_cryptoLedgerData) {
+    _renderCryptoCoinLedger(_cryptoLedgerData, (currentCurrency && currentCurrency.symbol) || '$', _cryptoLedgerSort || 'value');
+  }
+}
+
+function _renderCryptoCoinLedger(ledger, sym, sortBy) {
+  _cryptoLedgerData = ledger;
+  const body  = document.getElementById('cx-ledger-body');
+  const badge = document.getElementById('cx-ledger-badge');
+  if (!body) return;
+
+  const { coins, totalVal, accountCount, accounts } = ledger;
+  if (badge) badge.textContent = coins.length + ' coin' + (coins.length !== 1 ? 's' : '') + ' \u00b7 ' + accountCount + ' wallet' + (accountCount !== 1 ? 's' : '');
+
+  // Account filter chips
+  const filterRow = document.getElementById('cx-account-filter-row');
+  if (filterRow && accounts && accounts.length > 1) {
+    filterRow.innerHTML = [
+      '<button class="cx-acct-chip lab-sort-btn ' + (_cxAccountFilter === 'all' ? 'lab-sort-active' : '') + '"'
+        + ' data-acct="all"'
+        + ' style="background:' + (_cxAccountFilter === 'all' ? '#92400E' : '#FFF7ED') + ';color:' + (_cxAccountFilter === 'all' ? 'white' : '#92400E') + ';font-size:0.68em;padding:4px 10px;"'
+        + ' onclick="_cxSetAccountFilter(\'all\')">All Wallets</button>'
+    ].concat(accounts.map(function(a) {
+      var cnt  = coins.filter(function(c) { return c.accounts.includes(a.name); }).length;
+      var isOn = _cxAccountFilter === a.name;
+      var date = a.lastUpdated ? new Date(a.lastUpdated + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+      var safeName = a.name.replace(/'/g, '\\\'');
+      return '<button class="cx-acct-chip lab-sort-btn ' + (isOn ? 'lab-sort-active' : '') + '"'
+        + ' data-acct="' + a.name.replace(/"/g, '&quot;') + '"'
+        + ' style="background:' + (isOn ? '#92400E' : '#FFF7ED') + ';color:' + (isOn ? 'white' : '#92400E') + ';font-size:0.68em;padding:4px 10px;"'
+        + ' onclick="_cxSetAccountFilter(\'' + safeName + '\')">'
+        + (a.name.length > 18 ? a.name.slice(0, 16) + '\u2026' : a.name) + ' <span style="opacity:0.7">(' + cnt + ')</span>'
+        + '</button>';
+    })).join('');
+    filterRow.style.display = 'flex';
+  } else if (filterRow) {
+    filterRow.style.display = 'none';
+  }
+
+  // Last updated strip
+  const updEl = document.getElementById('cx-last-updated');
+  if (updEl && accounts && accounts.length > 0) {
+    var acctDates = accounts
+      .filter(function(a) { return a.lastUpdated; })
+      .map(function(a) {
+        return {
+          name: a.name,
+          date: a.lastUpdated,
+          display: new Date(a.lastUpdated + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        };
+      })
+      .sort(function(a, b) { return b.date.localeCompare(a.date); });
+
+    if (acctDates.length > 0) {
+      var isStale = acctDates.some(function(d) {
+        return (Date.now() - new Date(d.date + 'T00:00:00').getTime()) / 86400000 > 7;
+      });
+      var staleIcon = isStale ? '\u26a0\ufe0f' : '\ud83d\udfe2';
+      updEl.innerHTML = acctDates.map(function(d) {
+        return '<span>' + staleIcon + ' <strong>' + (d.name.length > 15 ? d.name.slice(0, 13) + '\u2026' : d.name) + '</strong>: prices as of ' + d.display + '</span>';
+      }).join('<span style="margin:0 4px;color:#E5E7EB;">\u00b7</span>');
+      updEl.style.display = 'flex';
+    } else {
+      updEl.innerHTML = '<span>\ud83d\udcc5 Import date not recorded \u2014 reimport to track freshness</span>';
+      updEl.style.display = 'flex';
+    }
+  }
+
+  // Rows
+  var filtered = _cxAccountFilter === 'all'
+    ? coins
+    : coins.filter(function(c) { return c.accounts.includes(_cxAccountFilter); });
+
+  var sorted = filtered.slice().sort(function(a, b) {
+    if (sortBy === 'pnl')      return b.totalPnl - a.totalPnl;
+    if (sortBy === 'category') return (a.category || '').localeCompare(b.category || '');
+    if (sortBy === 'name')     return a.symbol.localeCompare(b.symbol);
+    return b.totalVal - a.totalVal;
+  });
+
+  var lastCat = null;
+  body.innerHTML = sorted.map(function(c) {
+    var pct      = totalVal > 0 ? (c.totalVal / totalVal * 100) : 0;
+    var pnlCol   = c.totalPnl >= 0 ? '#059669' : '#DC2626';
+    var pnlSign  = c.totalPnl >= 0 ? '\u25b2' : '\u25bc';
+    var catDef   = CRYPTO_CATEGORIES[c.category] || CRYPTO_CATEGORIES.OTHER;
+    var costRoi  = c.totalCost > 0 ? ((c.totalVal - c.totalCost) / c.totalCost * 100).toFixed(1) : null;
+    var dupeFlag = c.accounts.length > 1
+      ? '<span style="font-size:0.58em;font-weight:800;background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;margin-left:4px;">' + c.accounts.length + ' wallets</span>'
+      : '';
+    var acctTag = (_cxAccountFilter !== 'all' || c.accounts.length !== 1) ? ''
+      : '<span style="font-size:0.56em;font-weight:700;background:#FFF7ED;color:#92400E;border-radius:4px;padding:1px 5px;margin-left:3px;">' + (c.accounts[0].length > 14 ? c.accounts[0].slice(0, 12) + '\u2026' : c.accounts[0]) + '</span>';
+
+    var catHeader = '';
+    if (sortBy === 'category' && c.category !== lastCat) {
+      var catTotal = sorted.filter(function(x) { return x.category === c.category; }).reduce(function(a, x) { return a + x.totalVal; }, 0);
+      var catPct   = totalVal > 0 ? (catTotal / totalVal * 100).toFixed(0) : 0;
+      catHeader = '<div style="background:' + catDef.color + '18;border-left:3px solid ' + catDef.color + ';padding:5px 10px;margin:6px 0 2px;border-radius:0 6px 6px 0;">'
+        + '<span style="font-size:0.68em;font-weight:900;color:' + catDef.color + ';">' + catDef.label + '</span>'
+        + '<span style="font-size:0.62em;font-weight:700;color:#9CA3AF;margin-left:8px;">' + catPct + '% of crypto \u00b7 ' + sorted.filter(function(x) { return x.category === c.category; }).length + ' coins</span>'
+        + '</div>';
+      lastCat = c.category;
+    }
+
+    return catHeader
+      + '<div style="padding:8px 4px;border-bottom:1px solid #F0F0F0;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">'
+          + '<div style="min-width:0;flex:1;">'
+            + '<div style="font-size:0.82em;font-weight:900;color:#92400E;display:flex;align-items:center;flex-wrap:wrap;gap:3px;">'
+              + c.symbol + dupeFlag + acctTag
+            + '</div>'
+            + '<div style="font-size:0.62em;font-weight:700;color:#6B7280;margin-top:2px;display:flex;align-items:center;gap:5px;">'
+              + '<span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + catDef.color + ';flex-shrink:0;"></span>'
+              + '<span>' + catDef.label + (c.totalQty ? ' \u00b7 ' + c.totalQty + ' units' : '') + '</span>'
+            + '</div>'
+          + '</div>'
+          + '<div style="text-align:right;flex-shrink:0;margin-left:10px;">'
+            + '<div style="font-size:0.84em;font-weight:900;">' + sym + Math.round(c.totalVal).toLocaleString() + '</div>'
+            + (c.totalPnl !== 0
+                ? '<div style="font-size:0.68em;font-weight:700;color:' + pnlCol + ';">' + pnlSign + ' ' + sym + Math.abs(Math.round(c.totalPnl)).toLocaleString() + (costRoi ? ' (' + (c.totalPnl >= 0 ? '+' : '') + costRoi + '%)' : '') + '</div>'
+                : '')
+          + '</div>'
+        + '</div>'
+        + '<div style="background:#F0F0F0;border-radius:4px;height:4px;overflow:hidden;">'
+          + '<div style="height:100%;border-radius:4px;background:' + catDef.color + ';width:' + Math.min(pct * 2.5, 100).toFixed(1) + '%;"></div>'
+        + '</div>'
+        + '<div style="font-size:0.58em;font-weight:700;color:#9CA3AF;margin-top:2px;">' + pct.toFixed(1) + '% of crypto</div>'
+      + '</div>';
+  }).join('');
+}
+// ══════════════════════════════════════════════════════════════════════
 
 // ══ P4: Fund Benchmark — Peer Comparison (Option 3) ══════════════════
 // Compare each fund's ROI against the best fund in the same sebiCategory
