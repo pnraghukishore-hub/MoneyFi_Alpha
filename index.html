@@ -36156,53 +36156,86 @@ function buildAIContext() {
         })();
         (() => {
           // Equity sector breakdown + individual holdings for AI
+          // Covers ALL equity account types (stocks_direct, brokerage_taxable, brokerage_ira, etc.)
+          // NOT just stocks_direct — so Lab data is always visible to AI regardless of account type
           try {
-            const eqLedger = typeof buildUnifiedEquityLedger === 'function' ? buildUnifiedEquityLedger() : null;
-            // Detect equity/brokerage accounts that have a balance but no per-stock holdings imported
-            const equityAcctTypes = ['stocks_direct','brokerage_taxable','brokerage_ira','retirement_roth','retirement_401k'];
-            const equityAcctsWithBal = (data._nwAccounts||[]).filter(a =>
-              equityAcctTypes.includes(a.type) && (a.balance||0) > 0
-            );
-            const equityAcctsWithHoldings = (data._nwAccounts||[]).filter(a =>
-              a.type === 'stocks_direct' && a.meta && a.meta.holdings && a.meta.holdings.length > 0
-            );
-            if (equityAcctsWithBal.length > 0 && equityAcctsWithHoldings.length === 0) {
-              // User has equity money but no per-stock data imported yet
-              const acctSummary = equityAcctsWithBal.map(a =>
-                `${a.name}(${a.type}): ${sym}${Math.round(nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0)).toLocaleString()}`
-              ).join(', ');
-              L.push(`EQUITY HOLDINGS: NOT IMPORTED YET — ${equityAcctsWithBal.length} account(s) have a balance but no individual stock data:\n  ${acctSummary}\n  ACTION: Tell the user to go to Import → AI Scan tab, upload a screenshot or statement from their broker, and the app will extract individual holdings automatically. Do NOT ask the user to manually type their stock list.`);
-            }
-            if (eqLedger && eqLedger.stocks.length > 0) {
+            const EQ_TYPES = ['stocks_direct','brokerage_taxable','brokerage_ira','brokerage_roth',
+                              'brokerage_joint','retirement_roth','retirement_401k','retirement_ira',
+                              'retirement_403b','retirement_sep'];
+            const allEqAccts   = (data._nwAccounts||[]).filter(a => EQ_TYPES.includes(a.type));
+            const acctWithBal  = allEqAccts.filter(a => (nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0)) > 0);
+            const acctWithHold = allEqAccts.filter(a => a.meta && a.meta.holdings && a.meta.holdings.length > 0);
+
+            if (acctWithHold.length > 0) {
+              // Build unified stock map across ALL equity account types
+              const normSym = s => (s||'').toUpperCase().trim()
+                .replace(/\s+(LTD|LIMITED|INC|CORP|CO|PLC|NV|SA|AG|PTY|PVT|INDUSTRIES|ENTERPRISES|GROUP)\b\.?/g,'')
+                .replace(/[^A-Z0-9&]/g,'').trim();
+              const hMap = {};
+              acctWithHold.forEach(account => {
+                const acctCur = account.currency || 'USD';
+                (account.meta.holdings || []).forEach(h => {
+                  const key = normSym(h.symbol);
+                  if (!key) return;
+                  const userOverrides = data._equitySectorOverrides || {};
+                  const sector = userOverrides[key] || h.sector || 'Unknown';
+                  if (!hMap[key]) {
+                    hMap[key] = { symbol: h.symbol||key, name: h.name||h.symbol||key,
+                                  sector, totalQty: 0, totalVal: 0, totalPnl: 0, totalCost: 0 };
+                  }
+                  const qty    = Number(h.qty || 0);
+                  const curVal = nwConvert ? nwConvert(Number(h.curVal||0), acctCur) : Number(h.curVal||0);
+                  const pnl    = nwConvert ? nwConvert(Number(h.pnl||0), acctCur)   : Number(h.pnl||0);
+                  const cost   = nwConvert ? nwConvert((h.avgCost && qty ? Number(h.avgCost)*qty : 0), acctCur) : 0;
+                  hMap[key].totalQty  += qty;
+                  hMap[key].totalVal  += curVal;
+                  hMap[key].totalPnl  += pnl;
+                  hMap[key].totalCost += cost;
+                  // Best-sector-wins: upgrade Unknown if a real sector is found
+                  if (hMap[key].sector === 'Unknown' && sector !== 'Unknown') hMap[key].sector = sector;
+                });
+              });
+              const allStocks  = Object.values(hMap).sort((a,b) => b.totalVal - a.totalVal);
+              const totalEqVal = allStocks.reduce((s,st) => s + st.totalVal, 0);
+              const totalEqPnl = allStocks.reduce((s,st) => s + st.totalPnl, 0);
+
+              // Sector breakdown + HHI
               const sMap = {};
-              eqLedger.stocks.forEach(s => { sMap[s.sector] = (sMap[s.sector]||0) + s.totalVal; });
-              const sTotal = Object.values(sMap).reduce((a,b)=>a+b,0);
-              const sStr = Object.entries(sMap).sort(([,a],[,b])=>b-a)
-                .map(([k,v]) => `${k}:${(v/sTotal*100).toFixed(0)}%`).join(', ');
-              const isIN = (profile?.region||'IN') === 'IN';
-              const bench = isIN ? NIFTY50_SECTOR_WEIGHTS : SP500_SECTOR_WEIGHTS;
-              const benchName = isIN ? 'Nifty50' : 'S&P500';
-              // HHI score
-              const hhi = typeof _computeHHI === 'function' ? _computeHHI(sMap, sTotal) : null;
-              const hhiLabel = hhi ? (hhi >= 0.18 ? 'Concentrated' : hhi >= 0.10 ? 'Moderate' : 'Diversified') : 'unknown';
-              // Top 3 vs-benchmark gaps
-              const gapStr = Object.entries(sMap).map(([sec,val]) => {
-                const u = val/sTotal*100; const b = bench[sec]||0;
-                return { sec, diff: (u-b).toFixed(0), u: u.toFixed(0), b: b.toFixed(0) };
-              }).filter(g => Math.abs(g.diff) >= 10)
-                .sort((a,b) => Math.abs(b.diff)-Math.abs(a.diff)).slice(0,3)
-                .map(g => `${g.sec}:user=${g.u}%,${benchName}=${g.b}%`).join(' | ');
-              L.push(`EQUITY SECTOR BREAKDOWN: totalEquity=${sym}${Math.round(eqLedger.totalVal).toLocaleString()} | stocks=${eqLedger.stocks.length} | hhi=${hhi?.toFixed(3)||'?'} (${hhiLabel}) | sectors=${sStr}${gapStr ? ' | vsIndex='+gapStr : ''}`);
-              // Individual equity holdings (top 15 by value) — so AI never needs to ask "what are your top stocks?"
-              const topStocks = [...eqLedger.stocks].sort((a, b) => b.totalVal - a.totalVal).slice(0, 15);
-              if (topStocks.length > 0) {
-                const stockLines = topStocks.map(s => {
-                  const pnlPct = s.totalCost > 0 ? ((s.totalVal - s.totalCost) / s.totalCost * 100).toFixed(1) : '?';
-                  const pnlAmt = s.totalPnl != null ? ((s.totalPnl >= 0 ? '+' : '') + sym + Math.abs(Math.round(s.totalPnl)).toLocaleString()) : '?';
-                  return `    ${s.symbol}${s.name && s.name !== s.symbol ? ' (' + s.name + ')' : ''}: val=${sym}${Math.round(s.totalVal).toLocaleString()} | qty=${s.totalQty} | pnl=${pnlPct}% (${pnlAmt}) | sector=${s.sector || 'Unknown'}`;
-                }).join('\n');
-                L.push(`EQUITY HOLDINGS (top ${topStocks.length} of ${eqLedger.stocks.length} by value):\n${stockLines}`);
+              allStocks.forEach(s => { sMap[s.sector] = (sMap[s.sector]||0) + s.totalVal; });
+              const sTotal = Object.values(sMap).reduce((a,b) => a+b, 0);
+              if (sTotal > 0) {
+                const sStr = Object.entries(sMap).sort(([,a],[,b]) => b-a)
+                  .map(([k,v]) => `${k}:${(v/sTotal*100).toFixed(0)}%`).join(', ');
+                const isIN   = (profile?.region||'IN') === 'IN';
+                const bench  = isIN ? NIFTY50_SECTOR_WEIGHTS : SP500_SECTOR_WEIGHTS;
+                const benchN = isIN ? 'Nifty50' : 'S&P500';
+                const hhi    = typeof _computeHHI === 'function' ? _computeHHI(sMap, sTotal) : null;
+                const hhiLbl = hhi ? (hhi >= 0.18 ? 'Concentrated' : hhi >= 0.10 ? 'Moderate' : 'Diversified') : 'unknown';
+                const gapStr = Object.entries(sMap).map(([sec,val]) => {
+                  const u = val/sTotal*100; const b = bench[sec]||0;
+                  return { sec, diff: u-b, u: u.toFixed(0), b: b.toFixed(0) };
+                }).filter(g => Math.abs(g.diff) >= 10)
+                  .sort((a,b) => Math.abs(b.diff)-Math.abs(a.diff)).slice(0,3)
+                  .map(g => `${g.sec}:user=${g.u}%,${benchN}=${g.b}%`).join(' | ');
+                L.push(`EQUITY SECTOR BREAKDOWN: totalEquity=${sym}${Math.round(totalEqVal).toLocaleString()} | stocks=${allStocks.length} | accounts=${acctWithHold.length} | hhi=${hhi?.toFixed(3)||'?'} (${hhiLbl}) | sectors=${sStr}${gapStr ? ' | vsIndex='+gapStr : ''}`);
               }
+
+              // Individual holdings (top 20 by value)
+              const topN = allStocks.slice(0, 20);
+              const pnlSign = totalEqPnl >= 0 ? '+' : '';
+              const stockLines = topN.map(s => {
+                const pnlPct = s.totalCost > 0 ? ((s.totalVal - s.totalCost) / s.totalCost * 100).toFixed(1) : '?';
+                const pnlAmt = (s.totalPnl >= 0 ? '+' : '') + sym + Math.abs(Math.round(s.totalPnl)).toLocaleString();
+                return `    ${s.symbol}${s.name && s.name !== s.symbol ? ' ('+s.name+')' : ''}: val=${sym}${Math.round(s.totalVal).toLocaleString()} | qty=${s.totalQty} | pnl=${pnlPct}% (${pnlAmt}) | sector=${s.sector}`;
+              }).join('\n');
+              L.push(`EQUITY HOLDINGS (top ${topN.length} of ${allStocks.length} stocks — total: ${sym}${Math.round(totalEqVal).toLocaleString()}, P&L: ${pnlSign}${sym}${Math.abs(Math.round(totalEqPnl)).toLocaleString()}):\n${stockLines}`);
+
+            } else if (acctWithBal.length > 0) {
+              // Accounts exist with balance but no per-stock holdings imported
+              const acctSummary = acctWithBal.map(a =>
+                `${a.name}(${a.type}): ${sym}${Math.round(nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0)).toLocaleString()}`
+              ).join(', ');
+              L.push(`EQUITY HOLDINGS: NOT IMPORTED YET — ${acctWithBal.length} account(s) have balance but no per-stock data:\n  ${acctSummary}\n  ACTION: Tell the user to use Import → AI Scan to upload their broker statement — the app extracts all stock names, quantities, and cost basis automatically. Do NOT ask the user to type their holdings list.`);
             }
           } catch(e) {}
         })();
