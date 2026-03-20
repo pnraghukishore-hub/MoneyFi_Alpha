@@ -36155,9 +36155,24 @@ function buildAIContext() {
           return ' | liquidity=' + Object.entries(liq).filter(([,v])=>v>0).map(([k,v])=>`${k}:${(v/t9b*100).toFixed(0)}%`).join(',');
         })();
         (() => {
-          // Equity sector breakdown for AI — only if equity holdings exist
+          // Equity sector breakdown + individual holdings for AI
           try {
             const eqLedger = typeof buildUnifiedEquityLedger === 'function' ? buildUnifiedEquityLedger() : null;
+            // Detect equity/brokerage accounts that have a balance but no per-stock holdings imported
+            const equityAcctTypes = ['stocks_direct','brokerage_taxable','brokerage_ira','retirement_roth','retirement_401k'];
+            const equityAcctsWithBal = (data._nwAccounts||[]).filter(a =>
+              equityAcctTypes.includes(a.type) && (a.balance||0) > 0
+            );
+            const equityAcctsWithHoldings = (data._nwAccounts||[]).filter(a =>
+              a.type === 'stocks_direct' && a.meta && a.meta.holdings && a.meta.holdings.length > 0
+            );
+            if (equityAcctsWithBal.length > 0 && equityAcctsWithHoldings.length === 0) {
+              // User has equity money but no per-stock data imported yet
+              const acctSummary = equityAcctsWithBal.map(a =>
+                `${a.name}(${a.type}): ${sym}${Math.round(nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0)).toLocaleString()}`
+              ).join(', ');
+              L.push(`EQUITY HOLDINGS: NOT IMPORTED YET — ${equityAcctsWithBal.length} account(s) have a balance but no individual stock data:\n  ${acctSummary}\n  ACTION: Tell the user to go to Import → AI Scan tab, upload a screenshot or statement from their broker, and the app will extract individual holdings automatically. Do NOT ask the user to manually type their stock list.`);
+            }
             if (eqLedger && eqLedger.stocks.length > 0) {
               const sMap = {};
               eqLedger.stocks.forEach(s => { sMap[s.sector] = (sMap[s.sector]||0) + s.totalVal; });
@@ -36195,6 +36210,14 @@ function buildAIContext() {
         (() => {
           try {
             const cxLedger = typeof buildUnifiedCryptoLedger === 'function' ? buildUnifiedCryptoLedger() : null;
+            const cryptoAcctsWithBal = (data._nwAccounts||[]).filter(a => a.type === 'crypto' && (a.balance||0) > 0);
+            const cryptoAcctsWithHoldings = (data._nwAccounts||[]).filter(a => a.type === 'crypto' && a.meta && a.meta.holdings && a.meta.holdings.length > 0);
+            if (cryptoAcctsWithBal.length > 0 && cryptoAcctsWithHoldings.length === 0) {
+              const cxAcctSummary = cryptoAcctsWithBal.map(a =>
+                `${a.name}: ${sym}${Math.round(nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0)).toLocaleString()}`
+              ).join(', ');
+              L.push(`CRYPTO HOLDINGS: NOT IMPORTED YET — ${cryptoAcctsWithBal.length} crypto account(s) have a balance but no coin-level data:\n  ${cxAcctSummary}\n  ACTION: Tell the user to go to Import → AI Scan tab, upload a screenshot of their exchange portfolio, and the app will extract individual coin holdings automatically. Do NOT ask the user to type their coin list.`);
+            }
             if (cxLedger && cxLedger.coins && cxLedger.coins.length > 0) {
               const topCoins = [...cxLedger.coins].sort((a, b) => b.totalVal - a.totalVal).slice(0, 15);
               const coinLines = topCoins.map(c => {
@@ -36304,6 +36327,12 @@ The snapshot below contains the user's salary, 401k/retirement contributions, em
 NEVER ask: "What is your annual income?", "How much are you contributing to your 401k?", "Do you have an HSA?", "What is your employer match?", "What are your goals?", "What is your monthly SIP?", "What are your top holdings?", "Which stocks do you hold?", "What crypto do you own?", or any question whose answer is already in the snapshot below.
 CRITICAL — ZERO VALUES: If a field shows $0 or 0/mo it means the user has not entered that data yet — NOT that you should ask. Instead say: "Your [field] shows $0 in MoneyFi — if you've set this up, update the [account/profile] card to unlock this insight." Then give your best advice assuming the worst case (no contribution). NEVER end a response by asking for a number shown in the snapshot.
 The wow factor of MoneyFi is: "I already know your numbers — and I tell you what to do with them." Act like it.
+
+RULE 8 — NEVER ASK USERS TO TYPE THEIR HOLDINGS (critical):
+If the EQUITY HOLDINGS or CRYPTO HOLDINGS sections below say "NOT IMPORTED YET", do NOT ask the user to manually tell you their stock names, quantities, or fund list. Instead, say something like:
+"Your [stocks/crypto] account shows a balance of [amount] but individual holding names aren't imported yet. To unlock a full analysis, go to Import → AI Scan tab, take a screenshot of your broker statement, and the app will extract your holdings automatically — no manual typing needed."
+The wow factor is: the user NEVER has to type their portfolio into a chat. Guide them to the import feature instead.
+If holdings ARE present (EQUITY HOLDINGS or CRYPTO HOLDINGS sections contain coin/stock rows), use those directly — never ask for confirmation or re-entry.
 
 RULE 7 — LEAD WITH INSIGHT, NOT QUESTIONS:
 Open every response with a direct insight or action derived from the user's actual data. Questions — if needed at all — come AFTER the recommendation, not before. NEVER open a response with a question.
