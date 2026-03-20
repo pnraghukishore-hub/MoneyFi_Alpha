@@ -5593,9 +5593,16 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;" id="ivision-broker-chips"></div>
       </div>
 
+      <!-- Upload count badge -->
+      <div id="ivision-quota-bar" style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;
+           padding:8px 12px;background:#F5F3FF;border-radius:10px;font-size:0.75em;font-weight:800;">
+        <span style="color:#7C3AED;">🤖 AI Scan</span>
+        <span id="ivision-quota-text" style="color:#7C3AED;"></span>
+      </div>
+
       <!-- Extract button -->
       <button id="ivision-extract-btn" onclick="extractVisionHoldings()"
-              style="width:100%;margin-top:14px;background:linear-gradient(135deg,#7C3AED,#9F67FA);
+              style="width:100%;margin-top:10px;background:linear-gradient(135deg,#7C3AED,#9F67FA);
                      color:white;border:none;border-radius:12px;padding:14px;
                      font-family:Nunito,sans-serif;font-weight:900;font-size:0.9em;
                      cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"
@@ -5607,6 +5614,55 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       <!-- Privacy note -->
       <div style="margin-top:10px;text-align:center;font-size:0.68em;color:#9CA3AF;font-weight:600;">
         🔒 Screenshot sent to Claude AI for extraction only · Deleted within 7 days · Never stored by MoneyFi
+      </div>
+
+      <!-- Loading overlay — shown during AI extraction -->
+      <div id="ivision-loading" style="display:none;position:fixed;inset:0;background:rgba(10,14,40,0.92);
+           z-index:2000;flex-direction:column;align-items:center;justify-content:center;padding:32px;">
+
+        <!-- Animated clock -->
+        <div style="margin-bottom:28px;position:relative;">
+          <svg id="ivision-clock-svg" width="90" height="90" viewBox="0 0 90 90">
+            <!-- Outer ring progress -->
+            <circle cx="45" cy="45" r="40" fill="none" stroke="#2D1B69" stroke-width="5"/>
+            <circle id="ivision-clock-ring" cx="45" cy="45" r="40" fill="none"
+                    stroke="#9F67FA" stroke-width="5" stroke-linecap="round"
+                    stroke-dasharray="251" stroke-dashoffset="251"
+                    transform="rotate(-90 45 45)"
+                    style="transition:stroke-dashoffset 1s linear;"/>
+            <!-- Clock face -->
+            <circle cx="45" cy="45" r="32" fill="#1E0A4A"/>
+            <!-- Hour hand -->
+            <line id="ivision-hour-hand" x1="45" y1="45" x2="45" y2="22"
+                  stroke="#DDD6FE" stroke-width="3" stroke-linecap="round"/>
+            <!-- Minute hand -->
+            <line id="ivision-min-hand" x1="45" y1="45" x2="45" y2="17"
+                  stroke="#9F67FA" stroke-width="2" stroke-linecap="round"/>
+            <!-- Centre dot -->
+            <circle cx="45" cy="45" r="3" fill="#9F67FA"/>
+          </svg>
+          <!-- Elapsed time -->
+          <div id="ivision-elapsed" style="position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);
+               font-size:0.72em;font-weight:800;color:#9CA3AF;white-space:nowrap;">Reading screenshot...</div>
+        </div>
+
+        <!-- Tip card -->
+        <div style="max-width:320px;width:100%;margin-top:28px;">
+          <div style="font-size:0.62em;font-weight:900;color:#6D28D9;text-transform:uppercase;
+               letter-spacing:1px;margin-bottom:8px;text-align:center;">💡 Financial Insight</div>
+          <div id="ivision-tip-card" style="background:#1A0B3D;border:1.5px solid #4C1D95;
+               border-radius:16px;padding:18px 20px;text-align:center;">
+            <div id="ivision-tip-emoji" style="font-size:2em;margin-bottom:10px;">📊</div>
+            <div id="ivision-tip-text" style="font-size:0.85em;font-weight:700;color:#E9D5FF;
+                 line-height:1.55;"></div>
+          </div>
+          <!-- Tip progress dots -->
+          <div id="ivision-tip-dots" style="display:flex;justify-content:center;gap:6px;margin-top:12px;"></div>
+        </div>
+
+        <div style="margin-top:24px;font-size:0.7em;color:#6D28D9;font-weight:700;">
+          AI is reading your screenshot — usually takes 15–20 seconds
+        </div>
       </div>
     </div>
   </div>
@@ -27358,7 +27414,155 @@ const VISION_BROKERS = [
   'eToro','Trading 212','Stake'
 ];
 
+// ── VISION IMPORT CONSTANTS ─────────────────────────────────────────────────
+const VISION_MONTHLY_LIMIT = 10;  // PRO: 10 scans/month free tier
+
+const VISION_TIPS = [
+  { emoji:'📈', text:'The Rule of 72: divide 72 by your annual return to find how many years it takes to double your money. At 12% p.a., your portfolio doubles in 6 years.' },
+  { emoji:'🛡️', text:'An emergency fund of 6 months of expenses is your financial immune system. It prevents you from selling investments at the worst possible time.' },
+  { emoji:'💰', text:'SIP step-up: increasing your monthly SIP by just 10% each year can nearly double your final corpus compared to a flat SIP over 20 years.' },
+  { emoji:'🧾', text:'ELSS mutual funds give you both equity returns and 80C tax deduction up to ₹1.5L. They have the shortest lock-in (3 years) among all 80C instruments.' },
+  { emoji:'📊', text:'Asset allocation matters more than stock picking. Studies show 90% of portfolio returns come from how you split across equity, debt, and gold — not which stocks you pick.' },
+  { emoji:'🔄', text:'Rebalancing once a year — selling what grew and buying what lagged — forces you to buy low and sell high automatically, without emotional decisions.' },
+  { emoji:'🌍', text:'Geographic diversification: adding US index funds to an India portfolio reduces volatility because Indian and US markets are only ~0.5 correlated.' },
+  { emoji:'💎', text:'Cost ratio matters more than you think. A 1% expense ratio on a ₹50L portfolio costs you ₹50,000/year — that's money not compounding for you.' },
+  { emoji:'🏦', text:'EPF is one of the best debt investments available — 8.25% guaranteed, tax-free on maturity, employer-matched. Most people underestimate it.' },
+  { emoji:'🎯', text:'The 4% Rule: in retirement, you can withdraw 4% of your corpus annually and it statistically lasts 30+ years. ₹3Cr corpus → ₹12L/year withdrawal.' },
+  { emoji:'📱', text:'UPI transactions are your financial fingerprint. Every payment is a data point — categorised over time, they reveal your actual spending personality.' },
+  { emoji:'⚡', text:'Compounding is asymmetric: the last 10 years of a 30-year investment contribute more than the first 20 years combined. Starting early matters enormously.' },
+  { emoji:'🏠', text:'Real estate and equity are complements, not competitors. Real estate provides inflation-protected income; equity provides liquidity and growth. Both have a role.' },
+  { emoji:'🧬', text:'Term insurance cover should be 15–20× your annual income. A ₹1Cr policy for a 30-year-old costs less than ₹1,000/month — it is the cheapest financial guarantee.' },
+  { emoji:'📉', text:'Bear markets are sales on future wealth. Every major market crash in history has been followed by new all-time highs. The risk is not staying invested — it\'s panic-selling.' },
+];
+
+function _visionGetQuotaKey() {
+  const now = new Date();
+  return `mf_vision_quota_${now.getFullYear()}_${now.getMonth()+1}`;
+}
+
+function _visionGetUsed() {
+  return parseInt(localStorage.getItem(_visionGetQuotaKey()) || '0', 10);
+}
+
+function _visionIncrementUsed() {
+  const key  = _visionGetQuotaKey();
+  const used = _visionGetUsed() + 1;
+  localStorage.setItem(key, used);
+  return used;
+}
+
+function _visionUpdateQuotaBar() {
+  const used      = _visionGetUsed();
+  const remaining = Math.max(0, VISION_MONTHLY_LIMIT - used);
+  const bar       = document.getElementById('ivision-quota-text');
+  if (!bar) return;
+  if (remaining === 0) {
+    bar.textContent = '0 scans left this month';
+    bar.style.color = '#DC2626';
+  } else if (remaining <= 3) {
+    bar.textContent = `${remaining} scan${remaining===1?'':'s'} left this month`;
+    bar.style.color = '#D97706';
+  } else {
+    bar.textContent = `${remaining} of ${VISION_MONTHLY_LIMIT} scans remaining`;
+    bar.style.color = '#7C3AED';
+  }
+}
+
+// ── Loading screen: clock + tips ─────────────────────────────────────────────
+let _visionLoadTimer  = null;
+let _visionTipTimer   = null;
+let _visionTipIdx     = 0;
+let _visionElapsed    = 0;
+let _visionTipOrder   = [];
+
+function _visionStartLoading() {
+  const overlay = document.getElementById('ivision-loading');
+  if (overlay) overlay.style.display = 'flex';
+
+  // Shuffle tips
+  _visionTipOrder = [...VISION_TIPS].sort(() => Math.random() - 0.5);
+  _visionTipIdx   = 0;
+  _visionElapsed  = 0;
+
+  // Build tip dots
+  const dots = document.getElementById('ivision-tip-dots');
+  if (dots) {
+    dots.innerHTML = _visionTipOrder.slice(0, 5).map((_,i) =>
+      `<div id="vtdot-${i}" style="width:${i===0?'18px':'6px'};height:6px;border-radius:3px;
+       background:${i===0?'#9F67FA':'#4C1D95'};transition:all 0.4s;"></div>`
+    ).join('');
+  }
+
+  _visionShowTip(0);
+
+  // Clock + elapsed + ring animation
+  const totalSecs = 20;
+  const circumference = 251;  // 2π×40
+  _visionLoadTimer = setInterval(() => {
+    _visionElapsed++;
+    // Update elapsed label
+    const el = document.getElementById('ivision-elapsed');
+    if (el) el.textContent = _visionElapsed < 5 ? 'Reading screenshot...' :
+                              _visionElapsed < 12 ? 'Extracting holdings...' :
+                              _visionElapsed < 18 ? 'Cross-checking numbers...' :
+                              'Almost done...';
+
+    // Progress ring
+    const ring = document.getElementById('ivision-clock-ring');
+    if (ring) {
+      const pct    = Math.min(_visionElapsed / totalSecs, 1);
+      ring.style.strokeDashoffset = circumference * (1 - pct);
+      ring.setAttribute('stroke', pct > 0.8 ? '#22C55E' : '#9F67FA');
+    }
+
+    // Animate clock hands
+    const minAngle  = (_visionElapsed / totalSecs) * 360;
+    const hourAngle = minAngle / 12;
+    const minHand  = document.getElementById('ivision-min-hand');
+    const hourHand = document.getElementById('ivision-hour-hand');
+    if (minHand)  { const r = minAngle * Math.PI/180;  minHand.setAttribute('x2',  45 + 28*Math.sin(r)); minHand.setAttribute('y2',  45 - 28*Math.cos(r)); }
+    if (hourHand) { const r = hourAngle * Math.PI/180; hourHand.setAttribute('x2', 45 + 20*Math.sin(r)); hourHand.setAttribute('y2', 45 - 20*Math.cos(r)); }
+
+    // Rotate tips every 5 seconds
+    if (_visionElapsed > 0 && _visionElapsed % 5 === 0) {
+      _visionTipIdx = (_visionTipIdx + 1) % Math.min(5, _visionTipOrder.length);
+      _visionShowTip(_visionTipIdx);
+    }
+  }, 1000);
+}
+
+function _visionShowTip(idx) {
+  const tip  = _visionTipOrder[idx];
+  if (!tip) return;
+  const emojiEl = document.getElementById('ivision-tip-emoji');
+  const textEl  = document.getElementById('ivision-tip-text');
+  if (emojiEl) emojiEl.textContent = tip.emoji;
+  if (textEl)  {
+    textEl.style.opacity = '0';
+    textEl.style.transition = 'opacity 0.4s';
+    setTimeout(() => {
+      textEl.textContent = tip.text;
+      textEl.style.opacity = '1';
+    }, 200);
+  }
+  // Update dots
+  for (let i = 0; i < 5; i++) {
+    const dot = document.getElementById(`vtdot-${i}`);
+    if (dot) {
+      dot.style.width    = i === idx ? '18px' : '6px';
+      dot.style.background = i === idx ? '#9F67FA' : '#4C1D95';
+    }
+  }
+}
+
+function _visionStopLoading() {
+  if (_visionLoadTimer) { clearInterval(_visionLoadTimer); _visionLoadTimer = null; }
+  const overlay = document.getElementById('ivision-loading');
+  if (overlay) overlay.style.display = 'none';
+}
+
 function initVisionImport() {
+  _visionUpdateQuotaBar();
   // Populate broker chips
   const chips = document.getElementById('ivision-broker-chips');
   if (chips && !chips.children.length) {
@@ -27417,12 +27621,20 @@ function _loadVisionImage(file) {
 async function extractVisionHoldings() {
   if (!_visionImageBase64) { showToast('⚠️ Upload a screenshot first'); return; }
 
+  // Check quota before proceeding
+  const _usedNow = _visionGetUsed();
+  if (_usedNow >= VISION_MONTHLY_LIMIT) {
+    showToast(`⚠️ You've used all ${VISION_MONTHLY_LIMIT} AI Scans this month. Resets on the 1st.`);
+    return;
+  }
+
   const btn      = document.getElementById('ivision-extract-btn');
   const btnText  = document.getElementById('ivision-btn-text');
   const btnIcon  = document.getElementById('ivision-btn-icon');
   btn.disabled   = true;
   btnIcon.textContent  = '⏳';
   btnText.textContent  = 'AI is reading your screenshot...';
+  _visionStartLoading();
 
   const brokerName = document.getElementById('ivision-broker-name')?.value?.trim() || 'My Portfolio';
   const sym = currentCurrency?.symbol || '$';
@@ -27532,11 +27744,16 @@ CRITICAL — Number accuracy:
       }
     });
 
+    _visionStopLoading();
+    _visionIncrementUsed();
+    _visionUpdateQuotaBar();
+
     _visionHoldings = { holdings, broker: detectedBroker, currency: detectedCurrency };
 
     _showVisionReview(holdings, detectedBroker, detectedCurrency, sym);
 
   } catch (err) {
+    _visionStopLoading();
     console.error('Vision extraction error:', err);
     showToast('❌ Extraction failed — ' + (err.message || 'please try again'));
     btn.disabled = false;
@@ -27743,6 +27960,7 @@ function confirmVisionImport() {
 function resetVisionImport() {
   _visionImageBase64 = null;
   _visionHoldings    = null;
+  _visionStopLoading();
   const btn = document.getElementById('ivision-extract-btn');
   if (btn) { btn.disabled = true; }
   const btnText = document.getElementById('ivision-btn-text');
