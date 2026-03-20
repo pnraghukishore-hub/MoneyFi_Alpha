@@ -27640,12 +27640,21 @@ async function extractVisionHoldings() {
   const sym = currentCurrency?.symbol || '$';
   const region = getFHSProfile()?.region || 'IN';
 
-  const extractionPrompt = `You are a precise financial data extraction assistant. Extract all investment holdings from this brokerage portfolio screenshot.
+  const extractionPrompt = `You are a precise financial data extraction assistant. Analyse this brokerage screenshot and extract its data.
+
+STEP 1 — Identify screen type:
+- "portfolio": shows current holdings with quantity/shares, current price, market value (Positions, Holdings, Portfolio tab)
+- "transactions": shows a list of dated buy/sell/transfer activity (Activity, History, Transactions tab)
+- "unknown": cannot determine
+
+STEP 2 — Extract based on screen type.
 
 Return ONLY a JSON object in this exact format, nothing else:
 {
+  "screenType": "portfolio|transactions|unknown",
   "broker": "detected broker name or null",
   "currency": "detected currency code (INR/USD/GBP etc) or null",
+  "wrongScreenHint": "brief message if user should switch screens, or null",
   "holdings": [
     {
       "name": "full company/fund name",
@@ -27659,24 +27668,44 @@ Return ONLY a JSON object in this exact format, nothing else:
       "returnPct": number or null,
       "confidence": "high|medium|low"
     }
+  ],
+  "transactions": [
+    {
+      "date": "YYYY-MM-DD or null",
+      "description": "full transaction description",
+      "symbol": "ticker symbol if identifiable or null",
+      "amount": number,
+      "type": "buy|sell|transfer_in|transfer_out|dividend|fee",
+      "confidence": "high|medium|low"
+    }
   ]
 }
 
-Rules:
-- Extract ALL visible rows, even if some fields are missing
-- Remove currency symbols (₹ $ £ etc) from numbers — return plain numbers only
+Rules for ALL screens:
+- Remove currency symbols (₹ $ £ etc) — return plain numbers only
 - Remove commas from numbers (1,234.56 → 1234.56)
-- If a value shows a loss, make returnAmount and returnPct negative
-- If a field is not visible, return null — NEVER guess or fabricate values
-- Return ONLY valid JSON, no explanation text, no markdown backticks
+- If a field is not visible, return null — NEVER guess or fabricate
+- Return ONLY valid JSON, no markdown backticks
 
-CRITICAL — Number accuracy:
-- Read each digit carefully. Common misreads: 8↔6, 8↔3, 1↔7, 0↔6, 5↔6
-- For market values and equity columns: cross-check using quantity × price as a sanity check
-  (e.g. if qty=8.026 and price=227.17, the market value must be near 8.026×227.17=1823.24 — not 1623.24)
-- If your extracted market value differs from qty×price by more than 5%, re-read the number and set confidence to "low"
-- Pay extra attention to the first digit of large numbers — 1xxx vs 2xxx etc.
-- Dark mode screenshots: white digits on dark background can cause 8→6 misreads — read twice`;
+Rules for PORTFOLIO screens:
+- Extract ALL holdings rows even if some fields are missing
+- For losses: returnAmount and returnPct should be negative
+- Number accuracy: common misreads are 8↔6, 8↔3, 1↔7, 0↔6
+- Cross-check: market value must be near quantity × price (within 5%) — if not, re-read and set confidence "low"
+- Dark mode screenshots: read digits twice to avoid 8→6 misreads
+
+Rules for TRANSACTION screens:
+- Extract ALL visible transaction rows
+- For buys and outgoing transfers: amount should be negative
+- For sells, dividends, incoming transfers: amount should be positive
+- Parse dates carefully — format as YYYY-MM-DD
+- If the screen shows "YOU BOUGHT X (SYMBOL)": type="buy", extract symbol from parentheses
+- If "Electronic Funds Transfer Received": type="transfer_in"
+- If "Electronic Funds Transfer Sent/Withdrawn": type="transfer_out"
+
+Rules for UNKNOWN screens:
+- Set wrongScreenHint to explain what screen this is and which tab to navigate to
+- Return empty arrays for holdings and transactions`;
 
   try {
     // Call Claude vision via existing Cloudflare Worker proxy
@@ -27710,24 +27739,50 @@ CRITICAL — Number accuracy:
     // Parse JSON — strip any accidental markdown fences
     const clean = rawText.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
-    const holdings = parsed.holdings || [];
 
-    if (!holdings.length) {
-      showToast('❌ No holdings detected — try a clearer screenshot');
+    const screenType  = parsed.screenType || 'unknown';
+    const holdings    = parsed.holdings    || [];
+    const transactions = parsed.transactions || [];
+    const detectedCurrency = parsed.currency ||
+      (region === 'IN' ? 'INR' : region === 'US' ? 'USD' : currentCurrency?.code || 'USD');
+    const detectedBroker = document.getElementById('ivision-broker-name')?.value?.trim() ||
+                           parsed.broker || brokerName;
+
+    _visionStopLoading();
+
+    // ── Route by screen type ─────────────────────────────────────────────
+    if (screenType === 'unknown' || (holdings.length === 0 && transactions.length === 0)) {
+      // Cannot read screen — tell user what went wrong
+      const hint = parsed.wrongScreenHint ||
+        'Could not detect portfolio or transaction data. Try the Positions or Holdings tab.';
+      _visionShowWrongScreen(hint, detectedBroker);
       btn.disabled = false;
       btnIcon.textContent = '🤖';
       btnText.textContent = 'Extract Holdings with AI';
       return;
     }
 
-    // Detect currency — use parsed or fall back to region default
-    const detectedCurrency = parsed.currency ||
-      (region === 'IN' ? 'INR' : region === 'US' ? 'USD' : currentCurrency?.code || 'USD');
-    const detectedBroker   = document.getElementById('ivision-broker-name')?.value?.trim() ||
-                             parsed.broker || brokerName;
+    if (screenType === 'transactions' && transactions.length > 0 && holdings.length === 0) {
+      // Transaction history screen — route to TX import flow
+      _visionIncrementUsed();
+      _visionUpdateQuotaBar();
+      _showVisionTxReview(transactions, detectedBroker, detectedCurrency, sym);
+      return;
+    }
 
-    // ── Client-side sanity check: qty × price vs currentValue ──────────
-    // Catches common OCR digit misreads (8↔6, 1↔7 etc.) before user sees them
+    // ── Portfolio screen — existing holdings flow ────────────────────────
+    if (!holdings.length) {
+      _visionShowWrongScreen(
+        parsed.wrongScreenHint || 'No holdings found. Please screenshot the Positions or Portfolio tab.',
+        detectedBroker
+      );
+      btn.disabled = false;
+      btnIcon.textContent = '🤖';
+      btnText.textContent = 'Extract Holdings with AI';
+      return;
+    }
+
+    // Client-side sanity check: qty × price vs currentValue
     holdings.forEach(h => {
       const qty   = parseFloat(h.quantity)     || 0;
       const price = parseFloat(h.currentPrice) || 0;
@@ -27736,20 +27791,16 @@ CRITICAL — Number accuracy:
         const expected = qty * price;
         const diff     = Math.abs(cv - expected) / expected;
         if (diff > 0.05) {
-          // More than 5% off — likely a misread digit, flag it and correct
           console.warn(`Vision sanity fail: ${h.symbol} cv=${cv} vs qty×price=${expected.toFixed(2)} (${(diff*100).toFixed(1)}% off)`);
           h.currentValue = Math.round(expected * 100) / 100;
-          h.confidence   = 'low';  // highlight yellow so user can verify
+          h.confidence   = 'low';
         }
       }
     });
 
-    _visionStopLoading();
     _visionIncrementUsed();
     _visionUpdateQuotaBar();
-
     _visionHoldings = { holdings, broker: detectedBroker, currency: detectedCurrency };
-
     _showVisionReview(holdings, detectedBroker, detectedCurrency, sym);
 
   } catch (err) {
@@ -27760,6 +27811,83 @@ CRITICAL — Number accuracy:
     btnIcon.textContent = '🤖';
     btnText.textContent = 'Extract Holdings with AI';
   }
+}
+
+function _visionShowWrongScreen(hint, broker) {
+  // Show a friendly inline message in step1 without navigating away
+  const existing = document.getElementById('ivision-wrong-screen-msg');
+  if (existing) existing.remove();
+
+  const msg = document.createElement('div');
+  msg.id = 'ivision-wrong-screen-msg';
+  msg.style.cssText = 'margin-top:12px;padding:12px 14px;background:#FEF2F2;border:1.5px solid #FECACA;' +
+    'border-radius:12px;font-size:0.78em;font-weight:700;color:#991B1B;line-height:1.55;';
+  msg.innerHTML = `<div style="font-weight:900;margin-bottom:4px;">📋 Wrong screen detected</div>` +
+    `<div>${hint}</div>` +
+    `<div style="margin-top:8px;font-size:0.9em;opacity:0.8;">💡 Tip: Look for a <strong>Positions</strong>, <strong>Holdings</strong>, or <strong>Portfolio</strong> tab in your brokerage app.</div>`;
+
+  const dropzone = document.getElementById('ivision-dropzone');
+  if (dropzone) dropzone.parentNode.insertBefore(msg, dropzone.nextSibling);
+}
+
+function _showVisionTxReview(transactions, broker, currency, sym) {
+  const totalIn  = transactions.filter(t => t.amount > 0).reduce((s,t) => s + t.amount, 0);
+  const totalOut = transactions.filter(t => t.amount < 0).reduce((s,t) => s + Math.abs(t.amount), 0);
+  const buyCount = transactions.filter(t => t.type === 'buy').length;
+
+  // Summary
+  document.getElementById('ivision-summary-text').textContent =
+    `${transactions.length} transactions detected from ${broker}`;
+
+  document.getElementById('ivision-summary-grid').innerHTML =
+    `<div class="import-summary-box"><div class="isb-num">${transactions.length}</div><div class="isb-label">Transactions</div></div>` +
+    (buyCount ? `<div class="import-summary-box"><div class="isb-num">${buyCount}</div><div class="isb-label">Buy Orders</div></div>` : '') +
+    (totalIn  ? `<div class="import-summary-box"><div class="isb-num" style="color:#059669">+${sym}${Math.round(totalIn).toLocaleString()}</div><div class="isb-label">Cash In</div></div>` : '');
+
+  // No dup check needed for transactions
+  const dupSection = document.getElementById('ivision-dup-section');
+  if (dupSection) dupSection.style.display = 'none';
+
+  // Transaction review table
+  document.getElementById('ivision-preview-table').innerHTML =
+    `<tr><th>Date</th><th>Description</th><th>Symbol</th><th>Amount</th><th>Type</th></tr>` +
+    transactions.map((t, idx) => {
+      const col = t.amount >= 0 ? '#059669' : '#DC2626';
+      const sign = t.amount >= 0 ? '+' : '';
+      const typeBadge = {
+        buy:'🛒 Buy', sell:'💰 Sell', transfer_in:'📥 In',
+        transfer_out:'📤 Out', dividend:'💵 Div', fee:'💸 Fee'
+      }[t.type] || t.type;
+      const lowBg = t.confidence === 'low' ? 'background:#FFFBEB;' : '';
+      return `<tr style="${lowBg}">
+        <td style="font-size:0.75em;white-space:nowrap;">${t.date||'—'}</td>
+        <td style="font-size:0.72em;max-width:140px;word-break:break-word;">${t.description||'—'}</td>
+        <td style="font-weight:800;">${t.symbol||'—'}</td>
+        <td style="color:${col};font-weight:800;white-space:nowrap;">${sign}${sym}${Math.abs(t.amount||0).toFixed(2)}</td>
+        <td style="font-size:0.7em;">${typeBadge}</td>
+      </tr>`;
+    }).join('');
+
+  // Verification bar
+  const verifyBar = document.getElementById('ivision-verify-bar');
+  if (verifyBar) {
+    verifyBar.style.background = '#EFF6FF';
+    verifyBar.style.border = '1.5px solid #BFDBFE';
+    verifyBar.style.color = '#1E40AF';
+    verifyBar.innerHTML = `ℹ️ Transaction screen detected — these will be added to your <strong>Transactions</strong> tab, not Net Worth.`;
+  }
+
+  // Store for confirm — flag as tx type
+  window._robinhoodClipboardData = null;
+  _visionHoldings = { transactions, broker, currency, isTxImport: true };
+
+  // Update confirm button label
+  const confirmBtn = document.getElementById('ivision-confirm-btn');
+  if (confirmBtn) confirmBtn.textContent = '✅ Import to Transactions';
+
+  // Switch to step2
+  document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ivision-step2').classList.add('active');
 }
 
 function _showVisionReview(holdings, broker, currency, sym) {
@@ -27893,6 +28021,49 @@ function _visionRefreshReturn(idx) {
 function confirmVisionImport() {
   const d = _visionHoldings;
   if (!d) return;
+
+  // ── Transaction import path ──────────────────────────────────────────
+  if (d.isTxImport) {
+    const { transactions, broker, currency } = d;
+    const sym = currentCurrency?.symbol || '$';
+    let added = 0;
+
+    transactions.forEach(t => {
+      if (!t.date || t.amount === null) return;
+      const amount = Math.abs(parseFloat(t.amount) || 0);
+      if (!amount) return;
+
+      const isIncome = t.type === 'transfer_in' || t.type === 'dividend' || t.type === 'sell';
+      const isBuy    = t.type === 'buy';
+
+      const entry = {
+        id:       'tx_vision_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+        date:     t.date,
+        amount,
+        note:     t.description || (t.symbol ? `${t.type} ${t.symbol}` : t.type),
+        category: isBuy ? 'Investment' : isIncome ? 'Income' : 'Expense',
+        type:     isBuy ? 'investment' : isIncome ? 'income' : 'expense',
+        author:   null,
+        source:   'vision_import',
+      };
+
+      if (!data._transactions) data._transactions = [];
+      data._transactions.push(entry);
+      added++;
+    });
+
+    save();
+    document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
+    document.getElementById('ivision-step3').classList.add('active');
+    document.getElementById('ivision-done-title').textContent = `${broker} Transactions Imported!`;
+    document.getElementById('ivision-done-sub').textContent =
+      `${added} transactions added to your Transactions tab`;
+    showToast(`✅ ${added} transactions imported from ${broker}`);
+    _visionHoldings = null;
+    return;
+  }
+
+  // ── Portfolio (holdings) import path ────────────────────────────────
   const { holdings, broker, currency } = d;
   const sym = currentCurrency?.symbol || '$';
 
@@ -27977,6 +28148,12 @@ function resetVisionImport() {
   if (dropText) dropText.textContent = 'Tap to upload screenshot';
   const brokerInput = document.getElementById('ivision-broker-name');
   if (brokerInput) brokerInput.value = '';
+  // Reset confirm button label
+  const confirmBtn = document.getElementById('ivision-confirm-btn');
+  if (confirmBtn) confirmBtn.textContent = '✅ Import to Net Worth';
+  // Remove any wrong screen message
+  const wrongMsg = document.getElementById('ivision-wrong-screen-msg');
+  if (wrongMsg) wrongMsg.remove();
   document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
   const step1 = document.getElementById('ivision-step1');
   if (step1) step1.classList.add('active');
