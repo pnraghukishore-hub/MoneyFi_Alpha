@@ -27367,8 +27367,10 @@ function confirmRobinhoodClipboard() {
       currency:       curr,
       investedAmount: Math.round(stocks.reduce((s,h) => s + (h.costBasis||0), 0) * 100) / 100,
       assetClass: 'EQUITY', taxBucket: 'taxable', liquidity: 'liquid',
-      importSource: 'robinhood_clipboard', importedAt: now,
+      importSource: 'robinhood_clipboard', importedAt: now, lastUpdated: now.slice(0,10),
       meta: {
+        stockCount:     stocks.length,
+        unrealizedPnl:  Math.round(stocks.reduce((s,h) => s + (h.totalRet || 0), 0)),
         holdings: stocks.map(h => ({
           symbol:    h.symbol,
           name:      h.name,
@@ -27393,7 +27395,7 @@ function confirmRobinhoodClipboard() {
       currency:       curr,
       investedAmount: Math.round(crypto.reduce((s,h) => s + (h.costBasis||0), 0) * 100) / 100,
       assetClass: 'CRYPTO', taxBucket: 'taxable', liquidity: 'liquid',
-      importSource: 'robinhood_clipboard', importedAt: now,
+      importSource: 'robinhood_clipboard', importedAt: now, lastUpdated: now.slice(0,10),
       holdings: crypto.map(h => ({ symbol:h.symbol, name:h.name, shares:h.shares,
         price:h.price, avgCost:h.avgCost, equity:h.equity, costBasis:h.costBasis })),
     });
@@ -28154,7 +28156,16 @@ function confirmVisionImport() {
     liquidity:      'liquid',
     importSource:   'vision_import',
     importedAt:     new Date().toISOString(),
+    lastUpdated:    new Date().toISOString().slice(0,10),
     meta: {
+      stockCount:    subset.length,
+      unrealizedPnl: Math.round(subset.reduce((s,h) => {
+        // P&L = returnAmount if available, else currentValue - costBasis
+        const pnl = parseFloat(h.returnAmount) ||
+          (parseFloat(h.currentValue) && parseFloat(h.costBasis)
+            ? parseFloat(h.currentValue) - parseFloat(h.costBasis) : 0);
+        return s + pnl;
+      }, 0)),
       holdings: subset.map(h => ({
         symbol:    h.symbol,
         name:      h.name,
@@ -28163,7 +28174,9 @@ function confirmVisionImport() {
         curVal:    parseFloat(h.currentValue) || null,
         avgCost:   parseFloat(h.avgCost)      || null,
         costBasis: parseFloat(h.costBasis)    || null,
-        pnl:       parseFloat(h.returnAmount) || null,
+        pnl:       parseFloat(h.returnAmount) ||
+                   (parseFloat(h.currentValue) && parseFloat(h.costBasis)
+                     ? parseFloat(h.currentValue) - parseFloat(h.costBasis) : null),
       })),
     },
   });
