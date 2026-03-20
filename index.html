@@ -27970,8 +27970,9 @@ function _showVisionReview(holdings, broker, currency, sym) {
     (totalCost > 0 ? `<div class="import-summary-box"><div class="isb-num" style="color:${totalRet>=0?'#059669':'#DC2626'}">${totalRet>=0?'+':''}${sym}${Math.abs(Math.round(totalRet)).toLocaleString()}</div><div class="isb-label">Unrealized P&L</div></div>` : '');
 
   // Duplicate check
+  // Check for existing account with same name (any source — clipboard or vision)
   const existingAcct = (data._nwAccounts || []).find(a =>
-    a.importSource === 'vision_import' && a.name === broker);
+    a.name === broker || a.name === broker + ' Crypto');
   const dupSection = document.getElementById('ivision-dup-section');
   if (existingAcct) {
     dupSection.style.display = '';
@@ -28135,9 +28136,10 @@ function confirmVisionImport() {
 
   if (!data._nwAccounts) data._nwAccounts = [];
 
-  // Remove existing account with same name + source
-  data._nwAccounts = data._nwAccounts.filter(a =>
-    !(a.importSource === 'vision_import' && a.name === broker));
+  // Remove any existing accounts with matching name regardless of import source
+  // Covers: re-importing same broker, switching from clipboard→vision, crypto suffix variants
+  const _dupNames = new Set([broker, broker + ' Crypto', broker + ' Stocks']);
+  data._nwAccounts = data._nwAccounts.filter(a => !_dupNames.has(a.name));
 
   // Determine asset class — check if any look like crypto
   const CRYPTO_SET = new Set(['BTC','ETH','SOL','DOGE','XRP','ADA','AVAX','MATIC','DOT','LTC']);
@@ -28187,7 +28189,9 @@ function confirmVisionImport() {
     if (stocks.length) data._nwAccounts.push(makeAccount(broker, stocks, 'EQUITY', 'stocks_direct'));
     if (crypto.length) data._nwAccounts.push(makeAccount(broker + ' Crypto', crypto, 'CRYPTO', 'crypto'));
   } else if (hasCrypto) {
-    data._nwAccounts.push(makeAccount(broker, holdings, 'CRYPTO', 'crypto'));
+    // Pure crypto screenshot — append " Crypto" to name for clarity
+    const cryptoName = broker.toLowerCase().includes('crypto') ? broker : broker + ' Crypto';
+    data._nwAccounts.push(makeAccount(cryptoName, holdings, 'CRYPTO', 'crypto'));
   } else {
     data._nwAccounts.push(makeAccount(broker, holdings, 'EQUITY', 'stocks_direct'));
   }
