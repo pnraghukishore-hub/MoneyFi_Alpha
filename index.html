@@ -5630,13 +5630,11 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       </div>
 
       <!-- Low confidence warning -->
-      <div id="ivision-confidence-warn" style="display:none;margin-top:10px;padding:9px 12px;
-           background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;
-           font-size:0.75em;font-weight:700;color:#92400E;">
-        ⚠️ Some values were uncertain (highlighted in yellow). Please verify them before importing.
-      </div>
+      <!-- Verification status — always shown, adapts to result -->
+      <div id="ivision-verify-bar" style="margin-top:10px;padding:9px 13px;border-radius:10px;
+           font-size:0.75em;font-weight:700;"></div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:4px;">
+    <div style="display:flex;gap:10px;margin-top:4px;padding-bottom:80px;">
       <button class="import-btn secondary" onclick="resetVisionImport()">← Back</button>
       <button class="import-btn" id="ivision-confirm-btn"
               onclick="confirmVisionImport()"
@@ -27579,8 +27577,26 @@ function _showVisionReview(holdings, broker, currency, sym) {
     dupSection.style.display = 'none';
   }
 
-  // Confidence warning
-  document.getElementById('ivision-confidence-warn').style.display = hasLow ? '' : 'none';
+  // Verification status bar — always visible, content adapts
+  const verifyBar = document.getElementById('ivision-verify-bar');
+  if (verifyBar) {
+    const lowCount  = holdings.filter(h => h.confidence === 'low').length;
+    const highCount = holdings.length - lowCount;
+    if (lowCount === 0) {
+      // All clean
+      verifyBar.style.background = '#ECFDF5';
+      verifyBar.style.border = '1.5px solid #6EE7B7';
+      verifyBar.style.color = '#065F46';
+      verifyBar.innerHTML = `✅ All ${holdings.length} values verified — qty × price cross-check passed for every row.`;
+    } else {
+      // Some flagged
+      verifyBar.style.background = '#FFF7ED';
+      verifyBar.style.border = '1.5px solid #FED7AA';
+      verifyBar.style.color = '#92400E';
+      verifyBar.innerHTML = `⚠️ ${lowCount} value${lowCount>1?'s':''} flagged (highlighted yellow) — ` +
+        `${highCount} passed. Please verify the yellow rows before importing.`;
+    }
+  }
 
   // Editable holdings table
   // Build table — mobile-optimised: drop Name column (shown as subtitle under symbol)
