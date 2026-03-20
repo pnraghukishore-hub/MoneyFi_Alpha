@@ -36352,8 +36352,17 @@ ${(() => {
       `Scoreable portfolio value: ${sym2}${_fmtK(d.scoredFunds.reduce((s,f)=>s+(f.val||0),0))}`,
       `Issues found: ${d.issuesCount}`,
     ];
-    if (d.overlapDetails?.length) lines2.push(`Category overlaps: ${d.overlapDetails.length} — ${d.overlapDetails.map(o=>o.category||'').filter(Boolean).join(', ')}`);
-    if (d.pausedWithValue?.length) lines2.push(`Idle paused funds: ${d.pausedWithValue.length} with ${sym2}${_fmtK(d.idleCapital)} sitting uninvested`);
+    if (d.overlapDetails?.length) {
+      const overlapStr = d.overlapDetails.map(o => {
+        const fundNames = (o.accs || []).map(a => a.name || '').filter(Boolean);
+        return `${o.cat || '?'}(${fundNames.join(' + ')}) — ${o.excess} excess fund${o.excess>1?'s':''}`;
+      }).join('; ');
+      lines2.push(`Category overlaps: ${d.overlapDetails.length} — ${overlapStr}`);
+    }
+    if (d.pausedWithValue?.length) {
+      const pausedNames = d.pausedWithValue.slice(0, 8).map(a => `${a.name||'?'}(${sym2}${_fmtK(a.balance||0)})`).join(', ');
+      lines2.push(`Idle paused funds: ${d.pausedWithValue.length} with ${sym2}${_fmtK(d.idleCapital)} sitting uninvested — ${pausedNames}${d.pausedWithValue.length>8?' +more':''}`);
+    }
     if (d.amcEntries?.[0]) lines2.push(`Highest AMC concentration: ${d.amcEntries[0][0]} at ${Math.round(d.amcEntries[0][1].pct)}%`);
     if (verdicts.exit?.length) lines2.push(`EXIT candidates: ${verdicts.exit.slice(0,5).join(', ')}${verdicts.exit.length>5?' +more':''}`);
     if (verdicts.review?.length) lines2.push(`REVIEW candidates: ${verdicts.review.slice(0,5).join(', ')}${verdicts.review.length>5?' +more':''}`);
