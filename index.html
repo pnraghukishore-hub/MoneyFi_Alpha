@@ -2068,7 +2068,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     .import-col-field { font-size:0.8em; font-weight:800; color:var(--text-dark); min-width:100px; flex-shrink:0; }
     .import-col-select { flex:1; background:var(--white); border:1.5px solid #E8E8E8; border-radius:8px; padding:7px 10px; font-family:'Nunito',sans-serif; font-weight:700; font-size:0.82em; color:var(--text-dark); outline:none; }
     .import-col-select:focus { border-color:var(--yellow); }
-    .import-preview-table { width:100%; border-collapse:collapse; font-size:0.75em; margin-bottom:14px; }
+    .import-preview-table { width:100%; border-collapse:collapse; font-size:0.75em; margin-bottom:14px; table-layout:fixed; word-break:break-word; }
     .import-preview-table th { background:var(--yellow-light); font-weight:800; padding:6px 8px; text-align:left; border-bottom:2px solid var(--yellow); }
     .import-preview-table td { padding:5px 8px; border-bottom:1px solid #F0F0F0; color:var(--text-dark); font-weight:600; }
     .import-preview-table tr:nth-child(even) td { background:#FAFAFA; }
@@ -5106,6 +5106,14 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:0.78em;color:#92400E;font-weight:700;">
           ⚠️ Robinhood CSV has no current prices — imported positions show cost basis only. Update current values in Net Worth after import.
         </div>
+
+        <!-- Clipboard paste option -->
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid #F0F0F0;">
+          <div style="font-size:0.82em;font-weight:900;color:#1E2A6E;margin-bottom:4px;">📋 Paste Portfolio (Easier)</div>
+          <div style="font-size:0.72em;color:#6B7280;font-weight:600;margin-bottom:8px;">On Robinhood web → Account → Investing → select all stocks → copy → paste here. Includes current prices &amp; cost basis.</div>
+          <textarea id="robinhood-paste-input" placeholder="Paste your Robinhood portfolio here..." style="width:100%;height:110px;border:1.5px solid #E0E7FF;border-radius:10px;padding:10px;font-family:Nunito,sans-serif;font-size:0.78em;font-weight:600;color:#1E2A6E;resize:vertical;box-sizing:border-box;outline:none;"></textarea>
+          <button onclick="parseRobinhoodClipboard()" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#22C55E,#16A34A);color:white;border:none;border-radius:10px;padding:11px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.85em;cursor:pointer;">🟢 Parse Portfolio</button>
+        </div>
       </div>
     </div>
     <div class="import-step" id="irobinhood-step2">
@@ -5542,6 +5550,165 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
 
 
+
+<!-- ══ AI VISION IMPORT ══ -->
+<div class="import-section" id="isec-vision">
+
+  <!-- Step 1: Upload screenshot -->
+  <div class="import-step active" id="ivision-step1">
+    <div class="import-card">
+      <div class="import-card-title">🤖 AI Screenshot Import <span style="background:#7C3AED;color:white;font-size:0.6em;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;">PRO</span></div>
+      <div class="import-card-sub">Take a screenshot of any brokerage portfolio — Zerodha, Groww, Angel One, Robinhood, Fidelity, eToro, or any other. AI reads it and extracts your holdings automatically. Works for any country, any broker.</div>
+
+      <!-- Drop zone -->
+      <div class="import-drop-zone" id="ivision-dropzone"
+           onclick="document.getElementById('ivision-file').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleVisionDrop(event)"
+           style="min-height:160px;">
+        <div class="import-drop-icon" id="ivision-preview-icon">📸</div>
+        <div id="ivision-preview-wrap" style="display:none;width:100%;margin-bottom:8px;">
+          <img id="ivision-preview-img" style="max-width:100%;max-height:180px;border-radius:8px;object-fit:contain;" />
+        </div>
+        <div class="import-drop-text" id="ivision-drop-text">Tap to upload screenshot</div>
+        <div class="import-drop-sub">PNG or JPG · Any brokerage · Any country</div>
+      </div>
+      <input type="file" id="ivision-file" accept="image/png,image/jpeg,image/jpg,image/webp"
+             style="display:none;" onchange="handleVisionFile(this)">
+
+      <!-- Tips -->
+      <div style="margin-top:12px;padding:10px 12px;background:#F5F3FF;border-radius:10px;font-size:0.75em;color:#5B21B6;font-weight:700;">
+        💡 <strong>Best results:</strong> Screenshot the holdings/portfolio page · Landscape or portrait both work · Ensure text is readable · Crop out navigation bars if possible
+      </div>
+
+      <!-- Broker name input -->
+      <div style="margin-top:12px;">
+        <div style="font-size:0.78em;font-weight:900;color:#1E2A6E;margin-bottom:6px;">Broker / Account Name</div>
+        <input type="text" id="ivision-broker-name" placeholder="e.g. Zerodha, Groww, Angel One..."
+               style="width:100%;border:1.5px solid #E0E7FF;border-radius:10px;padding:10px 12px;
+                      font-family:Nunito,sans-serif;font-weight:700;font-size:0.85em;
+                      color:#1E2A6E;box-sizing:border-box;outline:none;">
+        <!-- Quick chips -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;" id="ivision-broker-chips"></div>
+      </div>
+
+      <!-- Upload count badge -->
+      <div id="ivision-quota-bar" style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;
+           padding:8px 12px;background:#F5F3FF;border-radius:10px;font-size:0.75em;font-weight:800;">
+        <span style="color:#7C3AED;">🤖 AI Scan</span>
+        <span id="ivision-quota-text" style="color:#7C3AED;"></span>
+      </div>
+
+      <!-- Extract button -->
+      <button id="ivision-extract-btn" onclick="extractVisionHoldings()"
+              style="width:100%;margin-top:10px;background:linear-gradient(135deg,#7C3AED,#9F67FA);
+                     color:white;border:none;border-radius:12px;padding:14px;
+                     font-family:Nunito,sans-serif;font-weight:900;font-size:0.9em;
+                     cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"
+              disabled>
+        <span id="ivision-btn-icon">🤖</span>
+        <span id="ivision-btn-text">Upload a screenshot first</span>
+      </button>
+
+      <!-- Privacy note -->
+      <div style="margin-top:10px;text-align:center;font-size:0.68em;color:#9CA3AF;font-weight:600;">
+        🔒 Screenshot sent to Claude AI for extraction only · Deleted within 7 days · Never stored by MoneyFi
+      </div>
+
+      <!-- Loading overlay — shown during AI extraction -->
+      <div id="ivision-loading" style="display:none;position:fixed;inset:0;background:rgba(10,14,40,0.92);
+           z-index:2000;flex-direction:column;align-items:center;justify-content:center;padding:32px;">
+
+        <!-- Animated clock -->
+        <div style="margin-bottom:28px;position:relative;">
+          <svg id="ivision-clock-svg" width="90" height="90" viewBox="0 0 90 90">
+            <!-- Outer ring progress -->
+            <circle cx="45" cy="45" r="40" fill="none" stroke="#2D1B69" stroke-width="5"/>
+            <circle id="ivision-clock-ring" cx="45" cy="45" r="40" fill="none"
+                    stroke="#9F67FA" stroke-width="5" stroke-linecap="round"
+                    stroke-dasharray="251" stroke-dashoffset="251"
+                    transform="rotate(-90 45 45)"
+                    style="transition:stroke-dashoffset 1s linear;"/>
+            <!-- Clock face -->
+            <circle cx="45" cy="45" r="32" fill="#1E0A4A"/>
+            <!-- Hour hand -->
+            <line id="ivision-hour-hand" x1="45" y1="45" x2="45" y2="22"
+                  stroke="#DDD6FE" stroke-width="3" stroke-linecap="round"/>
+            <!-- Minute hand -->
+            <line id="ivision-min-hand" x1="45" y1="45" x2="45" y2="17"
+                  stroke="#9F67FA" stroke-width="2" stroke-linecap="round"/>
+            <!-- Centre dot -->
+            <circle cx="45" cy="45" r="3" fill="#9F67FA"/>
+          </svg>
+          <!-- Elapsed time -->
+          <div id="ivision-elapsed" style="position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);
+               font-size:0.72em;font-weight:800;color:#9CA3AF;white-space:nowrap;">Reading screenshot...</div>
+        </div>
+
+        <!-- Tip card -->
+        <div style="max-width:320px;width:100%;margin-top:28px;">
+          <div style="font-size:0.62em;font-weight:900;color:#6D28D9;text-transform:uppercase;
+               letter-spacing:1px;margin-bottom:8px;text-align:center;">💡 Financial Insight</div>
+          <div id="ivision-tip-card" style="background:#1A0B3D;border:1.5px solid #4C1D95;
+               border-radius:16px;padding:18px 20px;text-align:center;">
+            <div id="ivision-tip-emoji" style="font-size:2em;margin-bottom:10px;">📊</div>
+            <div id="ivision-tip-text" style="font-size:0.85em;font-weight:700;color:#E9D5FF;
+                 line-height:1.55;"></div>
+          </div>
+          <!-- Tip progress dots -->
+          <div id="ivision-tip-dots" style="display:flex;justify-content:center;gap:6px;margin-top:12px;"></div>
+        </div>
+
+        <div style="margin-top:24px;font-size:0.7em;color:#6D28D9;font-weight:700;">
+          AI is reading your screenshot — usually takes 15–20 seconds
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Review extracted holdings -->
+  <div class="import-step" id="ivision-step2">
+    <div class="import-card">
+      <div class="import-card-title">✅ Review Extracted Holdings</div>
+      <div class="import-card-sub" id="ivision-summary-text"></div>
+      <div class="import-summary-grid" id="ivision-summary-grid"></div>
+
+      <!-- Duplicate warning -->
+      <div id="ivision-dup-section" style="display:none;margin-bottom:12px;"></div>
+
+      <!-- Editable holdings table -->
+      <div style="font-size:0.72em;font-weight:800;color:#6B7280;margin-bottom:6px;">
+        ✏️ Tap any value to correct it before importing
+      </div>
+      <div style="overflow-x:auto;max-height:320px;overflow-y:auto;">
+        <table class="import-preview-table" id="ivision-preview-table"></table>
+      </div>
+
+      <!-- Low confidence warning -->
+      <!-- Verification status — always shown, adapts to result -->
+      <div id="ivision-verify-bar" style="margin-top:10px;padding:9px 13px;border-radius:10px;
+           font-size:0.75em;font-weight:700;"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px;padding-bottom:80px;">
+      <button class="import-btn secondary" onclick="resetVisionImport()">← Back</button>
+      <button class="import-btn" id="ivision-confirm-btn"
+              onclick="confirmVisionImport()"
+              style="background:#10B981;color:white;">✅ Import to Net Worth</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Done -->
+  <div class="import-step" id="ivision-step3">
+    <div class="import-card" style="text-align:center;padding:32px 20px;">
+      <div style="font-size:2.5em;margin-bottom:8px;">🎉</div>
+      <div style="font-weight:900;font-size:1.1em;color:var(--text-dark);margin-bottom:6px;" id="ivision-done-title">Import Complete!</div>
+      <div style="font-size:0.85em;color:var(--text-light);font-weight:600;margin-bottom:20px;" id="ivision-done-sub"></div>
+      <button class="import-btn" onclick="resetVisionImport()">Import Another Screenshot</button>
+    </div>
+  </div>
+
+</div>
 
 <!-- ══ IMPORT FOOTER DISCLAIMER ══ -->
 <div style="margin:8px 0 24px;padding:12px 14px;background:#FFFBEA;border:1.5px solid #FCD34D;border-radius:12px;font-size:0.73em;line-height:1.6;color:#78350F;">
@@ -24604,6 +24771,7 @@ function renderImportTabs() {
   // Tabs — no Reset (moved to Settings > Data Management)
   const tabs = [
     { key:'transactions', label:'💸 Transactions', always: true },
+    { key:'vision',       label:'🤖 AI Scan',     always: true, premium: true },
     // India-specific
     { key:'cams',     label:'📄 CAS',      only:'IN' },
     { key:'zerodha',  label:'📈 Zerodha',  only:'IN' },
@@ -24616,13 +24784,18 @@ function renderImportTabs() {
     { key:'given',      label:'🤝 Given',       always: true },
     { key:'metals',     label:'🥇 Metals',       always: true },
     { key:'realestate', label:'🏡 Real Estate',  always: true },
-    { key:'universal',   label:'🏦 Bank/CSV',       always: true },
-    { key:'sms',         label:'📱 SMS',             always: true },
+    { key:'universal',  label:'🏦 Bank/CSV',     always: true },
+    { key:'sms',        label:'📱 SMS',          always: true },
   ];
 
   container.innerHTML = tabs
     .filter(t => t.always || showAll || t.only === importRegion)
-    .map((t, i) => `<button class="import-tab${i===0?' active':''}" onclick="setImportTab('${t.key}',this)">${t.label}</button>`)
+    .map((t, i) => {
+      const premiumStyle = t.premium
+        ? ' style="background:linear-gradient(135deg,#EDE9FE,#DDD6FE);color:#6D28D9;border:1.5px solid #C4B5FD;"'
+        : '';
+      return `<button class="import-tab${i===0?' active':''}"${premiumStyle} onclick="setImportTab('${t.key}',this)">${t.label}</button>`;
+    })
     .join('');
 }
 
@@ -24669,6 +24842,7 @@ function setImportTab(tab, el) {
   if (tab === 'schwab')    resetNamedParser('schwab');
   if (tab === 'robinhood') resetNamedParser('robinhood');
   if (tab === 'sms')       resetSMSImport();
+  if (tab === 'vision')    initVisionImport();
 }
 
 function handleImportDrop(event, type) {
@@ -27018,6 +27192,1038 @@ function parseSchwabTransactions(rawRows) {
 // Account Type values: "Brokerage", "Traditional IRA", "Roth IRA"
 // Only 1 year of history; crypto/futures NOT included in this file.
 // ══════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════
+// ROBINHOOD CLIPBOARD PASTE PARSER
+// Parses the text copied from Robinhood web → Account → Investing
+// Format per holding (8 lines):
+//   Name, Symbol, Shares, Price($), AvgCost($), blank, TotalReturn($), Equity($)
+// ══════════════════════════════════════════════════════════════════
+function parseRobinhoodClipboard() {
+  const raw = document.getElementById('robinhood-paste-input')?.value?.trim();
+  if (!raw) { showToast('⚠️ Paste your Robinhood portfolio first'); return; }
+
+  const rawLines = raw.split('\n').map(l => l.trimEnd());
+
+  const CRYPTO_TICKERS = new Set(['BTC','ETH','SOL','DOGE','SHIB','XRP','ADA','AVAX',
+    'MATIC','DOT','LTC','LINK','UNI','ALGO','XLM','ATOM','FIL','AAVE','COMP','MKR']);
+  const SKIP_LABELS = new Set(['stocks','options','crypto','etfs','name','symbol',
+    'shares','quantity','price','average cost','total return','equity']);
+
+  function money(s) {
+    s = (s||'').replace(/[▲▼\$,\+\s]/g,'').trim();
+    const v = parseFloat(s); return isNaN(v) ? null : v;
+  }
+  function isSym(s)   { return /^[A-Z]{1,5}([.\-][A-Z]{1,2})?$/.test((s||'').trim()); }
+  function isNum(s)   { const v=parseFloat((s||'').trim().replace(/,/g,'')); return !isNaN(v); }
+  function isPrice(s) { return /^-?\$[\d,]+\.\d{2,}$/.test((s||'').trim()); }
+  function isRetLine(s) {
+    // Handles: "▲ $498.68"  "▼ $1.23"  "$498.68"  "-$10.00"
+    return /^[▲▼]?\s*-?\$[\d,]+\.\d{2,}$/.test((s||'').trim());
+  }
+
+  // Find data start — after 'Equity' column header
+  let start = 0;
+  for (let i = 0; i < rawLines.length; i++) {
+    if (rawLines[i].trim() === 'Equity') { start = i + 1; break; }
+  }
+
+  const data = rawLines.slice(start);
+  const holdings = [];
+  let i = 0;
+
+  while (i < data.length) {
+    const line = data[i].trim();
+    if (!line || SKIP_LABELS.has(line.toLowerCase())) { i++; continue; }
+    if (i + 6 >= data.length) break;
+
+    const name   = data[i].trim();
+    const symbol = data[i+1].trim();
+    const sharesS= data[i+2].trim();
+    const priceS = data[i+3].trim();
+    const avgcS  = data[i+4].trim();
+    const line5  = data[i+5].trim();  // "▲ $X.XX" | "▼ $X.XX" | blank
+    const line6  = data[i+6].trim();  // equity (7-line) OR ret$ (8-line blank format)
+
+    if (!isSym(symbol) || !isNum(sharesS) || !isPrice(priceS)) { i++; continue; }
+
+    let retVal = null, equity = null, step = 7;
+
+    if (isRetLine(line5)) {
+      // 7-line format (new): "▲ $498.68" on line5, equity on line6
+      const isUp = line5.includes('▲');
+      retVal = money(line5) * (isUp ? 1 : -1);
+      equity = money(line6);
+      step   = 7;
+    } else if (line5 === '' && i + 7 < data.length) {
+      // 8-line format (old blank-line): blank on line5, ret$ on line6, equity on line7
+      retVal = money(line6);
+      equity = money(data[i+7].trim());
+      step   = 8;
+    } else { i++; continue; }
+
+    const shares    = parseFloat(sharesS.replace(/,/g,''));
+    const price     = money(priceS);
+    const avgCost   = money(avgcS);
+    const costBasis = avgCost ? Math.round(avgCost * shares * 10000) / 10000 : null;
+    const isCrypto  = CRYPTO_TICKERS.has(symbol);
+
+    holdings.push({ name, symbol, shares, price, avgCost, retVal, equity, costBasis, isCrypto });
+    i += step;
+  }
+
+  if (!holdings.length) {
+    showToast('❌ No holdings found — copy from Robinhood → Account → Investing');
+    return;
+  }
+
+  const sym         = currentCurrency?.symbol || '$';
+  const totalEquity = holdings.reduce((s,h) => s + (h.equity    || 0), 0);
+  const totalCost   = holdings.reduce((s,h) => s + (h.costBasis || 0), 0);
+  const totalRet    = totalEquity - totalCost;
+  const retPct      = totalCost > 0 ? (totalRet / totalCost * 100) : 0;
+  const stocks      = holdings.filter(h => !h.isCrypto);
+  const crypto      = holdings.filter(h =>  h.isCrypto);
+
+  // ── Duplicate check ──────────────────────────────────────────────────────
+  const existingAcct = (data._nwAccounts || []).find(a =>
+    a.importSource === 'robinhood_clipboard' || a.name === 'Robinhood' || a.name === 'Robinhood Stocks');
+
+  const dupHtml = existingAcct ? `<div style="margin-bottom:12px;padding:10px 13px;
+    background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;
+    font-size:0.78em;font-weight:700;color:#92400E;">
+    ⚠️ A Robinhood account already exists (${sym}${Math.round(existingAcct.balance||0).toLocaleString()}).
+    Confirming will <strong>replace</strong> it with today's snapshot.
+    </div>` : '';
+
+  // ── Summary ───────────────────────────────────────────────────────────────
+  document.getElementById('irobinhood-summary-text').textContent =
+    `${holdings.length} holdings` +
+    (stocks.length && crypto.length ? ` (${stocks.length} stocks · ${crypto.length} crypto)` :
+     crypto.length ? ` (crypto)` : ` (stocks)`) +
+    ` · ${sym}${Math.round(totalEquity).toLocaleString()} market value · ` +
+    `${retPct >= 0 ? '+' : ''}${retPct.toFixed(1)}% total return`;
+
+  document.getElementById('irobinhood-summary-grid').innerHTML =
+    `<div class="import-summary-box"><div class="isb-num">${holdings.length}</div><div class="isb-label">Holdings</div></div>` +
+    `<div class="import-summary-box"><div class="isb-num">${sym}${Math.round(totalEquity).toLocaleString()}</div><div class="isb-label">Market Value</div></div>` +
+    `<div class="import-summary-box"><div class="isb-num" style="color:${totalRet>=0?'#059669':'#DC2626'}">` +
+    `${totalRet>=0?'+':''}${sym}${Math.abs(Math.round(totalRet)).toLocaleString()}</div><div class="isb-label">Unrealized P&L</div></div>`;
+
+  // ── Dup banner ────────────────────────────────────────────────────────────
+  const dupSection = document.getElementById('irobinhood-dup-section');
+  if (dupSection) { dupSection.style.display = existingAcct ? '' : 'none'; dupSection.innerHTML = dupHtml; }
+
+  // ── Holdings preview table ────────────────────────────────────────────────
+  document.getElementById('irobinhood-preview-table').innerHTML =
+    `<tr><th>Symbol</th><th>Name</th><th>Qty</th><th>Price</th><th>Mkt Value</th><th>Cost</th><th>Return</th></tr>` +
+    holdings.map(h => {
+      const ret = h.costBasis > 0 ? ((h.equity - h.costBasis) / h.costBasis * 100) : 0;
+      const col = ret >= 0 ? '#059669' : '#DC2626';
+      const ind = ret >= 0 ? '▲' : '▼';
+      const tag = h.isCrypto ? ` <span style="font-size:0.65em;background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 4px;font-weight:800;">CRYPTO</span>` : '';
+      return `<tr>
+        <td style="font-weight:900">${h.symbol}${tag}</td>
+        <td style="font-size:0.85em">${h.name}</td>
+        <td>${h.shares}</td>
+        <td>${sym}${(h.price||0).toFixed(2)}</td>
+        <td style="font-weight:800">${sym}${Math.round(h.equity||0).toLocaleString()}</td>
+        <td>${sym}${Math.round(h.costBasis||0).toLocaleString()}</td>
+        <td style="color:${col};font-weight:800">${ind} ${Math.abs(ret).toFixed(1)}%</td>
+      </tr>`;
+    }).join('');
+
+  window._robinhoodClipboardData = { holdings, totalEquity, totalCost, stocks, crypto };
+
+  document.querySelectorAll('#isec-robinhood .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('irobinhood-step2').classList.add('active');
+
+  const confirmBtn = document.querySelector('#isec-robinhood .import-btn[onclick*="confirmNamedImport"]');
+  if (confirmBtn) confirmBtn.onclick = confirmRobinhoodClipboard;
+}
+
+function confirmRobinhoodClipboard() {
+  const d = window._robinhoodClipboardData;
+  if (!d) return;
+  const { holdings, totalEquity, totalCost, stocks, crypto } = d;
+  const sym  = currentCurrency?.symbol || '$';
+  const curr = (getFHSProfile()?.region||'IN') === 'US' ? 'USD' : (currentCurrency?.code||'USD');
+  const now  = new Date().toISOString();
+
+  if (!data._nwAccounts) data._nwAccounts = [];
+
+  // Remove any existing Robinhood clipboard accounts
+  data._nwAccounts = data._nwAccounts.filter(a =>
+    a.importSource !== 'robinhood_clipboard' &&
+    a.name !== 'Robinhood' && a.name !== 'Robinhood Stocks' && a.name !== 'Robinhood Crypto');
+
+  // Create stocks account if any
+  if (stocks.length) {
+    data._nwAccounts.push({
+      id: 'nw_rh_stocks_' + Date.now(),
+      name: 'Robinhood',
+      type: 'stocks_direct',          // ← enables Lab holdings drill-down & ROI
+      balance:        Math.round(stocks.reduce((s,h) => s + (h.equity||0), 0) * 100) / 100,
+      currency:       curr,
+      investedAmount: Math.round(stocks.reduce((s,h) => s + (h.costBasis||0), 0) * 100) / 100,
+      assetClass: 'EQUITY', taxBucket: 'taxable', liquidity: 'liquid',
+      importSource: 'robinhood_clipboard', importedAt: now,
+      meta: {
+        holdings: stocks.map(h => ({
+          symbol:    h.symbol,
+          name:      h.name,
+          qty:       h.shares,
+          ltp:       h.price,
+          avgCost:   h.avgCost,
+          curVal:    h.equity,
+          costBasis: h.costBasis,
+          pnl:       h.totalRet || null,
+        })),
+      },
+    });
+  }
+
+  // Create crypto account if any
+  if (crypto.length) {
+    data._nwAccounts.push({
+      id: 'nw_rh_crypto_' + Date.now(),
+      name: 'Robinhood Crypto',
+      type: 'crypto',
+      balance:        Math.round(crypto.reduce((s,h) => s + (h.equity||0), 0) * 100) / 100,
+      currency:       curr,
+      investedAmount: Math.round(crypto.reduce((s,h) => s + (h.costBasis||0), 0) * 100) / 100,
+      assetClass: 'CRYPTO', taxBucket: 'taxable', liquidity: 'liquid',
+      importSource: 'robinhood_clipboard', importedAt: now,
+      holdings: crypto.map(h => ({ symbol:h.symbol, name:h.name, shares:h.shares,
+        price:h.price, avgCost:h.avgCost, equity:h.equity, costBasis:h.costBasis })),
+    });
+  }
+
+  save();
+
+  document.querySelectorAll('#isec-robinhood .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('irobinhood-step3').classList.add('active');
+  document.getElementById('irobinhood-done-title').textContent = 'Robinhood Imported!';
+  document.getElementById('irobinhood-done-sub').textContent =
+    `${holdings.length} holdings · ${sym}${Math.round(totalEquity).toLocaleString()} added to Net Worth` +
+    (crypto.length ? ` (${stocks.length} stocks + ${crypto.length} crypto as separate accounts)` : '');
+
+  showToast(`✅ Robinhood imported — ${holdings.length} holdings`);
+  window._robinhoodClipboardData = null;
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AI VISION IMPORT — Screenshot → Holdings via Claude Vision
+// Supports any broker, any country, any screenshot format
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _visionImageBase64 = null;   // base64 of uploaded screenshot
+let _visionImageType   = null;   // image/png or image/jpeg
+let _visionHoldings    = null;   // parsed holdings array for confirm step
+
+const VISION_BROKERS = [
+  'Zerodha','Groww','Angel One','Upstox','Motilal Oswal','HDFC Securities',
+  'ICICIdirect','Kotak Securities','5Paisa','SBI Smart',
+  'Robinhood','Fidelity','Schwab','E*TRADE','TD Ameritrade','Interactive Brokers',
+  'eToro','Trading 212','Stake'
+];
+
+// ── VISION IMPORT CONSTANTS ─────────────────────────────────────────────────
+const VISION_MONTHLY_LIMIT = 10;  // PRO: 10 scans/month free tier
+
+const VISION_TIPS = [
+  { emoji:"📈", text:"The Rule of 72: divide 72 by your annual return to find how many years it takes to double your money. At 12% p.a., your portfolio doubles in 6 years." },
+  { emoji:"🛡️", text:"An emergency fund of 6 months of expenses is your financial immune system. It prevents you from selling investments at the worst possible time." },
+  { emoji:"💰", text:"SIP step-up: increasing your monthly SIP by just 10% each year can nearly double your final corpus compared to a flat SIP over 20 years." },
+  { emoji:"🧾", text:"ELSS mutual funds give you both equity returns and 80C tax deduction up to ₹1.5L. They have the shortest lock-in (3 years) among all 80C instruments." },
+  { emoji:"📊", text:"Asset allocation matters more than stock picking. Studies show 90% of portfolio returns come from how you split across equity, debt, and gold — not which stocks you pick." },
+  { emoji:"🔄", text:"Rebalancing once a year — selling what grew and buying what lagged — forces you to buy low and sell high automatically, without emotional decisions." },
+  { emoji:"🌍", text:"Geographic diversification: adding US index funds to an India portfolio reduces volatility because Indian and US markets are only ~0.5 correlated." },
+  { emoji:"💎", text:"Cost ratio matters more than you think. A 1% expense ratio on a ₹50L portfolio costs you ₹50,000/year — money not compounding for you." },
+  { emoji:"🏦", text:"EPF is one of the best debt investments available — 8.25% guaranteed, tax-free on maturity, employer-matched. Most people underestimate it." },
+  { emoji:"🎯", text:"The 4% Rule: in retirement, you can withdraw 4% of your corpus annually and it statistically lasts 30+ years. ₹3Cr corpus → ₹12L/year withdrawal." },
+  { emoji:"📱", text:"UPI transactions are your financial fingerprint. Every payment is a data point — categorised over time, they reveal your actual spending personality." },
+  { emoji:"⚡", text:"Compounding is asymmetric: the last 10 years of a 30-year investment contribute more than the first 20 years combined. Starting early matters enormously." },
+  { emoji:"🏠", text:"Real estate and equity are complements, not competitors. Real estate provides inflation-protected income; equity provides liquidity and growth. Both have a role." },
+  { emoji:"🧬", text:"Term insurance cover should be 15-20x your annual income. A ₹1Cr policy for a 30-year-old costs less than ₹1,000/month — the cheapest financial guarantee." },
+  { emoji:"📉", text:"Bear markets are sales on future wealth. Every major market crash in history has been followed by new all-time highs. Panic-selling is the only real risk." },
+];
+
+function _visionGetQuotaKey() {
+  const now = new Date();
+  return `mf_vision_quota_${now.getFullYear()}_${now.getMonth()+1}`;
+}
+
+function _visionGetUsed() {
+  return parseInt(localStorage.getItem(_visionGetQuotaKey()) || '0', 10);
+}
+
+function _visionIncrementUsed() {
+  const key  = _visionGetQuotaKey();
+  const used = _visionGetUsed() + 1;
+  localStorage.setItem(key, used);
+  return used;
+}
+
+function _visionUpdateQuotaBar() {
+  const used      = _visionGetUsed();
+  const remaining = Math.max(0, VISION_MONTHLY_LIMIT - used);
+  const bar       = document.getElementById('ivision-quota-text');
+  if (!bar) return;
+  if (remaining === 0) {
+    bar.textContent = '0 scans left this month';
+    bar.style.color = '#DC2626';
+  } else if (remaining <= 3) {
+    bar.textContent = `${remaining} scan${remaining===1?'':'s'} left this month`;
+    bar.style.color = '#D97706';
+  } else {
+    bar.textContent = `${remaining} of ${VISION_MONTHLY_LIMIT} scans remaining`;
+    bar.style.color = '#7C3AED';
+  }
+}
+
+// ── Loading screen: clock + tips ─────────────────────────────────────────────
+let _visionLoadTimer  = null;
+let _visionTipTimer   = null;
+let _visionTipIdx     = 0;
+let _visionElapsed    = 0;
+let _visionTipOrder   = [];
+
+function _visionStartLoading() {
+  const overlay = document.getElementById('ivision-loading');
+  if (overlay) overlay.style.display = 'flex';
+
+  // Shuffle tips
+  _visionTipOrder = [...VISION_TIPS].sort(() => Math.random() - 0.5);
+  _visionTipIdx   = 0;
+  _visionElapsed  = 0;
+
+  // Build tip dots
+  const dots = document.getElementById('ivision-tip-dots');
+  if (dots) {
+    dots.innerHTML = _visionTipOrder.slice(0, 5).map((_,i) =>
+      `<div id="vtdot-${i}" style="width:${i===0?'18px':'6px'};height:6px;border-radius:3px;
+       background:${i===0?'#9F67FA':'#4C1D95'};transition:all 0.4s;"></div>`
+    ).join('');
+  }
+
+  _visionShowTip(0);
+
+  // Clock + elapsed + ring animation
+  const totalSecs = 20;
+  const circumference = 251;  // 2π×40
+  _visionLoadTimer = setInterval(() => {
+    _visionElapsed++;
+    // Update elapsed label
+    const el = document.getElementById('ivision-elapsed');
+    if (el) el.textContent = _visionElapsed < 5 ? 'Reading screenshot...' :
+                              _visionElapsed < 12 ? 'Extracting holdings...' :
+                              _visionElapsed < 18 ? 'Cross-checking numbers...' :
+                              'Almost done...';
+
+    // Progress ring
+    const ring = document.getElementById('ivision-clock-ring');
+    if (ring) {
+      const pct    = Math.min(_visionElapsed / totalSecs, 1);
+      ring.style.strokeDashoffset = circumference * (1 - pct);
+      ring.setAttribute('stroke', pct > 0.8 ? '#22C55E' : '#9F67FA');
+    }
+
+    // Animate clock hands
+    const minAngle  = (_visionElapsed / totalSecs) * 360;
+    const hourAngle = minAngle / 12;
+    const minHand  = document.getElementById('ivision-min-hand');
+    const hourHand = document.getElementById('ivision-hour-hand');
+    if (minHand)  { const r = minAngle * Math.PI/180;  minHand.setAttribute('x2',  45 + 28*Math.sin(r)); minHand.setAttribute('y2',  45 - 28*Math.cos(r)); }
+    if (hourHand) { const r = hourAngle * Math.PI/180; hourHand.setAttribute('x2', 45 + 20*Math.sin(r)); hourHand.setAttribute('y2', 45 - 20*Math.cos(r)); }
+
+    // Rotate tips every 5 seconds
+    if (_visionElapsed > 0 && _visionElapsed % 5 === 0) {
+      _visionTipIdx = (_visionTipIdx + 1) % Math.min(5, _visionTipOrder.length);
+      _visionShowTip(_visionTipIdx);
+    }
+  }, 1000);
+}
+
+function _visionShowTip(idx) {
+  const tip  = _visionTipOrder[idx];
+  if (!tip) return;
+  const emojiEl = document.getElementById('ivision-tip-emoji');
+  const textEl  = document.getElementById('ivision-tip-text');
+  if (emojiEl) emojiEl.textContent = tip.emoji;
+  if (textEl)  {
+    textEl.style.opacity = '0';
+    textEl.style.transition = 'opacity 0.4s';
+    setTimeout(() => {
+      textEl.textContent = tip.text;
+      textEl.style.opacity = '1';
+    }, 200);
+  }
+  // Update dots
+  for (let i = 0; i < 5; i++) {
+    const dot = document.getElementById(`vtdot-${i}`);
+    if (dot) {
+      dot.style.width    = i === idx ? '18px' : '6px';
+      dot.style.background = i === idx ? '#9F67FA' : '#4C1D95';
+    }
+  }
+}
+
+function _visionStopLoading() {
+  if (_visionLoadTimer) { clearInterval(_visionLoadTimer); _visionLoadTimer = null; }
+  const overlay = document.getElementById('ivision-loading');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function initVisionImport() {
+  _visionUpdateQuotaBar();
+  // Populate broker chips
+  const chips = document.getElementById('ivision-broker-chips');
+  if (chips && !chips.children.length) {
+    chips.innerHTML = VISION_BROKERS.map(b =>
+      `<button onclick="document.getElementById('ivision-broker-name').value='${b}'"
+        style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:20px;
+               padding:3px 10px;font-size:0.7em;font-weight:800;color:#1E40AF;
+               cursor:pointer;font-family:inherit;">${b}</button>`
+    ).join('');
+  }
+  resetVisionImport();
+}
+
+function handleVisionDrop(event) {
+  event.preventDefault();
+  document.getElementById('ivision-dropzone').classList.remove('dragover');
+  const file = event.dataTransfer.files[0];
+  if (file) _loadVisionImage(file);
+}
+
+function handleVisionFile(input) {
+  const file = input.files[0];
+  if (file) _loadVisionImage(file);
+  input.value = '';
+}
+
+function _loadVisionImage(file) {
+  if (!file.type.startsWith('image/')) {
+    showToast('❌ Please upload a PNG or JPG screenshot'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    // Split data:image/png;base64,XXXX
+    const [header, b64] = dataUrl.split(',');
+    _visionImageBase64 = b64;
+    _visionImageType   = file.type || 'image/jpeg';
+
+    // Show preview
+    const img = document.getElementById('ivision-preview-img');
+    const previewWrap = document.getElementById('ivision-preview-wrap');
+    const previewIcon = document.getElementById('ivision-preview-icon');
+    if (img) { img.src = dataUrl; previewWrap.style.display = ''; previewIcon.style.display = 'none'; }
+
+    document.getElementById('ivision-drop-text').textContent = file.name;
+
+    // Enable extract button
+    const btn = document.getElementById('ivision-extract-btn');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    document.getElementById('ivision-btn-text').textContent = 'Extract Holdings with AI';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function extractVisionHoldings() {
+  if (!_visionImageBase64) { showToast('⚠️ Upload a screenshot first'); return; }
+
+  // Check quota before proceeding
+  const _usedNow = _visionGetUsed();
+  if (_usedNow >= VISION_MONTHLY_LIMIT) {
+    showToast(`⚠️ You've used all ${VISION_MONTHLY_LIMIT} AI Scans this month. Resets on the 1st.`);
+    return;
+  }
+
+  const btn      = document.getElementById('ivision-extract-btn');
+  const btnText  = document.getElementById('ivision-btn-text');
+  const btnIcon  = document.getElementById('ivision-btn-icon');
+  btn.disabled   = true;
+  btnIcon.textContent  = '⏳';
+  btnText.textContent  = 'AI is reading your screenshot...';
+  _visionStartLoading();
+
+  const brokerName = document.getElementById('ivision-broker-name')?.value?.trim() || 'My Portfolio';
+  const sym = currentCurrency?.symbol || '$';
+  const region = getFHSProfile()?.region || 'IN';
+
+  const extractionPrompt = `You are a precise financial data extraction assistant. Analyse this brokerage screenshot and extract its data.
+
+STEP 1 — Identify screen type:
+- "portfolio": shows current holdings with quantity/shares, current price, market value (Positions, Holdings, Portfolio tab)
+- "transactions": shows a list of dated buy/sell/transfer activity (Activity, History, Transactions tab)
+- "unknown": cannot determine
+
+STEP 2 — Extract based on screen type.
+
+Return ONLY a JSON object in this exact format, nothing else:
+{
+  "screenType": "portfolio|transactions|unknown",
+  "broker": "detected broker name or null",
+  "currency": "detected currency code (INR/USD/GBP etc) or null",
+  "wrongScreenHint": "brief message if user should switch screens, or null",
+  "holdings": [
+    {
+      "name": "full company/fund name",
+      "symbol": "ticker symbol or null",
+      "quantity": number or null,
+      "currentPrice": number or null,
+      "currentValue": number or null,
+      "avgCost": number or null,
+      "costBasis": number or null,
+      "returnAmount": number or null,
+      "returnPct": number or null,
+      "confidence": "high|medium|low"
+    }
+  ],
+  "transactions": [
+    {
+      "date": "YYYY-MM-DD or null",
+      "description": "full transaction description",
+      "symbol": "ticker symbol if identifiable or null",
+      "amount": number,
+      "type": "buy|sell|transfer_in|transfer_out|dividend|fee",
+      "confidence": "high|medium|low"
+    }
+  ]
+}
+
+Rules for ALL screens:
+- Remove currency symbols (₹ $ £ etc) — return plain numbers only
+- Remove commas from numbers (1,234.56 → 1234.56)
+- If a field is not visible, return null — NEVER guess or fabricate
+- Return ONLY valid JSON, no markdown backticks
+
+Rules for PORTFOLIO screens:
+- Extract ALL holdings rows even if some fields are missing
+- For losses: returnAmount and returnPct should be negative
+- Number accuracy: common misreads are 8↔6, 8↔3, 1↔7, 0↔6
+- Cross-check: market value must be near quantity × price (within 5%) — if not, re-read and set confidence "low"
+- Dark mode screenshots: read digits twice to avoid 8→6 misreads
+
+Rules for TRANSACTION screens:
+- Extract ALL visible transaction rows
+- For buys and outgoing transfers: amount should be negative
+- For sells, dividends, incoming transfers: amount should be positive
+- Parse dates carefully — format as YYYY-MM-DD
+- If the screen shows "YOU BOUGHT X (SYMBOL)": type="buy", extract symbol from parentheses
+- If "Electronic Funds Transfer Received": type="transfer_in"
+- If "Electronic Funds Transfer Sent/Withdrawn": type="transfer_out"
+
+Rules for UNKNOWN screens:
+- Set wrongScreenHint to explain what screen this is and which tab to navigate to
+- Return empty arrays for holdings and transactions`;
+
+  try {
+    // Call Claude vision via existing Cloudflare Worker proxy
+    const response = await fetch(_AI_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',  // Sonnet for vision accuracy
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: _visionImageType,
+                data: _visionImageBase64,
+              },
+            },
+            { type: 'text', text: extractionPrompt },
+          ],
+        }],
+      }),
+    });
+
+    if (!response.ok) throw new Error('API error ' + response.status);
+    const data = await response.json();
+    const rawText = data.content?.[0]?.text || '';
+
+    // Parse JSON — strip any accidental markdown fences
+    const clean = rawText.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    const screenType  = parsed.screenType || 'unknown';
+    const holdings    = parsed.holdings    || [];
+    const transactions = parsed.transactions || [];
+    const detectedCurrency = parsed.currency ||
+      (region === 'IN' ? 'INR' : region === 'US' ? 'USD' : currentCurrency?.code || 'USD');
+    const detectedBroker = document.getElementById('ivision-broker-name')?.value?.trim() ||
+                           parsed.broker || brokerName;
+
+    _visionStopLoading();
+
+    // ── Route by screen type ─────────────────────────────────────────────
+    if (screenType === 'unknown' || (holdings.length === 0 && transactions.length === 0)) {
+      // Cannot read screen — tell user what went wrong
+      const hint = parsed.wrongScreenHint ||
+        'Could not detect portfolio or transaction data. Try the Positions or Holdings tab.';
+      _visionShowWrongScreen(hint, detectedBroker);
+      btn.disabled = false;
+      btnIcon.textContent = '🤖';
+      btnText.textContent = 'Extract Holdings with AI';
+      return;
+    }
+
+    if (screenType === 'transactions' && transactions.length > 0 && holdings.length === 0) {
+      // Transaction history screen — route to TX import flow
+      _visionIncrementUsed();
+      _visionUpdateQuotaBar();
+      _showVisionTxReview(transactions, detectedBroker, detectedCurrency, sym);
+      return;
+    }
+
+    // ── Portfolio screen — existing holdings flow ────────────────────────
+    if (!holdings.length) {
+      _visionShowWrongScreen(
+        parsed.wrongScreenHint || 'No holdings found. Please screenshot the Positions or Portfolio tab.',
+        detectedBroker
+      );
+      btn.disabled = false;
+      btnIcon.textContent = '🤖';
+      btnText.textContent = 'Extract Holdings with AI';
+      return;
+    }
+
+    // Client-side sanity check: qty × price vs currentValue
+    holdings.forEach(h => {
+      const qty   = parseFloat(h.quantity)     || 0;
+      const price = parseFloat(h.currentPrice) || 0;
+      const cv    = parseFloat(h.currentValue) || 0;
+      if (qty > 0 && price > 0 && cv > 0) {
+        const expected = qty * price;
+        const diff     = Math.abs(cv - expected) / expected;
+        if (diff > 0.05) {
+          console.warn(`Vision sanity fail: ${h.symbol} cv=${cv} vs qty×price=${expected.toFixed(2)} (${(diff*100).toFixed(1)}% off)`);
+          h.currentValue = Math.round(expected * 100) / 100;
+          h.confidence   = 'low';
+        }
+      }
+    });
+
+    _visionIncrementUsed();
+    _visionUpdateQuotaBar();
+    _visionHoldings = { holdings, broker: detectedBroker, currency: detectedCurrency };
+    _showVisionReview(holdings, detectedBroker, detectedCurrency, sym);
+
+  } catch (err) {
+    _visionStopLoading();
+    console.error('Vision extraction error:', err);
+    showToast('❌ Extraction failed — ' + (err.message || 'please try again'));
+    btn.disabled = false;
+    btnIcon.textContent = '🤖';
+    btnText.textContent = 'Extract Holdings with AI';
+  }
+}
+
+function _visionShowWrongScreen(hint, broker) {
+  // Show a friendly inline message in step1 without navigating away
+  const existing = document.getElementById('ivision-wrong-screen-msg');
+  if (existing) existing.remove();
+
+  const msg = document.createElement('div');
+  msg.id = 'ivision-wrong-screen-msg';
+  msg.style.cssText = 'margin-top:12px;padding:12px 14px;background:#FEF2F2;border:1.5px solid #FECACA;' +
+    'border-radius:12px;font-size:0.78em;font-weight:700;color:#991B1B;line-height:1.55;';
+  msg.innerHTML = `<div style="font-weight:900;margin-bottom:4px;">📋 Wrong screen detected</div>` +
+    `<div>${hint}</div>` +
+    `<div style="margin-top:8px;font-size:0.9em;opacity:0.8;">💡 Tip: Look for a <strong>Positions</strong>, <strong>Holdings</strong>, or <strong>Portfolio</strong> tab in your brokerage app.</div>`;
+
+  const dropzone = document.getElementById('ivision-dropzone');
+  if (dropzone) dropzone.parentNode.insertBefore(msg, dropzone.nextSibling);
+}
+
+function _visionRefreshTxAmount(idx, newType) {
+  // When user changes type, flip the sign of amount accordingly
+  const t = window._visionTxList?.[idx];
+  if (!t) return;
+  const shouldBePositive = ['transfer_in','dividend','sell','refund'].includes(newType);
+  const shouldBeNegative = ['buy','transfer_out','fee'].includes(newType);
+  if (shouldBePositive && t.amount < 0) t.amount = Math.abs(t.amount);
+  if (shouldBeNegative && t.amount > 0) t.amount = -Math.abs(t.amount);
+  // Update amount input color
+  const row = document.getElementById('vtx-' + idx);
+  if (row) {
+    const input = row.querySelector('input[type="number"]');
+    if (input) input.style.color = t.amount >= 0 ? '#059669' : '#DC2626';
+  }
+}
+
+function _showVisionTxReview(transactions, broker, currency, sym) {
+  const totalIn  = transactions.filter(t => t.amount > 0).reduce((s,t) => s + t.amount, 0);
+  const totalOut = transactions.filter(t => t.amount < 0).reduce((s,t) => s + Math.abs(t.amount), 0);
+  const buyCount = transactions.filter(t => t.type === 'buy').length;
+
+  // Summary
+  document.getElementById('ivision-summary-text').textContent =
+    `${transactions.length} transactions detected from ${broker}`;
+
+  document.getElementById('ivision-summary-grid').innerHTML =
+    `<div class="import-summary-box"><div class="isb-num">${transactions.length}</div><div class="isb-label">Transactions</div></div>` +
+    (buyCount ? `<div class="import-summary-box"><div class="isb-num">${buyCount}</div><div class="isb-label">Buy Orders</div></div>` : '') +
+    (totalIn  ? `<div class="import-summary-box"><div class="isb-num" style="color:#059669">+${sym}${Math.round(totalIn).toLocaleString()}</div><div class="isb-label">Cash In</div></div>` : '');
+
+  // No dup check needed for transactions
+  const dupSection = document.getElementById('ivision-dup-section');
+  if (dupSection) dupSection.style.display = 'none';
+
+  // Transaction review table — fully editable
+  // Store reference so confirm can read updated values
+  window._visionTxList = transactions;
+
+  const TX_TYPES = [
+    { val:'buy',          label:'🛒 Buy' },
+    { val:'sell',         label:'💰 Sell' },
+    { val:'transfer_in',  label:'📥 Transfer In' },
+    { val:'transfer_out', label:'📤 Transfer Out' },
+    { val:'dividend',     label:'💵 Dividend' },
+    { val:'fee',          label:'💸 Fee' },
+    { val:'refund',       label:'↩️ Refund' },
+    { val:'other',        label:'📋 Other' },
+  ];
+
+  const txFld = (val, idx, field) =>
+    `<input type="text" value="${val !== null && val !== undefined ? val : ''}"
+      oninput="window._visionTxList[${idx}]['${field}']=this.value"
+      style="width:100%;border:none;background:transparent;font-family:Nunito;
+             font-weight:700;font-size:0.78em;color:#1E2A6E;padding:0;outline:none;"/>`;
+
+  const txAmtFld = (val, idx) =>
+    `<input type="number" step="0.01" value="${Math.abs(val||0).toFixed(2)}"
+      oninput="window._visionTxList[${idx}].amount=(window._visionTxList[${idx}].amount<0?-1:1)*Math.abs(parseFloat(this.value)||0)"
+      style="width:70px;border:none;background:transparent;font-family:Nunito;
+             font-weight:800;font-size:0.78em;padding:0;outline:none;
+             color:${(val||0)>=0?'#059669':'#DC2626'};"/>`;
+
+  const txTypeSel = (val, idx) =>
+    `<select onchange="window._visionTxList[${idx}].type=this.value;_visionRefreshTxAmount(${idx},this.value)"
+      style="border:1.5px solid #E0E7FF;border-radius:8px;padding:3px 4px;
+             font-family:Nunito;font-weight:800;font-size:0.7em;color:#1E2A6E;
+             background:white;cursor:pointer;max-width:110px;">
+      ${TX_TYPES.map(t => `<option value="${t.val}"${t.val===val?' selected':''}>${t.label}</option>`).join('')}
+    </select>`;
+
+  document.getElementById('ivision-preview-table').innerHTML =
+    `<tr><th style="min-width:70px">Date</th><th>Description</th><th style="min-width:55px">Amount</th><th style="min-width:110px">Type</th></tr>` +
+    transactions.map((t, idx) => {
+      const lowBg = t.confidence === 'low' ? 'background:#FFFBEB;' : '';
+      return `<tr id="vtx-${idx}" style="${lowBg}">
+        <td style="font-size:0.75em;white-space:nowrap;">${txFld(t.date,idx,'date')}</td>
+        <td style="font-size:0.72em;">${txFld(t.description,idx,'description')}</td>
+        <td>${txAmtFld(t.amount,idx)}</td>
+        <td>${txTypeSel(t.type,idx)}</td>
+      </tr>`;
+    }).join('');
+
+  // Verification bar
+  const verifyBar = document.getElementById('ivision-verify-bar');
+  if (verifyBar) {
+    verifyBar.style.background = '#EFF6FF';
+    verifyBar.style.border = '1.5px solid #BFDBFE';
+    verifyBar.style.color = '#1E40AF';
+    verifyBar.innerHTML = `ℹ️ Transaction screen detected — these will be added to your <strong>Transactions</strong> tab, not Net Worth.`;
+  }
+
+  // Store for confirm — flag as tx type
+  window._robinhoodClipboardData = null;
+  _visionHoldings = { transactions, broker, currency, isTxImport: true };
+
+  // Update confirm button label
+  const confirmBtn = document.getElementById('ivision-confirm-btn');
+  if (confirmBtn) confirmBtn.textContent = '✅ Import to Transactions';
+
+  // Switch to step2
+  document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ivision-step2').classList.add('active');
+}
+
+function _showVisionReview(holdings, broker, currency, sym) {
+  // Totals
+  const totalValue = holdings.reduce((s,h) => s + (h.currentValue || 0), 0);
+  const totalCost  = holdings.reduce((s,h) => s + (h.costBasis   || 0), 0);
+  const totalRet   = totalValue - totalCost;
+  const retPct     = totalCost > 0 ? (totalRet / totalCost * 100) : 0;
+  const hasLow     = holdings.some(h => h.confidence === 'low');
+
+  // Summary
+  document.getElementById('ivision-summary-text').textContent =
+    `${holdings.length} holdings detected from ${broker} · ` +
+    (totalValue > 0 ? `${sym}${Math.round(totalValue).toLocaleString()} market value` : 'review values below');
+
+  document.getElementById('ivision-summary-grid').innerHTML =
+    `<div class="import-summary-box"><div class="isb-num">${holdings.length}</div><div class="isb-label">Holdings</div></div>` +
+    (totalValue > 0 ? `<div class="import-summary-box"><div class="isb-num">${sym}${Math.round(totalValue).toLocaleString()}</div><div class="isb-label">Market Value</div></div>` : '') +
+    (totalCost > 0 ? `<div class="import-summary-box"><div class="isb-num" style="color:${totalRet>=0?'#059669':'#DC2626'}">${totalRet>=0?'+':''}${sym}${Math.abs(Math.round(totalRet)).toLocaleString()}</div><div class="isb-label">Unrealized P&L</div></div>` : '');
+
+  // Duplicate check
+  const existingAcct = (data._nwAccounts || []).find(a =>
+    a.importSource === 'vision_import' && a.name === broker);
+  const dupSection = document.getElementById('ivision-dup-section');
+  if (existingAcct) {
+    dupSection.style.display = '';
+    dupSection.innerHTML = `<div style="padding:10px 13px;background:#FFF7ED;border:1.5px solid #FED7AA;
+      border-radius:10px;font-size:0.78em;font-weight:700;color:#92400E;">
+      ⚠️ A "${broker}" account already exists (${sym}${Math.round(existingAcct.balance||0).toLocaleString()}).
+      Confirming will <strong>replace</strong> it with this snapshot.</div>`;
+  } else {
+    dupSection.style.display = 'none';
+  }
+
+  // Verification status bar — always visible, content adapts
+  const verifyBar = document.getElementById('ivision-verify-bar');
+  if (verifyBar) {
+    const lowCount  = holdings.filter(h => h.confidence === 'low').length;
+    const highCount = holdings.length - lowCount;
+    if (lowCount === 0) {
+      // All clean
+      verifyBar.style.background = '#ECFDF5';
+      verifyBar.style.border = '1.5px solid #6EE7B7';
+      verifyBar.style.color = '#065F46';
+      verifyBar.innerHTML = `✅ All ${holdings.length} values verified — qty × price cross-check passed for every row.`;
+    } else {
+      // Some flagged
+      verifyBar.style.background = '#FFF7ED';
+      verifyBar.style.border = '1.5px solid #FED7AA';
+      verifyBar.style.color = '#92400E';
+      verifyBar.innerHTML = `⚠️ ${lowCount} value${lowCount>1?'s':''} flagged (highlighted yellow) — ` +
+        `${highCount} passed. Please verify the yellow rows before importing.`;
+    }
+  }
+
+  // Editable holdings table
+  // Build table — mobile-optimised: drop Name column (shown as subtitle under symbol)
+  // Return is auto-calculated live from currentValue and costBasis inputs
+  // Check if any holding has cost basis — hide Cost/Return columns if none do
+  const hasCost = holdings.some(h => h.costBasis && parseFloat(h.costBasis) > 0);
+
+  document.getElementById('ivision-preview-table').innerHTML =
+    `<tr>
+      <th style="min-width:90px">Symbol</th>
+      <th style="min-width:40px">Qty</th>
+      <th style="min-width:60px">Price</th>
+      <th style="min-width:70px">Mkt Val</th>
+      ${hasCost ? '<th style="min-width:60px">Cost</th><th style="min-width:60px">Return</th>' : ''}
+    </tr>` +
+    holdings.map((h, idx) => {
+      const cv  = parseFloat(h.currentValue) || 0;
+      const cb  = parseFloat(h.costBasis)    || 0;
+      const ret = (cb > 0 && cv > 0) ? ((cv - cb) / cb * 100) : null;
+      const retCol = ret === null ? '#9CA3AF' : ret >= 0 ? '#059669' : '#DC2626';
+      const retStr = ret !== null ? (ret>=0?'▲ ':'▼ ')+Math.abs(ret).toFixed(1)+'%' : '—';
+      const lowBg  = h.confidence === 'low' ? 'background:#FFFBEB;' : '';
+      const lowBdr = h.confidence === 'low' ? 'border-bottom:1.5px solid #F59E0B;' : '';
+
+      const fld = (val, field) => `<input type="text"
+        value="${val !== null && val !== undefined ? val : ''}"
+        oninput="_visionUpdateField(${idx},'${field}',this.value);_visionRefreshReturn(${idx})"
+        style="width:100%;border:none;background:transparent;font-family:Nunito;
+               font-weight:700;font-size:0.82em;color:#1E2A6E;padding:0;outline:none;${lowBdr}"
+      />`;
+
+      // Symbol + truncated name beneath
+      const symbolCell = `<td style="max-width:90px">
+        <div style="font-weight:900;font-size:0.85em;color:#1E2A6E;">${fld(h.symbol,'symbol')}</div>
+        <div style="font-size:0.62em;color:#9CA3AF;font-weight:600;margin-top:1px;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:88px;">${h.name||''}</div>
+      </td>`;
+
+      return `<tr id="vrow-${idx}" style="${lowBg}">
+        ${symbolCell}
+        <td style="max-width:50px">${fld(h.quantity,'quantity')}</td>
+        <td style="max-width:65px">${fld(h.currentPrice,'currentPrice')}</td>
+        <td style="font-weight:800;max-width:75px">${fld(h.currentValue,'currentValue')}</td>
+        ${hasCost ? `
+        <td style="max-width:65px">${fld(h.costBasis,'costBasis')}</td>
+        <td id="vret-${idx}" style="color:${retCol};font-weight:800;font-size:0.82em;white-space:nowrap;">${retStr}</td>` : ''}
+      </tr>`;
+    }).join('');
+
+  // Switch to step2
+  document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ivision-step2').classList.add('active');
+}
+
+function _visionUpdateField(idx, field, val) {
+  if (!_visionHoldings?.holdings?.[idx]) return;
+  _visionHoldings.holdings[idx][field] = val === '' ? null : isNaN(val) ? val : parseFloat(val);
+}
+
+function _visionRefreshReturn(idx) {
+  if (!_visionHoldings?.holdings?.[idx]) return;
+  const h   = _visionHoldings.holdings[idx];
+  const cv  = parseFloat(h.currentValue) || 0;
+  const cb  = parseFloat(h.costBasis)    || 0;
+  const ret = (cb > 0 && cv > 0) ? ((cv - cb) / cb * 100) : null;
+  const el  = document.getElementById('vret-' + idx);
+  if (!el) return;
+  if (ret === null) {
+    el.textContent = '—';
+    el.style.color = '#9CA3AF';
+  } else {
+    el.textContent = (ret >= 0 ? '▲ ' : '▼ ') + Math.abs(ret).toFixed(1) + '%';
+    el.style.color = ret >= 0 ? '#059669' : '#DC2626';
+  }
+}
+
+function confirmVisionImport() {
+  const d = _visionHoldings;
+  if (!d) return;
+
+  // ── Transaction import path ──────────────────────────────────────────
+  if (d.isTxImport) {
+    const { broker, currency } = d;
+    // Use live-edited list if available, fall back to original
+    const transactions = window._visionTxList || d.transactions || [];
+    const sym = currentCurrency?.symbol || '$';
+    let added = 0;
+
+    transactions.forEach(t => {
+      if (!t.date || t.amount === null) return;
+      const amount = Math.abs(parseFloat(t.amount) || 0);
+      if (!amount) return;
+
+      const isIncome = ['transfer_in','dividend','sell','refund','other'].includes(t.type);
+      const isBuy    = t.type === 'buy';
+
+      const entry = {
+        id:       'tx_vision_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+        date:     t.date,
+        amount,
+        note:     t.description || (t.symbol ? `${t.type} ${t.symbol}` : t.type),
+        category: isBuy ? 'Investment' : isIncome ? 'Income' : 'Expense',
+        type:     isBuy ? 'investment' : isIncome ? 'income' : 'expense',
+        author:   null,
+        source:   'vision_import',
+      };
+
+      if (!data._transactions) data._transactions = [];
+      data._transactions.push(entry);
+      added++;
+    });
+
+    save();
+    document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
+    document.getElementById('ivision-step3').classList.add('active');
+    document.getElementById('ivision-done-title').textContent = `${broker} Transactions Imported!`;
+    document.getElementById('ivision-done-sub').textContent =
+      `${added} transactions added to your Transactions tab`;
+    showToast(`✅ ${added} transactions imported from ${broker}`);
+    _visionHoldings = null;
+    return;
+  }
+
+  // ── Portfolio (holdings) import path ────────────────────────────────
+  const { holdings, broker, currency } = d;
+  const sym = currentCurrency?.symbol || '$';
+
+  const totalValue = holdings.reduce((s,h) => s + (parseFloat(h.currentValue)||0), 0);
+  const totalCost  = holdings.reduce((s,h) => s + (parseFloat(h.costBasis)||0), 0);
+
+  if (!data._nwAccounts) data._nwAccounts = [];
+
+  // Remove existing account with same name + source
+  data._nwAccounts = data._nwAccounts.filter(a =>
+    !(a.importSource === 'vision_import' && a.name === broker));
+
+  // Determine asset class — check if any look like crypto
+  const CRYPTO_SET = new Set(['BTC','ETH','SOL','DOGE','XRP','ADA','AVAX','MATIC','DOT','LTC']);
+  const hasCrypto  = holdings.some(h => h.symbol && CRYPTO_SET.has(h.symbol.toUpperCase()));
+  const hasStocks  = holdings.some(h => !CRYPTO_SET.has((h.symbol||'').toUpperCase()));
+
+  const makeAccount = (name, subset, assetClass, nwType) => ({
+    id:             'nw_vision_' + Date.now() + '_' + assetClass,
+    name,
+    type:           nwType,           // stocks_direct for equities → Lab drill-down
+    balance:        Math.round(subset.reduce((s,h)=>s+(parseFloat(h.currentValue)||0),0)*100)/100,
+    currency,
+    investedAmount: Math.round(subset.reduce((s,h)=>s+(parseFloat(h.costBasis)||0),0)*100)/100,
+    assetClass,
+    taxBucket:      'taxable',
+    liquidity:      'liquid',
+    importSource:   'vision_import',
+    importedAt:     new Date().toISOString(),
+    meta: {
+      holdings: subset.map(h => ({
+        symbol:    h.symbol,
+        name:      h.name,
+        qty:       parseFloat(h.quantity)     || null,
+        ltp:       parseFloat(h.currentPrice) || null,
+        curVal:    parseFloat(h.currentValue) || null,
+        avgCost:   parseFloat(h.avgCost)      || null,
+        costBasis: parseFloat(h.costBasis)    || null,
+        pnl:       parseFloat(h.returnAmount) || null,
+      })),
+    },
+  });
+
+  if (hasCrypto && hasStocks) {
+    const stocks = holdings.filter(h => !CRYPTO_SET.has((h.symbol||'').toUpperCase()));
+    const crypto = holdings.filter(h =>  CRYPTO_SET.has((h.symbol||'').toUpperCase()));
+    if (stocks.length) data._nwAccounts.push(makeAccount(broker, stocks, 'EQUITY', 'stocks_direct'));
+    if (crypto.length) data._nwAccounts.push(makeAccount(broker + ' Crypto', crypto, 'CRYPTO', 'crypto'));
+  } else if (hasCrypto) {
+    data._nwAccounts.push(makeAccount(broker, holdings, 'CRYPTO', 'crypto'));
+  } else {
+    data._nwAccounts.push(makeAccount(broker, holdings, 'EQUITY', 'stocks_direct'));
+  }
+
+  save();
+
+  // Done
+  document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ivision-step3').classList.add('active');
+  document.getElementById('ivision-done-title').textContent = `${broker} Imported!`;
+  document.getElementById('ivision-done-sub').textContent =
+    `${holdings.length} holdings · ${sym}${Math.round(totalValue).toLocaleString()} added to Net Worth`;
+
+  showToast(`✅ ${broker} imported via AI — ${holdings.length} holdings`);
+  _visionHoldings = null;
+  _visionImageBase64 = null;
+}
+
+function resetVisionImport() {
+  _visionImageBase64 = null;
+  _visionHoldings    = null;
+  _visionStopLoading();
+  const btn = document.getElementById('ivision-extract-btn');
+  if (btn) { btn.disabled = true; }
+  const btnText = document.getElementById('ivision-btn-text');
+  if (btnText) btnText.textContent = 'Upload a screenshot first';
+  const btnIcon = document.getElementById('ivision-btn-icon');
+  if (btnIcon) btnIcon.textContent = '🤖';
+  const img = document.getElementById('ivision-preview-img');
+  if (img) img.src = '';
+  const previewWrap = document.getElementById('ivision-preview-wrap');
+  if (previewWrap) previewWrap.style.display = 'none';
+  const previewIcon = document.getElementById('ivision-preview-icon');
+  if (previewIcon) previewIcon.style.display = '';
+  const dropText = document.getElementById('ivision-drop-text');
+  if (dropText) dropText.textContent = 'Tap to upload screenshot';
+  const brokerInput = document.getElementById('ivision-broker-name');
+  if (brokerInput) brokerInput.value = '';
+  // Reset confirm button label
+  const confirmBtn = document.getElementById('ivision-confirm-btn');
+  if (confirmBtn) confirmBtn.textContent = '✅ Import to Net Worth';
+  // Remove any wrong screen message
+  const wrongMsg = document.getElementById('ivision-wrong-screen-msg');
+  if (wrongMsg) wrongMsg.remove();
+  document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
+  const step1 = document.getElementById('ivision-step1');
+  if (step1) step1.classList.add('active');
+}
+
 function detectRobinhood(headers) {
   const h = headers.map(c => String(c).trim().toLowerCase());
   return h.some(c => c.includes('activity date') || c.includes('process date')) &&
