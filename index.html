@@ -17465,8 +17465,7 @@ async function _aiAutoFillSectors() {
 Valid sectors: ${validSectors}
 
 Stocks to classify:
-${toFill.map(s => `${s.symbol}${s.name ? ' (' + s.name + ')' : ''}`).join('
-')}
+${toFill.map(s => `${s.symbol}${s.name ? ' (' + s.name + ')' : ''}`).join('\n')}
 
 Return ONLY a JSON object mapping symbol to sector, like:
 {"NVDA":"SEMICONDUCTORS","AVGO":"SEMICONDUCTORS","META":"SOFTWARE SERVICES"}
@@ -17508,7 +17507,7 @@ Rules:
     const ledger2 = buildUnifiedEquityLedger();
     _renderConcentrationCard(ledger2, currentCurrency?.symbol || '$');
     _renderSectorDonut(ledger2, currentCurrency?.symbol || '$');
-    _renderHoldingsTable(ledger2, currentCurrency?.symbol || '$');
+    _renderUnifiedLedger(ledger2, currentCurrency?.symbol || '$', _equityLedgerSort);
   } catch (err) {
     console.error('AI sector fill error:', err);
     showToast('❌ AI sector fill failed — ' + (err.message || 'please try again'));
