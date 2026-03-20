@@ -4623,6 +4623,23 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     </div>
   </div>
 
+  <!-- ── CRYPTO ── -->
+  <div class="nw-section" id="nw-sec-crypto">
+    <div class="nw-section-header" onclick="toggleNWSection('crypto')">
+      <div class="nw-section-left">
+        <div class="nw-section-icon" style="background:#FFF7ED;">🪙</div>
+        <div><div class="nw-section-name">Crypto</div><div class="nw-section-sub" id="nw-sub-crypto">—</div></div>
+      </div>
+      <div class="nw-section-right">
+        <div class="nw-section-val" id="nw-val-crypto" style="color:#F59E0B;">$0</div>
+        <span class="nw-section-chevron" id="nw-chev-crypto">▼</span>
+      </div>
+    </div>
+    <div class="nw-section-body" id="nw-body-crypto">
+      <button class="nw-section-add" onclick="openNWSheet('crypto')" style="margin-top:8px;">+ Add Account</button>
+    </div>
+  </div>
+
   <!-- ── CUSTOM ASSET TYPES (dynamically injected) ── -->
   <div id="nw-custom-sections-assets"></div>
 
@@ -21570,6 +21587,8 @@ const NW_TYPES = {
   college_529:     { label:'529 College Fund',      emoji:'🎓', color:'#06B6D4',   isLiab:false, importGroup:'US Special' },
   bank_checking_us:{ label:'US Checking',           emoji:'🏦', color:'#4A9EFF',   isLiab:false, importGroup:'US Bank' },
   ibond:           { label:'I-Bond',                emoji:'🇺🇸', color:'#06B6D4',  isLiab:false, importGroup:'US Fixed' },
+  // ── Crypto ─────────────────────────────────────────────────────────
+  crypto:          { label:'Crypto',                emoji:'🪙', color:'#F59E0B',   isLiab:false, importGroup:'Crypto' },
 };
 
 const RETIRE_SUBTYPES = ['401k','403b','IRA','Roth IRA','PPF','EPF','NPS','Other'];
