@@ -18008,10 +18008,16 @@ function buildUnifiedCryptoLedger() {
 
   const map = {};
   let totalCexVal = 0;
+  // Per-account resolved custody type (after user overrides)
+  const acctCustodyMap = {};
 
   cryptoAccts.forEach(account => {
-    const acctCur = account.currency || (currentCurrency && currentCurrency.code) || 'USD';
-    const isCEX   = _CX_CEX_RE.test(account.name || '');
+    const acctCur  = account.currency || (currentCurrency && currentCurrency.code) || 'USD';
+    const overrides = data._cryptoCustodyOverrides || {};
+    const override  = overrides[account.name];
+    // Override wins; fall back to name-pattern inference
+    const isCEX = override ? (override === 'CEX') : _CX_CEX_RE.test(account.name || '');
+    acctCustodyMap[account.name] = isCEX;
 
     (account.meta.holdings || []).forEach(h => {
       const sym = (h.symbol || '').toUpperCase().trim();
@@ -18053,8 +18059,12 @@ function buildUnifiedCryptoLedger() {
   const totalPnl  = coins.reduce((s, c) => s + c.totalPnl,  0);
   const totalCost = coins.reduce((s, c) => s + c.totalCost, 0);
   const cexPct    = totalVal > 0 ? (totalCexVal / totalVal * 100) : 0;
+  // Enrich account objects with resolved custody type for chip rendering
+  const accountsTagged = cryptoAccts.map(function(a) {
+    return Object.assign({}, a, { isCEX: acctCustodyMap[a.name] });
+  });
 
-  return { coins, totalVal, totalPnl, totalCost, accountCount: cryptoAccts.length, accounts: cryptoAccts, cexPct };
+  return { coins, totalVal, totalPnl, totalCost, accountCount: cryptoAccts.length, accounts: accountsTagged, cexPct };
 }
 
 // ── Show / hide the Crypto tab button based on data ───────────────────
@@ -18154,7 +18164,11 @@ function _renderCryptoSummaryCard(ledger, sym) {
         + '<span>\ud83d\udd10 Self-Custody ' + selfPct.toFixed(0) + '%</span>'
       + '</div>'
     + '</div>'
-    + '<div style="font-size:0.74em;font-weight:600;color:#374151;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;padding:9px 11px;line-height:1.5;margin-top:10px;">' + custodyNote + '</div>';
+    + '<div style="font-size:0.74em;font-weight:600;color:#374151;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;padding:9px 11px;line-height:1.5;margin-top:10px;">' + custodyNote + '</div>'
+    + '<div style="margin-top:8px;font-size:0.62em;font-weight:700;color:#9CA3AF;display:flex;align-items:center;gap:5px;">'
+      + '<span>\u2139\ufe0f</span>'
+      + '<span>Custody type is inferred from your wallet name. If it is wrong, tap the wallet name in the ledger below to correct it \u2014 your correction is saved and updates the risk bar.</span>'
+    + '</div>';
 }
 
 // ── 2. Coin Category Donut ────────────────────────────────────────────
@@ -18316,6 +18330,23 @@ function _cxSetAccountFilter(acctName) {
   }
 }
 
+// ── Custody toggle: flip CEX ↔ Self-Custody for a wallet, persist, re-render ──
+function _cxToggleCustody(acctName) {
+  if (!data._cryptoCustodyOverrides) data._cryptoCustodyOverrides = {};
+  var overrides = data._cryptoCustodyOverrides;
+  // Determine current resolved type for this account
+  var currentIsCEX = overrides[acctName]
+    ? overrides[acctName] === 'CEX'
+    : _CX_CEX_RE.test(acctName);
+  // Flip it
+  overrides[acctName] = currentIsCEX ? 'SELF' : 'CEX';
+  save(); // persist to Firebase
+  var newLabel = overrides[acctName] === 'CEX' ? 'CEX (Exchange)' : 'Self-Custody (Wallet)';
+  showToast('\ud83d\udd10 ' + acctName + ' marked as ' + newLabel);
+  // Full re-render so risk bar + chips update
+  renderCryptoLab();
+}
+
 function _renderCryptoCoinLedger(ledger, sym, sortBy) {
   _cryptoLedgerData = ledger;
   const body  = document.getElementById('cx-ledger-body');
@@ -18325,27 +18356,41 @@ function _renderCryptoCoinLedger(ledger, sym, sortBy) {
   const { coins, totalVal, accountCount, accounts } = ledger;
   if (badge) badge.textContent = coins.length + ' coin' + (coins.length !== 1 ? 's' : '') + ' \u00b7 ' + accountCount + ' wallet' + (accountCount !== 1 ? 's' : '');
 
-  // Account filter chips
+  // Account filter chips — with custody type badge + tap-to-toggle
   const filterRow = document.getElementById('cx-account-filter-row');
-  if (filterRow && accounts && accounts.length > 1) {
-    filterRow.innerHTML = [
-      '<button class="cx-acct-chip lab-sort-btn ' + (_cxAccountFilter === 'all' ? 'lab-sort-active' : '') + '"'
-        + ' data-acct="all"'
-        + ' style="background:' + (_cxAccountFilter === 'all' ? '#92400E' : '#FFF7ED') + ';color:' + (_cxAccountFilter === 'all' ? 'white' : '#92400E') + ';font-size:0.68em;padding:4px 10px;"'
-        + ' onclick="_cxSetAccountFilter(\'all\')">All Wallets</button>'
-    ].concat(accounts.map(function(a) {
-      var cnt  = coins.filter(function(c) { return c.accounts.includes(a.name); }).length;
-      var isOn = _cxAccountFilter === a.name;
-      var date = a.lastUpdated ? new Date(a.lastUpdated + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-      var safeName = a.name.replace(/'/g, '\\\'');
-      return '<button class="cx-acct-chip lab-sort-btn ' + (isOn ? 'lab-sort-active' : '') + '"'
-        + ' data-acct="' + a.name.replace(/"/g, '&quot;') + '"'
-        + ' style="background:' + (isOn ? '#92400E' : '#FFF7ED') + ';color:' + (isOn ? 'white' : '#92400E') + ';font-size:0.68em;padding:4px 10px;"'
-        + ' onclick="_cxSetAccountFilter(\'' + safeName + '\')">'
-        + (a.name.length > 18 ? a.name.slice(0, 16) + '\u2026' : a.name) + ' <span style="opacity:0.7">(' + cnt + ')</span>'
-        + '</button>';
-    })).join('');
+  if (filterRow && accounts && accounts.length > 0) {
+    var allChip = '<button class="cx-acct-chip lab-sort-btn ' + (_cxAccountFilter === 'all' ? 'lab-sort-active' : '') + '"'
+      + ' data-acct="all"'
+      + ' style="background:' + (_cxAccountFilter === 'all' ? '#92400E' : '#FFF7ED') + ';color:' + (_cxAccountFilter === 'all' ? 'white' : '#92400E') + ';font-size:0.68em;padding:4px 10px;"'
+      + ' onclick="_cxSetAccountFilter(\'all\')">All Wallets</button>';
+
+    var acctChips = accounts.map(function(a) {
+      var cnt      = coins.filter(function(c) { return c.accounts.includes(a.name); }).length;
+      var isOn     = _cxAccountFilter === a.name;
+      var safeName = a.name.replace(/\\/g, '\\\\').replace(/'/g, '\\\'');
+      var custIcon = a.isCEX ? '\ud83c\udfe6' : '\ud83d\udd10';
+      var custLabel = a.isCEX ? 'CEX' : 'Self';
+      var custToggleLabel = a.isCEX ? 'Mark as Self-Custody' : 'Mark as CEX';
+      // Chip = filter button + small custody badge that opens toggle
+      return '<div style="display:flex;align-items:center;gap:0;border-radius:20px;overflow:hidden;border:1.5px solid ' + (isOn ? '#92400E' : '#FED7AA') + ';flex-shrink:0;">'
+        + '<button class="cx-acct-chip"'
+          + ' data-acct="' + a.name.replace(/"/g, '&quot;') + '"'
+          + ' style="background:' + (isOn ? '#92400E' : '#FFF7ED') + ';color:' + (isOn ? 'white' : '#92400E') + ';font-size:0.68em;font-weight:800;padding:4px 8px;border:none;cursor:pointer;font-family:inherit;"'
+          + ' onclick="_cxSetAccountFilter(\'' + safeName + '\')">'
+          + (a.name.length > 16 ? a.name.slice(0, 14) + '\u2026' : a.name) + '\u00a0<span style="opacity:0.7">(' + cnt + ')</span>'
+        + '</button>'
+        + '<button title="' + custToggleLabel + '"'
+          + ' style="background:' + (a.isCEX ? '#FEF3C7' : '#ECFDF5') + ';color:' + (a.isCEX ? '#92400E' : '#065F46') + ';font-size:0.62em;font-weight:900;padding:4px 7px;border:none;border-left:1px solid ' + (isOn ? '#92400E' : '#FED7AA') + ';cursor:pointer;font-family:inherit;white-space:nowrap;"'
+          + ' onclick="_cxToggleCustody(\'' + safeName + '\')">'
+          + custIcon + ' ' + custLabel
+        + '</button>'
+      + '</div>';
+    });
+
+    filterRow.innerHTML = [allChip].concat(acctChips).join('');
     filterRow.style.display = 'flex';
+    filterRow.style.flexWrap = 'wrap';
+    filterRow.style.gap = '6px';
   } else if (filterRow) {
     filterRow.style.display = 'none';
   }
