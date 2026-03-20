@@ -27825,6 +27825,15 @@ Rules for UNKNOWN screens:
       return;
     }
 
+    // Backfill price from currentValue / qty when Claude couldn't read it
+    holdings.forEach(h => {
+      const qty = parseFloat(h.quantity)     || 0;
+      const cv  = parseFloat(h.currentValue) || 0;
+      if (qty > 0 && cv > 0 && !h.currentPrice) {
+        h.currentPrice = Math.round((cv / qty) * 10000) / 10000;
+      }
+    });
+
     // Client-side sanity check: qty × price vs currentValue
     holdings.forEach(h => {
       const qty   = parseFloat(h.quantity)     || 0;
@@ -28168,7 +28177,13 @@ function confirmVisionImport() {
   data._nwAccounts = data._nwAccounts.filter(a => !_dupNames.has(a.name));
 
   // Determine asset class — check if any look like crypto
-  const CRYPTO_SET = new Set(['BTC','ETH','SOL','DOGE','XRP','ADA','AVAX','MATIC','DOT','LTC']);
+  const CRYPTO_SET = new Set([
+    'BTC','ETH','SOL','DOGE','XRP','ADA','AVAX','MATIC','DOT','LTC',
+    'ANKR','XTZ','CRO','ATOM','LINK','UNI','ALGO','VET','SAND','MANA',
+    'SHIB','PEPE','FLOKI','WIF','BONK','ARB','OP','INJ','SUI','APT',
+    'FIL','ICP','HBAR','NEAR','FTM','ONE','ZIL','ENJ','CHZ','GALA',
+    'USDT','USDC','BUSD','DAI','UST','TUSD','USDP',  // stablecoins
+  ]);
   const hasCrypto  = holdings.some(h => h.symbol && CRYPTO_SET.has(h.symbol.toUpperCase()));
   const hasStocks  = holdings.some(h => !CRYPTO_SET.has((h.symbol||'').toUpperCase()));
 
