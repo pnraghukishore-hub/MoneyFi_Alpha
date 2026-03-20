@@ -27039,17 +27039,24 @@ function parseRobinhoodClipboard() {
 
   const rawLines = raw.split('\n').map(l => l.trimEnd());
 
-  function parseMoney(s) {
-    s = (s||'').trim().replace(/,/g,'').replace(/\$/g,'').replace(/\+/g,'');
-    if (!s) return null;
-    const v = parseFloat(s);
-    return isNaN(v) ? null : v;
-  }
-  function isSymbol(s) { return /^[A-Z]{1,5}([.\-][A-Z]{1,2})?$/.test((s||'').trim()); }
-  function isNumber(s) { return !isNaN(parseFloat((s||'').trim().replace(/,/g,''))); }
-  function isPrice(s)  { return /^-?\$[\d,]+\.\d{2}$/.test((s||'').trim()); }
+  const CRYPTO_TICKERS = new Set(['BTC','ETH','SOL','DOGE','SHIB','XRP','ADA','AVAX',
+    'MATIC','DOT','LTC','LINK','UNI','ALGO','XLM','ATOM','FIL','AAVE','COMP','MKR']);
+  const SKIP_LABELS = new Set(['stocks','options','crypto','etfs','name','symbol',
+    'shares','quantity','price','average cost','total return','equity']);
 
-  // Find start of data — after the 'Equity' column header
+  function money(s) {
+    s = (s||'').replace(/[▲▼\$,\+\s]/g,'').trim();
+    const v = parseFloat(s); return isNaN(v) ? null : v;
+  }
+  function isSym(s)   { return /^[A-Z]{1,5}([.\-][A-Z]{1,2})?$/.test((s||'').trim()); }
+  function isNum(s)   { const v=parseFloat((s||'').trim().replace(/,/g,'')); return !isNaN(v); }
+  function isPrice(s) { return /^-?\$[\d,]+\.\d{2,}$/.test((s||'').trim()); }
+  function isRetLine(s) {
+    // Handles: "▲ $498.68"  "▼ $1.23"  "$498.68"  "-$10.00"
+    return /^[▲▼]?\s*-?\$[\d,]+\.\d{2,}$/.test((s||'').trim());
+  }
+
+  // Find data start — after 'Equity' column header
   let start = 0;
   for (let i = 0; i < rawLines.length; i++) {
     if (rawLines[i].trim() === 'Equity') { start = i + 1; break; }
@@ -27061,83 +27068,110 @@ function parseRobinhoodClipboard() {
 
   while (i < data.length) {
     const line = data[i].trim();
-    // Skip blank lines and section labels
-    if (!line || ['stocks','options','crypto','etfs','name','symbol','shares',
-                  'price','average cost','total return','equity'].includes(line.toLowerCase())) {
-      i++; continue;
-    }
+    if (!line || SKIP_LABELS.has(line.toLowerCase())) { i++; continue; }
+    if (i + 6 >= data.length) break;
 
-    if (i + 7 >= data.length) break;
+    const name   = data[i].trim();
+    const symbol = data[i+1].trim();
+    const sharesS= data[i+2].trim();
+    const priceS = data[i+3].trim();
+    const avgcS  = data[i+4].trim();
+    const line5  = data[i+5].trim();  // "▲ $X.XX" | "▼ $X.XX" | blank
+    const line6  = data[i+6].trim();  // equity (7-line) OR ret$ (8-line blank format)
 
-    const name      = data[i].trim();
-    const symbol    = data[i+1].trim();
-    const sharesS   = data[i+2].trim();
-    const priceS    = data[i+3].trim();
-    const avgCostS  = data[i+4].trim();
-    // data[i+5] = blank (total return % placeholder — always empty in copy)
-    const retS      = data[i+6].trim();   // total return $
-    const equityS   = data[i+7].trim();   // current market value
+    if (!isSym(symbol) || !isNum(sharesS) || !isPrice(priceS)) { i++; continue; }
 
-    if (!isSymbol(symbol) || !isNumber(sharesS) || !isPrice(priceS)) { i++; continue; }
+    let retVal = null, equity = null, step = 7;
+
+    if (isRetLine(line5)) {
+      // 7-line format (new): "▲ $498.68" on line5, equity on line6
+      const isUp = line5.includes('▲');
+      retVal = money(line5) * (isUp ? 1 : -1);
+      equity = money(line6);
+      step   = 7;
+    } else if (line5 === '' && i + 7 < data.length) {
+      // 8-line format (old blank-line): blank on line5, ret$ on line6, equity on line7
+      retVal = money(line6);
+      equity = money(data[i+7].trim());
+      step   = 8;
+    } else { i++; continue; }
 
     const shares    = parseFloat(sharesS.replace(/,/g,''));
-    const price     = parseMoney(priceS);
-    const avgCost   = parseMoney(avgCostS);
-    const totalRet  = parseMoney(retS);
-    const equity    = parseMoney(equityS);
-    const costBasis = avgCost ? Math.round(avgCost * shares * 100) / 100 : null;
+    const price     = money(priceS);
+    const avgCost   = money(avgcS);
+    const costBasis = avgCost ? Math.round(avgCost * shares * 10000) / 10000 : null;
+    const isCrypto  = CRYPTO_TICKERS.has(symbol);
 
-    holdings.push({ name, symbol, shares, price, avgCost, totalRet, equity, costBasis });
-    i += 8;
+    holdings.push({ name, symbol, shares, price, avgCost, retVal, equity, costBasis, isCrypto });
+    i += step;
   }
 
-  if (holdings.length === 0) {
-    showToast('❌ No holdings found — make sure you copied from Account → Investing');
+  if (!holdings.length) {
+    showToast('❌ No holdings found — copy from Robinhood → Account → Investing');
     return;
   }
 
-  // Build a single NW account: "Robinhood Portfolio"
-  const sym  = currentCurrency?.symbol || '$';
-  const totalEquity   = holdings.reduce((s,h) => s + (h.equity   || 0), 0);
-  const totalCost     = holdings.reduce((s,h) => s + (h.costBasis || 0), 0);
-  const totalReturn   = totalEquity - totalCost;
-  const returnPct     = totalCost > 0 ? (totalReturn / totalCost * 100) : 0;
+  const sym         = currentCurrency?.symbol || '$';
+  const totalEquity = holdings.reduce((s,h) => s + (h.equity    || 0), 0);
+  const totalCost   = holdings.reduce((s,h) => s + (h.costBasis || 0), 0);
+  const totalRet    = totalEquity - totalCost;
+  const retPct      = totalCost > 0 ? (totalRet / totalCost * 100) : 0;
+  const stocks      = holdings.filter(h => !h.isCrypto);
+  const crypto      = holdings.filter(h =>  h.isCrypto);
 
-  // Show preview in step2
+  // ── Duplicate check ──────────────────────────────────────────────────────
+  const existingAcct = (data._nwAccounts || []).find(a =>
+    a.importSource === 'robinhood_clipboard' || a.name === 'Robinhood' || a.name === 'Robinhood Stocks');
+
+  const dupHtml = existingAcct ? `<div style="margin-bottom:12px;padding:10px 13px;
+    background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;
+    font-size:0.78em;font-weight:700;color:#92400E;">
+    ⚠️ A Robinhood account already exists (${sym}${Math.round(existingAcct.balance||0).toLocaleString()}).
+    Confirming will <strong>replace</strong> it with today's snapshot.
+    </div>` : '';
+
+  // ── Summary ───────────────────────────────────────────────────────────────
   document.getElementById('irobinhood-summary-text').textContent =
-    `${holdings.length} holdings · ${sym}${Math.round(totalEquity).toLocaleString()} current value · ${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(1)}% total return`;
+    `${holdings.length} holdings` +
+    (stocks.length && crypto.length ? ` (${stocks.length} stocks · ${crypto.length} crypto)` :
+     crypto.length ? ` (crypto)` : ` (stocks)`) +
+    ` · ${sym}${Math.round(totalEquity).toLocaleString()} market value · ` +
+    `${retPct >= 0 ? '+' : ''}${retPct.toFixed(1)}% total return`;
 
   document.getElementById('irobinhood-summary-grid').innerHTML =
     `<div class="import-summary-box"><div class="isb-num">${holdings.length}</div><div class="isb-label">Holdings</div></div>` +
     `<div class="import-summary-box"><div class="isb-num">${sym}${Math.round(totalEquity).toLocaleString()}</div><div class="isb-label">Market Value</div></div>` +
-    `<div class="import-summary-box"><div class="isb-num" style="color:${totalReturn>=0?'#059669':'#DC2626'}">${totalReturn>=0?'+':''}${sym}${Math.abs(Math.round(totalReturn)).toLocaleString()}</div><div class="isb-label">Unrealized P&L</div></div>`;
+    `<div class="import-summary-box"><div class="isb-num" style="color:${totalRet>=0?'#059669':'#DC2626'}">` +
+    `${totalRet>=0?'+':''}${sym}${Math.abs(Math.round(totalRet)).toLocaleString()}</div><div class="isb-label">Unrealized P&L</div></div>`;
 
-  // Holdings preview table
-  const table = document.getElementById('irobinhood-preview-table');
-  table.innerHTML =
-    `<tr><th>Symbol</th><th>Name</th><th>Shares</th><th>Price</th><th>Market Value</th><th>Cost Basis</th><th>Return</th></tr>` +
+  // ── Dup banner ────────────────────────────────────────────────────────────
+  const dupSection = document.getElementById('irobinhood-dup-section');
+  if (dupSection) { dupSection.style.display = existingAcct ? '' : 'none'; dupSection.innerHTML = dupHtml; }
+
+  // ── Holdings preview table ────────────────────────────────────────────────
+  document.getElementById('irobinhood-preview-table').innerHTML =
+    `<tr><th>Symbol</th><th>Name</th><th>Qty</th><th>Price</th><th>Mkt Value</th><th>Cost</th><th>Return</th></tr>` +
     holdings.map(h => {
       const ret = h.costBasis > 0 ? ((h.equity - h.costBasis) / h.costBasis * 100) : 0;
       const col = ret >= 0 ? '#059669' : '#DC2626';
+      const ind = ret >= 0 ? '▲' : '▼';
+      const tag = h.isCrypto ? ` <span style="font-size:0.65em;background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 4px;font-weight:800;">CRYPTO</span>` : '';
       return `<tr>
-        <td style="font-weight:900">${h.symbol}</td>
-        <td>${h.name}</td>
+        <td style="font-weight:900">${h.symbol}${tag}</td>
+        <td style="font-size:0.85em">${h.name}</td>
         <td>${h.shares}</td>
-        <td>${sym}${h.price?.toFixed(2)||'—'}</td>
+        <td>${sym}${(h.price||0).toFixed(2)}</td>
         <td style="font-weight:800">${sym}${Math.round(h.equity||0).toLocaleString()}</td>
         <td>${sym}${Math.round(h.costBasis||0).toLocaleString()}</td>
-        <td style="color:${col};font-weight:800">${ret>=0?'+':''}${ret.toFixed(1)}%</td>
+        <td style="color:${col};font-weight:800">${ind} ${Math.abs(ret).toFixed(1)}%</td>
       </tr>`;
     }).join('');
 
-  // Store parsed data for confirm step
-  window._robinhoodClipboardData = { holdings, totalEquity, totalCost };
+  window._robinhoodClipboardData = { holdings, totalEquity, totalCost, stocks, crypto };
 
-  // Switch to step2 for review
   document.querySelectorAll('#isec-robinhood .import-step').forEach(s => s.classList.remove('active'));
   document.getElementById('irobinhood-step2').classList.add('active');
 
-  // Override confirm button to use clipboard import
   const confirmBtn = document.querySelector('#isec-robinhood .import-btn[onclick*="confirmNamedImport"]');
   if (confirmBtn) confirmBtn.onclick = confirmRobinhoodClipboard;
 }
@@ -27145,54 +27179,60 @@ function parseRobinhoodClipboard() {
 function confirmRobinhoodClipboard() {
   const d = window._robinhoodClipboardData;
   if (!d) return;
-  const { holdings, totalEquity, totalCost } = d;
-  const sym = currentCurrency?.symbol || '$';
-  const isUS = (getFHSProfile()?.region || 'IN') === 'US';
+  const { holdings, totalEquity, totalCost, stocks, crypto } = d;
+  const sym  = currentCurrency?.symbol || '$';
+  const curr = (getFHSProfile()?.region||'IN') === 'US' ? 'USD' : (currentCurrency?.code||'USD');
+  const now  = new Date().toISOString();
 
-  // Create a single NW brokerage account with holdings detail
-  const account = {
-    id:            'nw_' + Date.now(),
-    name:          'Robinhood',
-    type:          'brokerage',
-    balance:       Math.round(totalEquity * 100) / 100,
-    currency:      isUS ? 'USD' : currentCurrency?.code || 'USD',
-    investedAmount: Math.round(totalCost * 100) / 100,
-    assetClass:    'EQUITY',
-    taxBucket:     'taxable',
-    liquidity:     'liquid',
-    importSource:  'robinhood_clipboard',
-    importedAt:    new Date().toISOString(),
-    holdings:      holdings.map(h => ({
-      symbol:    h.symbol,
-      name:      h.name,
-      shares:    h.shares,
-      price:     h.price,
-      avgCost:   h.avgCost,
-      equity:    h.equity,
-      costBasis: h.costBasis,
-    })),
-  };
+  if (!data._nwAccounts) data._nwAccounts = [];
 
-  // Upsert — update existing Robinhood account or add new
-  const existing = (data._nwAccounts || []).findIndex(a =>
-    a.importSource === 'robinhood_clipboard' || a.name === 'Robinhood');
+  // Remove any existing Robinhood clipboard accounts
+  data._nwAccounts = data._nwAccounts.filter(a =>
+    a.importSource !== 'robinhood_clipboard' &&
+    a.name !== 'Robinhood' && a.name !== 'Robinhood Stocks' && a.name !== 'Robinhood Crypto');
 
-  if (existing >= 0) {
-    data._nwAccounts[existing] = { ...data._nwAccounts[existing], ...account };
-  } else {
-    if (!data._nwAccounts) data._nwAccounts = [];
-    data._nwAccounts.push(account);
+  // Create stocks account if any
+  if (stocks.length) {
+    data._nwAccounts.push({
+      id: 'nw_rh_stocks_' + Date.now(),
+      name: 'Robinhood',
+      type: 'brokerage',
+      balance:        Math.round(stocks.reduce((s,h) => s + (h.equity||0), 0) * 100) / 100,
+      currency:       curr,
+      investedAmount: Math.round(stocks.reduce((s,h) => s + (h.costBasis||0), 0) * 100) / 100,
+      assetClass: 'EQUITY', taxBucket: 'taxable', liquidity: 'liquid',
+      importSource: 'robinhood_clipboard', importedAt: now,
+      holdings: stocks.map(h => ({ symbol:h.symbol, name:h.name, shares:h.shares,
+        price:h.price, avgCost:h.avgCost, equity:h.equity, costBasis:h.costBasis })),
+    });
   }
+
+  // Create crypto account if any
+  if (crypto.length) {
+    data._nwAccounts.push({
+      id: 'nw_rh_crypto_' + Date.now(),
+      name: 'Robinhood Crypto',
+      type: 'crypto',
+      balance:        Math.round(crypto.reduce((s,h) => s + (h.equity||0), 0) * 100) / 100,
+      currency:       curr,
+      investedAmount: Math.round(crypto.reduce((s,h) => s + (h.costBasis||0), 0) * 100) / 100,
+      assetClass: 'CRYPTO', taxBucket: 'taxable', liquidity: 'liquid',
+      importSource: 'robinhood_clipboard', importedAt: now,
+      holdings: crypto.map(h => ({ symbol:h.symbol, name:h.name, shares:h.shares,
+        price:h.price, avgCost:h.avgCost, equity:h.equity, costBasis:h.costBasis })),
+    });
+  }
+
   save();
 
-  // Done screen
   document.querySelectorAll('#isec-robinhood .import-step').forEach(s => s.classList.remove('active'));
   document.getElementById('irobinhood-step3').classList.add('active');
   document.getElementById('irobinhood-done-title').textContent = 'Robinhood Imported!';
   document.getElementById('irobinhood-done-sub').textContent =
-    `${holdings.length} holdings · ${sym}${Math.round(totalEquity).toLocaleString()} added to Net Worth`;
+    `${holdings.length} holdings · ${sym}${Math.round(totalEquity).toLocaleString()} added to Net Worth` +
+    (crypto.length ? ` (${stocks.length} stocks + ${crypto.length} crypto as separate accounts)` : '');
 
-  showToast(`✅ Robinhood portfolio imported — ${holdings.length} holdings`);
+  showToast(`✅ Robinhood imported — ${holdings.length} holdings`);
   window._robinhoodClipboardData = null;
 }
 
