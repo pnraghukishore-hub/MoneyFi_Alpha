@@ -27430,7 +27430,7 @@ async function extractVisionHoldings() {
   const sym = currentCurrency?.symbol || '$';
   const region = getFHSProfile()?.region || 'IN';
 
-  const extractionPrompt = `You are a financial data extraction assistant. Extract all investment holdings visible in this brokerage portfolio screenshot.
+  const extractionPrompt = `You are a precise financial data extraction assistant. Extract all investment holdings from this brokerage portfolio screenshot.
 
 Return ONLY a JSON object in this exact format, nothing else:
 {
@@ -27457,9 +27457,16 @@ Rules:
 - Remove currency symbols (₹ $ £ etc) from numbers — return plain numbers only
 - Remove commas from numbers (1,234.56 → 1234.56)
 - If a value shows a loss, make returnAmount and returnPct negative
-- Set confidence to "low" if you are uncertain about a specific value
 - If a field is not visible, return null — NEVER guess or fabricate values
-- Return ONLY valid JSON, no explanation text, no markdown backticks`;
+- Return ONLY valid JSON, no explanation text, no markdown backticks
+
+CRITICAL — Number accuracy:
+- Read each digit carefully. Common misreads: 8↔6, 8↔3, 1↔7, 0↔6, 5↔6
+- For market values and equity columns: cross-check using quantity × price as a sanity check
+  (e.g. if qty=8.026 and price=227.17, the market value must be near 8.026×227.17=1823.24 — not 1623.24)
+- If your extracted market value differs from qty×price by more than 5%, re-read the number and set confidence to "low"
+- Pay extra attention to the first digit of large numbers — 1xxx vs 2xxx etc.
+- Dark mode screenshots: white digits on dark background can cause 8→6 misreads — read twice`;
 
   try {
     // Call Claude vision via existing Cloudflare Worker proxy
@@ -27508,6 +27515,24 @@ Rules:
       (region === 'IN' ? 'INR' : region === 'US' ? 'USD' : currentCurrency?.code || 'USD');
     const detectedBroker   = document.getElementById('ivision-broker-name')?.value?.trim() ||
                              parsed.broker || brokerName;
+
+    // ── Client-side sanity check: qty × price vs currentValue ──────────
+    // Catches common OCR digit misreads (8↔6, 1↔7 etc.) before user sees them
+    holdings.forEach(h => {
+      const qty   = parseFloat(h.quantity)     || 0;
+      const price = parseFloat(h.currentPrice) || 0;
+      const cv    = parseFloat(h.currentValue) || 0;
+      if (qty > 0 && price > 0 && cv > 0) {
+        const expected = qty * price;
+        const diff     = Math.abs(cv - expected) / expected;
+        if (diff > 0.05) {
+          // More than 5% off — likely a misread digit, flag it and correct
+          console.warn(`Vision sanity fail: ${h.symbol} cv=${cv} vs qty×price=${expected.toFixed(2)} (${(diff*100).toFixed(1)}% off)`);
+          h.currentValue = Math.round(expected * 100) / 100;
+          h.confidence   = 'low';  // highlight yellow so user can verify
+        }
+      }
+    });
 
     _visionHoldings = { holdings, broker: detectedBroker, currency: detectedCurrency };
 
