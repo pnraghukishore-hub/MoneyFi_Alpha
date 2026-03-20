@@ -22368,20 +22368,19 @@ function buildAccountMetaLine(acc) {
     if (acc.expectedReturn) parts.push('Target: ' + acc.expectedReturn + '% p.a.');
     if (acc._monthlyTotal) parts.push(fmt(acc._monthlyTotal) + '/mo');
   }
-  // Zerodha direct equity — show stock count + P&L hint
+  // Direct equity + crypto — show holding count + P&L hint
   const hasHoldings = acc.meta && acc.meta.holdings && acc.meta.holdings.length > 0;
-  if (hasHoldings && (acc.type === 'stocks_direct' || acc.meta.holdingType === 'us_brokerage')) {
-    const cnt = acc.meta.stockCount || acc.meta.holdings.length;
-    parts.push(cnt + ' stock' + (cnt !== 1 ? 's' : ''));
+  if (hasHoldings && (acc.type === 'stocks_direct' || acc.type === 'crypto' || acc.meta.holdingType === 'us_brokerage')) {
+    const cnt  = acc.meta.stockCount || acc.meta.holdings.length;
+    const unit = acc.type === 'crypto' ? ' coin' : ' stock';
+    parts.push(cnt + unit + (cnt !== 1 ? 's' : ''));
     const pnl = acc.meta.unrealizedPnl;
     if (pnl != null && pnl !== 0) {
-      // Convert P&L from account currency to display currency before formatting
       const acctCur = acc.currency || 'INR';
       const pnlConverted = nwConvert(Math.abs(pnl), acctCur);
       const sign = pnl >= 0 ? '▲' : '▼';
       parts.push(sign + ' ' + fmt(pnlConverted) + ' P&L');
     }
-    // Holdings detail is shown in Lab Investments → View N stocks
   }
   if (acc._imported) parts.push('📥 imported');
   return parts.join(' · ');
