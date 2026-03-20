@@ -17098,6 +17098,63 @@ const NSE_SYMBOL_SECTOR = {
   'TSLA':'AUTO ANCILLARY','JPM':'FINANCIAL SERVICES','BAC':'FINANCIAL SERVICES',
   'WFC':'FINANCIAL SERVICES','XOM':'ENERGY','CVX':'ENERGY',
   'JNJ':'PHARMACEUTICALS','PFE':'PHARMACEUTICALS','UNH':'PHARMACEUTICALS',
+  // US SEMICONDUCTORS
+  'NVDA':'SEMICONDUCTORS','AMD':'SEMICONDUCTORS','AVGO':'SEMICONDUCTORS',
+  'INTC':'SEMICONDUCTORS','QCOM':'SEMICONDUCTORS','MU':'SEMICONDUCTORS',
+  'AMAT':'SEMICONDUCTORS','LRCX':'SEMICONDUCTORS','KLAC':'SEMICONDUCTORS',
+  'MRVL':'SEMICONDUCTORS','ON':'SEMICONDUCTORS','TXN':'SEMICONDUCTORS',
+  'ADI':'SEMICONDUCTORS','NXPI':'SEMICONDUCTORS','MPWR':'SEMICONDUCTORS',
+  'ASML':'SEMICONDUCTORS','TSM':'SEMICONDUCTORS','ARM':'SEMICONDUCTORS',
+  'SMCI':'SEMICONDUCTORS','WOLF':'SEMICONDUCTORS','SITM':'SEMICONDUCTORS',
+  // US SOFTWARE / CLOUD
+  'MSFT':'SOFTWARE SERVICES','GOOGL':'SOFTWARE SERVICES','GOOG':'SOFTWARE SERVICES',
+  'META':'SOFTWARE SERVICES','ORCL':'SOFTWARE SERVICES','CRM':'SOFTWARE SERVICES',
+  'NOW':'SOFTWARE SERVICES','ADBE':'SOFTWARE SERVICES','INTU':'SOFTWARE SERVICES',
+  'PANW':'SOFTWARE SERVICES','CRWD':'SOFTWARE SERVICES','ZS':'SOFTWARE SERVICES',
+  'SNOW':'SOFTWARE SERVICES','DDOG':'SOFTWARE SERVICES','MDB':'SOFTWARE SERVICES',
+  'NET':'SOFTWARE SERVICES','GTLB':'SOFTWARE SERVICES','HUBS':'SOFTWARE SERVICES',
+  'WDAY':'SOFTWARE SERVICES','TEAM':'SOFTWARE SERVICES','OKTA':'SOFTWARE SERVICES',
+  // US BIG TECH / HARDWARE
+  'AAPL':'TECHNOLOGY','AMZN':'TECHNOLOGY','TSLA':'TECHNOLOGY',
+  'HPQ':'TECHNOLOGY','DELL':'TECHNOLOGY','WDC':'TECHNOLOGY',
+  'STX':'TECHNOLOGY','PSTG':'TECHNOLOGY','NTAP':'TECHNOLOGY',
+  // US FINANCIALS
+  'JPM':'FINANCIAL SERVICES','BAC':'FINANCIAL SERVICES','WFC':'FINANCIAL SERVICES',
+  'GS':'FINANCIAL SERVICES','MS':'FINANCIAL SERVICES','C':'FINANCIAL SERVICES',
+  'BLK':'FINANCIAL SERVICES','AXP':'FINANCIAL SERVICES','V':'FINANCIAL SERVICES',
+  'MA':'FINANCIAL SERVICES','PYPL':'FINANCIAL SERVICES','SQ':'FINANCIAL SERVICES',
+  'COIN':'FINANCIAL SERVICES','SCHW':'FINANCIAL SERVICES','USB':'FINANCIAL SERVICES',
+  // US HEALTHCARE / BIOTECH
+  'ABBV':'PHARMACEUTICALS','MRK':'PHARMACEUTICALS','LLY':'PHARMACEUTICALS',
+  'BMY':'PHARMACEUTICALS','GILD':'PHARMACEUTICALS','AMGN':'PHARMACEUTICALS',
+  'BIIB':'PHARMACEUTICALS','REGN':'PHARMACEUTICALS','MRNA':'PHARMACEUTICALS',
+  'CVS':'PHARMACEUTICALS','HCA':'PHARMACEUTICALS','CI':'PHARMACEUTICALS',
+  // US CONSUMER / RETAIL
+  'WMT':'FMCG','COST':'FMCG','TGT':'FMCG','HD':'FMCG',
+  'LOW':'FMCG','MCD':'FMCG','SBUX':'FMCG','NKE':'FMCG',
+  'PG':'FMCG','KO':'FMCG','PEP':'FMCG','PM':'FMCG',
+  // US ENERGY
+  'XOM':'ENERGY','CVX':'ENERGY','COP':'ENERGY','SLB':'ENERGY',
+  'OXY':'ENERGY','EOG':'ENERGY','PSX':'ENERGY','MPC':'ENERGY',
+  // US INDUSTRIALS / AERO / DEFENCE
+  'BA':'DEFENCE','LMT':'DEFENCE','RTX':'DEFENCE','NOC':'DEFENCE',
+  'GD':'DEFENCE','GE':'INDUSTRIALS','HON':'INDUSTRIALS','CAT':'INDUSTRIALS',
+  'DE':'INDUSTRIALS','MMM':'INDUSTRIALS','UPS':'INDUSTRIALS','FDX':'INDUSTRIALS',
+  // US TELECOM / MEDIA
+  'NFLX':'TELECOM','DIS':'TELECOM','T':'TELECOM','VZ':'TELECOM',
+  'CHTR':'TELECOM','CMCSA':'TELECOM','TMUS':'TELECOM',
+  // US AUTO
+  'GM':'AUTO ANCILLARY','F':'AUTO ANCILLARY','RIVN':'AUTO ANCILLARY','LCID':'AUTO ANCILLARY',
+  // US REAL ESTATE
+  'SPG':'REAL ESTATE','AMT':'REAL ESTATE','PLD':'REAL ESTATE','EQIX':'REAL ESTATE',
+  // US ETFs
+  'SPY':'ETF','QQQ':'ETF','VTI':'ETF','VOO':'ETF','IVV':'ETF',
+  'VUG':'ETF','VTV':'ETF','VEA':'ETF','VWO':'ETF','ITA':'ETF',
+  'XLK':'ETF','XLF':'ETF','XLE':'ETF','XLV':'ETF','XLI':'ETF',
+  'FSAGX':'ETF','FSELX':'ETF','FXAIX':'ETF','FZROX':'ETF',
+  // QUANTUM / EMERGING TECH
+  'IONQ':'TECHNOLOGY','RGTI':'TECHNOLOGY','QUBT':'TECHNOLOGY',
+  'QMCO':'TECHNOLOGY','NNE':'ENERGY','LVLU':'FMCG','URA':'ENERGY',
 };
 
 function _resolveSector(symbol, rawSector) {
@@ -17281,9 +17338,15 @@ function _renderConcentrationCard(ledger, sym) {
     const sec = (s.sector || 'OTHERS').toUpperCase().trim();
     sectorGroups[sec] = (sectorGroups[sec] || 0) + s.totalVal;
   });
-  const sortedSectors = Object.entries(sectorGroups).sort((a,b) => b[1]-a[1]);
-  const topSector     = sortedSectors[0];
-  const topSectorPct  = totalVal > 0 ? (topSector[1] / totalVal * 100) : 0;
+  const sortedSectors  = Object.entries(sectorGroups).sort((a,b) => b[1]-a[1]);
+  const topSector      = sortedSectors[0];
+  const topSectorPct   = totalVal > 0 ? (topSector[1] / totalVal * 100) : 0;
+  // Collect symbols still in OTHERS for AI auto-fill prompt
+  const userOverridesNow = data._equitySectorOverrides || {};
+  const othersSymbols = stocks
+    .filter(s => (userOverridesNow[s.normKey] || s.sector) === 'OTHERS')
+    .map(s => s.symbol || s.normKey)
+    .filter(Boolean);
   const hhi           = _computeHHI(sectorGroups, totalVal);
 
   // HHI risk bands
@@ -17363,7 +17426,94 @@ function _renderConcentrationCard(ledger, sym) {
     </div>
 
     <!-- Risk narrative -->
-    <div style="font-size:0.76em;font-weight:600;color:#374151;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;padding:9px 11px;line-height:1.5;">${sectorMsg}</div>`;
+    <div style="font-size:0.76em;font-weight:600;color:#374151;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;padding:9px 11px;line-height:1.5;">${sectorMsg}</div>
+
+    <!-- AI auto-fill for OTHERS -->
+    ${othersSymbols.length > 0 ? `
+    <div style="margin-top:10px;padding:10px 12px;background:#F5F3FF;border:1.5px solid #DDD6FE;
+         border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="font-size:0.73em;font-weight:700;color:#5B21B6;line-height:1.4;">
+        🤖 <strong>${othersSymbols.length} stock${othersSymbols.length>1?'s':''} in OTHERS</strong> — sector unknown<br>
+        <span style="font-weight:600;opacity:0.8;">${othersSymbols.slice(0,6).join(', ')}${othersSymbols.length>6?' +' + (othersSymbols.length-6) + ' more':''}</span>
+      </div>
+      <button onclick="_aiAutoFillSectors()" id="eq-autofill-btn"
+        style="background:#7C3AED;color:white;border:none;border-radius:8px;
+               padding:8px 12px;font-family:Nunito;font-weight:900;font-size:0.73em;
+               cursor:pointer;white-space:nowrap;flex-shrink:0;">
+        ✨ AI Fill
+      </button>
+    </div>` : ''}`;
+}
+
+// ── AI Auto-Fill Sectors ─────────────────────────────────────────────
+async function _aiAutoFillSectors() {
+  const btn = document.getElementById('eq-autofill-btn');
+  if (btn) { btn.textContent = '⏳ Asking AI...'; btn.disabled = true; }
+
+  // Collect all OTHERS symbols
+  const ledger = buildUnifiedEquityLedger();
+  const userOverrides = data._equitySectorOverrides || {};
+  const toFill = ledger.stocks
+    .filter(s => (userOverrides[s.normKey] || s.sector) === 'OTHERS')
+    .map(s => ({ key: s.normKey, symbol: s.symbol || s.normKey, name: s.name || '' }));
+
+  if (!toFill.length) { showToast('✅ No OTHERS stocks to fill'); return; }
+
+  const validSectors = Object.keys(SECTOR_COLORS).filter(s => s !== 'OTHERS').sort().join(', ');
+  const prompt = `You are a financial data assistant. Assign the correct stock market sector to each of these stock symbols.
+
+Valid sectors: ${validSectors}
+
+Stocks to classify:
+${toFill.map(s => `${s.symbol}${s.name ? ' (' + s.name + ')' : ''}`).join('
+')}
+
+Return ONLY a JSON object mapping symbol to sector, like:
+{"NVDA":"SEMICONDUCTORS","AVGO":"SEMICONDUCTORS","META":"SOFTWARE SERVICES"}
+
+Rules:
+- Use ONLY the valid sectors listed above
+- If genuinely unknown, use OTHERS
+- Return ONLY valid JSON, no explanation`;
+
+  try {
+    const response = await fetch(_AI_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!response.ok) throw new Error('API error ' + response.status);
+    const apiData = await response.json();
+    const rawText = apiData.content?.[0]?.text || '';
+    const clean   = rawText.replace(/```json|```/g, '').trim();
+    const mapping = JSON.parse(clean);
+
+    // Save to user overrides
+    if (!data._equitySectorOverrides) data._equitySectorOverrides = {};
+    let filled = 0;
+    toFill.forEach(s => {
+      const assignedSector = mapping[s.symbol] || mapping[s.symbol.toUpperCase()];
+      if (assignedSector && assignedSector !== 'OTHERS') {
+        data._equitySectorOverrides[s.key] = assignedSector.toUpperCase();
+        filled++;
+      }
+    });
+    save();
+    showToast(`✅ AI assigned sectors to ${filled} stocks`);
+    // Re-render equity lab
+    const ledger2 = buildUnifiedEquityLedger();
+    _renderConcentrationCard(ledger2, currentCurrency?.symbol || '$');
+    _renderSectorDonut(ledger2, currentCurrency?.symbol || '$');
+    _renderHoldingsTable(ledger2, currentCurrency?.symbol || '$');
+  } catch (err) {
+    console.error('AI sector fill error:', err);
+    showToast('❌ AI sector fill failed — ' + (err.message || 'please try again'));
+    if (btn) { btn.textContent = '✨ AI Fill'; btn.disabled = false; }
+  }
 }
 
 // ── 2. Sector Donut ───────────────────────────────────────────────────
