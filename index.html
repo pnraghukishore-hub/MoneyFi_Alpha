@@ -5599,10 +5599,16 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         💡 <strong>Best results:</strong> Screenshot the holdings/portfolio page · Landscape or portrait both work · Ensure text is readable · Crop out navigation bars if possible
       </div>
 
+      <!-- Broker-specific tips — shown dynamically when broker name is typed -->
+      <div id="ivision-broker-tip" style="display:none;margin-top:8px;padding:10px 12px;
+           background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;
+           font-size:0.73em;font-weight:700;color:#92400E;line-height:1.55;"></div>
+
       <!-- Broker name input -->
       <div style="margin-top:12px;">
         <div style="font-size:0.78em;font-weight:900;color:#1E2A6E;margin-bottom:6px;">Broker / Account Name</div>
         <input type="text" id="ivision-broker-name" placeholder="e.g. Zerodha, Groww, Angel One..."
+               oninput="_visionShowBrokerTip(this.value)"
                style="width:100%;border:1.5px solid #E0E7FF;border-radius:10px;padding:10px 12px;
                       font-family:Nunito,sans-serif;font-weight:700;font-size:0.85em;
                       color:#1E2A6E;box-sizing:border-box;outline:none;">
@@ -22374,12 +22380,25 @@ function buildAccountMetaLine(acc) {
     const cnt  = acc.meta.stockCount || acc.meta.holdings.length;
     const unit = acc.type === 'crypto' ? ' coin' : ' stock';
     parts.push(cnt + unit + (cnt !== 1 ? 's' : ''));
-    const pnl = acc.meta.unrealizedPnl;
+
+    const pnl          = acc.meta.unrealizedPnl;
+    const balance      = parseFloat(acc.balance)        || 0;
+    const invested     = parseFloat(acc.investedAmount) || 0;
+    const acctCur      = acc.currency || 'INR';
+
     if (pnl != null && pnl !== 0) {
-      const acctCur = acc.currency || 'INR';
+      // Prefer explicit P&L from extraction (cost basis was available)
       const pnlConverted = nwConvert(Math.abs(pnl), acctCur);
       const sign = pnl >= 0 ? '▲' : '▼';
       parts.push(sign + ' ' + fmt(pnlConverted) + ' P&L');
+    } else if (invested > 0 && balance > 0) {
+      // Fall back to ROI % from investedAmount vs current balance
+      const roi  = ((balance - invested) / invested) * 100;
+      const sign = roi >= 0 ? '▲' : '▼';
+      parts.push(sign + ' ' + Math.abs(roi).toFixed(1) + '% ROI');
+    } else {
+      // No cost data — nudge user to add it
+      parts.push('Add cost basis for P&L');
     }
   }
   if (acc._imported) parts.push('📥 imported');
@@ -27604,13 +27623,67 @@ function _visionStopLoading() {
   if (overlay) overlay.style.display = 'none';
 }
 
+// Broker-specific screenshot guidance
+const BROKER_TIPS = {
+  'coinbase': {
+    icon: '🪙',
+    tip: 'For P&L data: tap any coin → scroll to see "Unrealized return" → switch to that view, then screenshot. It shows loss/gain % per coin which MoneyFi uses to compute your total P&L.',
+  },
+  'robinhood': {
+    icon: '🟢',
+    tip: 'Screenshot the <strong>Positions</strong> tab for full holdings. For cost basis & P&L, tap a stock → shows Average Cost. Or use the Robinhood clipboard import tab for more accuracy.',
+  },
+  'fidelity': {
+    icon: '🏦',
+    tip: 'Use <strong>Positions</strong> tab (not Summary). Set the view to show "Cost Basis" and "Unrealized G/L" columns for the most complete import.',
+  },
+  'zerodha': {
+    icon: '📈',
+    tip: 'Use the dedicated <strong>Zerodha</strong> tab (not AI Scan) — it parses your Console Holdings CSV for perfect accuracy including XIRR and full P&L.',
+  },
+  'groww': {
+    icon: '🌱',
+    tip: 'Screenshot the <strong>Stocks</strong> or <strong>Mutual Funds</strong> portfolio page. Groww shows current value and invested amount — both will be captured.',
+  },
+  'angel': {
+    icon: '😇',
+    tip: 'Screenshot the <strong>Portfolio</strong> page in Angel One showing your holdings. Make sure "Day P&L" or "Overall P&L" view is selected for return data.',
+  },
+  'schwab': {
+    icon: '📊',
+    tip: 'Use the dedicated <strong>Schwab</strong> tab for CSV import — it gives more complete data than a screenshot. Or screenshot the Positions page with cost basis columns visible.',
+  },
+  'etoro': {
+    icon: '🌐',
+    tip: 'Screenshot your <strong>Portfolio</strong> page showing all open positions with P&L values visible.',
+  },
+  'upstox': {
+    icon: '📱',
+    tip: 'Screenshot the <strong>Holdings</strong> page showing current value and P&L per stock.',
+  },
+};
+
+function _visionShowBrokerTip(val) {
+  const tipEl = document.getElementById('ivision-broker-tip');
+  if (!tipEl) return;
+  const key = val.toLowerCase().replace(/[^a-z]/g, '');
+  const match = Object.keys(BROKER_TIPS).find(k => key.includes(k));
+  if (match) {
+    const b = BROKER_TIPS[match];
+    tipEl.style.display = '';
+    tipEl.innerHTML = `${b.icon} <strong>${val}:</strong> ${b.tip}`;
+  } else {
+    tipEl.style.display = 'none';
+  }
+}
+
 function initVisionImport() {
   _visionUpdateQuotaBar();
   // Populate broker chips
   const chips = document.getElementById('ivision-broker-chips');
   if (chips && !chips.children.length) {
     chips.innerHTML = VISION_BROKERS.map(b =>
-      `<button onclick="document.getElementById('ivision-broker-name').value='${b}'"
+      `<button onclick="document.getElementById('ivision-broker-name').value='${b}';_visionShowBrokerTip('${b}')"
         style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:20px;
                padding:3px 10px;font-size:0.7em;font-weight:800;color:#1E40AF;
                cursor:pointer;font-family:inherit;">${b}</button>`
