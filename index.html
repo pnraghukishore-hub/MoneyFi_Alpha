@@ -22245,6 +22245,7 @@ function migrateSebiCategory() {
   accts.forEach(acc => {
     if (!MF_TYPES.includes(acc.type)) return;
     if (!acc.name) return;
+    if (typeof classifyScheme !== 'function') return;
     const cls = classifyScheme(acc.name);
     // Update type if classifier gives a more specific one
     const newType = cls.assetClass === 'GOLD' ? 'mf_gold'
@@ -35995,6 +35996,8 @@ function buildAIContext() {
 
   // Monthly cashflow
   const cashflow = agg
+    ? `Avg income: ${sym}${Math.round(agg.avgInc).toLocaleString()}/mo · Avg expenses: ${sym}${Math.round(agg.avgExp).toLocaleString()}/mo · Avg savings: ${sym}${Math.round(agg.avgSav).toLocaleString()}/mo · Savings rate: ${agg.avgInc > 0 ? (agg.avgSav / agg.avgInc * 100).toFixed(1) : 0}%`
+    : 'No transaction data yet';
 
   // ── MF paused/active status for AI guardrail ────────────────────────
   const mfStatusLines = (() => {
@@ -36016,9 +36019,6 @@ function buildAIContext() {
     }
     return lines2.join('\n') || '  No MF data';
   })();
-
-    ? `Avg income: ${sym}${Math.round(agg.avgInc).toLocaleString()}/mo · Avg expenses: ${sym}${Math.round(agg.avgExp).toLocaleString()}/mo · Avg savings: ${sym}${Math.round(agg.avgSav).toLocaleString()}/mo · Savings rate: ${agg.avgInc > 0 ? (agg.avgSav / agg.avgInc * 100).toFixed(1) : 0}%`
-    : 'No transaction data yet';
 
   // ── Family context ───────────────────────────────────────────────
   const familyContext = (() => {
