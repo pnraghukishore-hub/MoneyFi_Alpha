@@ -90,6 +90,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 <head>
   <!-- ═══ PWA: MoneyFi ═══ -->
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -6977,7 +6978,7 @@ async function fetchLiveMetalPrices(force) {
         if (result.silverOz) silverG = result.silverOz / TROY;
         break;
       }
-    } catch(e) { /* try next */ }
+    } catch(e) { console.debug('[MoneyFi] Metal API fallback:', api.url.split('/')[2]); /* try next */ }
   }
 
   if (!goldG) {
@@ -36069,7 +36070,7 @@ function buildAIContext() {
             const key = normSym(h.symbol);
             if (!key) return;
             const userOverrides = data._equitySectorOverrides || {};
-            const sector = userOverrides[key] || h.sector || 'Unknown';
+            const sector = userOverrides[key] || _resolveSector(h.symbol, h.sector);
             if (!hMap[key]) {
               hMap[key] = { symbol: h.symbol||key, name: h.name||h.symbol||key,
                             sector, totalQty: 0, totalVal: 0, totalPnl: 0, totalCost: 0 };
