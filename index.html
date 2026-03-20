@@ -27558,33 +27558,69 @@ function _showVisionReview(holdings, broker, currency, sym) {
   document.getElementById('ivision-confidence-warn').style.display = hasLow ? '' : 'none';
 
   // Editable holdings table
+  // Build table — mobile-optimised: drop Name column (shown as subtitle under symbol)
+  // Return is auto-calculated live from currentValue and costBasis inputs
   document.getElementById('ivision-preview-table').innerHTML =
-    `<tr><th>Name</th><th>Symbol</th><th>Qty</th><th>Price</th><th>Market Value</th><th>Cost</th><th>Return</th></tr>` +
+    `<tr><th>Symbol</th><th>Qty</th><th>Price</th><th>Mkt Val</th><th>Cost</th><th>Return</th></tr>` +
     holdings.map((h, idx) => {
-      const ret = (h.costBasis > 0 && h.currentValue) ? ((h.currentValue - h.costBasis) / h.costBasis * 100) : null;
-      const retCol = ret === null ? '#6B7280' : ret >= 0 ? '#059669' : '#DC2626';
+      // Auto-calculate return % from currentValue and costBasis if both present
+      const cv  = parseFloat(h.currentValue) || 0;
+      const cb  = parseFloat(h.costBasis)    || 0;
+      const ret = (cb > 0 && cv > 0) ? ((cv - cb) / cb * 100) : null;
+      const retCol = ret === null ? '#9CA3AF' : ret >= 0 ? '#059669' : '#DC2626';
+      const retStr = ret !== null ? (ret>=0?'▲ ':' ▼ ')+Math.abs(ret).toFixed(1)+'%' : '—';
       const lowBg  = h.confidence === 'low' ? 'background:#FFFBEB;' : '';
+      const lowBdr = h.confidence === 'low' ? 'border-bottom:1.5px solid #F59E0B;' : '';
+
+      // Editable input helper — triggers live return recalculation
       const fld = (val, field) => `<input type="text"
         value="${val !== null && val !== undefined ? val : ''}"
-        onchange="_visionHoldings.holdings[${idx}].${field}=this.value===''?null:isNaN(this.value)?this.value:parseFloat(this.value)"
+        oninput="_visionUpdateField(${idx},'${field}',this.value);_visionRefreshReturn(${idx})"
         style="width:100%;border:none;background:transparent;font-family:Nunito;
-               font-weight:700;font-size:inherit;color:inherit;padding:0;outline:none;
-               ${h.confidence==='low'?'border-bottom:1.5px solid #F59E0B;':''}"
+               font-weight:700;font-size:0.82em;color:#1E2A6E;padding:0;outline:none;${lowBdr}"
       />`;
-      return `<tr style="${lowBg}">
-        <td style="min-width:120px">${fld(h.name,'name')}</td>
-        <td>${fld(h.symbol,'symbol')}</td>
+
+      // Symbol cell: symbol bold + name small below
+      const symbolCell = `<td>
+        <div style="font-weight:900;font-size:0.85em;">${fld(h.symbol,'symbol')}</div>
+        <div style="font-size:0.65em;color:#6B7280;font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;">${h.name||''}</div>
+      </td>`;
+
+      return `<tr id="vrow-${idx}" style="${lowBg}">
+        ${symbolCell}
         <td>${fld(h.quantity,'quantity')}</td>
         <td>${fld(h.currentPrice,'currentPrice')}</td>
         <td style="font-weight:800">${fld(h.currentValue,'currentValue')}</td>
         <td>${fld(h.costBasis,'costBasis')}</td>
-        <td style="color:${retCol};font-weight:800">${ret !== null ? (ret>=0?'+':'')+ret.toFixed(1)+'%' : '—'}</td>
+        <td id="vret-${idx}" style="color:${retCol};font-weight:800;font-size:0.82em;white-space:nowrap;">${retStr}</td>
       </tr>`;
     }).join('');
 
   // Switch to step2
   document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
   document.getElementById('ivision-step2').classList.add('active');
+}
+
+function _visionUpdateField(idx, field, val) {
+  if (!_visionHoldings?.holdings?.[idx]) return;
+  _visionHoldings.holdings[idx][field] = val === '' ? null : isNaN(val) ? val : parseFloat(val);
+}
+
+function _visionRefreshReturn(idx) {
+  if (!_visionHoldings?.holdings?.[idx]) return;
+  const h   = _visionHoldings.holdings[idx];
+  const cv  = parseFloat(h.currentValue) || 0;
+  const cb  = parseFloat(h.costBasis)    || 0;
+  const ret = (cb > 0 && cv > 0) ? ((cv - cb) / cb * 100) : null;
+  const el  = document.getElementById('vret-' + idx);
+  if (!el) return;
+  if (ret === null) {
+    el.textContent = '—';
+    el.style.color = '#9CA3AF';
+  } else {
+    el.textContent = (ret >= 0 ? '▲ ' : '▼ ') + Math.abs(ret).toFixed(1) + '%';
+    el.style.color = ret >= 0 ? '#059669' : '#DC2626';
+  }
 }
 
 function confirmVisionImport() {
