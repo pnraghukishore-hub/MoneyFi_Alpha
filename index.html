@@ -5551,6 +5551,111 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
 
 
+<!-- ══ AI VISION IMPORT ══ -->
+<div class="import-section" id="isec-vision">
+
+  <!-- Step 1: Upload screenshot -->
+  <div class="import-step active" id="ivision-step1">
+    <div class="import-card">
+      <div class="import-card-title">🤖 AI Screenshot Import <span style="background:#7C3AED;color:white;font-size:0.6em;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;">PRO</span></div>
+      <div class="import-card-sub">Take a screenshot of any brokerage portfolio — Zerodha, Groww, Angel One, Robinhood, Fidelity, eToro, or any other. AI reads it and extracts your holdings automatically. Works for any country, any broker.</div>
+
+      <!-- Drop zone -->
+      <div class="import-drop-zone" id="ivision-dropzone"
+           onclick="document.getElementById('ivision-file').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleVisionDrop(event)"
+           style="min-height:160px;">
+        <div class="import-drop-icon" id="ivision-preview-icon">📸</div>
+        <div id="ivision-preview-wrap" style="display:none;width:100%;margin-bottom:8px;">
+          <img id="ivision-preview-img" style="max-width:100%;max-height:180px;border-radius:8px;object-fit:contain;" />
+        </div>
+        <div class="import-drop-text" id="ivision-drop-text">Tap to upload screenshot</div>
+        <div class="import-drop-sub">PNG or JPG · Any brokerage · Any country</div>
+      </div>
+      <input type="file" id="ivision-file" accept="image/png,image/jpeg,image/jpg,image/webp"
+             style="display:none;" onchange="handleVisionFile(this)">
+
+      <!-- Tips -->
+      <div style="margin-top:12px;padding:10px 12px;background:#F5F3FF;border-radius:10px;font-size:0.75em;color:#5B21B6;font-weight:700;">
+        💡 <strong>Best results:</strong> Screenshot the holdings/portfolio page · Landscape or portrait both work · Ensure text is readable · Crop out navigation bars if possible
+      </div>
+
+      <!-- Broker name input -->
+      <div style="margin-top:12px;">
+        <div style="font-size:0.78em;font-weight:900;color:#1E2A6E;margin-bottom:6px;">Broker / Account Name</div>
+        <input type="text" id="ivision-broker-name" placeholder="e.g. Zerodha, Groww, Angel One..."
+               style="width:100%;border:1.5px solid #E0E7FF;border-radius:10px;padding:10px 12px;
+                      font-family:Nunito,sans-serif;font-weight:700;font-size:0.85em;
+                      color:#1E2A6E;box-sizing:border-box;outline:none;">
+        <!-- Quick chips -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;" id="ivision-broker-chips"></div>
+      </div>
+
+      <!-- Extract button -->
+      <button id="ivision-extract-btn" onclick="extractVisionHoldings()"
+              style="width:100%;margin-top:14px;background:linear-gradient(135deg,#7C3AED,#9F67FA);
+                     color:white;border:none;border-radius:12px;padding:14px;
+                     font-family:Nunito,sans-serif;font-weight:900;font-size:0.9em;
+                     cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"
+              disabled>
+        <span id="ivision-btn-icon">🤖</span>
+        <span id="ivision-btn-text">Upload a screenshot first</span>
+      </button>
+
+      <!-- Privacy note -->
+      <div style="margin-top:10px;text-align:center;font-size:0.68em;color:#9CA3AF;font-weight:600;">
+        🔒 Screenshot sent to Claude AI for extraction only · Deleted within 7 days · Never stored by MoneyFi
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Review extracted holdings -->
+  <div class="import-step" id="ivision-step2">
+    <div class="import-card">
+      <div class="import-card-title">✅ Review Extracted Holdings</div>
+      <div class="import-card-sub" id="ivision-summary-text"></div>
+      <div class="import-summary-grid" id="ivision-summary-grid"></div>
+
+      <!-- Duplicate warning -->
+      <div id="ivision-dup-section" style="display:none;margin-bottom:12px;"></div>
+
+      <!-- Editable holdings table -->
+      <div style="font-size:0.72em;font-weight:800;color:#6B7280;margin-bottom:6px;">
+        ✏️ Tap any value to correct it before importing
+      </div>
+      <div style="overflow-x:auto;max-height:320px;overflow-y:auto;">
+        <table class="import-preview-table" id="ivision-preview-table"></table>
+      </div>
+
+      <!-- Low confidence warning -->
+      <div id="ivision-confidence-warn" style="display:none;margin-top:10px;padding:9px 12px;
+           background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;
+           font-size:0.75em;font-weight:700;color:#92400E;">
+        ⚠️ Some values were uncertain (highlighted in yellow). Please verify them before importing.
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="import-btn secondary" onclick="resetVisionImport()">← Back</button>
+      <button class="import-btn" id="ivision-confirm-btn"
+              onclick="confirmVisionImport()"
+              style="background:#10B981;color:white;">✅ Import to Net Worth</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Done -->
+  <div class="import-step" id="ivision-step3">
+    <div class="import-card" style="text-align:center;padding:32px 20px;">
+      <div style="font-size:2.5em;margin-bottom:8px;">🎉</div>
+      <div style="font-weight:900;font-size:1.1em;color:var(--text-dark);margin-bottom:6px;" id="ivision-done-title">Import Complete!</div>
+      <div style="font-size:0.85em;color:var(--text-light);font-weight:600;margin-bottom:20px;" id="ivision-done-sub"></div>
+      <button class="import-btn" onclick="resetVisionImport()">Import Another Screenshot</button>
+    </div>
+  </div>
+
+</div>
+
 <!-- ══ IMPORT FOOTER DISCLAIMER ══ -->
 <div style="margin:8px 0 24px;padding:12px 14px;background:#FFFBEA;border:1.5px solid #FCD34D;border-radius:12px;font-size:0.73em;line-height:1.6;color:#78350F;">
   <span style="font-weight:900;color:#92400E;">📋 Parser Availability — </span>Dedicated parsers (CAS · Zerodha · EPF · Fidelity · Schwab · Robinhood · SMS) are available for <strong>🇮🇳 India</strong> and <strong>🇺🇸 US</strong> users only. For other regions, use the <strong>Bank/CSV</strong> or <strong>Transactions</strong> tab to upload your Income, Expenses, and Investments.
@@ -24626,6 +24731,7 @@ function renderImportTabs() {
     { key:'realestate', label:'🏡 Real Estate',  always: true },
     { key:'universal',   label:'🏦 Bank/CSV',       always: true },
     { key:'sms',         label:'📱 SMS',             always: true },
+    { key:'vision',      label:'🤖 AI Scan',          always: true, premium: true },
   ];
 
   container.innerHTML = tabs
@@ -24677,6 +24783,7 @@ function setImportTab(tab, el) {
   if (tab === 'schwab')    resetNamedParser('schwab');
   if (tab === 'robinhood') resetNamedParser('robinhood');
   if (tab === 'sms')       resetSMSImport();
+  if (tab === 'vision')    initVisionImport();
 }
 
 function handleImportDrop(event, type) {
@@ -27234,6 +27341,341 @@ function confirmRobinhoodClipboard() {
 
   showToast(`✅ Robinhood imported — ${holdings.length} holdings`);
   window._robinhoodClipboardData = null;
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AI VISION IMPORT — Screenshot → Holdings via Claude Vision
+// Supports any broker, any country, any screenshot format
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _visionImageBase64 = null;   // base64 of uploaded screenshot
+let _visionImageType   = null;   // image/png or image/jpeg
+let _visionHoldings    = null;   // parsed holdings array for confirm step
+
+const VISION_BROKERS = [
+  'Zerodha','Groww','Angel One','Upstox','Motilal Oswal','HDFC Securities',
+  'ICICIdirect','Kotak Securities','5Paisa','SBI Smart',
+  'Robinhood','Fidelity','Schwab','E*TRADE','TD Ameritrade','Interactive Brokers',
+  'eToro','Trading 212','Stake'
+];
+
+function initVisionImport() {
+  // Populate broker chips
+  const chips = document.getElementById('ivision-broker-chips');
+  if (chips && !chips.children.length) {
+    chips.innerHTML = VISION_BROKERS.map(b =>
+      `<button onclick="document.getElementById('ivision-broker-name').value='${b}'"
+        style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:20px;
+               padding:3px 10px;font-size:0.7em;font-weight:800;color:#1E40AF;
+               cursor:pointer;font-family:inherit;">${b}</button>`
+    ).join('');
+  }
+  resetVisionImport();
+}
+
+function handleVisionDrop(event) {
+  event.preventDefault();
+  document.getElementById('ivision-dropzone').classList.remove('dragover');
+  const file = event.dataTransfer.files[0];
+  if (file) _loadVisionImage(file);
+}
+
+function handleVisionFile(input) {
+  const file = input.files[0];
+  if (file) _loadVisionImage(file);
+  input.value = '';
+}
+
+function _loadVisionImage(file) {
+  if (!file.type.startsWith('image/')) {
+    showToast('❌ Please upload a PNG or JPG screenshot'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    // Split data:image/png;base64,XXXX
+    const [header, b64] = dataUrl.split(',');
+    _visionImageBase64 = b64;
+    _visionImageType   = file.type || 'image/jpeg';
+
+    // Show preview
+    const img = document.getElementById('ivision-preview-img');
+    const previewWrap = document.getElementById('ivision-preview-wrap');
+    const previewIcon = document.getElementById('ivision-preview-icon');
+    if (img) { img.src = dataUrl; previewWrap.style.display = ''; previewIcon.style.display = 'none'; }
+
+    document.getElementById('ivision-drop-text').textContent = file.name;
+
+    // Enable extract button
+    const btn = document.getElementById('ivision-extract-btn');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    document.getElementById('ivision-btn-text').textContent = 'Extract Holdings with AI';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function extractVisionHoldings() {
+  if (!_visionImageBase64) { showToast('⚠️ Upload a screenshot first'); return; }
+
+  const btn      = document.getElementById('ivision-extract-btn');
+  const btnText  = document.getElementById('ivision-btn-text');
+  const btnIcon  = document.getElementById('ivision-btn-icon');
+  btn.disabled   = true;
+  btnIcon.textContent  = '⏳';
+  btnText.textContent  = 'AI is reading your screenshot...';
+
+  const brokerName = document.getElementById('ivision-broker-name')?.value?.trim() || 'My Portfolio';
+  const sym = currentCurrency?.symbol || '$';
+  const region = getFHSProfile()?.region || 'IN';
+
+  const extractionPrompt = `You are a financial data extraction assistant. Extract all investment holdings visible in this brokerage portfolio screenshot.
+
+Return ONLY a JSON object in this exact format, nothing else:
+{
+  "broker": "detected broker name or null",
+  "currency": "detected currency code (INR/USD/GBP etc) or null",
+  "holdings": [
+    {
+      "name": "full company/fund name",
+      "symbol": "ticker symbol or null",
+      "quantity": number or null,
+      "currentPrice": number or null,
+      "currentValue": number or null,
+      "avgCost": number or null,
+      "costBasis": number or null,
+      "returnAmount": number or null,
+      "returnPct": number or null,
+      "confidence": "high|medium|low"
+    }
+  ]
+}
+
+Rules:
+- Extract ALL visible rows, even if some fields are missing
+- Remove currency symbols (₹ $ £ etc) from numbers — return plain numbers only
+- Remove commas from numbers (1,234.56 → 1234.56)
+- If a value shows a loss, make returnAmount and returnPct negative
+- Set confidence to "low" if you are uncertain about a specific value
+- If a field is not visible, return null — NEVER guess or fabricate values
+- Return ONLY valid JSON, no explanation text, no markdown backticks`;
+
+  try {
+    // Call Claude vision via existing Cloudflare Worker proxy
+    const response = await fetch(_AI_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',  // Sonnet for vision accuracy
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: _visionImageType,
+                data: _visionImageBase64,
+              },
+            },
+            { type: 'text', text: extractionPrompt },
+          ],
+        }],
+      }),
+    });
+
+    if (!response.ok) throw new Error('API error ' + response.status);
+    const data = await response.json();
+    const rawText = data.content?.[0]?.text || '';
+
+    // Parse JSON — strip any accidental markdown fences
+    const clean = rawText.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    const holdings = parsed.holdings || [];
+
+    if (!holdings.length) {
+      showToast('❌ No holdings detected — try a clearer screenshot');
+      btn.disabled = false;
+      btnIcon.textContent = '🤖';
+      btnText.textContent = 'Extract Holdings with AI';
+      return;
+    }
+
+    // Detect currency — use parsed or fall back to region default
+    const detectedCurrency = parsed.currency ||
+      (region === 'IN' ? 'INR' : region === 'US' ? 'USD' : currentCurrency?.code || 'USD');
+    const detectedBroker   = document.getElementById('ivision-broker-name')?.value?.trim() ||
+                             parsed.broker || brokerName;
+
+    _visionHoldings = { holdings, broker: detectedBroker, currency: detectedCurrency };
+
+    _showVisionReview(holdings, detectedBroker, detectedCurrency, sym);
+
+  } catch (err) {
+    console.error('Vision extraction error:', err);
+    showToast('❌ Extraction failed — ' + (err.message || 'please try again'));
+    btn.disabled = false;
+    btnIcon.textContent = '🤖';
+    btnText.textContent = 'Extract Holdings with AI';
+  }
+}
+
+function _showVisionReview(holdings, broker, currency, sym) {
+  // Totals
+  const totalValue = holdings.reduce((s,h) => s + (h.currentValue || 0), 0);
+  const totalCost  = holdings.reduce((s,h) => s + (h.costBasis   || 0), 0);
+  const totalRet   = totalValue - totalCost;
+  const retPct     = totalCost > 0 ? (totalRet / totalCost * 100) : 0;
+  const hasLow     = holdings.some(h => h.confidence === 'low');
+
+  // Summary
+  document.getElementById('ivision-summary-text').textContent =
+    `${holdings.length} holdings detected from ${broker} · ` +
+    (totalValue > 0 ? `${sym}${Math.round(totalValue).toLocaleString()} market value` : 'review values below');
+
+  document.getElementById('ivision-summary-grid').innerHTML =
+    `<div class="import-summary-box"><div class="isb-num">${holdings.length}</div><div class="isb-label">Holdings</div></div>` +
+    (totalValue > 0 ? `<div class="import-summary-box"><div class="isb-num">${sym}${Math.round(totalValue).toLocaleString()}</div><div class="isb-label">Market Value</div></div>` : '') +
+    (totalCost > 0 ? `<div class="import-summary-box"><div class="isb-num" style="color:${totalRet>=0?'#059669':'#DC2626'}">${totalRet>=0?'+':''}${sym}${Math.abs(Math.round(totalRet)).toLocaleString()}</div><div class="isb-label">Unrealized P&L</div></div>` : '');
+
+  // Duplicate check
+  const existingAcct = (data._nwAccounts || []).find(a =>
+    a.importSource === 'vision_import' && a.name === broker);
+  const dupSection = document.getElementById('ivision-dup-section');
+  if (existingAcct) {
+    dupSection.style.display = '';
+    dupSection.innerHTML = `<div style="padding:10px 13px;background:#FFF7ED;border:1.5px solid #FED7AA;
+      border-radius:10px;font-size:0.78em;font-weight:700;color:#92400E;">
+      ⚠️ A "${broker}" account already exists (${sym}${Math.round(existingAcct.balance||0).toLocaleString()}).
+      Confirming will <strong>replace</strong> it with this snapshot.</div>`;
+  } else {
+    dupSection.style.display = 'none';
+  }
+
+  // Confidence warning
+  document.getElementById('ivision-confidence-warn').style.display = hasLow ? '' : 'none';
+
+  // Editable holdings table
+  document.getElementById('ivision-preview-table').innerHTML =
+    `<tr><th>Name</th><th>Symbol</th><th>Qty</th><th>Price</th><th>Market Value</th><th>Cost</th><th>Return</th></tr>` +
+    holdings.map((h, idx) => {
+      const ret = (h.costBasis > 0 && h.currentValue) ? ((h.currentValue - h.costBasis) / h.costBasis * 100) : null;
+      const retCol = ret === null ? '#6B7280' : ret >= 0 ? '#059669' : '#DC2626';
+      const lowBg  = h.confidence === 'low' ? 'background:#FFFBEB;' : '';
+      const fld = (val, field) => `<input type="text"
+        value="${val !== null && val !== undefined ? val : ''}"
+        onchange="_visionHoldings.holdings[${idx}].${field}=this.value===''?null:isNaN(this.value)?this.value:parseFloat(this.value)"
+        style="width:100%;border:none;background:transparent;font-family:Nunito;
+               font-weight:700;font-size:inherit;color:inherit;padding:0;outline:none;
+               ${h.confidence==='low'?'border-bottom:1.5px solid #F59E0B;':''}"
+      />`;
+      return `<tr style="${lowBg}">
+        <td style="min-width:120px">${fld(h.name,'name')}</td>
+        <td>${fld(h.symbol,'symbol')}</td>
+        <td>${fld(h.quantity,'quantity')}</td>
+        <td>${fld(h.currentPrice,'currentPrice')}</td>
+        <td style="font-weight:800">${fld(h.currentValue,'currentValue')}</td>
+        <td>${fld(h.costBasis,'costBasis')}</td>
+        <td style="color:${retCol};font-weight:800">${ret !== null ? (ret>=0?'+':'')+ret.toFixed(1)+'%' : '—'}</td>
+      </tr>`;
+    }).join('');
+
+  // Switch to step2
+  document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ivision-step2').classList.add('active');
+}
+
+function confirmVisionImport() {
+  const d = _visionHoldings;
+  if (!d) return;
+  const { holdings, broker, currency } = d;
+  const sym = currentCurrency?.symbol || '$';
+
+  const totalValue = holdings.reduce((s,h) => s + (parseFloat(h.currentValue)||0), 0);
+  const totalCost  = holdings.reduce((s,h) => s + (parseFloat(h.costBasis)||0), 0);
+
+  if (!data._nwAccounts) data._nwAccounts = [];
+
+  // Remove existing account with same name + source
+  data._nwAccounts = data._nwAccounts.filter(a =>
+    !(a.importSource === 'vision_import' && a.name === broker));
+
+  // Determine asset class — check if any look like crypto
+  const CRYPTO_SET = new Set(['BTC','ETH','SOL','DOGE','XRP','ADA','AVAX','MATIC','DOT','LTC']);
+  const hasCrypto  = holdings.some(h => h.symbol && CRYPTO_SET.has(h.symbol.toUpperCase()));
+  const hasStocks  = holdings.some(h => !CRYPTO_SET.has((h.symbol||'').toUpperCase()));
+
+  const makeAccount = (name, subset, assetClass, type) => ({
+    id:             'nw_vision_' + Date.now() + '_' + assetClass,
+    name,
+    type,
+    balance:        Math.round(subset.reduce((s,h)=>s+(parseFloat(h.currentValue)||0),0)*100)/100,
+    currency,
+    investedAmount: Math.round(subset.reduce((s,h)=>s+(parseFloat(h.costBasis)||0),0)*100)/100,
+    assetClass,
+    taxBucket:      'taxable',
+    liquidity:      'liquid',
+    importSource:   'vision_import',
+    importedAt:     new Date().toISOString(),
+    holdings:       subset.map(h => ({
+      name:         h.name,
+      symbol:       h.symbol,
+      quantity:     parseFloat(h.quantity) || null,
+      currentPrice: parseFloat(h.currentPrice) || null,
+      currentValue: parseFloat(h.currentValue) || null,
+      costBasis:    parseFloat(h.costBasis) || null,
+    })),
+  });
+
+  if (hasCrypto && hasStocks) {
+    const stocks = holdings.filter(h => !CRYPTO_SET.has((h.symbol||'').toUpperCase()));
+    const crypto = holdings.filter(h =>  CRYPTO_SET.has((h.symbol||'').toUpperCase()));
+    if (stocks.length) data._nwAccounts.push(makeAccount(broker, stocks, 'EQUITY', 'brokerage'));
+    if (crypto.length) data._nwAccounts.push(makeAccount(broker + ' Crypto', crypto, 'CRYPTO', 'crypto'));
+  } else if (hasCrypto) {
+    data._nwAccounts.push(makeAccount(broker, holdings, 'CRYPTO', 'crypto'));
+  } else {
+    data._nwAccounts.push(makeAccount(broker, holdings, 'EQUITY', 'brokerage'));
+  }
+
+  save();
+
+  // Done
+  document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ivision-step3').classList.add('active');
+  document.getElementById('ivision-done-title').textContent = `${broker} Imported!`;
+  document.getElementById('ivision-done-sub').textContent =
+    `${holdings.length} holdings · ${sym}${Math.round(totalValue).toLocaleString()} added to Net Worth`;
+
+  showToast(`✅ ${broker} imported via AI — ${holdings.length} holdings`);
+  _visionHoldings = null;
+  _visionImageBase64 = null;
+}
+
+function resetVisionImport() {
+  _visionImageBase64 = null;
+  _visionHoldings    = null;
+  const btn = document.getElementById('ivision-extract-btn');
+  if (btn) { btn.disabled = true; }
+  const btnText = document.getElementById('ivision-btn-text');
+  if (btnText) btnText.textContent = 'Upload a screenshot first';
+  const btnIcon = document.getElementById('ivision-btn-icon');
+  if (btnIcon) btnIcon.textContent = '🤖';
+  const img = document.getElementById('ivision-preview-img');
+  if (img) img.src = '';
+  const previewWrap = document.getElementById('ivision-preview-wrap');
+  if (previewWrap) previewWrap.style.display = 'none';
+  const previewIcon = document.getElementById('ivision-preview-icon');
+  if (previewIcon) previewIcon.style.display = '';
+  const dropText = document.getElementById('ivision-drop-text');
+  if (dropText) dropText.textContent = 'Tap to upload screenshot';
+  const brokerInput = document.getElementById('ivision-broker-name');
+  if (brokerInput) brokerInput.value = '';
+  document.querySelectorAll('#isec-vision .import-step').forEach(s => s.classList.remove('active'));
+  const step1 = document.getElementById('ivision-step1');
+  if (step1) step1.classList.add('active');
 }
 
 function detectRobinhood(headers) {
