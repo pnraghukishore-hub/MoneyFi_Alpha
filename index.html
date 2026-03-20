@@ -36154,118 +36154,6 @@ function buildAIContext() {
           if (!t9b) return '';
           return ' | liquidity=' + Object.entries(liq).filter(([,v])=>v>0).map(([k,v])=>`${k}:${(v/t9b*100).toFixed(0)}%`).join(',');
         })();
-        (() => {
-          // Equity sector breakdown + individual holdings for AI
-          // Covers ALL equity account types (stocks_direct, brokerage_taxable, brokerage_ira, etc.)
-          // NOT just stocks_direct — so Lab data is always visible to AI regardless of account type
-          try {
-            const EQ_TYPES = ['stocks_direct','brokerage_taxable','brokerage_ira','brokerage_roth',
-                              'brokerage_joint','retirement_roth','retirement_401k','retirement_ira',
-                              'retirement_403b','retirement_sep'];
-            const allEqAccts   = (data._nwAccounts||[]).filter(a => EQ_TYPES.includes(a.type));
-            const acctWithBal  = allEqAccts.filter(a => (nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0)) > 0);
-            const acctWithHold = allEqAccts.filter(a => a.meta && a.meta.holdings && a.meta.holdings.length > 0);
-
-            if (acctWithHold.length > 0) {
-              // Build unified stock map across ALL equity account types
-              const normSym = s => (s||'').toUpperCase().trim()
-                .replace(/\s+(LTD|LIMITED|INC|CORP|CO|PLC|NV|SA|AG|PTY|PVT|INDUSTRIES|ENTERPRISES|GROUP)\b\.?/g,'')
-                .replace(/[^A-Z0-9&]/g,'').trim();
-              const hMap = {};
-              acctWithHold.forEach(account => {
-                const acctCur = account.currency || 'USD';
-                (account.meta.holdings || []).forEach(h => {
-                  const key = normSym(h.symbol);
-                  if (!key) return;
-                  const userOverrides = data._equitySectorOverrides || {};
-                  const sector = userOverrides[key] || h.sector || 'Unknown';
-                  if (!hMap[key]) {
-                    hMap[key] = { symbol: h.symbol||key, name: h.name||h.symbol||key,
-                                  sector, totalQty: 0, totalVal: 0, totalPnl: 0, totalCost: 0 };
-                  }
-                  const qty    = Number(h.qty || 0);
-                  const curVal = nwConvert ? nwConvert(Number(h.curVal||0), acctCur) : Number(h.curVal||0);
-                  const pnl    = nwConvert ? nwConvert(Number(h.pnl||0), acctCur)   : Number(h.pnl||0);
-                  const cost   = nwConvert ? nwConvert((h.avgCost && qty ? Number(h.avgCost)*qty : 0), acctCur) : 0;
-                  hMap[key].totalQty  += qty;
-                  hMap[key].totalVal  += curVal;
-                  hMap[key].totalPnl  += pnl;
-                  hMap[key].totalCost += cost;
-                  // Best-sector-wins: upgrade Unknown if a real sector is found
-                  if (hMap[key].sector === 'Unknown' && sector !== 'Unknown') hMap[key].sector = sector;
-                });
-              });
-              const allStocks  = Object.values(hMap).sort((a,b) => b.totalVal - a.totalVal);
-              const totalEqVal = allStocks.reduce((s,st) => s + st.totalVal, 0);
-              const totalEqPnl = allStocks.reduce((s,st) => s + st.totalPnl, 0);
-
-              // Sector breakdown + HHI
-              const sMap = {};
-              allStocks.forEach(s => { sMap[s.sector] = (sMap[s.sector]||0) + s.totalVal; });
-              const sTotal = Object.values(sMap).reduce((a,b) => a+b, 0);
-              if (sTotal > 0) {
-                const sStr = Object.entries(sMap).sort(([,a],[,b]) => b-a)
-                  .map(([k,v]) => `${k}:${(v/sTotal*100).toFixed(0)}%`).join(', ');
-                const isIN   = (profile?.region||'IN') === 'IN';
-                const bench  = isIN ? NIFTY50_SECTOR_WEIGHTS : SP500_SECTOR_WEIGHTS;
-                const benchN = isIN ? 'Nifty50' : 'S&P500';
-                const hhi    = typeof _computeHHI === 'function' ? _computeHHI(sMap, sTotal) : null;
-                const hhiLbl = hhi ? (hhi >= 0.18 ? 'Concentrated' : hhi >= 0.10 ? 'Moderate' : 'Diversified') : 'unknown';
-                const gapStr = Object.entries(sMap).map(([sec,val]) => {
-                  const u = val/sTotal*100; const b = bench[sec]||0;
-                  return { sec, diff: u-b, u: u.toFixed(0), b: b.toFixed(0) };
-                }).filter(g => Math.abs(g.diff) >= 10)
-                  .sort((a,b) => Math.abs(b.diff)-Math.abs(a.diff)).slice(0,3)
-                  .map(g => `${g.sec}:user=${g.u}%,${benchN}=${g.b}%`).join(' | ');
-                L.push(`EQUITY SECTOR BREAKDOWN: totalEquity=${sym}${Math.round(totalEqVal).toLocaleString()} | stocks=${allStocks.length} | accounts=${acctWithHold.length} | hhi=${hhi?.toFixed(3)||'?'} (${hhiLbl}) | sectors=${sStr}${gapStr ? ' | vsIndex='+gapStr : ''}`);
-              }
-
-              // Individual holdings (top 20 by value)
-              const topN = allStocks.slice(0, 20);
-              const pnlSign = totalEqPnl >= 0 ? '+' : '';
-              const stockLines = topN.map(s => {
-                const pnlPct = s.totalCost > 0 ? ((s.totalVal - s.totalCost) / s.totalCost * 100).toFixed(1) : '?';
-                const pnlAmt = (s.totalPnl >= 0 ? '+' : '') + sym + Math.abs(Math.round(s.totalPnl)).toLocaleString();
-                return `    ${s.symbol}${s.name && s.name !== s.symbol ? ' ('+s.name+')' : ''}: val=${sym}${Math.round(s.totalVal).toLocaleString()} | qty=${s.totalQty} | pnl=${pnlPct}% (${pnlAmt}) | sector=${s.sector}`;
-              }).join('\n');
-              L.push(`EQUITY HOLDINGS (top ${topN.length} of ${allStocks.length} stocks — total: ${sym}${Math.round(totalEqVal).toLocaleString()}, P&L: ${pnlSign}${sym}${Math.abs(Math.round(totalEqPnl)).toLocaleString()}):\n${stockLines}`);
-
-            } else if (acctWithBal.length > 0) {
-              // Accounts exist with balance but no per-stock holdings imported
-              const acctSummary = acctWithBal.map(a =>
-                `${a.name}(${a.type}): ${sym}${Math.round(nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0)).toLocaleString()}`
-              ).join(', ');
-              L.push(`EQUITY HOLDINGS: NOT IMPORTED YET — ${acctWithBal.length} account(s) have balance but no per-stock data:\n  ${acctSummary}\n  ACTION: Tell the user to use Import → AI Scan to upload their broker statement — the app extracts all stock names, quantities, and cost basis automatically. Do NOT ask the user to type their holdings list.`);
-            }
-          } catch(e) {}
-        })();
-        // Crypto holdings for AI advisor — so AI never needs to ask about crypto positions
-        (() => {
-          try {
-            const cxLedger = typeof buildUnifiedCryptoLedger === 'function' ? buildUnifiedCryptoLedger() : null;
-            const cryptoAcctsWithBal = (data._nwAccounts||[]).filter(a => a.type === 'crypto' && (a.balance||0) > 0);
-            const cryptoAcctsWithHoldings = (data._nwAccounts||[]).filter(a => a.type === 'crypto' && a.meta && a.meta.holdings && a.meta.holdings.length > 0);
-            if (cryptoAcctsWithBal.length > 0 && cryptoAcctsWithHoldings.length === 0) {
-              const cxAcctSummary = cryptoAcctsWithBal.map(a =>
-                `${a.name}: ${sym}${Math.round(nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0)).toLocaleString()}`
-              ).join(', ');
-              L.push(`CRYPTO HOLDINGS: NOT IMPORTED YET — ${cryptoAcctsWithBal.length} crypto account(s) have a balance but no coin-level data:\n  ${cxAcctSummary}\n  ACTION: Tell the user to go to Import → AI Scan tab, upload a screenshot of their exchange portfolio, and the app will extract individual coin holdings automatically. Do NOT ask the user to type their coin list.`);
-            }
-            if (cxLedger && cxLedger.coins && cxLedger.coins.length > 0) {
-              const topCoins = [...cxLedger.coins].sort((a, b) => b.totalVal - a.totalVal).slice(0, 15);
-              const coinLines = topCoins.map(c => {
-                const pnlPct = c.totalCost > 0 ? ((c.totalVal - c.totalCost) / c.totalCost * 100).toFixed(1) : '?';
-                const pnlAmt = (c.totalPnl >= 0 ? '+' : '') + sym + Math.abs(Math.round(c.totalPnl)).toLocaleString();
-                const qtyStr = c.totalQty > 0 ? (c.totalQty < 0.001 ? c.totalQty.toExponential(4) : c.totalQty.toFixed(c.totalQty < 1 ? 6 : 4)) : '?';
-                return `    ${c.symbol}${c.name && c.name !== c.symbol ? ' (' + c.name + ')' : ''}: val=${sym}${Math.round(c.totalVal).toLocaleString()} | qty=${qtyStr} | pnl=${pnlPct}% (${pnlAmt}) | category=${c.category || 'OTHER'} | exchanges=${c.accounts.length}`;
-              }).join('\n');
-              const cexPctRound = Math.round(cxLedger.cexPct || 0);
-              const totalCxPnlSign = (cxLedger.totalPnl || 0) >= 0 ? '+' : '';
-              L.push(`CRYPTO HOLDINGS (${topCoins.length} of ${cxLedger.coins.length} coins by value):\n  totalCrypto=${sym}${Math.round(cxLedger.totalVal).toLocaleString()} | totalPnl=${totalCxPnlSign}${sym}${Math.abs(Math.round(cxLedger.totalPnl || 0)).toLocaleString()} | cexExposure=${cexPctRound}% | accounts=${cxLedger.accountCount}\n${coinLines}`);
-            }
-          } catch(e) {}
-        })();
-
         L.push(`PORTFOLIO HEALTH: total=${sym}${Math.round(port.totalPortfolio||0).toLocaleString()} | equity=${(port.eqPct*100).toFixed(0)}%(${sym}${Math.round(port.eqAmt||0).toLocaleString()}) | debt=${(port.dbPct*100).toFixed(0)}%(${sym}${Math.round(port.dbAmt||0).toLocaleString()}) | gold=${(port.auPct*100).toFixed(0)}%(${sym}${Math.round(port.auAmt||0).toLocaleString()}) | RE=${(port.rePct*100).toFixed(0)}%(${sym}${Math.round(port.reAmt||0).toLocaleString()}) | cash=${(port.caPct*100).toFixed(0)}%(${sym}${Math.round(port.caAmt||0).toLocaleString()}) | targetEquity=${(port.targetEq*100).toFixed(0)}% | concentration=${(port.concRatio*100).toFixed(0)}% | signals=${(port.signals||[]).join('; ')}${sebiStr}${liqStr}`);
       }
 
@@ -36303,6 +36191,115 @@ function buildAIContext() {
       const seq = scoreGoalSequencing(nwD, aggD, profile, cfg);
       if (seq.status !== 'inactive') L.push(
         `GOAL SEQUENCING: sequencePenalty=${seq.sequencePenalty||0}pts | emergency=${seq.emS||0}/25 | insurance=${seq.insS||0}/20 | debt=${seq.debtS||0}/20 | retirement=${seq.retS||0}/20 | education=${seq.eduS||0}/15 | signals=${(seq.signals||[]).join(', ')}`);  // NOTE: lower tiers block higher ones — if emergency<60, retirement score is capped
+
+      // ── EQUITY HOLDINGS — runs ALWAYS, independent of any pillar status ──
+      // This is the same data the Lab → Equity tab shows. Must always reach the AI.
+      (() => {
+        try {
+          const EQ_TYPES = ['stocks_direct','brokerage_taxable','brokerage_ira','brokerage_roth',
+                            'brokerage_joint','retirement_roth','retirement_401k','retirement_ira',
+                            'retirement_403b','retirement_sep'];
+          const allEqAccts   = (data._nwAccounts||[]).filter(a => EQ_TYPES.includes(a.type));
+          const acctWithBal  = allEqAccts.filter(a => (nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0)) > 0);
+          const acctWithHold = allEqAccts.filter(a => a.meta && a.meta.holdings && a.meta.holdings.length > 0);
+
+          if (acctWithHold.length > 0) {
+            const normSym = s => (s||'').toUpperCase().trim()
+              .replace(/\s+(LTD|LIMITED|INC|CORP|CO|PLC|NV|SA|AG|PTY|PVT|INDUSTRIES|ENTERPRISES|GROUP)\b\.?/g,'')
+              .replace(/[^A-Z0-9&]/g,'').trim();
+            const hMap = {};
+            acctWithHold.forEach(account => {
+              const acctCur = account.currency || 'USD';
+              (account.meta.holdings || []).forEach(h => {
+                const key = normSym(h.symbol);
+                if (!key) return;
+                const userOverrides = data._equitySectorOverrides || {};
+                const sector = userOverrides[key] || h.sector || 'Unknown';
+                if (!hMap[key]) {
+                  hMap[key] = { symbol: h.symbol||key, name: h.name||h.symbol||key,
+                                sector, totalQty: 0, totalVal: 0, totalPnl: 0, totalCost: 0 };
+                }
+                const qty    = Number(h.qty || 0);
+                const curVal = nwConvert ? nwConvert(Number(h.curVal||0), acctCur) : Number(h.curVal||0);
+                const pnl    = nwConvert ? nwConvert(Number(h.pnl||0), acctCur)   : Number(h.pnl||0);
+                const cost   = nwConvert ? nwConvert((h.avgCost && qty ? Number(h.avgCost)*qty : 0), acctCur) : 0;
+                hMap[key].totalQty  += qty;
+                hMap[key].totalVal  += curVal;
+                hMap[key].totalPnl  += pnl;
+                hMap[key].totalCost += cost;
+                if (hMap[key].sector === 'Unknown' && sector !== 'Unknown') hMap[key].sector = sector;
+              });
+            });
+            const allStocks  = Object.values(hMap).sort((a,b) => b.totalVal - a.totalVal);
+            const totalEqVal = allStocks.reduce((s,st) => s + st.totalVal, 0);
+            const totalEqPnl = allStocks.reduce((s,st) => s + st.totalPnl, 0);
+
+            // Sector breakdown + HHI
+            const sMap = {};
+            allStocks.forEach(s => { sMap[s.sector] = (sMap[s.sector]||0) + s.totalVal; });
+            const sTotal = Object.values(sMap).reduce((a,b) => a+b, 0);
+            if (sTotal > 0) {
+              const sStr = Object.entries(sMap).sort(([,a],[,b]) => b-a)
+                .map(([k,v]) => `${k}:${(v/sTotal*100).toFixed(0)}%`).join(', ');
+              const isIN   = (profile?.region||'IN') === 'IN';
+              const bench  = isIN ? NIFTY50_SECTOR_WEIGHTS : SP500_SECTOR_WEIGHTS;
+              const benchN = isIN ? 'Nifty50' : 'S&P500';
+              const hhi    = typeof _computeHHI === 'function' ? _computeHHI(sMap, sTotal) : null;
+              const hhiLbl = hhi ? (hhi >= 0.18 ? 'Concentrated' : hhi >= 0.10 ? 'Moderate' : 'Diversified') : 'unknown';
+              const gapStr = Object.entries(sMap).map(([sec,val]) => {
+                const u = val/sTotal*100; const b = bench[sec]||0;
+                return { sec, diff: u-b, u: u.toFixed(0), b: b.toFixed(0) };
+              }).filter(g => Math.abs(g.diff) >= 10)
+                .sort((a,b) => Math.abs(b.diff)-Math.abs(a.diff)).slice(0,3)
+                .map(g => `${g.sec}:user=${g.u}%,${benchN}=${g.b}%`).join(' | ');
+              L.push(`EQUITY SECTOR BREAKDOWN: totalEquity=${sym}${Math.round(totalEqVal).toLocaleString()} | stocks=${allStocks.length} | accounts=${acctWithHold.length} | hhi=${hhi?.toFixed(3)||'?'} (${hhiLbl}) | sectors=${sStr}${gapStr ? ' | vsIndex='+gapStr : ''}`);
+            }
+
+            // Individual holdings (top 20 by value)
+            const topN = allStocks.slice(0, 20);
+            const pnlSign = totalEqPnl >= 0 ? '+' : '';
+            const stockLines = topN.map(s => {
+              const pnlPct = s.totalCost > 0 ? ((s.totalVal - s.totalCost) / s.totalCost * 100).toFixed(1) : '?';
+              const pnlAmt = (s.totalPnl >= 0 ? '+' : '') + sym + Math.abs(Math.round(s.totalPnl)).toLocaleString();
+              return `    ${s.symbol}${s.name && s.name !== s.symbol ? ' ('+s.name+')' : ''}: val=${sym}${Math.round(s.totalVal).toLocaleString()} | qty=${s.totalQty} | pnl=${pnlPct}% (${pnlAmt}) | sector=${s.sector}`;
+            }).join('\n');
+            L.push(`EQUITY HOLDINGS (top ${topN.length} of ${allStocks.length} stocks — total: ${sym}${Math.round(totalEqVal).toLocaleString()}, P&L: ${pnlSign}${sym}${Math.abs(Math.round(totalEqPnl)).toLocaleString()}):\n${stockLines}`);
+
+          } else if (acctWithBal.length > 0) {
+            const acctSummary = acctWithBal.map(a =>
+              `${a.name}(${a.type}): ${sym}${Math.round(nwConvert ? nwConvert(a.balance||0,a.currency) : (a.balance||0)).toLocaleString()}`
+            ).join(', ');
+            L.push(`EQUITY HOLDINGS: NOT IMPORTED YET — ${acctWithBal.length} account(s) have balance but no per-stock data:\n  ${acctSummary}\n  ACTION: Tell the user to use Import → AI Scan to upload their broker statement. Do NOT ask the user to type their holdings.`);
+          }
+        } catch(e) {}
+      })();
+
+      // ── CRYPTO HOLDINGS — runs ALWAYS, independent of any pillar status ──
+      (() => {
+        try {
+          const cxLedger = typeof buildUnifiedCryptoLedger === 'function' ? buildUnifiedCryptoLedger() : null;
+          const cryptoAcctsWithBal = (data._nwAccounts||[]).filter(a => a.type === 'crypto' && (a.balance||0) > 0);
+          const cryptoAcctsWithHoldings = (data._nwAccounts||[]).filter(a => a.type === 'crypto' && a.meta && a.meta.holdings && a.meta.holdings.length > 0);
+          if (cryptoAcctsWithBal.length > 0 && cryptoAcctsWithHoldings.length === 0) {
+            const cxAcctSummary = cryptoAcctsWithBal.map(a =>
+              `${a.name}: ${sym}${Math.round(nwConvert ? nwConvert(a.balance||0, a.currency) : (a.balance||0)).toLocaleString()}`
+            ).join(', ');
+            L.push(`CRYPTO HOLDINGS: NOT IMPORTED YET — ${cryptoAcctsWithBal.length} crypto account(s) have balance but no coin-level data:\n  ${cxAcctSummary}\n  ACTION: Tell the user to use Import → AI Scan to upload their exchange screenshot. Do NOT ask the user to type their coin list.`);
+          }
+          if (cxLedger && cxLedger.coins && cxLedger.coins.length > 0) {
+            const topCoins = [...cxLedger.coins].sort((a, b) => b.totalVal - a.totalVal).slice(0, 15);
+            const coinLines = topCoins.map(c => {
+              const pnlPct = c.totalCost > 0 ? ((c.totalVal - c.totalCost) / c.totalCost * 100).toFixed(1) : '?';
+              const pnlAmt = (c.totalPnl >= 0 ? '+' : '') + sym + Math.abs(Math.round(c.totalPnl)).toLocaleString();
+              const qtyStr = c.totalQty > 0 ? (c.totalQty < 0.001 ? c.totalQty.toExponential(4) : c.totalQty.toFixed(c.totalQty < 1 ? 6 : 4)) : '?';
+              return `    ${c.symbol}${c.name && c.name !== c.symbol ? ' (' + c.name + ')' : ''}: val=${sym}${Math.round(c.totalVal).toLocaleString()} | qty=${qtyStr} | pnl=${pnlPct}% (${pnlAmt}) | category=${c.category || 'OTHER'} | exchanges=${c.accounts.length}`;
+            }).join('\n');
+            const cexPctRound = Math.round(cxLedger.cexPct || 0);
+            const totalCxPnlSign = (cxLedger.totalPnl || 0) >= 0 ? '+' : '';
+            L.push(`CRYPTO HOLDINGS (${topCoins.length} of ${cxLedger.coins.length} coins by value):\n  totalCrypto=${sym}${Math.round(cxLedger.totalVal).toLocaleString()} | totalPnl=${totalCxPnlSign}${sym}${Math.abs(Math.round(cxLedger.totalPnl || 0)).toLocaleString()} | cexExposure=${cexPctRound}% | accounts=${cxLedger.accountCount}\n${coinLines}`);
+          }
+        } catch(e) {}
+      })();
 
       return L.join('\n') || '  No pillar detail available';
     } catch(e) {
