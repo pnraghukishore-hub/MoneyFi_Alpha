@@ -37438,6 +37438,42 @@ const DISC_THEMES = [
     { id:'inv_sort_funds',    label:'Sort Funds',       nav:()=>{ goToScreen('roi'); setTimeout(()=>{ switchROITab('investments'); setTimeout(()=>switchInvTab('funds'),300); },350); }, spot:'#inv-stab-funds', tip:'Sort by Best ROI, Highest Value, Laggards, or Most Invested.' },
     { id:'inv_sip_tab',       label:'SIP Tracker',      nav:()=>{ goToScreen('roi'); setTimeout(()=>{ switchROITab('investments'); setTimeout(()=>switchInvTab('sip'),300); },350); }, spot:'#inv-stab-sip', tip:'SIP Tracker detects your active SIPs and scores their health.' },
     { id:'inv_equity_tab',    label:'Equity Lens',      nav:()=>{ goToScreen('roi'); setTimeout(()=>{ switchROITab('investments'); setTimeout(()=>switchInvTab('equity'),300); },350); }, spot:'#inv-stab-equity', tip:'Equity Lens shows sector concentration, HHI risk score, and your unified stock ledger.' },
+
+    { id:'inv_crypto_tab',
+      label:'Crypto Lens',
+      nav:()=>{ goToScreen('roi');
+        setTimeout(()=>{ switchROITab('investments');
+          if(typeof _updateCryptoTabVisibility==='function') _updateCryptoTabVisibility();
+          setTimeout(()=>{ switchInvTab('crypto');
+            setTimeout(()=>{ const cBtn=document.getElementById('inv-stab-crypto');
+              if(cBtn&&cBtn.style.display!=='none'){ cBtn.scrollIntoView({behavior:'smooth',block:'center'});
+                setTimeout(()=>_discSpotlight('#inv-stab-crypto','Crypto Lens shows your unified coin portfolio across all exchanges — category breakdown, custody risk bar, and a consolidated P&L ledger per coin. Appears automatically when crypto holdings are detected.','Crypto Lens'), 400); }
+              else { _discSpotlight('.inv-sub-tabs','The 🪙 Crypto tab appears here automatically once you add a Crypto account in Net Worth and import your holdings — then it shows your full cross-exchange coin ledger.','Crypto Lens'); }
+            }, 500); },
+          300); },
+        350); },
+      spot:'#inv-stab-crypto', tip:'Crypto Lens — unified coin ledger, category donut, and custody risk across all your exchanges.' },
+
+    { id:'crypto_custody_edit',
+      label:'Edit Custody Type',
+      nav:()=>{ goToScreen('roi');
+        setTimeout(()=>{ switchROITab('investments');
+          if(typeof _updateCryptoTabVisibility==='function') _updateCryptoTabVisibility();
+          setTimeout(()=>{ switchInvTab('crypto');
+            setTimeout(()=>{ if(typeof renderCryptoLab==='function') renderCryptoLab();
+              setTimeout(()=>{ const chip=document.querySelector('[title*="Mark as"]');
+                if(chip){ chip.scrollIntoView({behavior:'smooth',block:'center'});
+                  setTimeout(()=>_discSpotlight(chip,'Tap the 🏦 CEX or 🔐 Self badge on any wallet chip to flip its custody type — MoneyFi infers it from the wallet name, but you can correct it here. Saves to Firebase instantly and updates the risk bar.','Edit Custody Type'), 400); }
+                else { const card=document.getElementById('cx-summary-card');
+                  if(card){ card.scrollIntoView({behavior:'smooth',block:'center'});
+                    setTimeout(()=>_discSpotlight('#cx-summary-card','Once you import crypto holdings, each wallet shows a custody badge — 🏦 CEX or 🔐 Self — that you can tap to correct the auto-detected type. Your correction persists across sessions.','Edit Custody Type'), 400); }
+                  else { _discSpotlight('.inv-sub-tabs','Add crypto holdings to see the custody classification badges — one tap to correct CEX vs Self-Custody classification.','Edit Custody Type'); } }
+              }, 650); },
+            300); },
+          300); },
+        350); },
+      spot:'[title*="Mark as"]', tip:'Tap 🏦 CEX or 🔐 Self on any wallet chip to correct its custody classification — saves instantly.' },
+
     { id:'inv_rebalance_tab', label:'Rebalance Tab',    nav:()=>{ goToScreen('roi'); setTimeout(()=>{ switchROITab('investments'); setTimeout(()=>switchInvTab('rebalance'),300); },350); }, spot:'#inv-stab-rebalance', tip:'Rebalancing Advisor — set target allocation and get an action plan.' },
     { id:'lab_retire',        label:'Retire Tab',       nav:()=>{ goToScreen('roi'); setTimeout(()=>switchROITab('retire'),350); }, spot:'#roi-tab-retire',        tip:'Retire tab shows your corpus, gap, and live retirement projection.' },
     { id:'retire_rate_slider',label:'Adjust Return Rate',nav:()=>{ goToScreen('roi'); setTimeout(()=>switchROITab('retire'),350); }, spot:'#roi-retire-rate-slider', tip:'Drag the slider to see how different return rates affect your retirement date.' },
@@ -37821,6 +37857,18 @@ const DISC_THEMES = [
           setTimeout(()=>_discSpotlight('#screen-import','Universal Portfolio Import — paste or upload from any broker in any format. MoneyFi parses it and maps to your NW accounts.','Universal Import'), 500);
         }, 400); },
       spot:'#screen-import', tip:'Import from any broker in any format — universal parser.' },
+
+    { id:'import_ai_scan',
+      label:'AI Scan Import',
+      nav:()=>{ goToScreen('import');
+        setTimeout(()=>{ try{setImportTab('vision',null);}catch(e){}
+          setTimeout(()=>{ const el=document.getElementById('ivision-dropzone');
+            if(el){ el.scrollIntoView({behavior:'smooth',block:'center'});
+              setTimeout(()=>_discSpotlight('#ivision-dropzone','AI Scan reads any brokerage screenshot and extracts your holdings automatically — works with Zerodha, Groww, Coinbase, Robinhood, Fidelity, and 50+ brokers worldwide. Just tap the drop zone, upload a screenshot, and let AI do the rest.','AI Scan Import'), 450); }
+            else { _discSpotlight('#screen-import','AI Scan reads any brokerage screenshot — extracts holdings from 50+ brokers worldwide with no manual entry needed.','AI Scan Import'); }
+          }, 450); },
+        400); },
+      spot:'#ivision-dropzone', tip:'AI Scan reads any brokerage screenshot — extracts holdings from 50+ brokers with no manual entry.' },
 
     { id:'reset_data',
       label:'Reset / Delete Data',
