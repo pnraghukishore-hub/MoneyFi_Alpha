@@ -27809,6 +27809,9 @@ Rules for PORTFOLIO screens:
 - Number accuracy: common misreads are 8↔6, 8↔3, 1↔7, 0↔6
 - Cross-check: market value must be near quantity × price (within 5%) — if not, re-read and set confidence "low"
 - Dark mode screenshots: read digits twice to avoid 8→6 misreads
+- Coinbase / crypto exchanges often show quantity as small subtitle text below the coin name (e.g. "0.004427 BTC") — always extract this as the quantity field
+- If a screen shows both market value AND unrealized return (loss/gain amount + %), extract returnAmount and returnPct — make losses negative
+- If only market value is shown (no qty/price), still extract it — quantity and price can be derived later
 
 Rules for TRANSACTION screens:
 - Extract ALL visible transaction rows
