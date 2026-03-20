@@ -27451,7 +27451,7 @@ const VISION_BROKERS = [
 ];
 
 // ── VISION IMPORT CONSTANTS ─────────────────────────────────────────────────
-const VISION_MONTHLY_LIMIT = 10;  // PRO: 10 scans/month free tier
+const VISION_MONTHLY_LIMIT = 25;  // PRO: 25 scans/month free tier
 
 const VISION_TIPS = [
   { emoji:"📈", text:"The Rule of 72: divide 72 by your annual return to find how many years it takes to double your money. At 12% p.a., your portfolio doubles in 6 years." },
@@ -27470,6 +27470,14 @@ const VISION_TIPS = [
   { emoji:"🧬", text:"Term insurance cover should be 15-20x your annual income. A ₹1Cr policy for a 30-year-old costs less than ₹1,000/month — the cheapest financial guarantee." },
   { emoji:"📉", text:"Bear markets are sales on future wealth. Every major market crash in history has been followed by new all-time highs. Panic-selling is the only real risk." },
 ];
+
+function _visionResetQuota() {
+  // Dev helper — call from browser console to reset monthly scan count
+  localStorage.removeItem(_visionGetQuotaKey());
+  _visionUpdateQuotaBar();
+  showToast('🔄 AI Scan quota reset — 25 scans available');
+  console.log('[MoneyFi] Vision quota reset for', _visionGetQuotaKey());
+}
 
 function _visionGetQuotaKey() {
   const now = new Date();
