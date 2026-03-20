@@ -35995,6 +35995,28 @@ function buildAIContext() {
 
   // Monthly cashflow
   const cashflow = agg
+
+  // ── MF paused/active status for AI guardrail ────────────────────────
+  const mfStatusLines = (() => {
+    const mfTypes = ['mf_equity','mf_debt','mf_elss','mf_hybrid','mf_gold','mf_index'];
+    const mfAccounts = (data._nwAccounts || []).filter(a => mfTypes.includes(a.type));
+    if (!mfAccounts.length) return '  No mutual funds in portfolio';
+    const active  = mfAccounts.filter(a => a.sipAmount > 0 || (a.meta && a.meta.monthlySIP > 0));
+    const paused  = mfAccounts.filter(a => !(a.sipAmount > 0 || (a.meta && a.meta.monthlySIP > 0)));
+    const lines2  = [];
+    lines2.push('  Active SIPs: ' + active.length + ' funds | Paused/Completed: ' + paused.length + ' funds');
+    if (paused.length > 0) {
+      const pausedTotal = paused.reduce((s,a) => s + nwConvert(a.balance||0, a.currency), 0);
+      const pausedGrowing = paused.filter(a => a.investedAmount > 0 && a.balance > a.investedAmount);
+      const pausedLosing  = paused.filter(a => a.investedAmount > 0 && a.balance < a.investedAmount);
+      lines2.push('  Paused fund value: ' + sym + Math.round(pausedTotal).toLocaleString() +
+        ' | Growing (balance > invested): ' + pausedGrowing.length +
+        ' | In loss: ' + pausedLosing.length);
+      lines2.push('  GUARDRAIL: ' + pausedGrowing.length + ' paused fund(s) are growing — do NOT recommend redeeming unless underperforming benchmark for 3+ years. Suggest resuming SIP instead.');
+    }
+    return lines2.join('\n') || '  No MF data';
+  })();
+
     ? `Avg income: ${sym}${Math.round(agg.avgInc).toLocaleString()}/mo · Avg expenses: ${sym}${Math.round(agg.avgExp).toLocaleString()}/mo · Avg savings: ${sym}${Math.round(agg.avgSav).toLocaleString()}/mo · Savings rate: ${agg.avgInc > 0 ? (agg.avgSav / agg.avgInc * 100).toFixed(1) : 0}%`
     : 'No transaction data yet';
 
@@ -36379,6 +36401,25 @@ If the EQUITY HOLDINGS or CRYPTO HOLDINGS sections below say "NOT IMPORTED YET",
 The wow factor is: the user NEVER has to type their portfolio into a chat. Guide them to the import feature instead.
 If holdings ARE present (EQUITY HOLDINGS or CRYPTO HOLDINGS sections contain coin/stock rows), use those directly — never ask for confirmation or re-entry.
 
+RULE 9 — TAX BEFORE SELL (mandatory — apply to EVERY sell/redeem/exit recommendation):
+NEVER recommend selling, redeeming, or exiting any investment without FIRST stating the tax consequence.
+For India:
+- LTCG (held > 1yr): 12.5% on equity gains above ₹1.25L/yr — always check if gain is within exemption
+- STCG (held < 1yr): 20% on equity gains — significant cost, always flag
+- "Paused" mutual funds are NOT dead funds. If they are growing month-on-month, the correct advice is almost always "RESUME the SIP or hold" — NOT "redeem and consolidate"
+- NEVER use language like "kill", "liquidate all", or "redeem everything" without showing the estimated tax cost
+- If a fund is growing and paused (no new SIP), the default advice is "this is a portfolio ASSET, not a liability — leave it growing"
+- For ANY redemption suggestion: say "Before redeeming: estimate your LTCG/STCG liability using the MoneyFi Tax Optimiser"
+
+For US:
+- Long-term gains (held > 1yr): 0/15/20% depending on income bracket
+- Short-term gains: ordinary income rates (up to 37%)
+- Wash sale rule: don't rebuy within 30 days after tax-loss harvesting
+
+CRITICAL EXAMPLE OF WHAT NOT TO DO:
+BAD: "Kill the 11 paused funds — redeem all ₹6.1L and consolidate"
+GOOD: "Your 11 paused funds are worth ₹6.1L and growing. Before touching them: check if gains exceed ₹1.25L LTCG exemption. If they're performing, the right move is to RESUME SIPs — not redeem. Only exit if a fund has consistently underperformed its benchmark for 3+ years."
+
 RULE 7 — LEAD WITH INSIGHT, NOT QUESTIONS:
 Open every response with a direct insight or action derived from the user's actual data. Questions — if needed at all — come AFTER the recommendation, not before. NEVER open a response with a question.
 BAD: "Can you tell me more about your goals?"
@@ -36460,6 +36501,9 @@ ${cashflow}
 
 FAMILY CONTEXT:
 ${familyContext}
+
+MUTUAL FUND STATUS (paused vs active — critical for sell/redeem advice):
+${mfStatusLines}
 
 EQUITY HOLDINGS (from Lab → Equity tab — individual stock positions):
 ${equityHoldingsLines}
