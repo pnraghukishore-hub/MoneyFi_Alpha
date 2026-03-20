@@ -2068,7 +2068,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     .import-col-field { font-size:0.8em; font-weight:800; color:var(--text-dark); min-width:100px; flex-shrink:0; }
     .import-col-select { flex:1; background:var(--white); border:1.5px solid #E8E8E8; border-radius:8px; padding:7px 10px; font-family:'Nunito',sans-serif; font-weight:700; font-size:0.82em; color:var(--text-dark); outline:none; }
     .import-col-select:focus { border-color:var(--yellow); }
-    .import-preview-table { width:100%; border-collapse:collapse; font-size:0.75em; margin-bottom:14px; }
+    .import-preview-table { width:100%; border-collapse:collapse; font-size:0.75em; margin-bottom:14px; table-layout:fixed; word-break:break-word; }
     .import-preview-table th { background:var(--yellow-light); font-weight:800; padding:6px 8px; text-align:left; border-bottom:2px solid var(--yellow); }
     .import-preview-table td { padding:5px 8px; border-bottom:1px solid #F0F0F0; color:var(--text-dark); font-weight:600; }
     .import-preview-table tr:nth-child(even) td { background:#FAFAFA; }
@@ -27560,19 +27560,26 @@ function _showVisionReview(holdings, broker, currency, sym) {
   // Editable holdings table
   // Build table — mobile-optimised: drop Name column (shown as subtitle under symbol)
   // Return is auto-calculated live from currentValue and costBasis inputs
+  // Check if any holding has cost basis — hide Cost/Return columns if none do
+  const hasCost = holdings.some(h => h.costBasis && parseFloat(h.costBasis) > 0);
+
   document.getElementById('ivision-preview-table').innerHTML =
-    `<tr><th>Symbol</th><th>Qty</th><th>Price</th><th>Mkt Val</th><th>Cost</th><th>Return</th></tr>` +
+    `<tr>
+      <th style="min-width:90px">Symbol</th>
+      <th style="min-width:40px">Qty</th>
+      <th style="min-width:60px">Price</th>
+      <th style="min-width:70px">Mkt Val</th>
+      ${hasCost ? '<th style="min-width:60px">Cost</th><th style="min-width:60px">Return</th>' : ''}
+    </tr>` +
     holdings.map((h, idx) => {
-      // Auto-calculate return % from currentValue and costBasis if both present
       const cv  = parseFloat(h.currentValue) || 0;
       const cb  = parseFloat(h.costBasis)    || 0;
       const ret = (cb > 0 && cv > 0) ? ((cv - cb) / cb * 100) : null;
       const retCol = ret === null ? '#9CA3AF' : ret >= 0 ? '#059669' : '#DC2626';
-      const retStr = ret !== null ? (ret>=0?'▲ ':' ▼ ')+Math.abs(ret).toFixed(1)+'%' : '—';
+      const retStr = ret !== null ? (ret>=0?'▲ ':'▼ ')+Math.abs(ret).toFixed(1)+'%' : '—';
       const lowBg  = h.confidence === 'low' ? 'background:#FFFBEB;' : '';
       const lowBdr = h.confidence === 'low' ? 'border-bottom:1.5px solid #F59E0B;' : '';
 
-      // Editable input helper — triggers live return recalculation
       const fld = (val, field) => `<input type="text"
         value="${val !== null && val !== undefined ? val : ''}"
         oninput="_visionUpdateField(${idx},'${field}',this.value);_visionRefreshReturn(${idx})"
@@ -27580,19 +27587,21 @@ function _showVisionReview(holdings, broker, currency, sym) {
                font-weight:700;font-size:0.82em;color:#1E2A6E;padding:0;outline:none;${lowBdr}"
       />`;
 
-      // Symbol cell: symbol bold + name small below
-      const symbolCell = `<td>
-        <div style="font-weight:900;font-size:0.85em;">${fld(h.symbol,'symbol')}</div>
-        <div style="font-size:0.65em;color:#6B7280;font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;">${h.name||''}</div>
+      // Symbol + truncated name beneath
+      const symbolCell = `<td style="max-width:90px">
+        <div style="font-weight:900;font-size:0.85em;color:#1E2A6E;">${fld(h.symbol,'symbol')}</div>
+        <div style="font-size:0.62em;color:#9CA3AF;font-weight:600;margin-top:1px;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:88px;">${h.name||''}</div>
       </td>`;
 
       return `<tr id="vrow-${idx}" style="${lowBg}">
         ${symbolCell}
-        <td>${fld(h.quantity,'quantity')}</td>
-        <td>${fld(h.currentPrice,'currentPrice')}</td>
-        <td style="font-weight:800">${fld(h.currentValue,'currentValue')}</td>
-        <td>${fld(h.costBasis,'costBasis')}</td>
-        <td id="vret-${idx}" style="color:${retCol};font-weight:800;font-size:0.82em;white-space:nowrap;">${retStr}</td>
+        <td style="max-width:50px">${fld(h.quantity,'quantity')}</td>
+        <td style="max-width:65px">${fld(h.currentPrice,'currentPrice')}</td>
+        <td style="font-weight:800;max-width:75px">${fld(h.currentValue,'currentValue')}</td>
+        ${hasCost ? `
+        <td style="max-width:65px">${fld(h.costBasis,'costBasis')}</td>
+        <td id="vret-${idx}" style="color:${retCol};font-weight:800;font-size:0.82em;white-space:nowrap;">${retStr}</td>` : ''}
       </tr>`;
     }).join('');
 
