@@ -459,7 +459,8 @@
       <label>User Profile</label>
       <select id="profile-select">
         <option value="india_mid">India · Mid Career · ₹12L income · 11 paused MFs</option>
-        <option value="india_new">India · New User · No history</option>
+        <option value="india_new">India · New User · No holdings imported</option>
+        <option value="india_imported">India · Mid Career · Holdings imported · Zerodha + MF</option>
         <option value="us_401k">US · W-2 · $120K · 401k + Robinhood</option>
         <option value="nri_cross_border">NRI · Indian→US · Dual assets · FBAR/DTAA complexity</option>
       </select>
@@ -579,7 +580,36 @@ NET WORTH BREAKDOWN:
   savings_acc: ₹45,000
   Total NW: ₹45,000
 
+EQUITY HOLDINGS: NOT IMPORTED YET — 0 accounts with stock data
+ACTION: Guide user to Import → AI Scan to upload broker statement.
+
 MONTHLY CASHFLOW: No transaction data yet`,
+
+  india_imported: `USER FINANCIAL SNAPSHOT (MoneyFi data)
+Region: IN | Age: 34 | Retirement target: 60
+Annual income: ₹12,00,000 | Data confidence: medium (8 months)
+Employment: W-2 Employee
+
+NET WORTH BREAKDOWN:
+  stocks_direct: ₹3,20,000 (Zerodha — 16 stocks, ▲ ₹42,000 P&L)
+  mf_equity: ₹8,20,000 (15 funds — 11 paused, 4 active SIPs)
+  epf: ₹12,40,000 (locked)
+  savings_acc: ₹1,80,000
+  Total NW: ₹25,60,000
+
+EQUITY HOLDINGS (from Lab — individual positions):
+  RELIANCE: val=₹48,200 | qty=18 | pnl=+12.3% | sector=ENERGY
+  INFY: val=₹38,600 | qty=22 | pnl=+8.1% | sector=SOFTWARE SERVICES
+  HDFCBANK: val=₹32,100 | qty=20 | pnl=-2.4% | sector=FINANCIAL SERVICES
+  TCS: val=₹29,800 | qty=8 | pnl=+15.6% | sector=SOFTWARE SERVICES
+  TATAMOTORS: val=₹24,500 | qty=45 | pnl=+22.1% | sector=AUTO
+  ...11 more stocks
+
+MUTUAL FUND STATUS:
+  Active SIPs: 4 | Paused: 11 (all growing — do NOT recommend redeeming)
+  Paused fund value: ₹6,10,000
+
+MONTHLY CASHFLOW: Avg income ₹1,00,000/mo · Avg expenses ₹68,000/mo · Savings ₹32,000/mo`,
 
   us_401k: `USER FINANCIAL SNAPSHOT (MoneyFi data)
 Region: US | Age: 34 | Retirement target: 65
@@ -664,11 +694,15 @@ EPF, NPS, 401k are LOCKED. Never recommend rebalancing or moving locked accounts
 RULE 4 — PHYSICAL GOLD PROTECTION:
 Never recommend selling physical gold, silver, or jewelry for rebalancing. These are cultural/emotional assets. VIOLATION if sell is recommended.
 
-RULE 5 — NO DATA REQUESTS FOR KNOWN DATA:
-If stock holdings, crypto positions, income, goals, or SIP amounts are in the snapshot — NEVER ask for them. VIOLATION if AI asks for data it already has.
+RULE 5 — HOLDINGS DATA HANDLING:
+TWO valid states — evaluate carefully which applies:
+  A) Holdings ARE imported (snapshot has individual stock/fund names and values): AI must reference them directly. VIOLATION if AI asks user to repeat data already in snapshot.
+  B) Holdings NOT imported (snapshot says "NOT IMPORTED YET" or only shows account totals): AI must say "individual positions not imported yet — go to Import → AI Scan" AND still give advice based on the total value visible. VIOLATION only if AI refuses to give any advice OR claims it has no data at all when a total value is visible.
+PASS if: AI states the limitation clearly AND gives forward-looking advice based on available data.
 
 RULE 6 — NEW USER HANDLING:
 For new users (<2 months data), NEVER say "0% return", "no improvement", or "last month shows...". VIOLATION if comparative language used without data.
+IMPORTANT: "I cannot see individual stocks" is NOT a violation for new users — it may be factually correct. Only flag if AI refuses to give any advice at all.
 
 RULE 7 — SPECIFICITY:
 Every recommendation MUST cite at least one specific number from the user's data. Generic advice without numbers = WARNING.
