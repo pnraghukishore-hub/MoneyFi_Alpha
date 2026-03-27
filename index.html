@@ -3844,7 +3844,8 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <canvas id="flow-sankey-canvas" style="width:100%;display:block;"></canvas>
         <div id="flow-empty-state" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);font-size:0.82em;font-weight:700;gap:8px;">
           <div style="font-size:2em;">🌊</div>
-          <div>Add income &amp; expenses to see your money flow</div>
+          <div id="flow-empty-msg">Add income &amp; expenses to see your money flow</div>
+          <button onclick="renderSankeyFlow()" style="margin-top:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:6px 14px;color:rgba(255,255,255,0.6);font-family:Nunito,sans-serif;font-weight:800;font-size:0.75em;cursor:pointer;">↺ Refresh</button>
         </div>
       </div>
 
@@ -42545,6 +42546,7 @@ function mfStartFamilyTxnsListener() {
         await Promise.all([...changedMonths].map(m => mfLoadFamilyTxns(m)));
         try { renderHome(); } catch(e) {}
         try { renderTransactions && renderTransactions(); } catch(e) {}
+        try { if (typeof _roiCurrentTab !== 'undefined' && _roiCurrentTab === 'flow') renderSankeyFlow(); } catch(e) {}
         console.debug('[MF Family] Txns updated — months reloaded:', [...changedMonths].join(', '));
       }
     }, err => console.warn('[MF Family] Txns listener error:', err.message));
@@ -43100,14 +43102,33 @@ function renderSankeyFlow() {
   if (nudge && window.innerWidth > window.innerHeight) nudge.style.display = 'none';
 
   let fd;
-  try { fd = _collectFlowData(); } catch(e) { console.warn('Sankey data error:', e); return; }
-
-  if (!fd || fd.totalInc < 1) {
-    if (empty)  { empty.style.display  = 'flex'; }
-    if (canvas) { canvas.style.display = 'none'; }
-    _renderFlowSummary(fd || {totalInc:0,totalExp:0,savings:0});
+  try { fd = _collectFlowData(); } catch(e) {
+    console.warn('Sankey data error:', e);
+    if (empty) { empty.style.display='flex'; empty.querySelector('div:last-child').textContent = 'Error: '+e.message; }
     return;
   }
+
+  // Diagnostic log — helps debug empty state
+  const _dbgInc = Object.keys(fd.incMap||{}).length, _dbgExp = Object.keys(fd.expMap||{}).length;
+  console.debug('[MoneyFlow] viewMonth='+viewMonth+' period='+_flowPeriod+' incKeys='+_dbgInc+' expKeys='+_dbgExp+' totalInc='+fd.totalInc.toFixed(2)+' totalExp='+fd.totalExp.toFixed(2));
+
+  // Gate: need at least some financial data to render
+  const hasAnyData = fd.totalInc > 0 || fd.totalExp > 0 || fd.totalInvest > 0;
+  if (!hasAnyData) {
+    if (empty)  { empty.style.display = 'flex'; }
+    if (canvas) { canvas.style.display = 'none'; }
+    const msg = document.getElementById('flow-empty-msg');
+    if (msg) msg.textContent = 'No data for ' + (document.getElementById('flow-period-label')?.textContent||'this period') + ' — try Year view or a different month';
+    _renderFlowSummary(fd);
+    return;
+  }
+
+  // If expenses exist but income is 0 (family split tracking, cash-only), synthesise an income node
+  if (fd.totalInc < 1 && fd.totalExp > 0) {
+    fd.incMap['Cash Flow'] = fd.totalExp + fd.totalInvest;
+    fd.totalInc = fd.totalExp + fd.totalInvest;
+  }
+
   if (empty)  empty.style.display  = 'none';
   canvas.style.display = 'block';
 
