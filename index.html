@@ -43118,14 +43118,15 @@ function _sankeyZones(W) {
 }
 
 // ── Layout engine ──────────────────────────────────────────────────────────
-function _layoutSankey(nodes, W, H, pad) {
-  const GAP  = 5;
-  const z    = _sankeyZones(W);
-  const colX = [z.leftColX, z.midColX, z.rightColX];
-  const cols = [0,1,2].map(c => nodes.filter(n => n.col===c));
+function _layoutSankey(nodes, W, H, pad, botPad) {
+  const GAP    = 5;
+  const bPad   = botPad || pad;
+  const z      = _sankeyZones(W);
+  const colX   = [z.leftColX, z.midColX, z.rightColX];
+  const cols   = [0,1,2].map(c => nodes.filter(n => n.col===c));
 
   cols.forEach((col, ci) => {
-    const usableH  = H - pad * 2 - GAP * Math.max(0, col.length - 1);
+    const usableH  = H - pad - bPad - GAP * Math.max(0, col.length - 1);
     const totalVal = col.reduce((s,n) => s + n.value, 0) || 1;
     let y = pad;
     col.forEach(n => {
@@ -43192,10 +43193,11 @@ function renderSankeyFlow() {
   const leftCount  = nodes.filter(n => n.col === 0).length;
   const NODE_H_MIN = 28;  // min px per node
   const GAP_PX     = 5;   // gap between nodes
-  const PAD        = 20;  // top + bottom padding
+  const PAD        = 20;  // top padding
+  const BOT_PAD    = 48;  // extra bottom buffer — ensures last node label never clips
   // Height must fit the tallest column with minimum node heights + gaps
-  const minHRight  = rightCount * NODE_H_MIN + Math.max(0, rightCount - 1) * GAP_PX + PAD * 2;
-  const minHLeft   = leftCount  * NODE_H_MIN + Math.max(0, leftCount  - 1) * GAP_PX + PAD * 2;
+  const minHRight  = rightCount * NODE_H_MIN + Math.max(0, rightCount - 1) * GAP_PX + PAD + BOT_PAD;
+  const minHLeft   = leftCount  * NODE_H_MIN + Math.max(0, leftCount  - 1) * GAP_PX + PAD + BOT_PAD;
   const H          = Math.max(minHRight, minHLeft, 300);
   canvas.width     = W * 2; // retina
   canvas.height    = H * 2;
@@ -43216,7 +43218,7 @@ function renderSankeyFlow() {
   ctx.lineWidth = 1;
   for (let x=0; x<W; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
 
-  _layoutSankey(nodes, W, H, PAD);
+  _layoutSankey(nodes, W, H, PAD, BOT_PAD);
   const nodeMap = Object.fromEntries(nodes.map(n=>[n.id, n]));
 
   // Track flow offsets for link positioning
