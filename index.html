@@ -3853,7 +3853,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
       </div>
 
       <!-- Canvas container -->
-      <div id="flow-canvas-wrap" style="width:100%;overflow-x:hidden;overflow-y:visible;border-radius:16px;background:#0F172A;position:relative;">
+      <div id="flow-canvas-wrap" style="width:100%;overflow:visible;border-radius:16px;background:#0F172A;position:relative;margin-bottom:20px;">
         <canvas id="flow-sankey-canvas" style="width:100%;display:block;"></canvas>
         <div id="flow-empty-state" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);font-size:0.82em;font-weight:700;gap:8px;">
           <div style="font-size:2em;">🌊</div>
@@ -43194,16 +43194,18 @@ function renderSankeyFlow() {
   const NODE_H_MIN = 28;  // min px per node
   const GAP_PX     = 5;   // gap between nodes
   const PAD        = 20;  // top padding
-  const BOT_PAD    = 48;  // extra bottom buffer — ensures last node label never clips
-  // Height must fit the tallest column with minimum node heights + gaps
-  const minHRight  = rightCount * NODE_H_MIN + Math.max(0, rightCount - 1) * GAP_PX + PAD + BOT_PAD;
-  const minHLeft   = leftCount  * NODE_H_MIN + Math.max(0, leftCount  - 1) * GAP_PX + PAD + BOT_PAD;
-  const H          = Math.max(minHRight, minHLeft, 300);
+  const BOT_PAD    = 70;  // bottom buffer: layout stops here, leaving visible space
+  const CANVAS_EXTRA = 30; // canvas is this much taller than layout uses — pure dark bg below
+  // Layout height: fits all nodes with their min heights and gaps
+  const layoutHRight = rightCount * NODE_H_MIN + Math.max(0, rightCount - 1) * GAP_PX + PAD + BOT_PAD;
+  const layoutHLeft  = leftCount  * NODE_H_MIN + Math.max(0, leftCount  - 1) * GAP_PX + PAD + BOT_PAD;
+  const layoutH      = Math.max(layoutHRight, layoutHLeft, 300);
+  // Canvas is layout height + extra breathing room at bottom
+  const H            = layoutH + CANVAS_EXTRA;
   canvas.width     = W * 2; // retina
   canvas.height    = H * 2;
   canvas.style.width   = W + 'px';
   canvas.style.height  = H + 'px';
-  wrap.style.minHeight = H + 'px';
   wrap.style.height    = H + 'px';
 
   const ctx = canvas.getContext('2d');
@@ -43218,7 +43220,7 @@ function renderSankeyFlow() {
   ctx.lineWidth = 1;
   for (let x=0; x<W; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
 
-  _layoutSankey(nodes, W, H, PAD, BOT_PAD);
+  _layoutSankey(nodes, W, layoutH, PAD, BOT_PAD);
   const nodeMap = Object.fromEntries(nodes.map(n=>[n.id, n]));
 
   // Track flow offsets for link positioning
