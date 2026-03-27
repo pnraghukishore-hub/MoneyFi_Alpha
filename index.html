@@ -3819,15 +3819,24 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 
       <!-- Controls bar -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-        <div style="display:flex;gap:4px;background:#F1F5F9;border-radius:10px;padding:3px;">
+        <!-- Period toggle -->
+        <div style="display:flex;gap:4px;background:#F1F5F9;border-radius:10px;padding:3px;flex-shrink:0;">
           <button id="flow-btn-month" onclick="setFlowPeriod('month')"
             style="padding:6px 14px;border-radius:8px;border:none;font-family:Nunito,sans-serif;font-weight:800;font-size:0.75em;cursor:pointer;background:var(--yellow);color:#1a1a1a;">Month</button>
           <button id="flow-btn-year" onclick="setFlowPeriod('year')"
             style="padding:6px 14px;border-radius:8px;border:none;font-family:Nunito,sans-serif;font-weight:800;font-size:0.75em;cursor:pointer;background:transparent;color:#6B7280;">Year</button>
         </div>
-        <div style="font-size:0.72em;font-weight:800;color:#9CA3AF;flex:1;text-align:right;" id="flow-period-label">March 2026</div>
+        <!-- Month/Year navigator -->
+        <div id="flow-month-nav" style="display:flex;align-items:center;gap:4px;flex:1;justify-content:center;">
+          <button onclick="flowNavigate(-1)"
+            style="background:#F1F5F9;border:none;border-radius:8px;width:30px;height:30px;font-size:1em;cursor:pointer;color:#374151;font-weight:900;display:flex;align-items:center;justify-content:center;">‹</button>
+          <div id="flow-period-label" style="font-size:0.78em;font-weight:900;color:#1E2A6E;min-width:110px;text-align:center;">March 2026</div>
+          <button onclick="flowNavigate(1)"
+            style="background:#F1F5F9;border:none;border-radius:8px;width:30px;height:30px;font-size:1em;cursor:pointer;color:#374151;font-weight:900;display:flex;align-items:center;justify-content:center;">›</button>
+        </div>
+        <!-- Share -->
         <button onclick="shareSankeyCard()" id="flow-share-btn"
-          style="background:linear-gradient(135deg,#1E2A6E,#4F46E5);color:#fff;border:none;border-radius:10px;padding:7px 14px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.72em;cursor:pointer;display:flex;align-items:center;gap:5px;">
+          style="background:linear-gradient(135deg,#1E2A6E,#4F46E5);color:#fff;border:none;border-radius:10px;padding:7px 14px;font-family:Nunito,sans-serif;font-weight:900;font-size:0.72em;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;">
           📤 Share
         </button>
       </div>
@@ -13987,6 +13996,7 @@ function switchROITab(tab) {
   if (tab === 'flow') {
     const p = document.getElementById('roi-panel-flow');
     if (p) p.style.display = '';
+    if (!_flowViewMonth) _flowViewMonth = viewMonth; // init to current month on first open
     renderSankeyFlow();
   }
 }
@@ -42920,8 +42930,29 @@ setTimeout(() => {
 // Pure canvas, zero dependencies. Landscape-optimised. Share-ready.
 // ══════════════════════════════════════════════════════════════════════════════
 
-let _flowPeriod = 'month'; // 'month' | 'year'
+let _flowPeriod     = 'month'; // 'month' | 'year'
+let _flowViewMonth  = '';      // tracks which month/year the Flow tab is viewing
 let _sankeyShareBlob = null;
+
+// ── Navigate Flow tab forward/backward ─────────────────────────────────────
+function flowNavigate(dir) {
+  const base = _flowViewMonth || viewMonth;
+  if (_flowPeriod === 'year') {
+    // Navigate by year
+    const yr = parseInt(base.slice(0,4)) + dir;
+    _flowViewMonth = yr + '-' + base.slice(5,7);
+  } else {
+    // Navigate by month
+    const [y, m] = base.split('-').map(Number);
+    const d = new Date(y, m - 1 + dir, 1);
+    _flowViewMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  }
+  // Clamp to current month — can't go into the future
+  const now = new Date();
+  const maxKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  if (_flowViewMonth > maxKey) _flowViewMonth = maxKey;
+  renderSankeyFlow();
+}
 
 // ── Colour palette ─────────────────────────────────────────────────────────
 const SANKEY_COLORS = {
@@ -42938,13 +42969,17 @@ const SANKEY_COLORS = {
 };
 
 function setFlowPeriod(period) {
-  _flowPeriod = period;
+  _flowPeriod    = period;
+  _flowViewMonth = viewMonth; // reset to current global month when switching period
   ['month','year'].forEach(p => {
     const btn = document.getElementById('flow-btn-'+p);
     if (!btn) return;
     btn.style.background  = p === period ? 'var(--yellow)' : 'transparent';
     btn.style.color       = p === period ? '#1a1a1a' : '#6B7280';
   });
+  // Show/hide nav arrows (hide for year view — navigate by year there too)
+  const nav = document.getElementById('flow-month-nav');
+  if (nav) nav.style.display = 'flex';
   renderSankeyFlow();
 }
 
@@ -42961,16 +42996,19 @@ function _collectFlowData() {
 
   let incomeEntries = [], expenseEntries = [], investEntries = [];
 
+  // Use flow-specific month if set, else fall back to global viewMonth
+  const flowMK = _flowViewMonth || viewMonth;
+
   if (_flowPeriod === 'month') {
-    incomeEntries  = getEntries(viewMonth, 'income');
-    expenseEntries = getEntries(viewMonth, 'expenses');
-    investEntries  = getEntries(viewMonth, 'investments');
-    const [yr, mo] = viewMonth.split('-');
+    incomeEntries  = getEntries(flowMK, 'income');
+    expenseEntries = getEntries(flowMK, 'expenses');
+    investEntries  = getEntries(flowMK, 'investments');
+    const [yr, mo] = flowMK.split('-');
     const lbl = new Date(+yr, +mo-1, 1).toLocaleDateString('en-US', {month:'long', year:'numeric'});
     const pl = document.getElementById('flow-period-label');
     if (pl) pl.textContent = lbl;
   } else {
-    const [yr] = viewMonth.split('-');
+    const [yr] = flowMK.split('-');
     // Collect all months for this year from both own data and family txns
     const allKeys = new Set([
       ...Object.keys(data).filter(k => k.startsWith(yr+'-') && /^\d{4}-\d{2}$/.test(k)),
@@ -43212,29 +43250,32 @@ function renderSankeyFlow() {
     ctx.font = `700 ${fontSize}px sans-serif`;
     ctx.fillStyle = '#fff';
 
-    const labelX = n.col === 0 ? n.x - 4       // left: right-aligned
-                 : n.col === 2 ? n.x + n.w + 4  // right: left-aligned
-                 : n.x + n.w/2;                  // middle: centred
+    // Label available width: left col gets leftLabelW-6px, right col gets rightLabelW-6px
+    const leftLabelW2  = Math.round(W * 0.19) - 6;
+    const rightLabelW2 = Math.round(W * 0.23) - 6;
+    const maxLblW = n.col === 0 ? leftLabelW2 : n.col === 2 ? rightLabelW2 : n.w + 40;
+
+    const labelX = n.col === 0 ? n.x - 4
+                 : n.col === 2 ? n.x + n.w + 4
+                 : n.x + n.w / 2;
     const labelAlign = n.col === 0 ? 'right' : n.col === 2 ? 'left' : 'center';
     ctx.textAlign = labelAlign;
 
-    const midY = n.y + n.h/2;
-    // Multi-line label for middle node
+    const midY = n.y + n.h / 2;
     const lines = n.label.split('\n');
     if (lines.length > 1) {
       const lineH = fontSize + 2;
       lines.forEach((line, i) => {
-        ctx.fillText(line, labelX, midY - ((lines.length-1)/2 - i) * lineH);
+        ctx.fillText(line, labelX, midY - ((lines.length - 1) / 2 - i) * lineH, maxLblW);
       });
     } else {
-      // Amount on second line if node tall enough
       if (n.h > 26) {
-        ctx.fillText(n.label, labelX, midY - 5);
-        ctx.font = `600 ${Math.max(7, fontSize-2)}px sans-serif`;
+        ctx.fillText(n.label, labelX, midY - 5, maxLblW);
+        ctx.font = `600 ${Math.max(7, fontSize - 2)}px sans-serif`;
         ctx.fillStyle = 'rgba(255,255,255,0.65)';
-        ctx.fillText(_sankeyFmt(n.value), labelX, midY + 7);
+        ctx.fillText(_sankeyFmt(n.value), labelX, midY + 7, maxLblW);
       } else {
-        ctx.fillText(n.label, labelX, midY + 4);
+        ctx.fillText(n.label, labelX, midY + 4, maxLblW);
       }
     }
 
