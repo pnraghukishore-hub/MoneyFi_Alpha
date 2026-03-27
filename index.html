@@ -7705,6 +7705,7 @@ function setHomeTab(tab) {
 
 let _pulseStories   = [];   // generated story stack for this session
 let _pulsePlayerIdx = 0;    // current story index in player
+let _annualMode     = false; // true when Annual Review player is active — keeps _annualSlides isolated
 let _pulseTimer     = null; // auto-advance interval
 let _pulsePaused    = false;
 let _pulseSegStart  = null; // timestamp when current seg started
@@ -8538,6 +8539,11 @@ function togglePulsePanel() {
 
 // ── Story Player ────────────────────────────────────────────────────
 function openPulsePlayer(idx) {
+  // If Annual Review is active, restore regular pulse stories first
+  if (_annualMode) {
+    _annualMode = false;
+    _pulseStories = _generatePulseStories();
+  }
   _pulsePlayerIdx = idx || 0;
   _renderStoryFrame();
   const overlay = document.getElementById('story-overlay');
@@ -8557,6 +8563,11 @@ function closePulsePlayer() {
   const overlay = document.getElementById('story-overlay');
   if (overlay) overlay.style.display = 'none';
   document.body.style.overflow = '';
+  // If closing Annual Review, reset flag and restore regular stories
+  if (_annualMode) {
+    _annualMode   = false;
+    _pulseStories = _generatePulseStories();
+  }
   // Restore floating elements
   const fabAdd = document.getElementById('fab-add-btn');
   const aiFab  = document.getElementById('ai-fab');
@@ -9034,28 +9045,70 @@ function _getGoalsSummary(year) {
 }
 
 // ── FHS arc (year start vs end) ────────────────────────────────────────────
-function _getFHSArc() {
+function _getFHSArc(year) {
   const profile = data._fhsProfile;
   if (!profile) return null;
-  let currentScore = 0, lastScore = 0;
+  let currentScore = 0;
+  let bestPillar   = null;
   try {
     const r = typeof computeFHSScore==='function' ? computeFHSScore() : null;
     currentScore = Math.round(r?.overallScore ?? r?.overall ?? r?.score ?? 0);
-    lastScore    = Math.round(profile.lastMonthScore || 0);
-  } catch(e) {}
-  if (!currentScore) return null;
-  const delta = currentScore - lastScore;
-  // Best pillar — from most recent computation
-  let bestPillar = null;
-  try {
-    const r2 = typeof computeFHSScore==='function' ? computeFHSScore() : null;
-    const pillars = r2?.pillarResults || [];
+    // Best pillar from live computation
+    const pillars = r?.pillarResults || [];
     if (pillars.length) {
       const best = pillars.reduce((mx,p)=> (p.score||0)>(mx?.score||0)?p:mx, pillars[0]);
-      bestPillar = {name: best.label||best.name||'Savings', score: Math.round(best.score||0)};
+      bestPillar = {name: best.label||best.name||'', score: Math.round(best.score||0)};
     }
   } catch(e) {}
-  return {current:currentScore, last:lastScore||null, delta, bestPillar};
+  if (!currentScore) return null;
+
+  // ── Use monthlyHistory for rich arc if available ───────────────────
+  const history   = profile.monthlyHistory || {};
+  const yr        = year || String(new Date().getFullYear() - 1);
+  const yrKeys    = Object.keys(history).filter(k => k.startsWith(yr+'-')).sort();
+
+  let startScore  = null, endScore = null;
+  let mostImproved = null;
+
+  if (yrKeys.length >= 2) {
+    startScore = history[yrKeys[0]].score;
+    endScore   = history[yrKeys[yrKeys.length-1]].score;
+    // Most improved pillar across year
+    const startPillars = history[yrKeys[0]].pillars   || {};
+    const endPillars   = history[yrKeys[yrKeys.length-1]].pillars || {};
+    let maxDelta = -Infinity, miKey = null;
+    Object.keys(endPillars).forEach(k => {
+      const delta = (endPillars[k]||0) - (startPillars[k]||0);
+      if (delta > maxDelta) { maxDelta = delta; miKey = k; }
+    });
+    if (miKey && maxDelta > 0) {
+      mostImproved = {
+        name:  miKey.replace(/_/g,' ').replace(/\w/g, c=>c.toUpperCase()),
+        start: startPillars[miKey]||0,
+        end:   endPillars[miKey]||0,
+        delta: maxDelta
+      };
+    }
+  } else if (yrKeys.length === 1) {
+    endScore = history[yrKeys[0]].score;
+  }
+
+  // Fallback: use lastMonthScore if no history
+  const lastFallback = Math.round(profile.lastMonthScore || 0);
+  const arcStart  = startScore ?? null;
+  const arcEnd    = endScore   ?? currentScore;
+  const delta     = arcStart !== null ? arcEnd - arcStart : currentScore - lastFallback;
+
+  return {
+    current:      currentScore,
+    last:         lastFallback || null,
+    arcStart,
+    arcEnd,
+    delta,
+    bestPillar,
+    mostImproved,
+    monthsTracked: yrKeys.length
+  };
 }
 
 // ── Compute the "One Big Move" ─────────────────────────────────────────────
@@ -9115,7 +9168,7 @@ function buildAnnualReview(year) {
   const nwDelta   = nwBounds.end - nwBounds.start;
   const sipData   = _getSIPConsistency(year);
   const goalsData = _getGoalsSummary(year);
-  const fhsArc    = _getFHSArc();
+  const fhsArc    = _getFHSArc(year);
   const bigMove   = _computeBigMove(nwBounds, savRate, goalsData, fhsArc, investTotal);
   const hasData   = (inc.length+exp.length+inv.length) > 0;
   const privacy   = window._nwHidden || false;
@@ -9216,11 +9269,18 @@ function buildAnnualReview(year) {
 
   // ── Slide 6: Financial Health Arc ────────────────────────────────────
   const fhsHeadline = fhsArc
-    ? (fhsArc.delta>0?'Your financial health improved':'Your financial health score this year')
+    ? (fhsArc.arcStart !== null && fhsArc.delta > 0
+        ? 'Your health score grew ' + (fhsArc.arcStart) + ' → ' + (fhsArc.arcEnd) + '/100'
+        : fhsArc.delta > 0 ? 'Your financial health improved this year'
+        : 'Your financial health score in ' + year)
     : 'Your financial health at a glance';
-  const fhsSubtext  = fhsArc
-    ? `Score: ${fhsArc.current}/100`+(fhsArc.last?` · ${fhsArc.delta>=0?'+':''}${fhsArc.delta} vs last tracked`:'')
-      +(fhsArc.bestPillar?` · Best pillar: ${fhsArc.bestPillar.name} (${fhsArc.bestPillar.score}/100)` : '')
+  const fhsSubtext = fhsArc
+    ? (fhsArc.arcStart !== null
+        ? 'Jan: ' + fhsArc.arcStart + '/100 → Dec: ' + fhsArc.arcEnd + '/100'
+            + (fhsArc.mostImproved ? ' · Most improved: ' + fhsArc.mostImproved.name : '')
+        : 'Score: ' + fhsArc.current + '/100'
+            + (fhsArc.last ? ' · ' + (fhsArc.delta >= 0 ? '+' : '') + fhsArc.delta + ' vs last tracked' : '')
+            + (fhsArc.bestPillar ? ' · Strongest: ' + fhsArc.bestPillar.name + ' (' + fhsArc.bestPillar.score + '/100)' : ''))
     : 'Complete your Financial Health Score setup to track your 13-pillar wellness arc.';
   const slide6 = {
     id:'annual_review_'+year+'_s6', type:'annualReview', isAnnual:true,
@@ -9288,7 +9348,8 @@ function openAnnualReviewPlayer() {
   if (bl) bl.textContent = 'YOUR '+year+' FINANCIAL REVIEW IS READY';
 
   // Inject into _pulseStories so the existing player renders them
-  _pulseStories = _annualSlides;
+  _annualMode     = true;   // flag: prevents regular openPulsePlayer colliding
+  _pulseStories   = _annualSlides;
   _pulsePlayerIdx = 0;
   _renderStoryFrame();
   const overlay = document.getElementById('story-overlay');
@@ -33842,15 +33903,40 @@ function computeFHSScore() {
   const scoreDelta = lastScore !== null ? overallScore - lastScore : 0;
   // Persist current score as last month's for next comparison (only update monthly)
   // Guard: skip if already in a save cycle to prevent cascade saves during render
-  const now = new Date(); const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
+  const now = new Date();
+  const monthKey    = `${now.getFullYear()}-${now.getMonth()}`;         // dedup key (existing — do not change)
+  const monthKeyMM  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; // YYYY-MM for history
   if (profile && profile._lastScoreMonth !== monthKey && !window._fhsScoreSaving) {
     window._fhsScoreSaving = true;
     try {
-      saveFHSProfileData({ ...profile, lastMonthScore: overallScore, _lastScoreMonth: monthKey });
+      // ── Build monthly history entry ───────────────────────────────────────
+      // Stores overall + per-pillar scores for Annual Review Slide 6 arc
+      const pillarSnapshot = {};
+      if (pillarResults && pillarResults.length) {
+        pillarResults.forEach(p => {
+          const key = (p.label||p.name||'').replace(/\s+/g,'_').toLowerCase().slice(0,20);
+          if (key) pillarSnapshot[key] = Math.round(p.score||0);
+        });
+      }
+      const existingHistory = profile.monthlyHistory || {};
+      const updatedHistory  = {
+        ...existingHistory,
+        [monthKeyMM]: { score: overallScore, pillars: pillarSnapshot }
+      };
+      // Keep last 24 months only (avoid unbounded growth)
+      const histKeys = Object.keys(updatedHistory).sort();
+      if (histKeys.length > 24) {
+        histKeys.slice(0, histKeys.length - 24).forEach(k => delete updatedHistory[k]);
+      }
+      saveFHSProfileData({
+        ...profile,
+        lastMonthScore:  overallScore,
+        _lastScoreMonth: monthKey,
+        monthlyHistory:  updatedHistory
+      });
     } catch(e) {
       console.warn('FHS monthly score save failed:', e);
     } finally {
-      // Always clear the flag — setTimeout as safety net for async paths
       setTimeout(() => { window._fhsScoreSaving = false; }, 2000);
     }
   }
