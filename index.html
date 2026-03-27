@@ -3279,7 +3279,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <span class="lab-tab-icon">🎯</span><span class="lab-tab-label">Plan</span>
       </button>
       <button class="lab-tab" onclick="switchROITab('flow');trackFeature('lab_flow')" id="roi-tab-flow">
-        <span class="lab-tab-icon">🌊</span><span class="lab-tab-label">Flow</span>
+        <span class="lab-tab-icon">🌊</span><span class="lab-tab-label">MoneyFlow</span>
       </button>
     </div>
   </div>
@@ -42945,29 +42945,38 @@ function setFlowPeriod(period) {
   renderSankeyFlow();
 }
 
-// ── Collect flow data from MoneyFi's existing data structure ───────────────
+// ── Collect flow data — merges own + family transactions ──────────────────
 function _collectFlowData() {
-  const s = sym();
+  const hasFam = !!(window._mfFamilyTxns && typeof mfGetFamilyMeta === 'function' && mfGetFamilyMeta());
+
+  // Helper: get entries for a monthKey + type, merging family txns
+  function getEntries(mk, type) {
+    const own = (data[mk] || {})[type] || [];
+    const fam = hasFam ? ((window._mfFamilyTxns[mk] || {})[type] || []) : [];
+    return [...own, ...fam];
+  }
+
   let incomeEntries = [], expenseEntries = [], investEntries = [];
 
   if (_flowPeriod === 'month') {
-    const m = data[viewMonth] || {};
-    incomeEntries  = (m.income      || []).map(t => ({...t}));
-    expenseEntries = (m.expenses    || []).map(t => ({...t}));
-    investEntries  = (m.investments || []).map(t => ({...t}));
-    // Period label
+    incomeEntries  = getEntries(viewMonth, 'income');
+    expenseEntries = getEntries(viewMonth, 'expenses');
+    investEntries  = getEntries(viewMonth, 'investments');
     const [yr, mo] = viewMonth.split('-');
-    const d = new Date(+yr, +mo-1, 1);
-    const lbl = d.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+    const lbl = new Date(+yr, +mo-1, 1).toLocaleDateString('en-US', {month:'long', year:'numeric'});
     const pl = document.getElementById('flow-period-label');
     if (pl) pl.textContent = lbl;
   } else {
     const [yr] = viewMonth.split('-');
-    Object.keys(data).filter(k => k.startsWith(yr+'-') && /^\d{4}-\d{2}$/.test(k)).forEach(k => {
-      const m = data[k] || {};
-      incomeEntries  = incomeEntries.concat(m.income      || []);
-      expenseEntries = expenseEntries.concat(m.expenses   || []);
-      investEntries  = investEntries.concat(m.investments || []);
+    // Collect all months for this year from both own data and family txns
+    const allKeys = new Set([
+      ...Object.keys(data).filter(k => k.startsWith(yr+'-') && /^\d{4}-\d{2}$/.test(k)),
+      ...(hasFam ? Object.keys(window._mfFamilyTxns).filter(k => k.startsWith(yr+'-')) : [])
+    ]);
+    allKeys.forEach(k => {
+      incomeEntries  = incomeEntries.concat(getEntries(k, 'income'));
+      expenseEntries = expenseEntries.concat(getEntries(k, 'expenses'));
+      investEntries  = investEntries.concat(getEntries(k, 'investments'));
     });
     const pl = document.getElementById('flow-period-label');
     if (pl) pl.textContent = yr + ' Full Year';
