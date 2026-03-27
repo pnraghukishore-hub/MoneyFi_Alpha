@@ -7829,9 +7829,13 @@ function _markPulseSeen(id) {
   const s=_getPulseSeen();
   if(!s.includes(id)){s.push(id);}
   try{sessionStorage.setItem(_pulseSeenKey(),JSON.stringify(s));}catch(e){}
-  // Mark rule cooldown when insight story is first viewed
+  // Mark rule cooldown on view — BUT NOT for P1 rules.
+  // P1 (Critical) rules persist until the underlying condition is resolved.
+  // P2/P3 rules go on cooldown after first view.
   const story = _pulseStories.find(st => st.id === id);
-  if (story?.isInsight && story?.ruleId) _markRuleFired(story.ruleId);
+  if (story?.isInsight && story?.ruleId && (story._rule?.priority || 3) > 1) {
+    _markRuleFired(story.ruleId);
+  }
 }
 
 // ── Copy bank — 10 variants per story type, seeded by day ──────────
@@ -8866,7 +8870,8 @@ function _ruleSIPMissed() {
 // RULE: EmergencyFundGap  (P1 — always surfaces when firing)
 // Fires when liquid assets < 3x monthly expense
 function _ruleEmergencyFundGap() {
-  if (_ruleOnCooldown('EmergencyFundGap')) return null;
+  // P1: EmergencyFundGap never suppressed by time-cooldown
+  // It will naturally stop firing when liquid >= 3x expenses
   const mk       = viewMonth;
   const monthExp = _ruleSum(_ruleTxns(mk, 'expenses'));
   if (monthExp < 100) return null;
@@ -8930,6 +8935,10 @@ function _ruleToStory(rule) {
   };
   const g = gradients[rule.priority] || gradients[3];
   const badges = { 1: '🚨 Action Needed', 2: '💡 Insight', 3: '📊 Insight' };
+  // P1: detail includes explicit dismiss option so user has control
+  const p1Detail = rule.priority === 1
+    ? (rule.detail || '') + ' This alert stays visible until the condition improves. Tap Snooze 7d to dismiss temporarily.'
+    : rule.detail || null;
   return {
     id:         'insight_' + rule.id + '_' + viewMonth,
     type:       'insight',
@@ -8943,13 +8952,22 @@ function _ruleToStory(rule) {
     badge:      badges[rule.priority] || '📊 Insight',
     headline:   rule.headline,
     subtext:    rule.subtext,
-    detail:     rule.detail || null,
+    detail:     p1Detail,
     label:      rule.priority === 1 ? 'Urgent' : 'Insight',
     shareMetric: rule.headline,
     cta:        rule.cta || 'Take Action →',
     ctaAction:  rule.ctaAction || (() => closePulsePlayer()),
+    // P1 stories show a secondary dismiss button
+    dismissable: rule.priority === 1,
     _rule:      rule,
   };
+}
+
+// ── Explicit dismiss: user can snooze a P1 for 7 days by choice ─────────────
+function dismissInsightRule(ruleId) {
+  _markRuleFired(ruleId);  // sets 7-day cooldown
+  closePulsePlayer();
+  showToast('Alert snoozed for 7 days. Fix the underlying issue to clear it permanently.', 3500);
 }
 
 // ── Mark rule as fired (called when story is opened) ─────────────────────────
@@ -8988,13 +9006,17 @@ function renderPulseRow() {
     return;
   }
 
-  const regularAvatars = _pulseStories.map((s, i) => `
-    <div class="pulse-avatar ${seen.includes(s.id)?'pulse-seen':''}" onclick="openPulsePlayer(${i})">
-      <div class="pulse-ring ${s.ringClass} ${seen.includes(s.id)?'':s.ringEffect}">
+  const regularAvatars = _pulseStories.map((s, i) => {
+    // P1 insight stories never grey out — they stay urgent until resolved
+    const isP1 = s.isInsight && (s._rule?.priority || 3) === 1;
+    const isSeen = seen.includes(s.id) && !isP1;
+    return `<div class="pulse-avatar ${isSeen?'pulse-seen':''}" onclick="openPulsePlayer(${i})">
+      <div class="pulse-ring ${s.ringClass} ${isSeen?'':s.ringEffect}">
         <div class="pulse-inner">${s.icon}</div>
       </div>
       <div class="pulse-label">${s.label}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   el.innerHTML = annualAvatarHTML + regularAvatars;
 }
@@ -9082,10 +9104,10 @@ function _renderStoryFrame() {
       ${s.detail ? `<div style="font-size:0.75em;font-weight:700;color:rgba(255,255,255,0.6);line-height:1.4;margin-bottom:16px;border-left:2px solid rgba(255,255,255,0.3);padding-left:10px;position:relative;z-index:12;">${s.detail}</div>` : ''}
       <div class="story-btn-row">
         <button class="story-cta" onclick="_storyCtaClick(${_pulsePlayerIdx})">${s.cta}</button>
-        <button onclick="generatePulseShareCard(_pulseStories[${_pulsePlayerIdx}])"
-          style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);border-radius:24px;padding:10px 16px;color:#fff;font-family:Nunito,sans-serif;font-weight:900;font-size:0.85em;cursor:pointer;backdrop-filter:blur(6px);flex-shrink:0;position:relative;z-index:12;">
-          📤 Share
-        </button>
+        ${s.dismissable
+          ? '<button onclick="dismissInsightRule(\''+s.ruleId+'\')" style="background:rgba(255,255,255,0.1);border:1.5px solid rgba(255,255,255,0.25);border-radius:24px;padding:10px 14px;color:rgba(255,255,255,0.65);font-family:Nunito,sans-serif;font-weight:800;font-size:0.75em;cursor:pointer;backdrop-filter:blur(6px);flex-shrink:0;position:relative;z-index:12;">Snooze 7d</button>'
+          : '<button onclick="generatePulseShareCard(_pulseStories['+_pulsePlayerIdx+'])" style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);border-radius:24px;padding:10px 16px;color:#fff;font-family:Nunito,sans-serif;font-weight:900;font-size:0.85em;cursor:pointer;backdrop-filter:blur(6px);flex-shrink:0;position:relative;z-index:12;">📤 Share</button>'
+        }
       </div>
     </div>`;
 
