@@ -8978,6 +8978,177 @@ function _markRuleFired(ruleId) {
 // END INTELLIGENCE ENGINE — Phase 1
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════
+// INTELLIGENCE ENGINE — Phase 2: Claude AI Narration Layer
+// Converts rule output → personalised 2-sentence insight via Claude API
+// Cache: localStorage, 24h per rule per month-key
+// Budget: separate daily cap (3 narrations/day) — does not touch chat quota
+// ══════════════════════════════════════════════════════════════════════════════
+
+const _INSIGHT_DAILY_CAP  = 3;    // max Claude narrations per day (cost control)
+const _INSIGHT_CACHE_HOURS = 24;  // cache duration in hours
+
+// ── Cache helpers ─────────────────────────────────────────────────────────────
+function _insightCacheKey(ruleId) {
+  return 'mfi_insight_' + ruleId + '_' + viewMonth;
+}
+
+function _getInsightCache(ruleId) {
+  try {
+    const raw  = localStorage.getItem(_insightCacheKey(ruleId));
+    if (!raw) return null;
+    const { text, ts } = JSON.parse(raw);
+    const ageHours = (Date.now() - ts) / (1000 * 60 * 60);
+    if (ageHours > _INSIGHT_CACHE_HOURS) return null;
+    return text;
+  } catch(e) { return null; }
+}
+
+function _setInsightCache(ruleId, text) {
+  try {
+    localStorage.setItem(_insightCacheKey(ruleId), JSON.stringify({ text, ts: Date.now() }));
+  } catch(e) {}
+}
+
+// ── Daily budget guard ────────────────────────────────────────────────────────
+function _insightBudgetKey() {
+  return 'mfi_insight_usage_' + new Date().toISOString().split('T')[0];
+}
+function _insightBudgetExceeded() {
+  const used = parseInt(localStorage.getItem(_insightBudgetKey()) || '0');
+  return used >= _INSIGHT_DAILY_CAP;
+}
+function _insightBudgetIncrement() {
+  const key  = _insightBudgetKey();
+  const used = parseInt(localStorage.getItem(key) || '0');
+  localStorage.setItem(key, String(used + 1));
+}
+
+// ── Build the narration prompt ────────────────────────────────────────────────
+function _buildInsightPrompt(rule) {
+  const profile   = data._fhsProfile || {};
+  const age       = profile.age || '?';
+  const region    = profile.region || 'US';
+  const isNRI     = !!(data._nwAccounts || []).some(a =>
+    a.currency && a.currency !== (currentCurrency?.code || 'USD'));
+
+  // 3-month avg income/expense for context
+  const mks    = [viewMonth, ...[1,2].map(i => {
+    const d = new Date(); d.setMonth(d.getMonth() - i);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  })];
+  const avgInc = mks.map(mk => _ruleSum(_ruleTxns(mk,'income'))).reduce((a,b)=>a+b,0) / 3;
+  const avgExp = mks.map(mk => _ruleSum(_ruleTxns(mk,'expenses'))).reduce((a,b)=>a+b,0) / 3;
+  const savRate = avgInc > 0 ? Math.round((avgInc-avgExp)/avgInc*100) : 0;
+
+  // Active goals (top 2)
+  const goals = (data._goals||[])
+    .filter(g => Number(g.target||0) > 0 && Number(g.fundedAmount||g.currentAmount||0) < Number(g.target||0))
+    .slice(0,2)
+    .map(g => g.name || 'Goal');
+
+  const userCtx = [
+    'Age: ' + age,
+    'Region: ' + region,
+    isNRI ? 'NRI with multi-currency finances (USD+INR' + (region==='AE'?'+AED':'') + ')' : '',
+    'Avg monthly income: ' + fmt(avgInc),
+    'Avg monthly expenses: ' + fmt(avgExp),
+    'Savings rate: ' + savRate + '%',
+    goals.length ? 'Active goals: ' + goals.join(', ') : '',
+    'Currency: ' + (currentCurrency?.code || 'USD'),
+  ].filter(Boolean).join('. ');
+
+  return `You are MoneyFi, a private personal finance assistant for an NRI user.
+
+A financial rule fired. Write ONE insight about it. Strict rules:
+- Exactly 2 sentences maximum
+- First sentence: state the specific finding with the exact number
+- Second sentence: one concrete action they can take TODAY or this week
+- Use the exact currency amounts provided — never round dramatically
+- Tone: direct trusted friend, not a financial advisor
+- Never use "consider", "you might want to", "it may be worth"
+- Never give generic advice — everything must reference the specific numbers below
+- If the user is NRI, you may reference cross-border implications if relevant
+
+Rule that fired: ${rule.id}
+Finding: ${rule.headline}
+Detail: ${rule.subtext}
+${rule.data ? 'Data: ' + JSON.stringify(rule.data) : ''}
+
+User context: ${userCtx}
+
+Write only the insight. No preamble, no sign-off.`;
+}
+
+// ── Call Claude API for narration ─────────────────────────────────────────────
+async function _fetchInsightNarration(rule) {
+  try {
+    const response = await fetch(_AI_PROXY_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 120,   // 2 sentences max — tight cap = low cost
+        system:     'You are a concise financial insight engine. Respond with exactly 1-2 sentences.',
+        messages:   [{ role: 'user', content: _buildInsightPrompt(rule) }],
+      }),
+    });
+    if (!response.ok) return null;
+    const d = await response.json();
+    return d.content?.[0]?.text?.trim() || null;
+  } catch(e) {
+    console.warn('[Insight] API call failed:', e.message);
+    return null;
+  }
+}
+
+// ── Main entry: get narration for a rule (cache-first) ────────────────────────
+async function getInsightNarration(rule) {
+  // 1. Check cache first — free
+  const cached = _getInsightCache(rule.id);
+  if (cached) return { text: cached, source: 'cache' };
+
+  // 2. Check daily budget
+  if (_insightBudgetExceeded()) {
+    return { text: null, source: 'budget_exceeded' };
+  }
+
+  // 3. Call API
+  const text = await _fetchInsightNarration(rule);
+  if (!text) return { text: null, source: 'api_error' };
+
+  // 4. Cache + increment budget
+  _setInsightCache(rule.id, text);
+  _insightBudgetIncrement();
+  return { text, source: 'api' };
+}
+
+// ── Upgrade story subtext with AI narration in-place ──────────────────────────
+// Called when the Pulse player opens an insight story.
+// Replaces the plain-text subtext with the AI-narrated version silently.
+async function upgradeInsightStoryWithAI(storyIdx) {
+  const story = _pulseStories[storyIdx];
+  if (!story?.isInsight || !story?._rule) return;
+
+  const rule = story._rule;
+  const result = await getInsightNarration(rule);
+  if (!result.text) return;
+
+  // Update the story object in place
+  story.subtext = result.text;
+  story._aiNarrated = true;
+  story._aiSource   = result.source;
+
+  // Re-render the current frame if this story is active
+  if (_pulsePlayerIdx === storyIdx) {
+    _renderStoryFrame();
+  }
+}
+// ══════════════════════════════════════════════════════════════════════════════
+// END INTELLIGENCE ENGINE — Phase 2
+// ══════════════════════════════════════════════════════════════════════════════
+
+
 // ── Pulse Row Renderer ──────────────────────────────────────────────
 function renderPulseRow() {
   const el = document.getElementById('pulse-row');
@@ -9084,6 +9255,13 @@ function _renderStoryFrame() {
   if (!s) { closePulsePlayer(); return; }
   _markPulseSeen(s.id);
 
+  // Phase 2: kick off AI narration for insight stories (async, non-blocking)
+  // If cache hit: updates subtext before render completes
+  // If API call: updates subtext and re-renders silently when ready
+  if (s.isInsight && s._rule && !s._aiNarrated) {
+    upgradeInsightStoryWithAI(_pulsePlayerIdx).catch(() => {});
+  }
+
   const total = _pulseStories.length;
   const segs = Array.from({length: total}, (_,i) => {
     if (i < _pulsePlayerIdx) return `<div class="story-seg"><div class="story-seg-fill" style="width:100%;"></div></div>`;
@@ -9102,6 +9280,7 @@ function _renderStoryFrame() {
       <div class="story-headline">${s.headline}</div>
       <div class="story-subtext">${s.subtext}</div>
       ${s.detail ? `<div style="font-size:0.75em;font-weight:700;color:rgba(255,255,255,0.6);line-height:1.4;margin-bottom:16px;border-left:2px solid rgba(255,255,255,0.3);padding-left:10px;position:relative;z-index:12;">${s.detail}</div>` : ''}
+      ${s._aiNarrated ? `<div style="font-size:0.62em;font-weight:800;color:rgba(255,255,255,0.3);margin-bottom:12px;position:relative;z-index:12;">✨ AI-personalised insight</div>` : ''}
       <div class="story-btn-row">
         <button class="story-cta" onclick="_storyCtaClick(${_pulsePlayerIdx})">${s.cta}</button>
         ${s.dismissable
