@@ -294,6 +294,8 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
     .pulse-ring.ring-amber  { background:conic-gradient(#F97316,#FDE68A,#F97316); }
     .pulse-ring.ring-blue   { background:conic-gradient(#3B82F6,#BAE6FD,#3B82F6); }
     .pulse-ring.ring-red    { background:conic-gradient(#EF4444,#FCA5A5,#EF4444); }
+    .pulse-ring.ring-indigo { background:conic-gradient(#6366F1,#C7D2FE,#6366F1); }
+    .pulse-ring.ring-red    { background:conic-gradient(#EF4444,#FCA5A5,#EF4444); }
     .pulse-ring.glow        { box-shadow:0 0 12px 3px rgba(245,158,11,0.55); animation:pulseGlow 2s ease-in-out infinite; }
     .pulse-ring.pulse-amber { animation:pulseAmber 1.6s ease-in-out infinite; }
     @keyframes pulseGlow  { 0%,100%{box-shadow:0 0 10px 2px rgba(245,158,11,0.5);}  50%{box-shadow:0 0 20px 6px rgba(245,158,11,0.75);} }
@@ -7823,7 +7825,14 @@ const PULSE_DURATION = 4000; // 4s per story
 // ── Seen state (persisted per day) ─────────────────────────────────
 function _pulseSeenKey() { return 'mfi_pulse_seen_' + new Date().toISOString().slice(0,10); }
 function _getPulseSeen()  { try { return JSON.parse(sessionStorage.getItem(_pulseSeenKey())||'[]'); } catch(e) { return []; } }
-function _markPulseSeen(id) { const s=_getPulseSeen(); if(!s.includes(id)){s.push(id);} try{sessionStorage.setItem(_pulseSeenKey(),JSON.stringify(s));}catch(e){} }
+function _markPulseSeen(id) {
+  const s=_getPulseSeen();
+  if(!s.includes(id)){s.push(id);}
+  try{sessionStorage.setItem(_pulseSeenKey(),JSON.stringify(s));}catch(e){}
+  // Mark rule cooldown when insight story is first viewed
+  const story = _pulseStories.find(st => st.id === id);
+  if (story?.isInsight && story?.ruleId) _markRuleFired(story.ruleId);
+}
 
 // ── Copy bank — 10 variants per story type, seeded by day ──────────
 const _COPY = {
@@ -8099,6 +8108,15 @@ function _copyVariant(type) {
 // ── Story Aggregator ────────────────────────────────────────────────
 function _generatePulseStories() {
   const stories = [];
+
+  // ── Intelligence Engine: inject firing rules as insight stories ─────────
+  try {
+    const firingRules = runRuleEngine();
+    firingRules.slice(0, 2).forEach(rule => { // max 2 insight stories at once
+      stories.push(_ruleToStory(rule));
+    });
+  } catch(e) { console.warn('[RuleEngine] Pulse injection failed:', e); }
+  // ─────────────────────────────────────────────────────────────────────────
   const sym = currentCurrency?.symbol || '$';
   const profile = getFHSProfile();
   const agg = typeof getFHSMonthlyAggregates === 'function' ? getFHSMonthlyAggregates(6, profile) : null;
@@ -8577,6 +8595,7 @@ function _generatePulseStories() {
   // Sort: unseen first, then by impact
   const seen = _getPulseSeen();
   const order = [
+    'insight',
     'goalAchieved','debtFree','nwMilestone','fireMilestone',
     'savingsRateRecord','lowestSpendMonth','lifestyleCreep',
     'freedomGain','fridayFreedom','shieldStrength','savingsStreak',
@@ -8593,6 +8612,353 @@ function _generatePulseStories() {
 
   return stories.slice(0, 5);
 }
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MONEYFI INTELLIGENCE ENGINE — Phase 1: Ruling Engine
+// Blueprint: Weekend Sprint · Category A (Spending Drift) + B (Savings Opportunity)
+// Each rule: pure function → reads data → fires or stays silent
+// Cooldowns stored in localStorage. Priority determines Pulse order.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Cooldown helpers ──────────────────────────────────────────────────────────
+const RULE_COOLDOWNS = {
+  CategorySpike:      21, // days
+  LifestyleCreep:     14,
+  SubscriptionGrowth: 30,
+  SurplusIdle:        14,
+  SIPMissed:          21,
+  EmergencyFundGap:    7,
+};
+const RULE_PRIORITY = {
+  EmergencyFundGap:    1, // P1 — Critical
+  SurplusIdle:         2, // P2 — High
+  LifestyleCreep:      2,
+  CategorySpike:       3, // P3 — Standard
+  SIPMissed:           3,
+  SubscriptionGrowth:  3,
+};
+
+function _ruleCooldownKey(ruleId) {
+  return 'mfi_rule_' + ruleId + '_lastFired';
+}
+function _ruleOnCooldown(ruleId) {
+  const last = localStorage.getItem(_ruleCooldownKey(ruleId));
+  if (!last) return false;
+  const days = (Date.now() - Number(last)) / (1000 * 60 * 60 * 24);
+  return days < (RULE_COOLDOWNS[ruleId] || 14);
+}
+function _ruleMarkFired(ruleId) {
+  try { localStorage.setItem(_ruleCooldownKey(ruleId), String(Date.now())); } catch(e) {}
+}
+
+// ── Month key helpers ─────────────────────────────────────────────────────────
+function _ruleGetMonthKeys(n) {
+  // Returns last n month keys in reverse order (most recent first)
+  const keys = [];
+  const now = new Date();
+  for (let i = 0; i < n; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    keys.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+  }
+  return keys;
+}
+
+// ── Get all txns for a month (own + family) ───────────────────────────────────
+function _ruleTxns(mk, type) {
+  const own = (data[mk] || {})[type] || [];
+  const fam = (window._mfFamilyTxns && window._mfFamilyTxns[mk])
+    ? (window._mfFamilyTxns[mk][type] || []) : [];
+  return [...own, ...fam];
+}
+
+// ── Convert amount to display currency safely ─────────────────────────────────
+function _ruleAmt(amount, currency) {
+  try { return convertAmt(Number(amount) || 0, currency || currentCurrency?.code); }
+  catch(e) { return Number(amount) || 0; }
+}
+
+// ── Sum transactions ──────────────────────────────────────────────────────────
+function _ruleSum(txns) {
+  return txns.reduce((s, t) => s + _ruleAmt(t.amount, t.currency), 0);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CATEGORY A — SPENDING DRIFT RULES
+// ══════════════════════════════════════════════════════════════════════════════
+
+// RULE: CategorySpike
+// Fires when a category is 30%+ above its 3-month rolling average, > $50 absolute
+function _ruleCategorySpike() {
+  if (_ruleOnCooldown('CategorySpike')) return null;
+  const [cur, m1, m2, m3] = _ruleGetMonthKeys(4);
+  const curExp  = _ruleTxns(cur, 'expenses');
+  const priorMK = [m1, m2, m3];
+
+  // Build category totals for current month
+  const curCats = {};
+  curExp.forEach(t => {
+    const c = t.category || 'Other';
+    curCats[c] = (curCats[c] || 0) + _ruleAmt(t.amount, t.currency);
+  });
+
+  // Build 3-month averages
+  const avgCats = {};
+  priorMK.forEach(mk => {
+    _ruleTxns(mk, 'expenses').forEach(t => {
+      const c = t.category || 'Other';
+      avgCats[c] = (avgCats[c] || 0) + _ruleAmt(t.amount, t.currency);
+    });
+  });
+  Object.keys(avgCats).forEach(c => { avgCats[c] /= 3; });
+
+  // Find biggest spike
+  let maxSpike = null;
+  Object.entries(curCats).forEach(([cat, curAmt]) => {
+    const avg = avgCats[cat] || 0;
+    if (avg < 10) return; // ignore new categories with no history
+    const spike = curAmt - avg;
+    const pct   = avg > 0 ? (spike / avg) * 100 : 0;
+    if (pct >= 30 && spike >= 50) {
+      if (!maxSpike || spike > maxSpike.spike) {
+        maxSpike = { cat, curAmt, avg, spike, pct: Math.round(pct) };
+      }
+    }
+  });
+
+  if (!maxSpike) return null;
+  return {
+    id:       'CategorySpike',
+    priority: RULE_PRIORITY.CategorySpike,
+    data:     maxSpike,
+    headline: maxSpike.cat + ' spending up ' + maxSpike.pct + '% this month',
+    subtext:  fmt(maxSpike.curAmt) + ' this month vs ' + fmt(maxSpike.avg) + ' average — ' + fmt(maxSpike.spike) + ' above your normal.',
+    detail:   'Reducing ' + maxSpike.cat + ' spend by ' + fmt(Math.round(maxSpike.spike / 2)) + ' this fortnight keeps you on track.',
+    cta:      'See Transactions →',
+    ctaAction: () => { closePulsePlayer(); switchScreen('tx', document.querySelectorAll('.nav-item')[1]); }
+  };
+}
+
+// RULE: LifestyleCreep
+// Fires when total spending has grown for 3+ consecutive months
+function _ruleLifestyleCreep() {
+  if (_ruleOnCooldown('LifestyleCreep')) return null;
+  const months = _ruleGetMonthKeys(4);
+  const totals = months.map(mk => _ruleSum(_ruleTxns(mk, 'expenses')));
+  // totals[0]=current, [1]=last, [2]=2months ago, [3]=3months ago
+  if (totals[2] <= 0 || totals[3] <= 0) return null;
+  // Check 3 consecutive months of growth (oldest→newest)
+  if (!(totals[2] > totals[3] && totals[1] > totals[2] && totals[0] > totals[1])) return null;
+  const drift     = totals[0] - totals[3];
+  const driftPct  = Math.round(drift / totals[3] * 100);
+  if (driftPct < 8) return null;
+  return {
+    id:       'LifestyleCreep',
+    priority: RULE_PRIORITY.LifestyleCreep,
+    data:     { drift, driftPct, months: 3 },
+    headline: 'Spending has grown ' + driftPct + '% over 3 months',
+    subtext:  'Total spend up ' + fmt(drift) + ' since ' + months[3].slice(0, 7) + '. That is ' + fmt(drift * 12) + ' extra per year if this continues.',
+    detail:   'Lifestyle creep is silent. Catching it here means you can reverse it before it compounds.',
+    cta:      'See Budget →',
+    ctaAction: () => { closePulsePlayer(); switchScreen('budget', document.querySelector('.nav-item:nth-child(3)')); }
+  };
+}
+
+// RULE: SubscriptionGrowth
+// Fires when 2+ new small recurring transactions appear vs prior 60 days
+function _ruleSubscriptionGrowth() {
+  if (_ruleOnCooldown('SubscriptionGrowth')) return null;
+  const [cur, m1, m2] = _ruleGetMonthKeys(3);
+  const isSmallRecurring = (t) => {
+    const a = _ruleAmt(t.amount, t.currency);
+    return a >= 3 && a <= 60;
+  };
+  const curTxns   = _ruleTxns(cur, 'expenses').filter(isSmallRecurring);
+  const priorTxns = [..._ruleTxns(m1, 'expenses'), ..._ruleTxns(m2, 'expenses')].filter(isSmallRecurring);
+  // Build description fingerprints
+  const fingerprint = (t) => (t.description || t.category || '').toLowerCase().slice(0, 12);
+  const priorFP  = new Set(priorTxns.map(fingerprint));
+  const newSubs  = curTxns.filter(t => !priorFP.has(fingerprint(t)));
+  if (newSubs.length < 2) return null;
+  const newTotal = newSubs.reduce((s, t) => s + _ruleAmt(t.amount, t.currency), 0);
+  return {
+    id:       'SubscriptionGrowth',
+    priority: RULE_PRIORITY.SubscriptionGrowth,
+    data:     { count: newSubs.length, total: newTotal, subs: newSubs.slice(0, 3) },
+    headline: newSubs.length + ' new recurring charges this month',
+    subtext:  fmt(newTotal) + '/month in new small charges — ' + fmt(newTotal * 12) + '/year. Review which ones you actually use.',
+    detail:   'Small subscriptions compound. ' + newSubs.length + ' new charges at ' + fmt(newTotal) + ' = ' + fmt(newTotal * 12) + ' per year.',
+    cta:      'See Transactions →',
+    ctaAction: () => { closePulsePlayer(); switchScreen('tx', document.querySelectorAll('.nav-item')[1]); }
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CATEGORY B — SAVINGS OPPORTUNITY RULES
+// ══════════════════════════════════════════════════════════════════════════════
+
+// RULE: SurplusIdle
+// Fires when Net Retained > 15% for 2+ months AND no investment recorded
+function _ruleSurplusIdle() {
+  if (_ruleOnCooldown('SurplusIdle')) return null;
+  const [cur, m1] = _ruleGetMonthKeys(2);
+  const calcRetained = (mk) => {
+    const inc  = _ruleSum(_ruleTxns(mk, 'income'));
+    const exp  = _ruleSum(_ruleTxns(mk, 'expenses'));
+    const inv  = _ruleSum(_ruleTxns(mk, 'investments'));
+    const ret  = inc - exp - inv;
+    const pct  = inc > 0 ? (ret / inc) * 100 : 0;
+    const hasInv = _ruleTxns(mk, 'investments').length > 0;
+    return { retained: ret, pct, hasInv, inc };
+  };
+  const curM = calcRetained(cur);
+  const lstM = calcRetained(m1);
+  if (curM.inc < 100 || lstM.inc < 100) return null;
+  if (curM.retained < 200) return null;
+  if (curM.pct < 15 || lstM.pct < 15) return null;
+  if (curM.hasInv) return null; // already investing this month — good
+  const topGoal = (data._goals || []).find(g => {
+    const f = Number(g.fundedAmount || g.currentAmount || 0);
+    const t = Number(g.target || g.targetAmount || 0);
+    return t > 0 && f < t;
+  });
+  const goalHint = topGoal
+    ? ' Consider moving some toward ' + (topGoal.name || 'your goal') + '.'
+    : ' Consider moving some to investments or a goal.';
+  return {
+    id:       'SurplusIdle',
+    priority: RULE_PRIORITY.SurplusIdle,
+    data:     { retained: curM.retained, pct: Math.round(curM.pct), months: 2 },
+    headline: fmt(curM.retained) + ' retained — none deployed',
+    subtext:  Math.round(curM.pct) + '% of income retained this month (and last). Money sitting idle loses to inflation.' + goalHint,
+    detail:   'Retained cash is good. Retained cash with no plan is a missed opportunity.',
+    cta:      'See Goals →',
+    ctaAction: () => { closePulsePlayer(); switchScreen('budget', document.querySelector('.nav-item:nth-child(3)')); setTimeout(() => setBudgetTab && setBudgetTab('goals', null), 300); }
+  };
+}
+
+// RULE: SIPMissed
+// Fires when investment txns are absent this month but present in 3 prior months
+function _ruleSIPMissed() {
+  if (_ruleOnCooldown('SIPMissed')) return null;
+  const [cur, m1, m2, m3] = _ruleGetMonthKeys(4);
+  const curInv  = _ruleTxns(cur, 'investments').length;
+  const priorHad = [m1, m2, m3].filter(mk => _ruleTxns(mk, 'investments').length > 0).length;
+  if (curInv > 0) return null;       // investing this month — no fire
+  if (priorHad < 2) return null;     // not enough history to call it a streak
+  const streak = priorHad;
+  const avgInv = [m1, m2, m3]
+    .map(mk => _ruleSum(_ruleTxns(mk, 'investments')))
+    .filter(v => v > 0);
+  const avgAmt = avgInv.length ? avgInv.reduce((s,v)=>s+v,0)/avgInv.length : 0;
+  return {
+    id:       'SIPMissed',
+    priority: RULE_PRIORITY.SIPMissed,
+    data:     { streak, avgAmt },
+    headline: 'No investment recorded this month',
+    subtext:  'You invested in ' + streak + ' of the last 3 months (avg ' + fmt(avgAmt) + '). Breaking the streak here means missing compounding.',
+    detail:   'A missed month is not a crisis — but make it up before month-end.',
+    cta:      'Add Investment →',
+    ctaAction: () => { closePulsePlayer(); setTimeout(() => openQuickAdd('investment', null), 300); }
+  };
+}
+
+// RULE: EmergencyFundGap  (P1 — always surfaces when firing)
+// Fires when liquid assets < 3x monthly expense
+function _ruleEmergencyFundGap() {
+  if (_ruleOnCooldown('EmergencyFundGap')) return null;
+  const mk       = viewMonth;
+  const monthExp = _ruleSum(_ruleTxns(mk, 'expenses'));
+  if (monthExp < 100) return null;
+  const target3x = monthExp * 3;
+  // Sum liquid accounts: checking, savings, cash, emergency
+  const liquidTypes = new Set(['checking','savings_acc','cash','emergency','bank_checking_us']);
+  const liquid = (data._nwAccounts || [])
+    .filter(a => liquidTypes.has(a.type))
+    .reduce((s, a) => {
+      const val = typeof nwConvert === 'function' && a.currency && a.currency !== (currentCurrency?.code||'USD')
+        ? nwConvert(a.balance||0, a.currency) : (a.balance||0);
+      return s + val;
+    }, 0);
+  if (liquid <= 0) return null;
+  if (liquid >= target3x) return null;
+  const covered   = liquid / monthExp;
+  const gap       = target3x - liquid;
+  if (gap < 500) return null;
+  return {
+    id:       'EmergencyFundGap',
+    priority: RULE_PRIORITY.EmergencyFundGap,
+    data:     { liquid, target3x, gap, covered: covered.toFixed(1) },
+    headline: 'Emergency fund covers ' + covered.toFixed(1) + ' months',
+    subtext:  fmt(liquid) + ' liquid vs ' + fmt(target3x) + ' target (3 months). Gap: ' + fmt(gap) + '. This is your financial safety net.',
+    detail:   'Before investing more, close this gap. A single unexpected expense could force you to liquidate investments at a loss.',
+    cta:      'See Net Worth →',
+    ctaAction: () => { closePulsePlayer(); switchScreen('networth', document.querySelector('.nav-item:nth-child(4)')); }
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RULE ENGINE — evaluates all rules, returns priority-ranked firing rules
+// ══════════════════════════════════════════════════════════════════════════════
+function runRuleEngine() {
+  const firing = [];
+  const runners = [
+    _ruleEmergencyFundGap,  // P1 first
+    _ruleSurplusIdle,
+    _ruleLifestyleCreep,
+    _ruleCategorySpike,
+    _ruleSIPMissed,
+    _ruleSubscriptionGrowth,
+  ];
+  runners.forEach(fn => {
+    try {
+      const result = fn();
+      if (result) firing.push(result);
+    } catch(e) { console.warn('[RuleEngine] Rule failed:', e); }
+  });
+  // Sort by priority (lower = more urgent)
+  firing.sort((a, b) => (a.priority||9) - (b.priority||9));
+  return firing;
+}
+
+// ── Convert a firing rule into a Pulse story object ───────────────────────────
+function _ruleToStory(rule) {
+  const gradients = {
+    1: { from: '#3D0000', to: '#DC2626' },  // P1 red
+    2: { from: '#0A2E1A', to: '#059669' },  // P2 green
+    3: { from: '#1E2A6E', to: '#4F46E5' },  // P3 indigo
+  };
+  const g = gradients[rule.priority] || gradients[3];
+  const badges = { 1: '🚨 Action Needed', 2: '💡 Insight', 3: '📊 Insight' };
+  return {
+    id:         'insight_' + rule.id + '_' + viewMonth,
+    type:       'insight',
+    isInsight:  true,
+    ruleId:     rule.id,
+    icon:       rule.priority === 1 ? '🚨' : rule.priority === 2 ? '💡' : '📊',
+    ringClass:  rule.priority === 1 ? 'ring-red' : rule.priority === 2 ? 'ring-green' : 'ring-blue',
+    ringEffect: rule.priority <= 2 ? 'glow' : '',
+    gradFrom:   g.from,
+    gradTo:     g.to,
+    badge:      badges[rule.priority] || '📊 Insight',
+    headline:   rule.headline,
+    subtext:    rule.subtext,
+    detail:     rule.detail || null,
+    label:      rule.priority === 1 ? 'Urgent' : 'Insight',
+    shareMetric: rule.headline,
+    cta:        rule.cta || 'Take Action →',
+    ctaAction:  rule.ctaAction || (() => closePulsePlayer()),
+    _rule:      rule,
+  };
+}
+
+// ── Mark rule as fired (called when story is opened) ─────────────────────────
+function _markRuleFired(ruleId) {
+  if (ruleId) _ruleMarkFired(ruleId);
+}
+// ══════════════════════════════════════════════════════════════════════════════
+// END INTELLIGENCE ENGINE — Phase 1
+// ══════════════════════════════════════════════════════════════════════════════
 
 // ── Pulse Row Renderer ──────────────────────────────────────────────
 function renderPulseRow() {
