@@ -43105,24 +43105,35 @@ function _buildSankeyModel(fd) {
   return { nodes, links, totalInc };
 }
 
+// ── Shared label zone constants (used by layout + label rendering) ──────────
+// Left labels right-aligned into leftZone, right labels left-aligned into rightZone
+function _sankeyZones(W) {
+  const nodeW      = Math.min(18, W * 0.030);
+  const leftZone   = Math.round(W * 0.26);  // 26% for left labels
+  const rightZone  = Math.round(W * 0.26);  // 26% for right labels
+  const leftColX   = leftZone;
+  const rightColX  = W - rightZone - nodeW;
+  const midColX    = Math.round((leftColX + rightColX) / 2 - nodeW / 2);
+  return { nodeW, leftZone, rightZone, leftColX, rightColX, midColX };
+}
+
 // ── Layout engine ──────────────────────────────────────────────────────────
 function _layoutSankey(nodes, W, H, pad) {
-  const GAP = 6;
-  // Separate into columns
+  const GAP  = 5;
+  const z    = _sankeyZones(W);
+  const colX = [z.leftColX, z.midColX, z.rightColX];
   const cols = [0,1,2].map(c => nodes.filter(n => n.col===c));
-  const nodeW = Math.min(24, W * 0.045);
-  const colX  = [pad, W/2 - nodeW/2, W - pad - nodeW];
 
   cols.forEach((col, ci) => {
-    const totalH = H - pad*2 - GAP*(col.length-1);
-    const totalVal = col.reduce((s,n)=>s+n.value,0) || 1;
+    const usableH  = H - pad * 2 - GAP * Math.max(0, col.length - 1);
+    const totalVal = col.reduce((s,n) => s + n.value, 0) || 1;
     let y = pad;
     col.forEach(n => {
       n.x = colX[ci];
-      n.w = nodeW;
-      n.h = Math.max(14, (n.value / totalVal) * totalH);
+      n.w = z.nodeW;
+      n.h = Math.max(12, (n.value / totalVal) * usableH);
       n.y = y;
-      y += n.h + GAP;
+      y  += n.h + GAP;
     });
   });
   return nodes;
@@ -43186,7 +43197,7 @@ function renderSankeyFlow() {
 
   const ctx = canvas.getContext('2d');
   ctx.scale(2, 2); // retina
-  const PAD = isLandscape ? 20 : 14;
+  const PAD = 18; // uniform padding — gives bottom nodes breathing room
 
   // Background
   ctx.fillStyle = SANKEY_COLORS.bg;
@@ -43250,10 +43261,11 @@ function renderSankeyFlow() {
     ctx.font = `700 ${fontSize}px sans-serif`;
     ctx.fillStyle = '#fff';
 
-    // Label available width: left col gets leftLabelW-6px, right col gets rightLabelW-6px
-    const leftLabelW2  = Math.round(W * 0.19) - 6;
-    const rightLabelW2 = Math.round(W * 0.23) - 6;
-    const maxLblW = n.col === 0 ? leftLabelW2 : n.col === 2 ? rightLabelW2 : n.w + 40;
+    // Label max width from shared zone constants
+    const _z      = _sankeyZones(W);
+    const maxLblW = n.col === 0 ? (_z.leftZone  - _z.nodeW - 6)
+                  : n.col === 2 ? (_z.rightZone - _z.nodeW - 6)
+                  : _z.nodeW + 50;
 
     const labelX = n.col === 0 ? n.x - 4
                  : n.col === 2 ? n.x + n.w + 4
