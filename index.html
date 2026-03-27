@@ -4280,14 +4280,16 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <!-- ── MEMORIES SECTION ── -->
   <div style="margin:8px 16px 4px;font-size:0.68em;font-weight:900;color:var(--text-light);text-transform:uppercase;letter-spacing:0.8px;">Memories</div>
   <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--card-shadow);margin:0 0 16px;overflow:hidden;">
-    <div id="settings-annual-review-row" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;" onclick="openAnnualReviewFromSettings()">
+    <div id="settings-annual-review-row" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;" onclick="openAnnualReviewYearPicker()">
       <div style="width:36px;height:36px;background:linear-gradient(135deg,#1E2A6E,#4F46E5);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;">✨</div>
       <div style="flex:1;">
         <div style="font-weight:800;font-size:0.88em;color:#1E2A6E;" id="settings-annual-review-label">Year in Review</div>
         <div style="font-size:0.7em;color:var(--text-light);font-weight:600;margin-top:1px;" id="settings-annual-review-sub">Loading…</div>
       </div>
-      <span style="color:var(--text-light);font-size:0.9em;">›</span>
+      <span id="settings-annual-review-chevron" style="color:var(--text-light);font-size:0.9em;">›</span>
     </div>
+    <!-- Year picker (shown inline when multiple years exist) -->
+    <div id="settings-annual-year-picker" style="display:none;padding:0 16px 14px;gap:8px;flex-wrap:wrap;" class=""></div>
   </div>
 
   <div style="display:flex;align-items:center;gap:14px;padding:10px 16px 24px;">
@@ -9333,15 +9335,25 @@ function buildAnnualReview(year) {
 // ══════════════════════════════════════════════════════════════════════════════
 // OPEN ANNUAL REVIEW PLAYER
 // ══════════════════════════════════════════════════════════════════════════════
-function openAnnualReviewPlayer() {
-  const year = _getAnnualReviewYear();
+function openAnnualReviewPlayer(yearOverride) {
+  const year = yearOverride || _getAnnualReviewYear();
   if (!year) {
     showToast('📊 Add some transactions first to generate your review!');
     return;
   }
-  _annualYear  = year;
-  _annualSlides = buildAnnualReview(year);
-  if (!_annualSlides.length) { showToast('Not enough data yet for an Annual Review.'); return; }
+  _annualYear = year;
+
+  // ── Try to load from snapshot first (instant, no recompute) ─────────
+  const snap = (data._annualReviews || {})[year];
+  if (snap && snap.slides && snap.slides.length === 8) {
+    // Restore ctaActions lost during JSON serialization
+    _annualSlides = _restoreSlideActions(snap.slides, year);
+  } else {
+    // Compute fresh and persist snapshot
+    _annualSlides = buildAnnualReview(year);
+    if (!_annualSlides.length) { showToast('Not enough data yet for an Annual Review.'); return; }
+    _saveAnnualSnapshot(year, _annualSlides);
+  }
 
   // Update banner label dynamically
   const bl = document.getElementById('annual-review-banner-label');
@@ -9361,13 +9373,104 @@ function openAnnualReviewPlayer() {
   if(fabMenu) fabMenu.style.display='none';
 }
 
-function openAnnualReviewFromSettings() {
+// ── Serialize slides (strip functions) → data._annualReviews[year] ───────────
+function _saveAnnualSnapshot(year, slides) {
+  try {
+    if (!data._annualReviews) data._annualReviews = {};
+    // Strip non-serializable ctaAction functions before saving
+    const serializable = slides.map(s => {
+      const { ctaAction, ...rest } = s;
+      return rest;
+    });
+    data._annualReviews[year] = {
+      slides:    serializable,
+      savedAt:   new Date().toISOString(),
+      version:   1
+    };
+    save(); // persist to localStorage
+  } catch(e) { console.warn('Annual Review snapshot save failed:', e); }
+}
+
+// ── Restore ctaActions after loading from snapshot ────────────────────────────
+function _restoreSlideActions(slides, year) {
+  const yr2 = String(Number(year)+1);
+  const actions = [
+    ()=>{closePulsePlayer();switchScreen('networth',document.querySelector('.nav-item:nth-child(4)'));},
+    ()=>{closePulsePlayer();switchScreen('budget',document.querySelector('.nav-item:nth-child(3)'));},
+    ()=>{closePulsePlayer();switchScreen('tx',document.querySelectorAll('.nav-item')[1]);},
+    ()=>{closePulsePlayer();switchScreen('roi',document.querySelectorAll('.nav-item')[1]);setTimeout(()=>switchROITab&&switchROITab('investments'),300);},
+    ()=>{closePulsePlayer();switchScreen('budget',document.querySelector('.nav-item:nth-child(3)'));setTimeout(()=>setBudgetTab&&setBudgetTab('goals',null),300);},
+    ()=>{closePulsePlayer();switchScreen('fhs',document.querySelector('.nav-item:nth-child(5)'));},
+    ()=>{closePulsePlayer();switchScreen('fhs',document.querySelector('.nav-item:nth-child(5)'));},
+    ()=>{ generateAnnualShareCard(_annualSlides[7]||_annualSlides[_annualSlides.length-1]); }
+  ];
+  return slides.map((s, i) => ({ ...s, ctaAction: actions[i] || (()=>{closePulsePlayer();}) }));
+}
+
+// ── Get all years that have review-worthy data ──────────────────────────────
+function _getReviewableYears() {
+  const allKeys = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k));
+  const counts  = {};
+  allKeys.forEach(k => {
+    const yr = k.slice(0, 4);
+    const m  = data[k] || {};
+    const n  = (m.expenses||[]).length + (m.income||[]).length + (m.investments||[]).length;
+    if (n > 0) counts[yr] = (counts[yr]||0) + n;
+  });
+  // Also include years with saved snapshots
+  Object.keys(data._annualReviews || {}).forEach(yr => { counts[yr] = counts[yr] || 1; });
+  const currentYr = String(new Date().getFullYear());
+  return Object.keys(counts)
+    .filter(yr => yr !== currentYr || counts[yr] > 20) // exclude sparse current year
+    .sort((a,b) => b.localeCompare(a)); // newest first
+}
+
+// ── Open year picker (or directly open if only one year) ────────────────────
+function openAnnualReviewYearPicker() {
+  const years = _getReviewableYears();
+  if (!years.length) {
+    showToast('📊 Add transactions to generate your Annual Review');
+    return;
+  }
+  if (years.length === 1) {
+    // Single year — open directly
+    _openAnnualReviewForYear(years[0]);
+    return;
+  }
+  // Multiple years — show inline picker
+  const picker = document.getElementById('settings-annual-year-picker');
+  if (!picker) return;
+  const isOpen = picker.style.display === 'flex';
+  if (isOpen) { picker.style.display = 'none'; return; }
+  picker.style.display = 'flex';
+  picker.innerHTML = years.map(yr => {
+    const snap    = (data._annualReviews||{})[yr];
+    const hasSnap = !!snap;
+    return `<button onclick="_openAnnualReviewForYear('${yr}')"
+      style="flex:1;min-width:80px;background:${hasSnap?'linear-gradient(135deg,#1E2A6E,#4F46E5)':'var(--bg)'};
+        color:${hasSnap?'#fff':'var(--text-dark)'};border:1.5px solid ${hasSnap?'transparent':'#E2E8F0'};
+        border-radius:10px;padding:10px 6px;font-family:Nunito,sans-serif;font-weight:900;
+        font-size:0.82em;cursor:pointer;text-align:center;line-height:1.4;">
+      ${yr}<br><span style="font-size:0.7em;font-weight:700;opacity:0.7;">${hasSnap?'✨ Saved':'Live'}</span>
+    </button>`;
+  }).join('');
+}
+
+function _openAnnualReviewForYear(year) {
+  // Close picker
+  const picker = document.getElementById('settings-annual-year-picker');
+  if (picker) picker.style.display = 'none';
+  // Navigate to home + open pulse + launch review
   switchScreen('home', document.querySelector('.nav-item:first-child'));
   setTimeout(() => {
     const panel = document.getElementById('pulse-panel');
     if (panel && !panel.classList.contains('open')) togglePulsePanel();
-    setTimeout(() => openAnnualReviewPlayer(), 200);
+    setTimeout(() => openAnnualReviewPlayer(year), 200);
   }, 300);
+}
+
+function openAnnualReviewFromSettings() {
+  openAnnualReviewYearPicker();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -9572,22 +9675,31 @@ function renderHome() {
   }
 
   // ── Settings Annual Review row: update sub-label ──
-  const arSettingsSub = document.getElementById('settings-annual-review-sub');
-  const arSettingsLabel = document.getElementById('settings-annual-review-label');
-  if (arSettingsSub) {
-    const arY = _getAnnualReviewYear();
-    if (arY) {
-      const keys = _getYearMonthKeys(arY);
-      const months = keys.filter(k => {
-        const m2 = data[k]||{};
-        return (m2.expenses||[]).length+(m2.income||[]).length+(m2.investments||[]).length > 0;
-      }).length;
-      if (arSettingsLabel) arSettingsLabel.textContent = arY + ' Year in Review';
-      arSettingsSub.textContent = months + ' months of data · Tap to open';
-    } else {
-      arSettingsSub.textContent = 'Add transactions to generate your review';
+  try {
+    const arSettingsSub   = document.getElementById('settings-annual-review-sub');
+    const arSettingsLabel = document.getElementById('settings-annual-review-label');
+    if (arSettingsSub) {
+      const reviewYears = typeof _getReviewableYears === 'function' ? _getReviewableYears() : [];
+      if (reviewYears.length > 0) {
+        const primaryYr = reviewYears[0];
+        const savedCount = Object.keys(data._annualReviews || {}).length;
+        if (arSettingsLabel) arSettingsLabel.textContent = reviewYears.length > 1
+          ? 'Years in Review (' + reviewYears.length + ')'
+          : primaryYr + ' Year in Review';
+        const keys   = _getYearMonthKeys(primaryYr);
+        const months = keys.filter(k => {
+          const m2 = data[k]||{};
+          return (m2.expenses||[]).length+(m2.income||[]).length+(m2.investments||[]).length > 0;
+        }).length;
+        const snap = (data._annualReviews||{})[primaryYr];
+        arSettingsSub.textContent = (reviewYears.length > 1 ? reviewYears.join(', ') + ' · ' : months + ' months · ')
+          + (snap ? '✨ Saved · Tap to open' : 'Tap to open');
+      } else {
+        if (arSettingsLabel) arSettingsLabel.textContent = 'Year in Review';
+        arSettingsSub.textContent = 'Add transactions to generate your review';
+      }
     }
-  }
+  } catch(e) {}
 
   const m = data[viewMonth];
 
