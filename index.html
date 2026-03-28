@@ -42673,7 +42673,19 @@ async function mfWriteManifest(folderId, keyBytes, manifest) {
   if (!actualFolder) throw new Error('No folderId for manifest write');
   const familyId = manifest.familyId || mfGetFamilyMeta()?.familyId;
   const b64 = await mfFamilyEncrypt(manifest, keyBytes);
+
+  // Primary: Drive (owner's folder)
   await mfDriveWriteFamilyFile(actualFolder, 'manifest.enc', b64);
+
+  // Mirror: Firestore (encrypted) — so members without Drive can read roster
+  // Server sees only: familyId (opaque) + encrypted blob
+  try {
+    await mfGetDb().collection(MF_FS_COLLECTION).doc(familyId).set({
+      enc: b64,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) { /* non-fatal — Drive is source of truth */ }
+
   return familyId;
 }
 
@@ -42685,10 +42697,23 @@ async function mfWriteManifestForFamily(familyId, keyBytes, manifest, folderId) 
 }
 
 async function mfReadManifestForFamily(familyId, keyBytes, folderId) {
+  // Try Drive first (if folder ID looks valid and token available)
   const actualFolder = folderId || mfGetFamilyMeta()?.folderId;
-  if (!actualFolder) return null;
+  const validFolder  = actualFolder && !actualFolder.startsWith('MF-');
+  if (validFolder) {
+    try {
+      const b64 = await mfReadSharedFolderFile(actualFolder, 'manifest.enc');
+      if (b64) return await mfFamilyDecrypt(b64, keyBytes);
+    } catch(e) { /* fall through to Firestore */ }
+  }
+
+  // Firestore fallback — works for all platforms without Drive token
+  const fid = familyId || mfGetFamilyMeta()?.familyId;
+  if (!fid) return null;
   try {
-    const b64 = await mfReadSharedFolderFile(actualFolder, 'manifest.enc');
+    const doc = await mfGetDb().collection(MF_FS_COLLECTION).doc(fid).get();
+    if (!doc.exists) return null;
+    const b64 = doc.data()?.enc;
     if (!b64) return null;
     return await mfFamilyDecrypt(b64, keyBytes);
   } catch(e) {
@@ -43804,12 +43829,16 @@ window.renderFamilyPanel = async function() {
       </div>`;
     return;
   }
-  if (isOwner) {
-    try {
+  // Owner reads from Drive; members read from Firestore mirror (no Drive token needed)
+  try {
+    const validFolder = meta.folderId && !meta.folderId.startsWith('MF-');
+    if (isOwner && validFolder) {
       manifest = await mfReadManifest(meta.folderId, keyBytes);
-    } catch(e) { /* offline — show last known state */ }
-  }
-  // Members: show panel from local meta (manifest stays null — panel shows owner info + pending state)
+    } else {
+      // Member or owner with stale folderId — Firestore mirror
+      manifest = await mfReadManifestForFamily(meta.familyId, keyBytes, meta.folderId);
+    }
+  } catch(e) { /* offline — show last known state */ }
   const members      = (manifest?.members || []);
   const activeMembers = members.filter(m => m.status === 'active');
   const slots        = `${activeMembers.length} of ${MF_MAX_MEMBERS} members`;
