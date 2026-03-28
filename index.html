@@ -33431,23 +33431,35 @@ async function mfHandleDriveToken(accessToken, expiresIn) {
   window._driveToken       = accessToken;
   window._driveTokenExpiry = Date.now() + ((expiresIn || 3600) - 60) * 1000;
   // Also try to silently get family Drive token if user has family set up
-  if (mfGetFamilyMeta() && !mfFamilyTokenValid() && window.Capacitor?.isNativePlatform()) {
-    try {
-      const email = window._fbUser?.email;
-      const { DriveAuth } = window.Capacitor?.Plugins || {};
-      if (email && DriveAuth) {
-        DriveAuth.getDriveToken({ email, scope: 'oauth2:https://www.googleapis.com/auth/drive' })
-          .then(r => {
-            if (r?.token) {
-              window._familyDriveToken  = r.token;
-              window._familyDriveExpiry = Date.now() + 3540000;
-              localStorage.setItem('mf_family_drive_token',  r.token);
-              localStorage.setItem('mf_family_drive_expiry', String(window._familyDriveExpiry));
-            }
-          })
-          .catch(() => {}); // silent — user will reconnect via UI if needed
-      }
-    } catch(e) {}
+  // Silently restore family Drive token on Capacitor (Android APK)
+  // This ensures the family folder stays accessible after app restart
+  if (mfGetFamilyMeta() && window.Capacitor?.isNativePlatform()) {
+    // Try localStorage first (fast path)
+    const storedFamToken = localStorage.getItem('mf_family_drive_token');
+    const storedFamExp   = Number(localStorage.getItem('mf_family_drive_expiry') || 0);
+    if (storedFamToken && storedFamExp > Date.now()) {
+      window._familyDriveToken  = storedFamToken;
+      window._familyDriveExpiry = storedFamExp;
+    }
+    // If expired or missing, silently request a fresh one
+    if (!mfFamilyTokenValid()) {
+      try {
+        const email = window._fbUser?.email;
+        const { DriveAuth } = window.Capacitor?.Plugins || {};
+        if (email && DriveAuth) {
+          DriveAuth.getDriveToken({ email, scope: 'oauth2:https://www.googleapis.com/auth/drive' })
+            .then(r => {
+              if (r?.token) {
+                window._familyDriveToken  = r.token;
+                window._familyDriveExpiry = Date.now() + 3540000;
+                localStorage.setItem('mf_family_drive_token',  r.token);
+                localStorage.setItem('mf_family_drive_expiry', String(window._familyDriveExpiry));
+              }
+            })
+            .catch(() => {});
+        }
+      } catch(e) {}
+    }
   }
   localStorage.setItem('mf_enc_setup', 'done');
   if (typeof window._mfUpdateDriveUI === 'function') window._mfUpdateDriveUI(true);
@@ -42273,13 +42285,50 @@ window.mfDriveRestorePrompt = async function(silentConfirm, noReload) {
       // Re-init family features with restored credentials
       if (envelope._familyKey) {
         showToast('👨‍👩‍👧 Family group restored ✅', 2500);
+        // Restore family Drive token if still valid
+        if (envelope._familyDriveToken) {
+          const exp = Number(envelope._familyDriveExp || 0);
+          if (exp > Date.now()) {
+            window._familyDriveToken  = envelope._familyDriveToken;
+            window._familyDriveExpiry = exp;
+            localStorage.setItem('mf_family_drive_token',  envelope._familyDriveToken);
+            localStorage.setItem('mf_family_drive_expiry', String(exp));
+          }
+        }
         setTimeout(() => {
           try { renderFamilyPanel && renderFamilyPanel(); } catch(e) {}
           try { renderFamilyDashCard && renderFamilyDashCard(); } catch(e) {}
           try { mfStartFamilyTxnsListener && mfStartFamilyTxnsListener(); } catch(e) {}
-  // Populate family panel on every app load (needed for PWA cold start)
-  setTimeout(() => { try { renderFamilyPanel && renderFamilyPanel(); } catch(e) {} }, 1200);
           try { mfLoadFamilyTxns && mfLoadFamilyTxns(viewMonth); } catch(e) {}
+
+          // If family Drive token is missing or expired, prompt reconnect
+          // This is the key fix for iOS PWA / new device scenario
+          const hasFamilyToken = window._familyDriveToken &&
+            (window._familyDriveExpiry || 0) > Date.now();
+          if (!hasFamilyToken) {
+            setTimeout(() => {
+              showToast('🔑 Tap "Family & Privacy → Reconnect Drive" to sync family data', 5000);
+              // On Capacitor (Android), try silent token acquisition
+              if (window.Capacitor?.isNativePlatform() && window._fbUser?.email) {
+                const { DriveAuth } = window.Capacitor?.Plugins || {};
+                if (DriveAuth) {
+                  DriveAuth.getDriveToken({
+                    email: window._fbUser.email,
+                    scope: 'oauth2:https://www.googleapis.com/auth/drive'
+                  }).then(r => {
+                    if (r?.token) {
+                      window._familyDriveToken  = r.token;
+                      window._familyDriveExpiry = Date.now() + 3540000;
+                      localStorage.setItem('mf_family_drive_token', r.token);
+                      localStorage.setItem('mf_family_drive_expiry', String(window._familyDriveExpiry));
+                      showToast('✅ Family Drive reconnected', 2000);
+                      try { renderFamilyPanel && renderFamilyPanel(); } catch(e) {}
+                    }
+                  }).catch(() => {});
+                }
+              }
+            }, 1500);
+          }
         }, 500);
       }
       return;
@@ -42556,6 +42605,36 @@ async function mfDriveInitWithUID() {
             localStorage.setItem(MF_LAST_PP_CHECK, Date.now().toString());
           }, 5000);
         }
+        // After personal Drive connects, check if family needs reconnecting
+        // Handles the case where family meta exists (from backup) but Drive token is stale
+        setTimeout(() => {
+          const famMeta = typeof mfGetFamilyMeta === 'function' ? mfGetFamilyMeta() : null;
+          const hasFamToken = window._familyDriveToken && (window._familyDriveExpiry || 0) > Date.now();
+          if (famMeta && !hasFamToken && window.Capacitor?.isNativePlatform()) {
+            // Silently try to get family Drive token on Android
+            const { DriveAuth } = window.Capacitor?.Plugins || {};
+            const email = window._fbUser?.email;
+            if (DriveAuth && email) {
+              DriveAuth.getDriveToken({
+                email,
+                scope: 'oauth2:https://www.googleapis.com/auth/drive'
+              }).then(r => {
+                if (r?.token) {
+                  window._familyDriveToken  = r.token;
+                  window._familyDriveExpiry = Date.now() + 3540000;
+                  localStorage.setItem('mf_family_drive_token', r.token);
+                  localStorage.setItem('mf_family_drive_expiry', String(window._familyDriveExpiry));
+                  // Now load family txns with the fresh token
+                  const mk = typeof viewMonth !== 'undefined' ? viewMonth : null;
+                  if (mk) {
+                    try { mfLoadFamilyTxns && mfLoadFamilyTxns(mk); } catch(e) {}
+                    try { renderFamilyPanel && renderFamilyPanel(); } catch(e) {}
+                  }
+                }
+              }).catch(() => {}); // silent fail — user can manually reconnect
+            }
+          }
+        }, 3000);
       } else {
         // No passphrase stored on this device yet — prompt setup
         if (!window._mfPassphraseShown) {
@@ -43023,20 +43102,36 @@ async function mfWriteManifestForFamily(familyId, keyBytes, manifest, folderId) 
   if (!actualFolder) throw new Error('No folderId for family manifest write');
   const b64 = await mfFamilyEncrypt(manifest, keyBytes);
   await mfWriteSharedFolderFile(actualFolder, 'manifest.enc', b64);
+  // Mirror to Firestore — critical for iOS PWA / web PWA cross-platform access
+  const fid = familyId || manifest.familyId;
+  if (fid) {
+    try {
+      await mfGetDb().collection(MF_FS_COLLECTION).doc(fid).set({
+        enc: b64,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch(e) { /* non-fatal */ }
+  }
 }
 
 async function mfReadManifestForFamily(familyId, keyBytes, folderId) {
-  // Try Drive first (if folder ID looks valid and token available)
-  const actualFolder = folderId || mfGetFamilyMeta()?.folderId;
-  const validFolder  = actualFolder && !actualFolder.startsWith('MF-');
-  if (validFolder) {
-    try {
-      const b64 = await mfReadSharedFolderFile(actualFolder, 'manifest.enc');
-      if (b64) return await mfFamilyDecrypt(b64, keyBytes);
-    } catch(e) { /* fall through to Firestore */ }
+  const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform());
+  const hasFamilyToken = mfFamilyTokenValid();
+
+  // On native Android with valid token — try Drive first (most up to date)
+  if (isNative && hasFamilyToken) {
+    const actualFolder = folderId || mfGetFamilyMeta()?.folderId;
+    const validFolder  = actualFolder && !actualFolder.startsWith('MF-');
+    if (validFolder) {
+      try {
+        const b64 = await mfReadSharedFolderFile(actualFolder, 'manifest.enc');
+        if (b64) return await mfFamilyDecrypt(b64, keyBytes);
+      } catch(e) { /* fall through to Firestore */ }
+    }
   }
 
-  // Firestore fallback — works for all platforms without Drive token
+  // Firestore — primary for iOS/web PWA, fallback for Android
+  // Works for all platforms without Drive token — this is the universal path
   const fid = familyId || mfGetFamilyMeta()?.familyId;
   if (!fid) return null;
   try {
@@ -44145,9 +44240,11 @@ window.mfFamilyRefresh = async function() {
     return;
   }
 
-  // Owner: need Drive token to read/write manifest
-  if (!mfFamilyTokenValid()) {
-    // Token missing or expired — reconnect then retry automatically
+  // Platform-aware: Android APK needs Drive token to refresh.
+  // PWA (iOS/web) uses Firestore mirror — no Drive token needed to read.
+  const _isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform());
+  if (_isNative && !mfFamilyTokenValid()) {
+    // Android APK without token — must reconnect Drive first
     showToast('🔑 Reconnecting Drive…', 2000);
     mfFamilyDriveConnect(async () => {
       showToast('✅ Drive reconnected — refreshing…', 1500);
@@ -44155,15 +44252,8 @@ window.mfFamilyRefresh = async function() {
     });
     return;
   }
-
-  // Double-check token is still valid just before Drive calls
-  // (may have expired between check and API call)
-  if (!window._familyDriveToken) {
-    mfClearFamilyToken();
-    showToast('🔑 Drive access expired — tap Reconnect Drive', 3000);
-    await renderFamilyPanel();
-    return;
-  }
+  // PWA without Drive token — can still read from Firestore, just can't write manifest
+  // Owner on PWA sees member list via Firestore mirror, just can't add new members
 
   showToast('🔄 Checking for new members…', 2000);
 
@@ -44176,8 +44266,13 @@ window.mfFamilyRefresh = async function() {
       return;
     }
 
-    // 2. Read current manifest from Drive
-    let manifest = await mfReadManifest(meta.folderId, keyBytes);
+    // 2. Read current manifest — Drive first, Firestore fallback
+    let manifest = null;
+    try { manifest = await mfReadManifest(meta.folderId, keyBytes); } catch(e) {}
+    if (!manifest) {
+      // Drive failed or no token — try Firestore mirror
+      try { manifest = await mfReadManifestForFamily(meta.familyId, keyBytes, meta.folderId); } catch(e) {}
+    }
     if (!manifest) {
       manifest = { familyId: meta.familyId, ownerName: meta.ownerName,
                    createdAt: new Date().toISOString(), members: [] };
@@ -44218,6 +44313,14 @@ window.mfFamilyRefresh = async function() {
     if (newMembers > 0) {
       // 3. Write updated manifest back to Drive (also mirrors to Firestore)
       await mfWriteManifest(meta.folderId, keyBytes, manifest);
+      // Also explicitly mirror to Firestore so iOS/web PWA sees new members immediately
+      try {
+        const b64mirror = await mfFamilyEncrypt(manifest, keyBytes);
+        await mfGetDb().collection(MF_FS_COLLECTION).doc(meta.familyId).set({
+          enc: b64mirror,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch(e) { /* non-fatal */ }
       // 4. Delete processed pending records from Firestore
       await Promise.all(toDelete.map(ref => ref.delete()));
       showToast(`✅ ${newMembers} new member${newMembers > 1 ? 's' : ''} added! Syncing history…`, 2500);
@@ -44273,6 +44376,20 @@ window.renderFamilyPanel = async function() {
 
   // NO FAMILY YET
   if (!meta || !keyBytes) {
+    // Check if meta exists but keyBytes missing — means Drive backup not yet restored
+    const hasMeta = !!localStorage.getItem('mf_family_meta');
+    const hasPassphrase = !!window._mfEncPassphrase;
+    if (hasMeta && !hasPassphrase) {
+      // Family exists but passphrase not entered yet — backup not restored
+      if (label) label.textContent = 'Enter passphrase to restore family';
+      container.innerHTML =
+        '<div style="background:#EEF2FF;border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center;">' +
+        '<div style="font-size:0.88em;font-weight:900;color:#4F46E5;margin-bottom:6px;">🔐 Restore your backup first</div>' +
+        '<div style="font-size:0.76em;color:#6B7280;line-height:1.5;margin-bottom:12px;">Your family data is encrypted in your Google Drive backup. Enter your passphrase to restore it.</div>' +
+        '<button onclick="mfShowPassphraseModal(&quot;unlock&quot;)" style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-family:Nunito;font-weight:900;font-size:0.82em;cursor:pointer;">🔑 Enter Passphrase</button>' +
+        '</div>';
+      return;
+    }
     if (label) label.textContent = 'Zero-knowledge · Drive-based · No servers';
     container.innerHTML = `
       <div style="text-align:center;padding:8px 0 12px;">
@@ -44294,45 +44411,35 @@ window.renderFamilyPanel = async function() {
   const isOwner = meta.role === 'owner';
 
   // LOAD MANIFEST
-  // Members (non-owners) show their panel from local meta — no Drive token needed.
-  // Only the owner reads from Drive. If owner has no token, show reconnect.
+  // Reading the manifest never requires the family Drive token — Firestore mirror has it.
+  // Drive token is only needed for WRITES (accepting joins, pushing txns).
+  // This means the panel loads on any platform — iOS PWA, Android, web — without reconnecting.
   let manifest = null;
-  if (isOwner && !mfFamilyTokenValid()) {
-    if (label) label.textContent = '👑 Owner · Drive reconnect needed';
-    container.innerHTML = `
-      <div style="background:#FEF3C7;border-radius:12px;padding:14px 16px;margin:12px 0;text-align:center;">
-        <div style="font-size:0.82em;font-weight:800;color:#D97706;margin-bottom:8px;">🔑 Drive access expired</div>
-        <div style="font-size:0.74em;color:#6B7280;margin-bottom:12px;">Reconnect to sync your family data</div>
-        <button onclick="mfFamilyRefresh()" style="background:#F59E0B;color:#fff;border:none;border-radius:10px;padding:9px 20px;font-family:Nunito;font-weight:900;font-size:0.8em;cursor:pointer;">
-          🔑 Reconnect Drive
-        </button>
-      </div>`;
-    return;
-  }
-  // Owner reads from Drive; members read from Firestore mirror (no Drive token needed)
+  const _hasToken   = mfFamilyTokenValid();
+  const _validFolder = meta.folderId && !meta.folderId.startsWith('MF-');
+
   try {
-    const validFolder = meta.folderId && !meta.folderId.startsWith('MF-');
-    if (isOwner && validFolder) {
+    if (isOwner && _hasToken && _validFolder) {
+      // Prefer Drive — most up to date
       manifest = await mfReadManifest(meta.folderId, keyBytes);
-    } else {
-      // Member or owner with stale folderId — Firestore mirror
+    }
+    // Fallback: Firestore mirror — works even without Drive token (iOS PWA, cross-platform)
+    if (!manifest) {
       manifest = await mfReadManifestForFamily(meta.familyId, keyBytes, meta.folderId);
     }
   } catch(e) {
-    // Auth error — clear token and show reconnect
     if (e.message && (e.message.includes('401') || e.message.includes('403'))) {
       mfClearFamilyToken && mfClearFamilyToken();
-      if (label) label.textContent = '👑 Owner · Drive reconnect needed';
-      container.innerHTML = '<div style="background:#FEF3C7;border-radius:12px;padding:14px 16px;margin:12px 0;text-align:center;"><div style="font-size:0.82em;font-weight:800;color:#D97706;margin-bottom:8px;">🔑 Drive access expired</div><div style="font-size:0.74em;color:#6B7280;margin-bottom:12px;">Reconnect to sync your family data</div><button onclick="mfFamilyRefresh()" style="background:#F59E0B;color:#fff;border:none;border-radius:10px;padding:9px 20px;font-family:Nunito;font-weight:900;font-size:0.8em;cursor:pointer;">🔑 Reconnect Drive</button></div>';
-      return;
     }
+    // Non-fatal — manifest stays null, panel still renders with reconnect nudge
   }
 
-  // If manifest is null and we're owner — Drive read silently failed
-  // Show last known member count from meta but indicate sync needed
-  const members      = (manifest?.members || []);
+  // If still null after both paths — show reconnect nudge inside panel (not a hard block)
+  const _needsReconnect = isOwner && !manifest && !_hasToken;
+
+  const members       = (manifest?.members || []);
   const activeMembers = members.filter(m => m.status === 'active');
-  const slots        = manifest
+  const slots         = manifest
     ? `${activeMembers.length} of ${MF_MAX_MEMBERS} members`
     : `${MF_MAX_MEMBERS} slots · tap Refresh to sync`;
 
@@ -44365,7 +44472,7 @@ window.renderFamilyPanel = async function() {
       </div>
       <div style="font-size:0.72em;color:#666;font-weight:600;">Family ID: ${meta.familyId} · ${slots}</div>
     </div>
-    ${isOwner && !manifest ? '<div style="background:#FFF7ED;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.78em;color:#92400E;font-weight:700;">⚠️ Could not load member list from Drive — tap Refresh to reconnect</div>' : ''}
+    ${_needsReconnect ? '<div style="background:#FEF3C7;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.78em;color:#92400E;font-weight:700;">🔑 Drive not connected — member list from backup. Tap Refresh to sync.</div>' : ''}
 
     <div style="margin-bottom:14px;">${memberRows}</div>
 
@@ -44373,6 +44480,10 @@ window.renderFamilyPanel = async function() {
     <button onclick="mfFamilyShowInvite()" style="width:100%;background:#10B981;color:white;border:none;border-radius:12px;padding:12px;font-family:Nunito;font-weight:900;font-size:0.85em;cursor:pointer;margin-bottom:8px;">
       ➕ Invite Member
     </button>` : ''}
+    ${isOwner && !mfFamilyTokenValid() && !window.Capacitor?.isNativePlatform() ? `
+    <div style="background:#FEF3C7;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:0.72em;color:#92400E;font-weight:700;text-align:center;">
+      ⚠️ Drive not connected — viewing only · Open app on Android to add members
+    </div>` : ''}
 
     ${isOwner ? `
     <button onclick="mfFamilyRefresh()" style="width:100%;background:#F1F5F9;color:#1E2A6E;border:none;border-radius:12px;padding:11px;font-family:Nunito;font-weight:900;font-size:0.82em;cursor:pointer;margin-bottom:8px;">
