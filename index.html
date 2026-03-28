@@ -33571,6 +33571,15 @@ function signOut() {
     if (typeof window._mfFamilyTxns !== 'undefined') window._mfFamilyTxns = {};
     if (typeof _mfTxnsUnsubscribe === 'function') try { _mfTxnsUnsubscribe(); } catch(e) {}
     if (window._mfFamilyPollTimer) { clearInterval(window._mfFamilyPollTimer); window._mfFamilyPollTimer = null; }
+    // Reset GIS token clients so next user gets a fresh OAuth flow
+    // Without this, _tokenClient reuses the previous account's session
+    try {
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+        google.accounts.oauth2.revoke(window._fbUser?.email || '', () => {});
+      }
+    } catch(e) {}
+    window._tokenClient       = null; // will reinitialize on next Drive connect
+    window._familyTokenClient = null;
 
     // Reset the in-memory data object so new user doesn't see stale data
     try {
@@ -33658,6 +33667,8 @@ _auth.onAuthStateChanged(async user => {
       window._familyDriveToken = null;
       window._driveToken       = null;
       window._driveTokenExpiry = 0;
+      window._tokenClient      = null; // force GIS re-init for new account
+      window._familyTokenClient = null;
       // Reset in-memory data so stale data doesn't render
       try {
         if (typeof data !== 'undefined') {
@@ -41658,7 +41669,8 @@ window.mfPPSkip = function() {
 let _tokenClient = null;
 
 function mfInitTokenClient() {
-  if (_tokenClient) return;
+  // Always re-init if no current user or if token client was reset on sign-out
+  if (_tokenClient && window._fbUser) return;
   if (typeof google === 'undefined' || !google.accounts) {
     setTimeout(mfInitTokenClient, 1000);
     return;
@@ -41682,7 +41694,10 @@ function mfInitTokenClient() {
 function mfRequestDriveToken() {
   if (!_tokenClient) return;
   const isMobileSafari = /iP(hone|ad|od)/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent);
-  _tokenClient.requestAccessToken({ prompt: isMobileSafari ? 'select_account' : '' });
+  // Use select_account on mobile Safari (required) and also when no Drive token exists yet
+  // This prevents inheriting a previous account's granted scopes silently
+  const needsAccountSelect = isMobileSafari || !window._driveToken;
+  _tokenClient.requestAccessToken({ prompt: needsAccountSelect ? 'select_account' : '' });
 }
 
 window.mfDriveConnect = function() {
