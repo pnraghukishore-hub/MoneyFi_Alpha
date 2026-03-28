@@ -41584,6 +41584,16 @@ function mfShowFamilyDriveExplainer(afterCallback) {
   document.body.appendChild(overlay);
 }
 
+// Clear stale/rejected family Drive token and force re-auth
+window.mfClearFamilyToken = function() {
+  window._familyDriveToken  = null;
+  window._familyDriveExpiry = 0;
+  try {
+    localStorage.removeItem('mf_family_drive_token');
+    localStorage.removeItem('mf_family_drive_expiry');
+  } catch(e) {}
+};
+
 window.mfFamilyTokenValid = function() {
   // Check memory first, then try to restore from localStorage
   if (window._familyDriveToken && Date.now() < window._familyDriveExpiry) return true;
@@ -42445,7 +42455,10 @@ async function mfDriveCreateFamilyFolder() {
   });
   if (!resp.ok) {
     const errBody = await resp.text().catch(() => '');
-    console.error('[MF Family] Folder create failed:', resp.status, errBody);
+    if (resp.status === 401) {
+      mfClearFamilyToken();
+      throw new Error('Drive access expired — please try again to reconnect');
+    }
     throw new Error('Failed to create family folder: ' + resp.status + ' ' + errBody.slice(0, 100));
   }
   const json = await resp.json();
@@ -42518,7 +42531,10 @@ async function mfDriveWriteFamilyFile(folderId, fileName, b64Content) {
     },
     body
   });
-  if (!resp.ok) throw new Error('Family file write failed: ' + resp.status);
+  if (!resp.ok) {
+    if (resp.status === 401) { mfClearFamilyToken(); }
+    throw new Error('Family file write failed: ' + resp.status);
+  }
   return (await resp.json()).id;
 }
 
@@ -42610,6 +42626,7 @@ async function mfWriteSharedFolderFile(folderId, fileName, b64Content) {
   });
   if (!resp.ok) {
     const errBody = await resp.text().catch(() => '');
+    if (resp.status === 401) { mfClearFamilyToken(); }
     console.warn('[MF Family] Shared folder write failed:', resp.status, errBody.slice(0,200));
     throw new Error('Shared folder write failed: ' + resp.status + ' ' + errBody.slice(0,80));
   }
@@ -42778,7 +42795,14 @@ window.mfFamilyCreate = async function() {
   } catch(e) {
     console.error('[MF Family] Create error:', e);
     mfHideFamilyModal();
-    showToast('❌ Failed: ' + e.message, 3000);
+    if (e.message && e.message.includes('expired')) {
+      // Token was rejected — clear and retry via re-auth
+      mfClearFamilyToken();
+      showToast('🔑 Drive access expired — reconnecting…', 2000);
+      setTimeout(() => mfFamilyDriveConnect(() => mfFamilyCreate()), 800);
+    } else {
+      showToast('❌ Failed: ' + e.message, 3000);
+    }
   }
 };
 
