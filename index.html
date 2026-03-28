@@ -2855,6 +2855,8 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         </button>
       </div>
       <div class="spending-amount" id="home-spending">$0</div>
+      <div id="home-family-attr" style="display:none;font-size:0.72em;font-weight:700;
+        color:#7C3AED;margin-top:2px;">👨‍👩‍👧 incl. $0 from family</div>
     </div>
     <div class="budget-grid" id="budget-grid"></div>
 
@@ -4364,7 +4366,7 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         <button onclick="mfDriveConnect()" style="width:100%;background:linear-gradient(135deg,#4F46E5,#7C3AED);color:white;border:none;border-radius:12px;padding:12px;font-family:Nunito;font-weight:900;font-size:0.85em;cursor:pointer;margin-bottom:8px;">
           🔗 Connect Google Drive
         </button>
-        <div style="font-size:0.72em;color:#888;font-weight:600;text-align:center;line-height:1.5;">Your data stays encrypted on your Drive.<br>MoneyFi can only access its own backup file.</div>
+        <div style="font-size:0.72em;color:#888;font-weight:600;text-align:center;line-height:1.5;">Your financial data is AES-256 encrypted on your device.<br>Only you and your family hold the key — MoneyFi never can.</div>
       </div>
       <div id="drive-connected-actions" style="display:none;">
         <button onclick="mfDriveSaveNow()" style="width:100%;background:#10B981;color:white;border:none;border-radius:12px;padding:12px;font-family:Nunito;font-weight:900;font-size:0.85em;cursor:pointer;margin-bottom:8px;">
@@ -6660,6 +6662,25 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
         font-size:0.82em;color:#EF4444;cursor:pointer;width:100%;justify-content:center;
       ">↩️ Mark as Refund / Return</button>
     </div>
+    <!-- Family sharing toggle — only shown when user is in a family group -->
+    <div id="qa-family-wrap" style="display:none;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;
+        background:#F0F4FF;border:1.5px solid #C7D2FE;border-radius:14px;
+        padding:8px 14px;">
+        <span style="font-size:0.82em;font-weight:800;color:#4F46E5;flex:1;">👨‍👩‍👧 Share with family</span>
+        <label style="position:relative;display:inline-block;width:38px;height:22px;cursor:pointer;">
+          <input type="checkbox" id="qa-family-toggle" style="opacity:0;width:0;height:0;"
+            onchange="qaUpdateFamilyToggle()">
+          <span id="qa-family-slider" style="
+            position:absolute;inset:0;border-radius:22px;transition:0.2s;
+            background:#CBD5E1;"></span>
+          <span id="qa-family-knob" style="
+            position:absolute;top:3px;left:3px;width:16px;height:16px;
+            border-radius:50%;background:#fff;transition:0.2s;
+            box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+        </label>
+      </div>
+    </div>
     <!-- Amount display -->
     <div class="qa-amount-row">
       <span class="qa-currency-sym" id="qa-currency-sym">$</span>
@@ -8122,6 +8143,11 @@ function _generatePulseStories() {
   } catch(e) { console.warn('[RuleEngine] Pulse injection failed:', e); }
   // ─────────────────────────────────────────────────────────────────────────
   const sym = currentCurrency?.symbol || '$';
+  const _inFam = !!(typeof mfGetFamilyMeta === 'function' && mfGetFamilyMeta());
+  // Mark score as personal-only when in a family (family txns don't affect FHS)
+  const _scorePersonalBadge = _inFam
+    ? '<span style="font-size:0.65em;font-weight:800;color:#7C3AED;background:#F5F3FF;border-radius:20px;padding:2px 9px;margin-left:8px;vertical-align:middle;">👤 Personal</span>'
+    : '';
   const profile = getFHSProfile();
   const agg = typeof getFHSMonthlyAggregates === 'function' ? getFHSMonthlyAggregates(6, profile) : null;
   const monthlyExp = agg?.avgExp || 0;
@@ -10526,6 +10552,20 @@ function renderHome() {
     const totalInc = income.reduce((s,r)=>s+convertAmt(r.amount,r.currency),0);
     document.getElementById('home-spending').textContent = fmt(totalExp+totalAdd);
     document.getElementById('home-income').textContent = fmt(totalInc);
+    // Family attribution line under total spending
+    const _attrEl  = document.getElementById('home-family-attr');
+    if (_attrEl) {
+      const _inFam  = !!(typeof mfGetFamilyMeta === 'function' && mfGetFamilyMeta());
+      const _famTxM = window._mfFamilyTxns?.[m] || {};
+      const _famExp = (_famTxM.expenses || []).reduce((s,t) =>
+        s + Math.abs(convertAmt(Number(t.amount)||0, t.currency||currentCurrency?.code)), 0);
+      if (_inFam && _famExp > 0) {
+        _attrEl.textContent = '👨‍👩‍👧 incl. ' + fmt(_famExp) + ' from family';
+        _attrEl.style.display = 'block';
+      } else {
+        _attrEl.style.display = 'none';
+      }
+    }
 
     const salary = income.filter(e=>['Salary','Freelance','Bonus'].includes(e.category)).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0);
     const gifts  = income.filter(e=>['Gift','Gifts'].includes(e.category)).reduce((s,e)=>s+convertAmt(e.amount,e.currency),0);
@@ -10807,6 +10847,7 @@ function openQuickAdd(type, subCat) {
   if (_recCheck) _recCheck.checked = false;
   if (_recOpts) _recOpts.style.display = 'none';
   document.getElementById('quick-add-modal').classList.add('open');
+  setTimeout(_qaUpdateFamilyWrap, 50); // show/update family toggle
   // Hide AI FAB so it doesn't overlap form fields
   const _qaf = document.getElementById('ai-fab'), _qat = document.getElementById('ai-fab-tooltip');
   if (_qaf) _qaf.style.display = 'none';
@@ -10894,7 +10935,38 @@ function qaSetType(type, el) { try{trackFeature('add_'+({'investment':'investmen
   const icons = { expense:'💸', income:'💵', investment:'📈', debt:'📉', given:'🤝', additional:'🎁' };
   document.getElementById('qa-modal-title').textContent = (icons[type]||'➕') + ' Quick Add ' + (type.charAt(0).toUpperCase()+type.slice(1));
   _qaToggleMetalFields();
+  _qaUpdateFamilyWrap();
 }
+
+// Show/hide family toggle and set default based on current category
+function _qaUpdateFamilyWrap() {
+  const wrap = document.getElementById('qa-family-wrap');
+  if (!wrap) return;
+  const inFamily = !!(typeof mfGetFamilyMeta === 'function' && mfGetFamilyMeta());
+  // Only show for expense and income types (not investments — those stay personal by default)
+  const validType = qaType === 'expense' || qaType === 'income';
+  wrap.style.display = (inFamily && validType) ? 'block' : 'none';
+  if (inFamily && validType) {
+    // Pre-fill based on current category default
+    const isDefault = typeof mfIsFamilyDefaultCat === 'function' && mfIsFamilyDefaultCat(qaSubCat);
+    _qaSetFamilyToggle(isDefault);
+  }
+}
+
+function _qaSetFamilyToggle(on) {
+  const cb     = document.getElementById('qa-family-toggle');
+  const slider = document.getElementById('qa-family-slider');
+  const knob   = document.getElementById('qa-family-knob');
+  if (!cb) return;
+  cb.checked = on;
+  if (slider) slider.style.background = on ? '#4F46E5' : '#CBD5E1';
+  if (knob)   knob.style.left = on ? '19px' : '3px';
+}
+
+window.qaUpdateFamilyToggle = function() {
+  const on = document.getElementById('qa-family-toggle')?.checked;
+  _qaSetFamilyToggle(on);
+};
 
 let qaDeleteMode = false;
 
@@ -11012,6 +11084,12 @@ function qaSelectSub(cat, el) {
   document.querySelectorAll('.qa-sub-pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   _qaToggleMetalFields();
+  // Update family toggle default when category changes
+  const inFamily = !!(typeof mfGetFamilyMeta === 'function' && mfGetFamilyMeta());
+  if (inFamily) {
+    const isDefault = typeof mfIsFamilyDefaultCat === 'function' && mfIsFamilyDefaultCat(cat);
+    _qaSetFamilyToggle(isDefault);
+  }
 }
 
 function qaRenderNumpad() {
@@ -11064,7 +11142,16 @@ function qaSave() {
   const _addedBy = _familyMetaForTag
     ? (_familyMetaForTag.role === 'owner' ? _familyMetaForTag.ownerName : (_familyMetaForTag.myName || _currentUser?.displayName || 'You'))
     : (_currentUser ? (_currentUser.displayName || _currentUser.email || 'You') : 'You');
-  const entry = { date: normalizeDate(date), category: qaSubCat||'Other', amount: finalAmt, description: note, currency: currentCurrency.code, _addedBy };
+  // Determine family visibility — toggle state or category default
+  const inFamily   = !!(typeof mfGetFamilyMeta === 'function' && mfGetFamilyMeta());
+  const famWrap    = document.getElementById('qa-family-wrap');
+  const famVisible = inFamily && famWrap && famWrap.style.display !== 'none'
+    ? (document.getElementById('qa-family-toggle')?.checked || false)
+    : false; // solo users: never shared
+
+  const entry = { date: normalizeDate(date), category: qaSubCat||'Other', amount: finalAmt,
+    description: note, currency: currentCurrency.code, _addedBy,
+    ...(inFamily ? { _familyVisible: famVisible } : {}) };
 
   // If this is a metal purchase, attach grams so the transaction carries full context
   const isMetal = qaType === 'investment' && _METAL_CATS.some(m => (qaSubCat||'').toLowerCase().includes(m));
@@ -14181,6 +14268,9 @@ function restoreBackup(input) {
 }
 function exportAllData() {
   const wb=XLSX.utils.book_new();
+  // Include family transactions as a separate sheet if in a family
+  const _famTxns = window._mfFamilyTxns || {};
+  const _famMeta = typeof mfGetFamilyMeta === 'function' ? mfGetFamilyMeta() : null;
   [{key:'income',name:'Income'},{key:'expenses',name:'Expenses'},{key:'investments',name:'Investments'},{key:'realEstate',name:'Real Estate'},{key:'metals',name:'Metals'},{key:'additional',name:'Additional'},{key:'debts',name:'Debts'},{key:'givenToOthers',name:'Given To Others'}].forEach(cat=>{
     let rows=[];
     if(cat.key==='metals') rows.push(['Month','Metal','Purity','Occasion','Item','Weight(g)']);
@@ -14336,6 +14426,26 @@ function exportAllData() {
     XLSX.utils.book_append_sheet(wb, snapWs, 'NW Snapshots');
   }
 
+  // Family transactions sheet — if in a family
+  if (_famMeta && Object.keys(_famTxns).length > 0) {
+    const famRows = [['Date','Category','Amount','Currency','Type','Added By','Month']];
+    Object.keys(_famTxns).sort().forEach(mk => {
+      const fm = _famTxns[mk] || {};
+      ['expenses','income','investments'].forEach(type => {
+        (fm[type] || []).forEach(t => {
+          famRows.push([
+            t.date || '', t.category || '', t.amount || 0,
+            t.currency || currentCurrency.code,
+            type, t._addedBy || 'Family', mk
+          ]);
+        });
+      });
+    });
+    if (famRows.length > 1) {
+      const famWs = XLSX.utils.aoa_to_sheet(famRows);
+      XLSX.utils.book_append_sheet(wb, famWs, 'Family Shared');
+    }
+  }
   XLSX.writeFile(wb,'MoneyFi_Complete.xlsx');
   const newSheets = ['FHS Profile','Recurring Rules','Budget Goals','Goals','NW Snapshots'].filter((s,i) => [fhsP, recRules.length, allBudgets.length, goals.length, snaps.length][i]);
   showToast(`Excel exported ✅ · ${wb.SheetNames.length} sheets incl. ${newSheets.join(', ')||'core data'}`);
@@ -37087,7 +37197,8 @@ function renderFHS() {
     root.innerHTML = `
       <div style="text-align:center;padding:40px 20px 30px;">
         <div style="font-size:3em;margin-bottom:12px;">🏆</div>
-        <div style="font-size:1.2em;font-weight:900;color:var(--text-dark);margin-bottom:8px;">Financial Health Score</div>
+        <div style="font-size:1.2em;font-weight:900;color:var(--text-dark);margin-bottom:4px;">Financial Health Score</div>
+        <div id="fhs-personal-badge" style="display:none;font-size:0.68em;font-weight:800;color:#7C3AED;background:#F5F3FF;border-radius:20px;padding:3px 10px;margin-bottom:8px;display:inline-block;">👤 Personal Score</div>
         <div style="font-size:0.85em;font-weight:600;color:var(--text-med);line-height:1.6;margin-bottom:24px;">Your personal financial advisor — scoring 6 pillars across Savings, Insurance, Emergency Fund, FIRE Readiness, Retirement Track, and more.</div>
         <button onclick="openFHSOnboard()" style="background:linear-gradient(135deg,#1E2A6E,#2D3A8C);color:white;border:none;border-radius:16px;padding:16px 36px;font-size:1em;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;box-shadow:0 4px 20px rgba(30,42,110,0.3);">🚀 Set Up My Score</button>
         <div style="margin-top:20px;font-size:0.75em;color:var(--text-light);">Takes ~60 seconds · All fields have smart defaults</div>
@@ -37506,7 +37617,7 @@ function renderFHS() {
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:1em;">❤️</span>
           <span style="font-size:0.68em;font-weight:900;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:1.2px;">Financial Health Score</span>
-          ${(data._familyMembers||[]).length > 0 ? '<span style=\"background:rgba(255,200,100,0.2);border:1px solid rgba(255,200,100,0.35);border-radius:8px;padding:2px 7px;font-size:0.78em;font-weight:800;color:rgba(255,220,120,0.9);\">👤 Yours only</span>' : ''}
+          ${(typeof mfGetFamilyMeta === 'function' && mfGetFamilyMeta()) ? '<span style=\\"background:rgba(255,200,100,0.2);border:1px solid rgba(255,200,100,0.35);border-radius:8px;padding:2px 7px;font-size:0.78em;font-weight:800;color:rgba(255,220,120,0.9);\\">👤 Personal Score</span>' : ''}
         </div>
         <button onclick="openFHSOnboard()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:5px 11px;font-size:0.68em;font-weight:800;color:rgba(255,255,255,0.8);cursor:pointer;font-family:Nunito,sans-serif;">⚙️ My Profile</button>
       </div>
@@ -38412,6 +38523,11 @@ function buildAIContext() {
   const nw       = computeNetWorth();
   const sym      = currentCurrency?.symbol || '₹';
   const region   = profile?.region || 'IN';
+  // Family context — summarise shared transactions for AI
+  const _famMeta = typeof mfGetFamilyMeta === 'function' ? mfGetFamilyMeta() : null;
+  const _famTxM  = _famMeta ? (window._mfFamilyTxns?.[viewMonth] || {}) : {};
+  const _famExpSum = (_famTxM.expenses||[]).reduce((s,t)=>s+Math.abs(convertAmt(Number(t.amount)||0,t.currency||currentCurrency?.code)),0);
+  const _famMembers = _famMeta ? (_famMeta.ownerName || 'Family') : null;
 
   // ── Build structured AI context (portfolio intelligence for guardrails) ──
   const aiCtx = (() => {
@@ -39226,6 +39342,14 @@ function _buildContextForQuestion(question) {
     sliced = dropSection(sliced, 'MUTUAL FUND STATUS',          matched.has('mf') || matched.has('tax'));
 
     return sliced;
+  }
+
+  // Append family context if available
+  if (_famMeta && _famExpSum > 0) {
+    ctx += '\n\nFAMILY CONTEXT:\n' +
+      '  Household: ' + (_famMembers || 'Family') + '\n' +
+      '  Shared expenses this month: ' + sym + _famExpSum.toFixed(0) + '\n' +
+      '  (These are transactions marked as shared with family members)';
   }
 
   return ctx;
@@ -42771,6 +42895,29 @@ const MF_FS_REKEY_COLLECTION = 'mf_family_rekey';  // no longer used — invite-
 const MF_FS_TXNS_COLLECTION  = 'mf_family_txns';   // encrypted transaction blobs
 const MF_FS_CMD_COLLECTION     = 'mf_family_cmds';   // encrypted owner commands
 const MF_FS_PENDING_COLLECTION = 'mf_family_pending'; // pending join requests — Firestore only, auto-deleted after owner pulls
+
+// ── Categories that default to family-shared ─────────────────────────────────
+// User can customise this list in Settings → Family
+const FAMILY_DEFAULT_CATS_KEY = 'mf_family_default_cats';
+const FAMILY_DEFAULT_CATS_BUILTIN = [
+  'Groceries','Utilities','Rent','Electricity','Water','Gas','Internet','Cable',
+  'School','Education','Childcare','Healthcare','Doctor','Pharmacy',
+  'Restaurant','FastFood','Coffee','Dining','Entertainment',
+  'Household','HomeRepair','Maintenance','Subscriptions'
+];
+function mfGetFamilyDefaultCats() {
+  try {
+    const stored = localStorage.getItem(FAMILY_DEFAULT_CATS_KEY);
+    return stored ? JSON.parse(stored) : FAMILY_DEFAULT_CATS_BUILTIN;
+  } catch(e) { return FAMILY_DEFAULT_CATS_BUILTIN; }
+}
+function mfIsFamilyDefaultCat(category) {
+  if (!category) return false;
+  const defaults = mfGetFamilyDefaultCats();
+  return defaults.some(c => c.toLowerCase() === category.toLowerCase());
+}
+window.mfIsFamilyDefaultCat  = mfIsFamilyDefaultCat;
+window.mfGetFamilyDefaultCats = mfGetFamilyDefaultCats;
 const MF_FS_NW_COLLECTION    = 'mf_family_nw';     // encrypted NW snapshots
 
 function mfGetDb() {
@@ -42894,9 +43041,9 @@ window.mfFamilyCreate = async function() {
     });
     mfHideFamilyModal();
     showToast('✅ Family group created!', 2000);
-    // Re-render family panel immediately so Settings shows the new group
     try { renderFamilyPanel(); } catch(e) {}
-    setTimeout(() => mfFamilyShowInvite(), 500);
+    // Show first-time onboarding before invite — ask about historical data sync
+    setTimeout(() => mfShowFamilyOnboarding('create'), 400);
   } catch(e) {
     console.error('[MF Family] Create error:', e);
     mfHideFamilyModal();
@@ -42945,8 +43092,36 @@ window.mfFamilyShowInvite = async function() {
 
   // Store pending invite code for display
   window._mfPendingInvite = { code, fullPayload, payload };
+  window._mfInviteExpiry = payload.expires;
 
   mfShowFamilyModal('invite');
+
+  // Start expiry countdown
+  if (window._mfInviteCountdownTimer) clearInterval(window._mfInviteCountdownTimer);
+  window._mfInviteCountdownTimer = setInterval(() => {
+    const el = document.getElementById('mf-invite-expiry');
+    if (!el) { clearInterval(window._mfInviteCountdownTimer); return; }
+    const remaining = window._mfInviteExpiry - Date.now();
+    if (remaining <= 0) {
+      el.textContent = '⏰ Invite expired — generate a new one';
+      el.style.color = '#EF4444';
+      clearInterval(window._mfInviteCountdownTimer);
+      return;
+    }
+    const h = Math.floor(remaining / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    el.textContent = `⏱ Expires in ${h}h ${m}m`;
+    el.style.color = remaining < 3600000 ? '#F59E0B' : '#10B981';
+  }, 30000); // update every 30s
+  // Also run immediately
+  const _expEl = document.getElementById('mf-invite-expiry');
+  if (_expEl) {
+    const remaining = payload.expires - Date.now();
+    const h = Math.floor(remaining / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    _expEl.textContent = `⏱ Expires in ${h}h ${m}m`;
+    _expEl.style.color = '#10B981';
+  }
 };
 
 // ── JOIN FAMILY (Member flow) ──────────────────────────────────────
@@ -43024,6 +43199,8 @@ window.mfFamilyJoin = async function() {
     mfHideFamilyModal();
     showToast(`✅ Joined ${payload.ownerName}'s family! Owner will see you shortly.`, 3500);
     renderFamilyPanel();
+    // Show first-time onboarding — ask about historical data sync
+    setTimeout(() => mfShowFamilyOnboarding('join'), 1200);
 
     // Load historical transactions for new member — past 6 months
     // so Swathi/new members see transactions that happened before they joined
@@ -43157,7 +43334,8 @@ window.mfShowFamilyModal = function mfShowFamilyModal(mode) {
         <div style="font-size:0.75em;color:#999;margin-top:8px;">Generating QR…</div>
       </div>
       <div style="background:#F0F4FF;border-radius:14px;padding:12px;margin-bottom:10px;">
-        <div style="font-size:0.7em;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;">📋 Tap button below to copy full invite code</div>
+        <div id="mf-invite-expiry" style="font-size:0.75em;font-weight:800;color:#10B981;margin-bottom:8px;text-align:center;">⏱ Calculating...</div>
+      <div style="font-size:0.7em;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;">📋 Tap button below to copy full invite code</div>
         <div style="font-family:monospace;font-size:0.72em;color:#4F46E5;word-break:break-all;line-height:1.4;max-height:60px;overflow:hidden;">${inv.fullPayload.slice(0,80)}…</div>
         <div style="font-size:0.68em;color:#EF4444;font-weight:700;margin-top:6px;">⚠️ Do NOT type the short code — use Copy button below</div>
       </div>
@@ -43210,6 +43388,11 @@ window.mfShowFamilyModal = function mfShowFamilyModal(mode) {
 }
 
 window.mfHideFamilyModal = function() {
+  // Clear invite countdown on modal close
+  if (window._mfInviteCountdownTimer) {
+    clearInterval(window._mfInviteCountdownTimer);
+    window._mfInviteCountdownTimer = null;
+  }
   const overlay = document.getElementById('mf-family-overlay');
   if (overlay) overlay.style.display = 'none';
 };
@@ -43433,10 +43616,29 @@ async function mfSyncFamilyTxns(monthKey) {
   // Owner → Drive (has family Drive token)
   // Member with Drive token → Drive shared folder
   // Member without Drive token (iOS PWA etc) → Firestore encrypted fallback
+  // Filter txnData to only _familyVisible: true transactions
+  // For backwards compat: entries without _familyVisible flag are assumed shared (legacy data)
+  const filterVisible = (arr) => (arr || []).filter(t =>
+    t._familyVisible === true || t._familyVisible === undefined
+  );
+  const filteredTxnData = {
+    ...txnData,
+    expenses:    filterVisible(txnData.expenses),
+    income:      filterVisible(txnData.income),
+    investments: filterVisible(txnData.investments),
+    additional:  filterVisible(txnData.additional),
+    memberName:  txnData.memberName,
+    uid:         txnData.uid,
+  };
+  // Skip sync entirely if no visible transactions
+  const hasAny = (filteredTxnData.expenses.length + filteredTxnData.income.length +
+                  filteredTxnData.investments.length) > 0;
+  if (!hasAny) return;
+
   try {
     const keyBytes = mfGetFamilyKeyBytes();
     if (!keyBytes) throw new Error('Family key not available');
-    const enc      = await mfFamilyEncrypt(txnData, keyBytes);
+    const enc      = await mfFamilyEncrypt(filteredTxnData, keyBytes);
 
     const hasDrive   = !!(window._familyDriveToken || window._driveToken);
     const validFolder = meta.folderId && !meta.folderId.startsWith('MF-');
@@ -44031,6 +44233,7 @@ window.renderFamilyPanel = async function() {
   const slots        = `${activeMembers.length} of ${MF_MAX_MEMBERS} members`;
 
   if (label) label.textContent = isOwner ? `👑 Owner · ${slots}` : `👤 Member · ${meta.ownerName}'s family`;
+  setTimeout(() => { try { mfRenderCatDefaultPills && mfRenderCatDefaultPills(); } catch(e) {} }, 100);
 
   const memberRows = members.map(m => {
     const isMe = (!isOwner && m.uid === meta.myUid) || (isOwner && m.role === 'owner');
@@ -44072,12 +44275,205 @@ window.renderFamilyPanel = async function() {
     </button>` : ''}
 
     ${isOwner ? `
+    <div style="margin-top:10px;background:#F8F8FF;border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+      <div style="font-size:0.78em;font-weight:900;color:#1E2A6E;margin-bottom:8px;">🔒 Member Visibility</div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="mfSetFamilyPrivacyMode('all');renderFamilyPanel();"
+          style="flex:1;padding:8px;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.75em;cursor:pointer;
+          border:1.5px solid ${mfGetFamilyPrivacyMode()==='all'?'#4F46E5':'#E5E7EB'};
+          background:${mfGetFamilyPrivacyMode()==='all'?'#EEF2FF':'#fff'};
+          color:${mfGetFamilyPrivacyMode()==='all'?'#4F46E5':'#6B7280'};">
+          👁 Everyone sees all
+        </button>
+        <button onclick="mfSetFamilyPrivacyMode('owner');renderFamilyPanel();"
+          style="flex:1;padding:8px;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.75em;cursor:pointer;
+          border:1.5px solid ${mfGetFamilyPrivacyMode()==='owner'?'#4F46E5':'#E5E7EB'};
+          background:${mfGetFamilyPrivacyMode()==='owner'?'#EEF2FF':'#fff'};
+          color:${mfGetFamilyPrivacyMode()==='owner'?'#4F46E5':'#6B7280'};">
+          🔒 Owner + own only
+        </button>
+      </div>
+      <div style="font-size:0.68em;color:#9CA3AF;margin-top:6px;line-height:1.4;">
+        ${mfGetFamilyPrivacyMode()==='owner' ? 'Members see your transactions + their own. Not each other\u2019s.' : 'All family members can see each other\u2019s shared transactions.'}
+      </div>
+    </div>` : ''}
+
+    ${isOwner ? `
     <button onclick="mfFamilyDisband()" style="width:100%;background:none;border:1.5px solid #EF444440;border-radius:12px;padding:10px;font-family:Nunito;font-weight:800;font-size:0.78em;cursor:pointer;color:#EF4444;">
       🗑 Disband Family Group
     </button>` : `
     <button onclick="mfFamilyLeave()" style="width:100%;background:none;border:1.5px solid #EF444440;border-radius:12px;padding:10px;font-family:Nunito;font-weight:800;font-size:0.78em;cursor:pointer;color:#EF4444;">
       👋 Leave Family Group
-    </button>`}`;
+    </button>`}
+
+    <div style="margin-top:14px;background:#F8F8FF;border-radius:12px;padding:14px;">
+      <div style="font-size:0.78em;font-weight:900;color:#4F46E5;margin-bottom:10px;">
+        🏷️ Categories shared with family by default
+      </div>
+      <div style="font-size:0.72em;color:#6B7280;font-weight:600;margin-bottom:10px;line-height:1.5;">
+        Transactions in these categories show the family toggle <strong>ON</strong> by default. You can change it per transaction.
+      </div>
+      <div id="mf-family-cat-defaults" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+      </div>
+      <button onclick="mfShowCatDefaultsPicker()" style="font-size:0.75em;font-weight:800;color:#4F46E5;background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:8px;padding:5px 12px;cursor:pointer;">
+        ✏️ Customise
+      </button>
+    </div>`;
+};
+
+// Render category default pills
+window.mfRenderCatDefaultPills = function() {
+  const el = document.getElementById('mf-family-cat-defaults');
+  if (!el) return;
+  const cats = mfGetFamilyDefaultCats();
+  el.innerHTML = cats.map(c =>
+    `<span style="background:#EEF2FF;color:#4F46E5;border-radius:20px;padding:3px 10px;font-size:0.72em;font-weight:800;">${c}</span>`
+  ).join('');
+};
+
+// Category defaults picker modal
+window.mfShowCatDefaultsPicker = function() {
+  const allCats = [...new Set([
+    ...FAMILY_DEFAULT_CATS_BUILTIN,
+    ...(typeof getCatsForType === 'function' ? getCatsForType('expense') : []),
+    ...(typeof getCatsForType === 'function' ? getCatsForType('income')  : []),
+  ])].sort();
+  const current = mfGetFamilyDefaultCats();
+  const currentSet = new Set(current.map(c => c.toLowerCase()));
+
+  const overlay = document.createElement('div');
+  overlay.id = 'mf-cat-defaults-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:flex-end;justify-content:center;';
+  const _catRows = allCats.map(c => {
+    const on = currentSet.has(c.toLowerCase());
+    return '<div onclick="mfToggleCatDefault(\'' + c + '\',this)" data-cat="' + c + '"' +
+      ' style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;margin-bottom:6px;' +
+      'border-radius:12px;cursor:pointer;border:1.5px solid ' + (on?'#C7D2FE':'#F0F0F0') + ';background:' + (on?'#EEF2FF':'#FAFAFA') + ';">' +
+      '<span style="font-weight:800;font-size:0.85em;color:' + (on?'#4F46E5':'#374151') + ';">' + c + '</span>' +
+      '<span style="font-size:1em;">' + (on?'✅':'○') + '</span></div>';
+  }).join('');
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;font-family:Nunito,sans-serif;">' +
+    '<div style="padding:18px 20px 12px;border-bottom:1px solid #F5F5F5;display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-weight:900;font-size:1em;color:#1E2A6E;">&#x1F3F7;&#xFE0F; Family Default Categories</div>' +
+    '<button onclick="var o=document.getElementById(&quot;mf-cat-defaults-overlay&quot;);if(o)o.remove();" style="background:none;border:none;font-size:1.2em;cursor:pointer;color:#999;">&#x2715;</button>' +
+    '</div>' +
+    '<div style="font-size:0.75em;color:#6B7280;font-weight:600;padding:10px 20px 6px;line-height:1.5;">' +
+    'Tap to toggle. Selected categories default to <strong>Share with family</strong> in Quick Add.' +
+    '</div>' +
+    '<div style="overflow-y:auto;padding:10px 16px 20px;flex:1;">' + _catRows + '</div>' +
+    '<div style="padding:14px 16px;border-top:1px solid #F5F5F5;">' +
+    '<button onclick="mfSaveCatDefaults()" style="width:100%;background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;border:none;border-radius:14px;padding:14px;font-family:Nunito;font-weight:900;font-size:0.9em;cursor:pointer;">Save Defaults</button>' +
+    '</div></div>';
+  document.body.appendChild(overlay);
+};
+
+window.mfToggleCatDefault = function(cat, el) {
+  const on = el.style.background.includes('EEF2FF');
+  el.style.background    = on ? '#FAFAFA' : '#EEF2FF';
+  el.style.borderColor   = on ? '#F0F0F0' : '#C7D2FE';
+  el.querySelector('span:last-child').textContent = on ? '○' : '✅';
+  el.querySelector('span:first-child').style.color = on ? '#374151' : '#4F46E5';
+};
+
+window.mfSaveCatDefaults = function() {
+  const selected = [...document.querySelectorAll('#mf-cat-defaults-overlay [data-cat]')]
+    .filter(el => el.style.background.includes('EEF2FF'))
+    .map(el => el.dataset.cat);
+  localStorage.setItem(FAMILY_DEFAULT_CATS_KEY, JSON.stringify(selected));
+  document.getElementById('mf-cat-defaults-overlay')?.remove();
+  showToast('✅ Category defaults saved', 2000);
+  mfRenderCatDefaultPills();
+};
+
+// ── First-time Family Onboarding Prompt ──────────────────────────────────────
+window.mfShowFamilyOnboarding = function(mode) {
+  // Only show once per family group
+  const meta = mfGetFamilyMeta();
+  if (!meta) return;
+  const doneKey = 'mf_family_onboarded_' + meta.familyId;
+  if (localStorage.getItem(doneKey)) {
+    // Already onboarded — for create mode just show invite, for join do nothing
+    if (mode === 'create') mfFamilyShowInvite();
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'mf-family-onboarding';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:5000;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:28px 24px 40px;font-family:Nunito,sans-serif;">' +
+    '<div style="text-align:center;margin-bottom:20px;">' +
+    '<div style="font-size:2.4em;margin-bottom:8px;">&#x1F4C5;</div>' +
+    '<div style="font-size:1.05em;font-weight:900;color:#1E2A6E;margin-bottom:8px;">Sync past transactions?</div>' +
+    '<div style="font-size:0.8em;color:#6B7280;line-height:1.6;">Your family can see transactions you explicitly share.<br>What about your <strong>existing data</strong>?</div>' +
+    '</div>' +
+    '<div onclick="mfOnboardingChoice(&quot;fresh&quot;)" style="border:2px solid #E5E7EB;border-radius:16px;padding:16px;margin-bottom:10px;cursor:pointer;" id="ob-fresh">' +
+    '<div style="font-weight:900;font-size:0.9em;color:#1E2A6E;margin-bottom:4px;">&#x1F195; Start fresh</div>' +
+    '<div style="font-size:0.78em;color:#6B7280;line-height:1.5;">Only <strong>new transactions</strong> from today will be shared. Past data stays private.</div>' +
+    '</div>' +
+    '<div onclick="mfOnboardingChoice(&quot;category&quot;)" style="border:2px solid #E5E7EB;border-radius:16px;padding:16px;margin-bottom:20px;cursor:pointer;" id="ob-cat">' +
+    '<div style="font-weight:900;font-size:0.9em;color:#1E2A6E;margin-bottom:4px;">&#x1F3F7;&#xFE0F; Sync by category</div>' +
+    '<div style="font-size:0.78em;color:#6B7280;line-height:1.5;">Past transactions in <strong>family categories</strong> (Groceries, Rent, Utilities…) will be shared. Others stay private.</div>' +
+    '</div>' +
+    '<div style="font-size:0.72em;color:#9CA3AF;text-align:center;line-height:1.5;">You can change this anytime in Settings → Family.<br>Toggle individual transactions in Quick Add.</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  window._mfOnboardingMode = mode;
+};
+
+window.mfOnboardingChoice = function(choice) {
+  const meta     = mfGetFamilyMeta();
+  const keyBytes = mfGetFamilyKeyBytes();
+  document.getElementById('mf-family-onboarding')?.remove();
+
+  const doneKey = 'mf_family_onboarded_' + (meta?.familyId || '');
+  localStorage.setItem(doneKey, choice);
+
+  if (choice === 'category') {
+    // Tag existing transactions with _familyVisible based on default categories
+    showToast('🏷️ Tagging past transactions…', 2000);
+    const defaultCats = mfGetFamilyDefaultCats();
+    const defaultSet  = new Set(defaultCats.map(c => c.toLowerCase()));
+    let tagged = 0;
+    Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k)).forEach(mk => {
+      ['expenses','income'].forEach(type => {
+        (data[mk][type] || []).forEach(t => {
+          if (t._familyVisible === undefined) {
+            t._familyVisible = defaultSet.has((t.category || '').toLowerCase());
+            if (t._familyVisible) tagged++;
+          }
+        });
+      });
+    });
+    save();
+    showToast(`✅ ${tagged} past transactions marked for family sync`, 3000);
+    // Trigger history sync in background
+    setTimeout(async () => {
+      const now = new Date();
+      for (let i = 0; i < 6; i++) {
+        const d  = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const mk = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+        if (data[mk]) await mfSyncFamilyTxns(mk).catch(() => {});
+      }
+    }, 2000);
+  } else {
+    // Start fresh — mark all existing as private (don't share)
+    Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k)).forEach(mk => {
+      ['expenses','income','investments'].forEach(type => {
+        (data[mk][type] || []).forEach(t => {
+          if (t._familyVisible === undefined) t._familyVisible = false;
+        });
+      });
+    });
+    save();
+    showToast('✅ Past data stays private — sharing starts from today', 3000);
+  }
+
+  // For create mode — show invite after choice
+  if (window._mfOnboardingMode === 'create') {
+    setTimeout(() => mfFamilyShowInvite(), 600);
+  }
 };
 
 // Backdrop close
