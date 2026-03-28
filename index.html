@@ -41174,6 +41174,22 @@ window._driveTokenExpiry   = 0;
 window._familyDriveToken   = null;  // drive scope token — family folder only
 window._familyDriveExpiry  = 0;
 
+// Restore persisted family Drive token on startup
+(function() {
+  try {
+    const tok = localStorage.getItem('mf_family_drive_token');
+    const exp = Number(localStorage.getItem('mf_family_drive_expiry') || 0);
+    if (tok && exp > Date.now()) {
+      window._familyDriveToken  = tok;
+      window._familyDriveExpiry = exp;
+    } else if (tok) {
+      // Token expired — clear it so we re-auth on next family action
+      localStorage.removeItem('mf_family_drive_token');
+      localStorage.removeItem('mf_family_drive_expiry');
+    }
+  } catch(e) {}
+})();
+
 // ── Crypto helpers ─────────────────────────────────────────────────
 // File format: salt(16 bytes) + IV(12 bytes) + ciphertext → base64 string
 // Salt travels WITH the file — any device with the passphrase can decrypt
@@ -41453,6 +41469,11 @@ window.mfInitFamilyTokenClient = function(callback) {
       }
       window._familyDriveToken  = resp.access_token;
       window._familyDriveExpiry = Date.now() + ((resp.expires_in || 3600) - 60) * 1000;
+      // Persist so token survives app restarts
+      try {
+        localStorage.setItem('mf_family_drive_token',  resp.access_token);
+        localStorage.setItem('mf_family_drive_expiry', String(window._familyDriveExpiry));
+      } catch(e) {}
       showToast('✅ Drive access granted — setting up family…', 2000);
       if (typeof callback === 'function') setTimeout(callback, 500);
     }
@@ -41474,6 +41495,10 @@ window.mfFamilyDriveConnect = function(afterCallback) {
           if (!result?.token) { showToast('❌ Drive access not granted', 3000); return; }
           window._familyDriveToken  = result.token;
           window._familyDriveExpiry = Date.now() + 3540000;
+          try {
+            localStorage.setItem('mf_family_drive_token',  result.token);
+            localStorage.setItem('mf_family_drive_expiry', String(window._familyDriveExpiry));
+          } catch(e) {}
           showToast('✅ Drive access granted — setting up family…', 2000);
           if (typeof afterCallback === 'function') setTimeout(afterCallback, 500);
         })
@@ -41538,7 +41563,18 @@ function mfShowFamilyDriveExplainer(afterCallback) {
 }
 
 window.mfFamilyTokenValid = function() {
-  return window._familyDriveToken && Date.now() < window._familyDriveExpiry;
+  // Check memory first, then try to restore from localStorage
+  if (window._familyDriveToken && Date.now() < window._familyDriveExpiry) return true;
+  try {
+    const tok = localStorage.getItem('mf_family_drive_token');
+    const exp = Number(localStorage.getItem('mf_family_drive_expiry') || 0);
+    if (tok && exp > Date.now()) {
+      window._familyDriveToken  = tok;
+      window._familyDriveExpiry = exp;
+      return true;
+    }
+  } catch(e) {}
+  return false;
 };
 
 window.mfDriveDisconnect = function() {
@@ -43578,6 +43614,16 @@ window.mfDashClearSpotlight = function() {
 
 // ── SETTINGS PANEL RENDERER ────────────────────────────────────────
 window.mfFamilyRefresh = async function() {
+  // If no valid family Drive token, re-auth first then refresh
+  if (!mfFamilyTokenValid()) {
+    showToast('🔑 Drive access needed to refresh…', 2000);
+    mfFamilyDriveConnect(async () => {
+      showToast('🔄 Reading latest member list from Drive…', 2000);
+      await renderFamilyPanel();
+      showToast('✅ Member list refreshed', 1500);
+    });
+    return;
+  }
   showToast('🔄 Reading latest member list from Drive…', 2000);
   await renderFamilyPanel();
   showToast('✅ Member list refreshed', 1500);
