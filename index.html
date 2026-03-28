@@ -41438,7 +41438,7 @@ window.mfDriveConnect = function() {
 
 let _familyTokenClient = null;
 
-function mfInitFamilyTokenClient(callback) {
+window.mfInitFamilyTokenClient = function(callback) {
   if (typeof google === 'undefined' || !google.accounts) {
     setTimeout(() => mfInitFamilyTokenClient(callback), 800);
     return;
@@ -41469,7 +41469,7 @@ window.mfFamilyDriveConnect = function(afterCallback) {
       // Request drive scope token via plugin
       const email = window._fbUser?.email;
       if (!email) { showToast('⚠️ Sign in first', 2000); return; }
-      DriveAuth.getDriveToken({ email, scope: MF_FAMILY_DRIVE_SCOPE })
+      DriveAuth.getDriveToken({ email, scope: 'oauth2:' + MF_FAMILY_DRIVE_SCOPE })
         .then(result => {
           if (!result?.token) { showToast('❌ Drive access not granted', 3000); return; }
           window._familyDriveToken  = result.token;
@@ -41477,8 +41477,10 @@ window.mfFamilyDriveConnect = function(afterCallback) {
           showToast('✅ Drive access granted — setting up family…', 2000);
           if (typeof afterCallback === 'function') setTimeout(afterCallback, 500);
         })
-        .catch(() => {
-          // Fall back to web GIS flow if plugin doesn't support scope param
+        .catch((err) => {
+          // AccountManager can't handle drive scope natively (needs consent UI)
+          // Fall through to web GIS flow which handles the OAuth consent properly
+          console.warn('[MF Family] Native drive token failed, using web flow:', err?.message);
           mfShowFamilyDriveExplainer(afterCallback);
         });
       return;
