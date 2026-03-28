@@ -42933,6 +42933,8 @@ async function mfReadManifest(folderId, keyBytes) {
     return await mfFamilyDecrypt(b64, keyBytes);
   } catch(e) {
     console.warn('[MF Family] Manifest read error:', e.message);
+    // Propagate auth errors so caller can handle reconnect
+    if (e.message && (e.message.includes('401') || e.message.includes('403'))) throw e;
     return null;
   }
 }
@@ -44080,10 +44082,21 @@ window.mfFamilyRefresh = async function() {
 
   // Owner: need Drive token to read/write manifest
   if (!mfFamilyTokenValid()) {
-    showToast('🔑 Drive access needed to refresh…', 2000);
+    // Token missing or expired — reconnect then retry automatically
+    showToast('🔑 Reconnecting Drive…', 2000);
     mfFamilyDriveConnect(async () => {
-      await mfFamilyRefresh(); // retry after token acquired
+      showToast('✅ Drive reconnected — refreshing…', 1500);
+      setTimeout(() => mfFamilyRefresh(), 500);
     });
+    return;
+  }
+
+  // Double-check token is still valid just before Drive calls
+  // (may have expired between check and API call)
+  if (!window._familyDriveToken) {
+    mfClearFamilyToken();
+    showToast('🔑 Drive access expired — tap Reconnect Drive', 3000);
+    await renderFamilyPanel();
     return;
   }
 
@@ -44167,7 +44180,20 @@ window.mfFamilyRefresh = async function() {
     await renderFamilyPanel();
   } catch(e) {
     console.warn('[MF Refresh] Error:', e.message);
-    showToast('⚠️ Refresh failed — check connection', 2500);
+    // Detect expired/invalid Drive token — clear and prompt reconnect
+    const isAuthError = e.message && (
+      e.message.includes('401') ||
+      e.message.includes('403') ||
+      e.message.includes('expired') ||
+      e.message.includes('invalid_token') ||
+      e.message.includes('Failed to fetch')
+    );
+    if (isAuthError) {
+      mfClearFamilyToken();
+      showToast('🔑 Drive access expired — tap Reconnect Drive', 3000);
+    } else {
+      showToast('⚠️ ' + (e.message || 'Refresh failed') + ' — check connection', 3000);
+    }
     await renderFamilyPanel();
   }
 };
