@@ -42766,16 +42766,20 @@ window.mfFamilyJoin = async function() {
   showToast('🔗 Joining family…', 2000);
 
   try {
-    // Read manifest from Firestore using familyId — works cross-account
+    // Step 1: Read current manifest from owner's Drive folder
     let manifest = null;
+    const hasToken = !!(window._familyDriveToken || window._driveToken);
+    showToast('📖 Reading family manifest…', 1500);
     try {
       manifest = await mfReadManifestForFamily(payload.familyId, keyBytes, payload.folderId);
+      console.warn('[MF Join] Manifest read OK — members:', manifest?.members?.length, 'token:', hasToken);
     } catch(e) {
-      console.warn('[MF Family] Firestore read failed:', e.message);
+      console.warn('[MF Join] Manifest read failed:', e.message, 'token:', hasToken);
     }
 
-    // If Firestore read failed (e.g. not yet signed in to Firebase), use a fresh manifest
+    // If read failed, start fresh — owner will still be shown when they refresh
     if (!manifest) {
+      console.warn('[MF Join] Starting with fresh manifest (read failed)');
       manifest = {
         familyId: payload.familyId,
         ownerName: payload.ownerName,
@@ -42789,30 +42793,31 @@ window.mfFamilyJoin = async function() {
       showToast(`🚫 Family is full (max ${MF_MAX_MEMBERS} members)`, 3000); return;
     }
 
+    // Step 2: Add self to manifest
     const memberId = 'mbr_' + Date.now();
     manifest.members.push({
       uid: memberId, name: memberName, role: 'member',
       joinedAt: new Date().toISOString(), status: 'active'
     });
 
-    // Write updated manifest to Drive using owner's folder (owner's token not available here)
-    // Best effort — owner's manifest will sync on their next open
-    // Member saves locally and owner sees them when manifest is refreshed
+    // Step 3: Save key + meta locally first
     mfSaveFamilyKey(keyBytes);
     mfSaveFamilyMeta({
       familyId: payload.familyId, folderId: payload.folderId,
       manifestFileId: payload.manifestFileId || null,
       role: 'member', ownerName: payload.ownerName,
-      myUid: memberId, myName: memberName,
-      pendingJoin: true  // flag for owner to confirm on next manifest read
+      myUid: memberId, myName: memberName
     });
 
-    // Write updated manifest to Firestore — works cross-account, member has own Firebase auth
+    // Step 4: Write updated manifest back to owner's Drive folder
+    showToast('✍️ Updating member list…', 1500);
     try {
       await mfWriteManifestForFamily(payload.familyId, keyBytes, manifest, payload.folderId);
+      console.warn('[MF Join] Manifest written to Drive — members now:', manifest.members.length);
+      showToast('✅ Member list updated on Drive', 1500);
     } catch(e) {
-      console.warn('[MF Family] Firestore write failed:', e.message);
-      showToast('⚠️ Joined locally — owner needs to be online to sync roster', 3000);
+      console.warn('[MF Join] Drive manifest write FAILED:', e.message);
+      showToast('⚠️ Joined locally — owner tap Refresh to sync', 3000);
     }
 
     mfHideFamilyModal();
