@@ -12819,8 +12819,22 @@ function toggleAuthorChips() {
   const btn    = document.getElementById('author-toggle-btn');
   if (slide) slide.classList.toggle('open', _authorChipsOpen);
   if (btn)   btn.classList.toggle('active', _authorChipsOpen);
+  if (_authorChipsOpen) {
+    // Force-load family txns if chips would be empty (family data may not be cached yet)
+    const famM = (window._mfFamilyTxns && window._mfFamilyTxns[viewMonth]) || {};
+    const hasFamEntries = Object.values(famM).some(arr => Array.isArray(arr) && arr.length > 0);
+    if (!hasFamEntries && typeof mfLoadFamilyTxns === 'function' && mfGetFamilyMeta && mfGetFamilyMeta()) {
+      mfLoadFamilyTxns(viewMonth).then(() => {
+        renderAuthorChips();
+        if (slide) slide.classList.add('open');
+      }).catch(() => {});
+    } else {
+      renderAuthorChips();
+    }
+    return;
+  }
   // Reset filter when closing
-  if (!_authorChipsOpen && _authorFilter !== 'all') {
+  if (_authorFilter !== 'all') {
     _authorFilter = 'all';
     renderTransactions();
   }
@@ -23944,7 +23958,13 @@ function setBudgetTab(tab, el) {
   else if(tab==='goals') trackFeature('budget_goals_tab');
   currentBudgetTab = tab;
   document.querySelectorAll('.bm-tab').forEach(b => b.classList.remove('active'));
-  if (el) el.classList.add('active');
+  if (el) {
+    el.classList.add('active');
+  } else {
+    // No element passed — find and activate the correct tab button
+    const tabBtn = document.getElementById('btab-' + tab);
+    if (tabBtn) tabBtn.classList.add('active');
+  }
   // Hide goals overlay first
   const goalsPanel = document.getElementById('blist-goals');
   const goalsFab   = document.getElementById('goals-fab-btn');
@@ -33552,6 +33572,16 @@ function signOut() {
     if (typeof _mfTxnsUnsubscribe === 'function') try { _mfTxnsUnsubscribe(); } catch(e) {}
     if (window._mfFamilyPollTimer) { clearInterval(window._mfFamilyPollTimer); window._mfFamilyPollTimer = null; }
 
+    // Reset the in-memory data object so new user doesn't see stale data
+    try {
+      if (typeof data !== 'undefined') {
+        Object.keys(data).forEach(k => { try { delete data[k]; } catch(e) {} });
+      }
+    } catch(e) {}
+    // Also clear the signed-in UID so account switch detection works
+    localStorage.removeItem('mf_signed_in_uid');
+    // Reset UI state
+    try { if (typeof renderHome === 'function') renderHome(); } catch(e) {}
     document.getElementById('screen-login').style.display = 'flex';
     showToast('👋 Signed out — data cleared from this device');
   });
@@ -33626,6 +33656,14 @@ _auth.onAuthStateChanged(async user => {
       keysToWipe.forEach(k => localStorage.removeItem(k));
       window._mfEncPassphrase  = null;
       window._familyDriveToken = null;
+      window._driveToken       = null;
+      window._driveTokenExpiry = 0;
+      // Reset in-memory data so stale data doesn't render
+      try {
+        if (typeof data !== 'undefined') {
+          Object.keys(data).forEach(k => { try { delete data[k]; } catch(e) {} });
+        }
+      } catch(e) {}
     }
     localStorage.setItem('mf_signed_in_uid', user.uid);
 
@@ -37659,6 +37697,7 @@ function renderFHS() {
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:5px;">
           <div style="font-size:0.6em;font-weight:700;color:rgba(255,255,255,0.4);">${fhs.activePillars}/${fhs.totalPillars} pillars active</div>
+          ${(typeof mfGetFamilyMeta==='function'&&mfGetFamilyMeta())?'<div style="font-size:0.58em;font-weight:700;color:rgba(255,200,100,0.6);margin-top:2px;">\u{1F464} Personal score only</div>':''}
           <div style="font-size:0.6em;font-weight:700;color:rgba(255,255,255,0.35);">${fhs.computeMs}ms</div>
         </div>
       </div>
@@ -43677,7 +43716,14 @@ async function mfSyncFamilyTxns(monthKey) {
 // Bug fix: capture monthKey at schedule time, not execution time
 window.mfTxnsAutoSync = function(monthKey) {
   if (!mfGetFamilyMeta()) return;
-  const capturedMonth = monthKey || viewMonth; // capture now, before timeout fires
+  const capturedMonth = monthKey || viewMonth;
+  // Only sync if the month has family-visible transactions
+  // Avoids spurious "Family sync failed" toasts on goal/NW saves
+  const mData = data[capturedMonth] || {};
+  const hasVisible = ['expenses','income','investments'].some(type =>
+    (mData[type] || []).some(t => t._familyVisible === true)
+  );
+  if (!hasVisible) return;
   clearTimeout(_mfTxnsSyncTimer);
   _mfTxnsSyncTimer = setTimeout(() => mfSyncFamilyTxns(capturedMonth), 5000);
 };
