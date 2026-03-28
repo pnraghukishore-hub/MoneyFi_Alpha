@@ -42642,7 +42642,8 @@ async function mfDriveReadFamilyFileById(folderId, fileName) {
 const MF_FS_COLLECTION       = 'mf_family';        // encrypted member manifest
 const MF_FS_REKEY_COLLECTION = 'mf_family_rekey';  // no longer used — invite-based rekey
 const MF_FS_TXNS_COLLECTION  = 'mf_family_txns';   // encrypted transaction blobs
-const MF_FS_CMD_COLLECTION   = 'mf_family_cmds';   // encrypted owner commands
+const MF_FS_CMD_COLLECTION     = 'mf_family_cmds';   // encrypted owner commands
+const MF_FS_PENDING_COLLECTION = 'mf_family_pending'; // pending join requests — Firestore only, auto-deleted after owner pulls
 const MF_FS_NW_COLLECTION    = 'mf_family_nw';     // encrypted NW snapshots
 
 function mfGetDb() {
@@ -42791,27 +42792,14 @@ window.mfFamilyShowInvite = async function() {
 
 // ── JOIN FAMILY (Member flow) ──────────────────────────────────────
 window.mfFamilyJoin = async function() {
+  // Firebase auth required — no Drive token needed on member's device.
+  // Members signal join via Firestore pending record (encrypted, auto-deleted).
+  // Owner pulls pending joins into Drive manifest on Refresh.
   if (!window._fbUser) {
     showToast('⚠️ Sign in with Google first', 3000);
     return;
   }
-  // Need family Drive token to write to the shared folder
-  if (!mfFamilyTokenValid()) {
-    // Store the raw code so we can resume after auth
-    window._mfPendingJoinCode = document.getElementById('mf-family-join-input')?.value;
-    window._mfPendingJoinName = document.getElementById('mf-family-member-name')?.value;
-    mfFamilyDriveConnect(() => {
-      // Restore and retry
-      if (window._mfPendingJoinCode) {
-        const inp = document.getElementById('mf-family-join-input');
-        const nm  = document.getElementById('mf-family-member-name');
-        if (inp) inp.value = window._mfPendingJoinCode;
-        if (nm)  nm.value  = window._mfPendingJoinName || '';
-      }
-      setTimeout(() => mfFamilyJoin(), 300);
-    });
-    return;
-  }
+
   const input = document.getElementById('mf-family-join-input');
   const raw   = (input?.value || '').trim();
   if (!raw) { showToast('⚠️ Paste the invite code first', 2000); return; }
@@ -42819,7 +42807,6 @@ window.mfFamilyJoin = async function() {
   const memberName = (document.getElementById('mf-family-member-name')?.value || '').trim();
   if (!memberName) { showToast('⚠️ Enter your name first', 2000); return; }
 
-  // Decode payload from full base64
   let payload;
   try {
     payload = JSON.parse(atob(raw));
@@ -42844,41 +42831,9 @@ window.mfFamilyJoin = async function() {
   showToast('🔗 Joining family…', 2000);
 
   try {
-    // Step 1: Read current manifest from owner's Drive folder
-    let manifest = null;
-    const hasToken = !!(window._familyDriveToken || window._driveToken);
-    showToast('📖 Reading family manifest…', 1500);
-    try {
-      manifest = await mfReadManifestForFamily(payload.familyId, keyBytes, payload.folderId);
-      console.warn('[MF Join] Manifest read OK — members:', manifest?.members?.length, 'token:', hasToken);
-    } catch(e) {
-      console.warn('[MF Join] Manifest read failed:', e.message, 'token:', hasToken);
-    }
-
-    // If read failed, start fresh — owner will still be shown when they refresh
-    if (!manifest) {
-      console.warn('[MF Join] Starting with fresh manifest (read failed)');
-      manifest = {
-        familyId: payload.familyId,
-        ownerName: payload.ownerName,
-        createdAt: new Date().toISOString(),
-        members: []
-      };
-    }
-
-    const activeCount = (manifest.members || []).filter(m => m.status === 'active').length;
-    if (activeCount >= MF_MAX_MEMBERS) {
-      showToast(`🚫 Family is full (max ${MF_MAX_MEMBERS} members)`, 3000); return;
-    }
-
-    // Step 2: Add self to manifest
     const memberId = 'mbr_' + Date.now();
-    manifest.members.push({
-      uid: memberId, name: memberName, role: 'member',
-      joinedAt: new Date().toISOString(), status: 'active'
-    });
 
-    // Step 3: Save key + meta locally first
+    // Step 1: Save key + meta locally
     mfSaveFamilyKey(keyBytes);
     mfSaveFamilyMeta({
       familyId: payload.familyId, folderId: payload.folderId,
@@ -42887,19 +42842,28 @@ window.mfFamilyJoin = async function() {
       myUid: memberId, myName: memberName
     });
 
-    // Step 4: Write updated manifest back to owner's Drive folder
-    showToast('✍️ Updating member list…', 1500);
-    try {
-      await mfWriteManifestForFamily(payload.familyId, keyBytes, manifest, payload.folderId);
-      console.warn('[MF Join] Manifest written to Drive — members now:', manifest.members.length);
-      showToast('✅ Member list updated on Drive', 1500);
-    } catch(e) {
-      console.warn('[MF Join] Drive manifest write FAILED:', e.message);
-      showToast('⚠️ Joined locally — owner tap Refresh to sync', 3000);
-    }
+    // Step 2: Write encrypted pending-join record to Firestore.
+    // Owner reads this on Refresh and adds member to Drive manifest.
+    // No financial data — only name, uid, timestamp (encrypted).
+    const pendingRecord = {
+      uid:       memberId,
+      name:      memberName,
+      familyId:  payload.familyId,
+      joinedAt:  new Date().toISOString(),
+      status:    'active',
+      role:      'member'
+    };
+    const encPending = await mfFamilyEncrypt(pendingRecord, keyBytes);
+    const pendingDocId = payload.familyId + '_' + memberId;
+    await mfGetDb().collection(MF_FS_PENDING_COLLECTION).doc(pendingDocId).set({
+      familyId: payload.familyId,  // plain — owner queries by this
+      enc:      encPending,         // encrypted member record
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    console.warn('[MF Join] Pending join written to Firestore:', pendingDocId);
 
     mfHideFamilyModal();
-    showToast(`✅ Joined ${payload.ownerName}'s family!`, 3000);
+    showToast(`✅ Joined ${payload.ownerName}'s family! Owner will see you shortly.`, 3500);
     renderFamilyPanel();
 
     // Load historical transactions for new member — past 6 months
@@ -43656,19 +43620,84 @@ window.mfDashClearSpotlight = function() {
 
 // ── SETTINGS PANEL RENDERER ────────────────────────────────────────
 window.mfFamilyRefresh = async function() {
-  // If no valid family Drive token, re-auth first then refresh
+  const meta     = mfGetFamilyMeta();
+  const keyBytes = mfGetFamilyKeyBytes();
+  if (!meta || !keyBytes) { renderFamilyPanel(); return; }
+
+  // Non-owners: just refresh the panel display
+  if (meta.role !== 'owner') {
+    showToast('🔄 Refreshing…', 1500);
+    await renderFamilyPanel();
+    return;
+  }
+
+  // Owner: need Drive token to read/write manifest
   if (!mfFamilyTokenValid()) {
     showToast('🔑 Drive access needed to refresh…', 2000);
     mfFamilyDriveConnect(async () => {
-      showToast('🔄 Reading latest member list from Drive…', 2000);
-      await renderFamilyPanel();
-      showToast('✅ Member list refreshed', 1500);
+      await mfFamilyRefresh(); // retry after token acquired
     });
     return;
   }
-  showToast('🔄 Reading latest member list from Drive…', 2000);
-  await renderFamilyPanel();
-  showToast('✅ Member list refreshed', 1500);
+
+  showToast('🔄 Checking for new members…', 2000);
+
+  try {
+    // 1. Read current manifest from Drive
+    let manifest = await mfReadManifest(meta.folderId, keyBytes);
+    if (!manifest) {
+      manifest = { familyId: meta.familyId, ownerName: meta.ownerName,
+                   createdAt: new Date().toISOString(), members: [] };
+    }
+
+    // 2. Pull pending join requests from Firestore
+    const pendingSnap = await mfGetDb()
+      .collection(MF_FS_PENDING_COLLECTION)
+      .where('familyId', '==', meta.familyId)
+      .get();
+
+    let newMembers = 0;
+    const toDelete = [];
+
+    for (const doc of pendingSnap.docs) {
+      try {
+        const pending = await mfFamilyDecrypt(doc.data().enc, keyBytes);
+        // Check not already in manifest
+        const alreadyIn = (manifest.members || []).some(m => m.uid === pending.uid);
+        if (!alreadyIn && pending.uid && pending.name) {
+          manifest.members = manifest.members || [];
+          manifest.members.push({
+            uid:      pending.uid,
+            name:     pending.name,
+            role:     'member',
+            joinedAt: pending.joinedAt || new Date().toISOString(),
+            status:   'active'
+          });
+          newMembers++;
+          toDelete.push(doc.ref);
+          console.warn('[MF Refresh] Added member:', pending.name);
+        }
+      } catch(e) {
+        console.warn('[MF Refresh] Could not decrypt pending join:', e.message);
+      }
+    }
+
+    if (newMembers > 0) {
+      // 3. Write updated manifest back to Drive
+      await mfWriteManifest(meta.folderId, keyBytes, manifest);
+      // 4. Delete processed pending records from Firestore
+      await Promise.all(toDelete.map(ref => ref.delete()));
+      showToast(`✅ ${newMembers} new member${newMembers > 1 ? 's' : ''} added!`, 2500);
+    } else {
+      showToast('✅ Member list is up to date', 1500);
+    }
+
+    await renderFamilyPanel();
+  } catch(e) {
+    console.warn('[MF Refresh] Error:', e.message);
+    showToast('⚠️ Refresh failed — check connection', 2500);
+    await renderFamilyPanel();
+  }
 };
 
 window.renderFamilyPanel = async function() {
