@@ -33404,11 +33404,46 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function signOut() {
+  if (!confirm('Sign out?\n\nYour data is safely backed up to Google Drive.')) return;
   if (_unsubscribeListener) _unsubscribeListener();
   _auth.signOut().then(() => {
     window._fbUser = null;
+
+    // Clear user-specific data so the next user starts fresh
+    // Device-level items (salt, passphrase) are also cleared — next user sets up their own
+    const keysToRemove = [
+      'financeData',           // all transactions, NW, budgets
+      'mf_enc_setup',          // passphrase setup state
+      'mf_enc_salt',           // encryption salt
+      'mf_enc_pp',             // stored passphrase
+      'mf_drive_file_id',      // cached Drive file ID
+      'mf_last_backup',
+      'mf_last_restore',
+      'mf_family_key',         // family encryption key
+      'mf_family_meta',        // family membership
+      'mf_family_drive_token', // family Drive token
+      'mf_family_drive_expiry',
+      'mf_family_pending_code',
+      'mf_family_pending_name',
+      'mf_privacy_mode',
+      'mf_theme',
+      'mf_currency',
+      'moneyfi_ai_usage_' + new Date().toISOString().slice(0,10),
+    ];
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
+    // Reset in-memory state
+    window._driveToken        = null;
+    window._driveTokenExpiry  = 0;
+    window._familyDriveToken  = null;
+    window._familyDriveExpiry = 0;
+    window._mfEncPassphrase   = null;
+    if (typeof window._mfFamilyTxns !== 'undefined') window._mfFamilyTxns = {};
+    if (typeof _mfTxnsUnsubscribe === 'function') try { _mfTxnsUnsubscribe(); } catch(e) {}
+    if (window._mfFamilyPollTimer) { clearInterval(window._mfFamilyPollTimer); window._mfFamilyPollTimer = null; }
+
     document.getElementById('screen-login').style.display = 'flex';
-    showToast('👋 Signed out');
+    showToast('👋 Signed out — data cleared from this device');
   });
 }
 
@@ -33466,6 +33501,23 @@ _auth.onAuthStateChanged(async user => {
     // User is signed in and allowed
     window._fbUser = user;
     window._fbDb   = _db;
+
+    // Guard: if stored data belongs to a different user, clear it
+    // This prevents user A's data showing when user B signs in
+    const storedUid = localStorage.getItem('mf_signed_in_uid');
+    if (storedUid && storedUid !== user.uid) {
+      // Different user — wipe previous user's data silently
+      const keysToWipe = [
+        'financeData','mf_enc_setup','mf_enc_salt','mf_enc_pp',
+        'mf_drive_file_id','mf_last_backup','mf_last_restore',
+        'mf_family_key','mf_family_meta','mf_family_drive_token',
+        'mf_family_drive_expiry','mf_privacy_mode','mf_theme','mf_currency'
+      ];
+      keysToWipe.forEach(k => localStorage.removeItem(k));
+      window._mfEncPassphrase  = null;
+      window._familyDriveToken = null;
+    }
+    localStorage.setItem('mf_signed_in_uid', user.uid);
 
     // Hide login screen
     if (loginScreen) loginScreen.style.display = 'none';
@@ -41963,9 +42015,11 @@ window.mfDriveSaveNow = async function() {
       _theme: localStorage.getItem('mf_theme') || 'default',
       _currency: localStorage.getItem('mf_currency') || null,
       data: dataObj,
-      _familyKey:  localStorage.getItem('mf_family_key')  || null,
-      _familyMeta: localStorage.getItem('mf_family_meta') || null,
-      _storedPP:   localStorage.getItem('mf_enc_pp') || null,
+      _familyKey:        localStorage.getItem('mf_family_key')          || null,
+      _familyMeta:       localStorage.getItem('mf_family_meta')         || null,
+      _familyDriveToken: localStorage.getItem('mf_family_drive_token')  || null,
+      _familyDriveExp:   localStorage.getItem('mf_family_drive_expiry') || null,
+      _storedPP:         localStorage.getItem('mf_enc_pp') || null,
     };
     // Use merge-then-save instead of plain write — handles two-phone offline conflict
     await mfDriveMergeAndSave(envelope);
@@ -42040,7 +42094,9 @@ window.mfDriveRestorePrompt = async function(silentConfirm, noReload) {
       if (typeof mfOnBackupSuccess === 'function') mfOnBackupSuccess();
       // Re-init family features with restored credentials
       if (envelope._familyKey) {
+        showToast('👨‍👩‍👧 Family group restored ✅', 2500);
         setTimeout(() => {
+          try { renderFamilyPanel && renderFamilyPanel(); } catch(e) {}
           try { renderFamilyDashCard && renderFamilyDashCard(); } catch(e) {}
           try { mfStartFamilyTxnsListener && mfStartFamilyTxnsListener(); } catch(e) {}
   // Populate family panel on every app load (needed for PWA cold start)
@@ -42051,9 +42107,19 @@ window.mfDriveRestorePrompt = async function(silentConfirm, noReload) {
       return;
     }
     // Restore family credentials before page reload
-    if (envelope._familyKey)  localStorage.setItem('mf_family_key',  envelope._familyKey);
-    if (envelope._familyMeta) localStorage.setItem('mf_family_meta', envelope._familyMeta);
-    if (envelope._storedPP)   localStorage.setItem('mf_enc_pp', envelope._storedPP);
+    if (envelope._familyKey)        localStorage.setItem('mf_family_key',          envelope._familyKey);
+    if (envelope._familyMeta)       localStorage.setItem('mf_family_meta',         envelope._familyMeta);
+    if (envelope._familyDriveToken) localStorage.setItem('mf_family_drive_token',  envelope._familyDriveToken);
+    if (envelope._familyDriveExp)   localStorage.setItem('mf_family_drive_expiry', envelope._familyDriveExp);
+    if (envelope._storedPP)         localStorage.setItem('mf_enc_pp', envelope._storedPP);
+    // Restore family Drive token into memory too
+    if (envelope._familyDriveToken) {
+      const exp = Number(envelope._familyDriveExp || 0);
+      if (exp > Date.now()) {
+        window._familyDriveToken  = envelope._familyDriveToken;
+        window._familyDriveExpiry = exp;
+      }
+    }
     showToast('✅ Restored from Drive — reloading app…', 2000);
     localStorage.setItem('mf_just_restored', '1');
     setTimeout(() => location.reload(), 2200);
@@ -42457,9 +42523,13 @@ function mfSaveFamilyKey(rawBytes) {
   let binary = '';
   rawBytes.forEach(b => binary += String.fromCharCode(b));
   localStorage.setItem(MF_FAMILY_KEY, btoa(binary));
+  // Trigger Drive backup — family key is critical, must be in backup immediately
+  setTimeout(() => { try { window.mfDriveSaveNow && window.mfDriveSaveNow(); } catch(e){} }, 1000);
 }
 function mfSaveFamilyMeta(meta) {
   localStorage.setItem(MF_FAMILY_META, JSON.stringify(meta));
+  // Trigger Drive backup — family membership must be in backup immediately
+  setTimeout(() => { try { window.mfDriveSaveNow && window.mfDriveSaveNow(); } catch(e){} }, 2000);
 }
 function mfGenFamilyId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
