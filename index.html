@@ -13441,6 +13441,15 @@ function renderCalDayDetail(allTx) {
               </div>
               <div style="font-size:0.78em;color:var(--text-light);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.description||'—'}</div>
               ${t._addedBy && t._addedBy !== 'You' ? `<div style="font-size:0.65em;color:#A0A8C0;font-weight:700;margin-top:1px;">👤 ${t._addedBy}</div>` : ''}
+              ${(()=>{
+                const _inFam = typeof mfGetFamilyMeta==='function' && mfGetFamilyMeta();
+                if (!_inFam || t._fromFamily) return ''; // only show on own txns
+                if (t._familyVisible === true)
+                  return '<div onclick="event.stopPropagation();mfToggleTxVisibility(event,\'' + viewMonth + '\',\'' + t._type + '\',' + t._idx + ')" style="display:inline-flex;align-items:center;gap:2px;font-size:0.6em;font-weight:800;color:#7C3AED;background:#F5F0FF;border-radius:20px;padding:1px 6px;margin-top:2px;cursor:pointer;">&#x1F46A; Shared</div>';
+                if (t._familyVisible === false)
+                  return '<div onclick="event.stopPropagation();mfToggleTxVisibility(event,\'' + viewMonth + '\',\'' + t._type + '\',' + t._idx + ')" style="display:inline-flex;align-items:center;gap:2px;font-size:0.6em;font-weight:800;color:#9CA3AF;background:#F3F4F6;border-radius:20px;padding:1px 6px;margin-top:2px;cursor:pointer;">&#x1F512; Private</div>';
+                return ''; // no flag = legacy, treated as shared by sync filter
+              })()}
             </div>
             <!-- Amount -->
             <div style="text-align:right;flex-shrink:0;">
@@ -13454,6 +13463,26 @@ function renderCalDayDetail(allTx) {
   // Init swipe on newly rendered rows
   setTimeout(() => initSwipeRows(detail), 0);
 }
+
+// ── Toggle _familyVisible on a single transaction (tap the badge) ───────────
+window.mfToggleTxVisibility = function(event, monthKey, type, idx) {
+  if (event) event.stopPropagation();
+  const typeMap = {expense:'expenses',income:'income',investment:'investments',additional:'additional',debt:'debts',given:'givenToOthers'};
+  const listKey = typeMap[type];
+  if (!data[monthKey] || !data[monthKey][listKey]) return;
+  const t = data[monthKey][listKey][idx];
+  if (!t) return;
+  // Toggle: true→false, false→true, undefined→false (stop sharing legacy txn)
+  const current = t._familyVisible;
+  const next = current === true ? false : true;
+  t._familyVisible = next;
+  save();
+  showToast(next ? '👨‍👩‍👧 Now shared with family' : '🔒 Now private', 1800);
+  // Trigger sync for this month
+  if (typeof mfTxnsAutoSync === 'function') mfTxnsAutoSync(monthKey);
+  // Re-render to update the badge
+  try { renderTransactions && renderTransactions(); } catch(e) {}
+};
 
 // ── Family txn edit/delete directly from _mfFamilyTxns by index ──────────────
 function openFamilyEditTx(monthKey, type, idx) {
@@ -42544,12 +42573,18 @@ window.addEventListener('online',  () => {
   const fails = parseInt(localStorage.getItem(MF_BACKUP_FAIL_KEY) || '0');
   if (fails > 0 && window._mfEncPassphrase && window._driveToken) {
     setTimeout(mfDriveSaveNow, 2000);
+  setTimeout(function(){if(typeof mfDrainFamilySyncQueue==='function')mfDrainFamilySyncQueue();},3000);
   }
 });
 
 window.addEventListener('offline', () => {
   mfSetDriveStatus('offline');
   showSyncStatus('📵 You\'re offline — data saved locally', '#F59E0B', 5000);
+});
+
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='visible'&&navigator.onLine)
+    setTimeout(function(){if(typeof mfDrainFamilySyncQueue==='function')mfDrainFamilySyncQueue();},2000);
 });
 
 // Check offline on init
@@ -43866,6 +43901,7 @@ async function mfSyncFamilyTxns(monthKey) {
       } else {
         await mfWriteSharedFolderFile(meta.folderId, fileName, enc);
       }
+      mfDequeueFailedFamilySync(monthKey); // success
     } else {
       // Firestore fallback — only if no Drive token (should not happen if all users have Drive)
       await firebase.firestore().collection(MF_FS_TXNS_COLLECTION).doc(docId).set({
@@ -43878,8 +43914,45 @@ async function mfSyncFamilyTxns(monthKey) {
     }
   } catch(e) {
     console.warn('[MF Family] Txn sync failed for', monthKey, ':', e.message);
-    if (typeof showToast === 'function') showToast('\u26a0\ufe0f Family sync failed \u2014 will retry', 3000);
+    mfQueueFailedFamilySync(monthKey);
+    if(typeof showSyncStatus==='function'){showSyncStatus(navigator.onLine?'Family sync failed - will retry':'Offline - family sync queued',navigator.onLine?'#EF4444':'#F59E0B',4000);}
   }
+}
+
+
+// Family sync retry queue - survives app restarts via localStorage
+var MF_FAMILY_SYNC_QUEUE_KEY = 'mf_family_sync_queue';
+
+function mfQueueFailedFamilySync(monthKey) {
+  try {
+    var q = JSON.parse(localStorage.getItem(MF_FAMILY_SYNC_QUEUE_KEY) || '[]');
+    if (!q.includes(monthKey)) { q.push(monthKey); }
+    localStorage.setItem(MF_FAMILY_SYNC_QUEUE_KEY, JSON.stringify(q.slice(-12)));
+  } catch(e) {}
+}
+
+function mfDequeueFailedFamilySync(monthKey) {
+  try {
+    var q = JSON.parse(localStorage.getItem(MF_FAMILY_SYNC_QUEUE_KEY) || '[]');
+    localStorage.setItem(MF_FAMILY_SYNC_QUEUE_KEY, JSON.stringify(q.filter(function(m){return m!==monthKey;})));
+  } catch(e) {}
+}
+
+async function mfDrainFamilySyncQueue() {
+  if (!mfGetFamilyMeta() || !navigator.onLine) return;
+  if (!(window._familyDriveToken || window._driveToken)) return;
+  try {
+    var q = JSON.parse(localStorage.getItem(MF_FAMILY_SYNC_QUEUE_KEY) || '[]');
+    if (!q.length) return;
+    var drained = 0;
+    for (var _i = 0; _i < q.length; _i++) {
+      try { await mfSyncFamilyTxns(q[_i]); mfDequeueFailedFamilySync(q[_i]); drained++; }
+      catch(e) { console.warn('[MF Family] Retry failed:', q[_i], e.message); }
+    }
+    if (drained > 0 && typeof showSyncStatus === 'function') {
+      showSyncStatus('Family sync caught up - ' + drained + ' month' + (drained>1?'s':'') + ' synced', '#10B981', 3000);
+    }
+  } catch(e) {}
 }
 
 // Auto-sync debounced — called after every save()
@@ -44540,6 +44613,10 @@ window.renderFamilyPanel = async function() {
     <button onclick="mfFamilyShowInvite()" style="width:100%;background:#10B981;color:white;border:none;border-radius:12px;padding:12px;font-family:Nunito;font-weight:900;font-size:0.85em;cursor:pointer;margin-bottom:8px;">
       ➕ Invite Member
     </button>` : ''}
+
+    <button onclick="mfResyncHistory()" style="width:100%;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:12px;padding:11px;font-family:Nunito;font-weight:900;font-size:0.82em;cursor:pointer;margin-bottom:8px;">
+      🔄 Re-sync 6 Months History
+    </button>
     ${isOwner && !mfFamilyTokenValid() && !window.Capacitor?.isNativePlatform() ? `
     <div style="background:#FEF3C7;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:0.72em;color:#92400E;font-weight:700;text-align:center;">
       ⚠️ Drive not connected — viewing only · Open app on Android to add members
@@ -44605,6 +44682,32 @@ window.mfRenderCatDefaultPills = function() {
   el.innerHTML = cats.map(c =>
     `<span style="background:#EEF2FF;color:#4F46E5;border-radius:20px;padding:3px 10px;font-size:0.72em;font-weight:800;">${c}</span>`
   ).join('');
+};
+
+// Re-sync 6 months of family-visible history to Drive
+window.mfResyncHistory = async function() {
+  const meta     = mfGetFamilyMeta();
+  const keyBytes = mfGetFamilyKeyBytes();
+  if (!meta || !keyBytes) { showToast('No family group', 2000); return; }
+  if (!mfFamilyTokenValid()) {
+    showToast('🔑 Reconnect Drive first', 2000);
+    mfFamilyDriveConnect(() => window.mfResyncHistory());
+    return;
+  }
+  showToast('🔄 Syncing last 6 months…', 2500);
+  const now = new Date();
+  let synced = 0;
+  for (let i = 0; i < 6; i++) {
+    const d  = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const mk = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    if (data[mk]) {
+      try {
+        await mfSyncFamilyTxns(mk);
+        synced++;
+      } catch(e) {}
+    }
+  }
+  showToast('✅ ' + synced + ' months synced to family', 2500);
 };
 
 // Category defaults picker modal
@@ -44776,6 +44879,17 @@ setTimeout(() => {
     if (mk && typeof data !== 'undefined') {
       // Process pending owner commands first — so Drive gets updated before sync
       try { await mfProcessPendingCommands(); } catch(e) { console.warn('[MF Cmd]',e.message); }
+      // Check for new pending joins — notify owner silently
+      if (meta && meta.role === 'owner' && mfFamilyTokenValid()) {
+        mfGetDb().collection(MF_FS_PENDING_COLLECTION)
+          .where('familyId', '==', meta.familyId)
+          .get()
+          .then(snap => {
+            if (snap && snap.size > 0) {
+              showToast('👤 ' + snap.size + ' member' + (snap.size>1?'s':'') + ' waiting to join — tap Refresh in Family settings', 5000);
+            }
+          }).catch(() => {});
+      }
       mfSyncFamilyTxns(mk);
       mfStartFamilyTxnsListener();
       await mfLoadFamilyTxns(mk);
