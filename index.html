@@ -41535,9 +41535,9 @@ function mfShowFamilyDriveExplainer(afterCallback) {
   document.body.appendChild(overlay);
 }
 
-function mfFamilyTokenValid() {
+window.mfFamilyTokenValid = function() {
   return window._familyDriveToken && Date.now() < window._familyDriveExpiry;
-}
+};
 
 window.mfDriveDisconnect = function() {
   if (!confirm('Disconnect Google Drive? Your encrypted backup file on Drive will remain. Local data is unchanged.')) return;
