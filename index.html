@@ -12378,6 +12378,9 @@ function toggleAccordion(id) {
     if (opening && id === 'acc-data') {
       try { renderResetSummary(); } catch(e) {}
     }
+    if (opening && id === 'acc-family') {
+      try { renderFamilyPanel(); } catch(e) {}
+    }
     return;
   }
   // Legacy accordion fallback
@@ -41995,6 +41998,8 @@ window.mfDriveRestorePrompt = async function(silentConfirm, noReload) {
         setTimeout(() => {
           try { renderFamilyDashCard && renderFamilyDashCard(); } catch(e) {}
           try { mfStartFamilyTxnsListener && mfStartFamilyTxnsListener(); } catch(e) {}
+  // Populate family panel on every app load (needed for PWA cold start)
+  setTimeout(() => { try { renderFamilyPanel && renderFamilyPanel(); } catch(e) {} }, 1200);
           try { mfLoadFamilyTxns && mfLoadFamilyTxns(viewMonth); } catch(e) {}
         }, 500);
       }
@@ -43454,6 +43459,7 @@ async function mfReadAllMemberNW() {
   try {
     if (!meta.folderId) return [];
     const _nwTok = window._familyDriveToken || window._driveToken;
+    if (!_nwTok) return []; // no Drive token — skip silently (PWA members)
     const _nwq   = encodeURIComponent(`'${meta.folderId}' in parents and name contains 'nw_' and trashed=false`);
     const _nwr   = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=${_nwq}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
@@ -43727,13 +43733,17 @@ window.renderFamilyPanel = async function() {
     return;
   }
 
-  // LOAD MANIFEST — need valid family Drive token
+  // isOwner must be declared before any reference to it
+  const isOwner = meta.role === 'owner';
+
+  // LOAD MANIFEST
+  // Members (non-owners) show their panel from local meta — no Drive token needed.
+  // Only the owner reads from Drive. If owner has no token, show reconnect.
   let manifest = null;
-  if (!mfFamilyTokenValid()) {
-    // Token missing/expired — show reconnect prompt instead of silent fail
-    if (label) label.textContent = isOwner ? '👑 Owner · Drive reconnect needed' : '👤 Member · Drive reconnect needed';
-    container.innerHTML += `
-      <div style="background:#FEF3C7;border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center;">
+  if (isOwner && !mfFamilyTokenValid()) {
+    if (label) label.textContent = '👑 Owner · Drive reconnect needed';
+    container.innerHTML = `
+      <div style="background:#FEF3C7;border-radius:12px;padding:14px 16px;margin:12px 0;text-align:center;">
         <div style="font-size:0.82em;font-weight:800;color:#D97706;margin-bottom:8px;">🔑 Drive access expired</div>
         <div style="font-size:0.74em;color:#6B7280;margin-bottom:12px;">Reconnect to sync your family data</div>
         <button onclick="mfFamilyRefresh()" style="background:#F59E0B;color:#fff;border:none;border-radius:10px;padding:9px 20px;font-family:Nunito;font-weight:900;font-size:0.8em;cursor:pointer;">
@@ -43742,11 +43752,12 @@ window.renderFamilyPanel = async function() {
       </div>`;
     return;
   }
-  try {
-    manifest = await mfReadManifest(meta.folderId, keyBytes);
-  } catch(e) { /* offline or error — show last known state */ }
-
-  const isOwner      = meta.role === 'owner';
+  if (isOwner) {
+    try {
+      manifest = await mfReadManifest(meta.folderId, keyBytes);
+    } catch(e) { /* offline — show last known state */ }
+  }
+  // Members: show panel from local meta (manifest stays null — panel shows owner info + pending state)
   const members      = (manifest?.members || []);
   const activeMembers = members.filter(m => m.status === 'active');
   const slots        = `${activeMembers.length} of ${MF_MAX_MEMBERS} members`;
