@@ -43275,17 +43275,36 @@ async function mfSyncFamilyTxns(monthKey) {
     additional:  (mData.additional  || []).map(t => ({...t})),
   };
 
-  // Drive: encrypted file in shared folder — MoneyFi servers see nothing
+  // Sync strategy:
+  // Owner → Drive (has family Drive token)
+  // Member with Drive token → Drive shared folder
+  // Member without Drive token (iOS PWA etc) → Firestore encrypted fallback
   try {
     const keyBytes = mfGetFamilyKeyBytes();
     if (!keyBytes) throw new Error('Family key not available');
-    if (!meta.folderId) throw new Error('No family folder ID');
     const enc      = await mfFamilyEncrypt(txnData, keyBytes);
-    const fileName = 'txn_' + myUid + '_' + monthKey + '.enc';
-    if (meta.role === 'owner') {
-      await mfDriveWriteFamilyFile(meta.folderId, fileName, enc);
+
+    const hasDrive   = !!(window._familyDriveToken || window._driveToken);
+    const validFolder = meta.folderId && !meta.folderId.startsWith('MF-');
+
+    if (hasDrive && validFolder) {
+      // Drive path — preferred, zero-server
+      const fileName = 'txn_' + myUid + '_' + monthKey + '.enc';
+      if (meta.role === 'owner') {
+        await mfDriveWriteFamilyFile(meta.folderId, fileName, enc);
+      } else {
+        await mfWriteSharedFolderFile(meta.folderId, fileName, enc);
+      }
     } else {
-      await mfWriteSharedFolderFile(meta.folderId, fileName, enc);
+      // Firestore fallback — for members without Drive (iOS PWA, web)
+      // Server sees: familyId, uid, month, encrypted blob — no financial data
+      await firebase.firestore().collection(MF_FS_TXNS_COLLECTION).doc(docId).set({
+        familyId:  meta.familyId,
+        uid:       myUid,
+        month:     monthKey,
+        enc,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     }
   } catch(e) {
     console.warn('[MF Family] Txn sync failed for', monthKey, ':', e.message);
@@ -43320,33 +43339,58 @@ async function mfLoadFamilyTxns(monthKey) {
   window[lockKey] = true;
 
   try {
-    if (!meta.folderId) { window[lockKey]=false; return; }
     const keyBytes2 = mfGetFamilyKeyBytes();
     if (!keyBytes2) { window[lockKey]=false; return; }
-    const _q    = encodeURIComponent(`'${meta.folderId}' in parents and name contains '_${monthKey}.enc' and trashed=false`);
-    const _url  = `https://www.googleapis.com/drive/v3/files?q=${_q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`;
-    const _tok  = window._familyDriveToken || window._driveToken;
-    const _r    = await fetch(_url, { headers: { Authorization: 'Bearer ' + _tok } });
-    if (!_r.ok) { window[lockKey]=false; return; }
-    const _j    = await _r.json();
-    const _files= (_j.files||[]).filter(f => f.name.startsWith('txn_') && f.name !== 'txn_'+myUid+'_'+monthKey+'.enc');
-    const snap  = { docs: [] };
-    for (const file of _files) {
+    const snap        = { docs: [] };
+    const _tok        = window._familyDriveToken || window._driveToken;
+    const validFolder = meta.folderId && !meta.folderId.startsWith('MF-');
+
+    // ── Path A: Drive (owner or member with Drive token + valid folder) ────
+    if (_tok && validFolder) {
       try {
-        const fr = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`,
+        const _q = encodeURIComponent(`'${meta.folderId}' in parents and name contains '_${monthKey}.enc' and trashed=false`);
+        const _r = await fetch(
+          `https://www.googleapis.com/drive/v3/files?q=${_q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
           { headers: { Authorization: 'Bearer ' + _tok } }
         );
-        if (!fr.ok) continue;
-        const b64 = await fr.text();
-        const dec = await mfFamilyDecrypt(b64, keyBytes2);
-        if (dec) {
-          const uidMatch = file.name.match(/^txn_(.+)_[0-9]{4}-[0-9]{2}\.enc$/);
-          if (uidMatch) dec.uid = uidMatch[1];
-          snap.docs.push({ _data: dec });
+        if (_r.ok) {
+          const _j = await _r.json();
+          for (const file of (_j.files||[]).filter(f => f.name.startsWith('txn_') && f.name !== 'txn_'+myUid+'_'+monthKey+'.enc')) {
+            try {
+              const fr = await fetch(
+                `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`,
+                { headers: { Authorization: 'Bearer ' + _tok } }
+              );
+              if (!fr.ok) continue;
+              const dec = await mfFamilyDecrypt(await fr.text(), keyBytes2);
+              if (dec) {
+                const m = file.name.match(/^txn_(.+)_\d{4}-\d{2}\.enc$/);
+                if (m) dec.uid = m[1];
+                snap.docs.push({ _data: dec });
+              }
+            } catch(e) {}
+          }
         }
-      } catch(e) { /* skip corrupt */ }
+      } catch(e) {}
     }
+
+    // ── Path B: Firestore (members without Drive — iOS PWA, web) ──────────
+    try {
+      const fsSnap = await mfGetDb().collection(MF_FS_TXNS_COLLECTION)
+        .where('familyId', '==', meta.familyId)
+        .where('month',    '==', monthKey)
+        .get();
+      const driveUids = new Set(snap.docs.map(d => d._data?.uid).filter(Boolean));
+      for (const doc of fsSnap.docs) {
+        const docUid = doc.data().uid;
+        if (!docUid || docUid === myUid || driveUids.has(docUid)) continue;
+        try {
+          const dec = await mfFamilyDecrypt(doc.data().enc, keyBytes2);
+          if (dec) { dec.uid = docUid; snap.docs.push({ _data: dec }); }
+        } catch(e) {}
+      }
+    } catch(e) {}
+
 
     const docsByUid = {};
     for (const doc of snap.docs) {
@@ -43649,7 +43693,15 @@ window.mfFamilyRefresh = async function() {
   showToast('🔄 Checking for new members…', 2000);
 
   try {
-    // 1. Read current manifest from Drive
+    // 1. Validate folderId — detect stale familyId-as-folderId (legacy bug)
+    const isValidFolder = meta.folderId && !meta.folderId.startsWith('MF-');
+    if (!isValidFolder) {
+      showToast('⚠️ Family folder not found — please Disband and recreate the group', 4000);
+      await renderFamilyPanel();
+      return;
+    }
+
+    // 2. Read current manifest from Drive
     let manifest = await mfReadManifest(meta.folderId, keyBytes);
     if (!manifest) {
       manifest = { familyId: meta.familyId, ownerName: meta.ownerName,
