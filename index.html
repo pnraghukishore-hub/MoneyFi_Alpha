@@ -42519,20 +42519,37 @@ async function mfDriveWriteFamilyFile(folderId, fileName, b64Content) {
 
 async function mfDriveReadFamilyFile(folderId, fileName) {
   const tok = window._familyDriveToken || window._driveToken;
-  if (!tok) return null; // no token — skip silently
-  const searchResp = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='${fileName}'+and+'${folderId}'+in+parents+and+trashed=false&fields=files(id)`,
-    { headers: { Authorization: 'Bearer ' + tok } }
-  );
-  const searchJson = await searchResp.json();
-  const fileId = (searchJson.files || [])[0]?.id;
-  if (!fileId) return null;
-  const resp = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-    { headers: { Authorization: 'Bearer ' + tok } }
-  );
-  if (!resp.ok) return null;
-  return await resp.text();
+  if (!tok) {
+    console.warn('[MF Drive] No token for', fileName, '— skip');
+    return null;
+  }
+  const isFamilyTok = !!window._familyDriveToken;
+  try {
+    const searchResp = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${fileName}'+and+'${folderId}'+in+parents+and+trashed=false&fields=files(id)`,
+      { headers: { Authorization: 'Bearer ' + tok } }
+    );
+    console.warn('[MF Drive] Search', fileName, 'status:', searchResp.status, 'familyTok:', isFamilyTok);
+    if (!searchResp.ok) {
+      const errText = await searchResp.text().catch(() => '');
+      console.warn('[MF Drive] Search failed:', errText.slice(0, 100));
+      return null;
+    }
+    const searchJson = await searchResp.json();
+    const fileId = (searchJson.files || [])[0]?.id;
+    console.warn('[MF Drive] fileId:', fileId, 'folder:', folderId.slice(0,10));
+    if (!fileId) return null;
+    const resp = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + tok } }
+    );
+    console.warn('[MF Drive] Download status:', resp.status);
+    if (!resp.ok) return null;
+    return await resp.text();
+  } catch(e) {
+    console.warn('[MF Drive] Fetch error:', e?.message || String(e), 'folder:', folderId.slice(0,10));
+    return null;
+  }
 }
 
 // ── Member access to owner's family folder via folder ID ───────────
