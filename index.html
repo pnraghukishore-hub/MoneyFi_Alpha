@@ -33297,6 +33297,25 @@ async function mfCapacitorGetDriveToken() {
 async function mfHandleDriveToken(accessToken, expiresIn) {
   window._driveToken       = accessToken;
   window._driveTokenExpiry = Date.now() + ((expiresIn || 3600) - 60) * 1000;
+  // Also try to silently get family Drive token if user has family set up
+  if (mfGetFamilyMeta() && !mfFamilyTokenValid() && window.Capacitor?.isNativePlatform()) {
+    try {
+      const email = window._fbUser?.email;
+      const { DriveAuth } = window.Capacitor?.Plugins || {};
+      if (email && DriveAuth) {
+        DriveAuth.getDriveToken({ email, scope: 'oauth2:https://www.googleapis.com/auth/drive' })
+          .then(r => {
+            if (r?.token) {
+              window._familyDriveToken  = r.token;
+              window._familyDriveExpiry = Date.now() + 3540000;
+              localStorage.setItem('mf_family_drive_token',  r.token);
+              localStorage.setItem('mf_family_drive_expiry', String(window._familyDriveExpiry));
+            }
+          })
+          .catch(() => {}); // silent — user will reconnect via UI if needed
+      }
+    } catch(e) {}
+  }
   localStorage.setItem('mf_enc_setup', 'done');
   if (typeof window._mfUpdateDriveUI === 'function') window._mfUpdateDriveUI(true);
   if (typeof mfScheduleTokenRefresh === 'function') mfScheduleTokenRefresh();
@@ -42455,6 +42474,7 @@ async function mfDriveFindFamilyFolder() {
 
 async function mfDriveWriteFamilyFile(folderId, fileName, b64Content) {
   const tok = window._familyDriveToken || window._driveToken;
+  if (!tok) throw new Error('No family Drive token');
   // Find existing file in folder
   const searchResp = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=name='${fileName}'+and+'${folderId}'+in+parents+and+trashed=false&fields=files(id)`,
@@ -42499,6 +42519,7 @@ async function mfDriveWriteFamilyFile(folderId, fileName, b64Content) {
 
 async function mfDriveReadFamilyFile(folderId, fileName) {
   const tok = window._familyDriveToken || window._driveToken;
+  if (!tok) return null; // no token — skip silently
   const searchResp = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=name='${fileName}'+and+'${folderId}'+in+parents+and+trashed=false&fields=files(id)`,
     { headers: { Authorization: 'Bearer ' + tok } }
@@ -42518,6 +42539,7 @@ async function mfDriveReadFamilyFile(folderId, fileName) {
 // Read a file from a shared folder using supportsAllDrives (member accessing owner's folder)
 async function mfReadSharedFolderFile(folderId, fileName) {
   const tok = window._familyDriveToken || window._driveToken;
+  if (!tok) return null; // no token — skip silently
   const q = encodeURIComponent(`name='${fileName}' and '${folderId}' in parents and trashed=false`);
   const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`;
   const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + tok } });
@@ -42535,6 +42557,7 @@ async function mfReadSharedFolderFile(folderId, fileName) {
 // Write a file to a shared folder (create or update) with supportsAllDrives
 async function mfWriteSharedFolderFile(folderId, fileName, b64Content) {
   const tok = window._familyDriveToken || window._driveToken;
+  if (!tok) throw new Error('No family Drive token');
   const q = encodeURIComponent(`name='${fileName}' and '${folderId}' in parents and trashed=false`);
   const searchResp = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
@@ -42701,6 +42724,8 @@ window.mfFamilyCreate = async function() {
     });
     mfHideFamilyModal();
     showToast('✅ Family group created!', 2000);
+    // Re-render family panel immediately so Settings shows the new group
+    try { renderFamilyPanel(); } catch(e) {}
     setTimeout(() => mfFamilyShowInvite(), 500);
   } catch(e) {
     console.error('[MF Family] Create error:', e);
@@ -43656,11 +43681,24 @@ window.renderFamilyPanel = async function() {
     return;
   }
 
-  // LOAD MANIFEST
+  // LOAD MANIFEST — need valid family Drive token
   let manifest = null;
+  if (!mfFamilyTokenValid()) {
+    // Token missing/expired — show reconnect prompt instead of silent fail
+    if (label) label.textContent = isOwner ? '👑 Owner · Drive reconnect needed' : '👤 Member · Drive reconnect needed';
+    container.innerHTML += `
+      <div style="background:#FEF3C7;border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center;">
+        <div style="font-size:0.82em;font-weight:800;color:#D97706;margin-bottom:8px;">🔑 Drive access expired</div>
+        <div style="font-size:0.74em;color:#6B7280;margin-bottom:12px;">Reconnect to sync your family data</div>
+        <button onclick="mfFamilyRefresh()" style="background:#F59E0B;color:#fff;border:none;border-radius:10px;padding:9px 20px;font-family:Nunito;font-weight:900;font-size:0.8em;cursor:pointer;">
+          🔑 Reconnect Drive
+        </button>
+      </div>`;
+    return;
+  }
   try {
     manifest = await mfReadManifest(meta.folderId, keyBytes);
-  } catch(e) { /* offline or error */ }
+  } catch(e) { /* offline or error — show last known state */ }
 
   const isOwner      = meta.role === 'owner';
   const members      = (manifest?.members || []);
