@@ -12466,7 +12466,7 @@ function toggleAccordion(id) {
       try { renderResetSummary(); } catch(e) {}
     }
     if (opening && id === 'acc-family') {
-      try { renderFamilyPanel(); } catch(e) {}
+      try { var _p=renderFamilyPanel(); if(_p&&_p.catch)_p.catch(function(e){console.warn('[MF]',e.message);}); } catch(e){console.warn('[MF]',e.message);}
     }
     return;
   }
@@ -42635,6 +42635,10 @@ async function mfFamilyDecrypt(b64, rawKeyBytes) {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
+// Family privacy mode
+window.mfGetFamilyPrivacyMode = function() { return localStorage.getItem('mf_family_privacy_mode') || 'all'; };
+window.mfSetFamilyPrivacyMode = function(mode) { localStorage.setItem('mf_family_privacy_mode', mode); showToast('Privacy updated', 2000); };
+
 window.mfGetFamilyMeta = function mfGetFamilyMeta() {
   try { return JSON.parse(localStorage.getItem(MF_FAMILY_META) || 'null'); } catch(e) { return null; }
 }
@@ -43043,7 +43047,7 @@ window.mfFamilyCreate = async function() {
     });
     mfHideFamilyModal();
     showToast('✅ Family group created!', 2000);
-    try { renderFamilyPanel(); } catch(e) {}
+    try { var _p=renderFamilyPanel(); if(_p&&_p.catch)_p.catch(function(e){console.warn('[MF]',e.message);}); } catch(e){console.warn('[MF]',e.message);}
     // Show first-time onboarding before invite — ask about historical data sync
     setTimeout(() => mfShowFamilyOnboarding('create'), 400);
   } catch(e) {
@@ -44320,21 +44324,21 @@ window.renderFamilyPanel = async function() {
       <div style="display:flex;gap:6px;">
         <button onclick="mfSetFamilyPrivacyMode('all');renderFamilyPanel();"
           style="flex:1;padding:8px;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.75em;cursor:pointer;
-          border:1.5px solid ${mfGetFamilyPrivacyMode()==='all'?'#4F46E5':'#E5E7EB'};
-          background:${mfGetFamilyPrivacyMode()==='all'?'#EEF2FF':'#fff'};
-          color:${mfGetFamilyPrivacyMode()==='all'?'#4F46E5':'#6B7280'};">
+          border:1.5px solid ${(typeof mfGetFamilyPrivacyMode==='function'?mfGetFamilyPrivacyMode():'all')==='all'?'#4F46E5':'#E5E7EB'};
+          background:${(typeof mfGetFamilyPrivacyMode==='function'?mfGetFamilyPrivacyMode():'all')==='all'?'#EEF2FF':'#fff'};
+          color:${(typeof mfGetFamilyPrivacyMode==='function'?mfGetFamilyPrivacyMode():'all')==='all'?'#4F46E5':'#6B7280'};">
           👁 Everyone sees all
         </button>
         <button onclick="mfSetFamilyPrivacyMode('owner');renderFamilyPanel();"
           style="flex:1;padding:8px;border-radius:10px;font-family:Nunito;font-weight:800;font-size:0.75em;cursor:pointer;
-          border:1.5px solid ${mfGetFamilyPrivacyMode()==='owner'?'#4F46E5':'#E5E7EB'};
-          background:${mfGetFamilyPrivacyMode()==='owner'?'#EEF2FF':'#fff'};
-          color:${mfGetFamilyPrivacyMode()==='owner'?'#4F46E5':'#6B7280'};">
+          border:1.5px solid ${(typeof mfGetFamilyPrivacyMode==='function'?mfGetFamilyPrivacyMode():'all')==='owner'?'#4F46E5':'#E5E7EB'};
+          background:${(typeof mfGetFamilyPrivacyMode==='function'?mfGetFamilyPrivacyMode():'all')==='owner'?'#EEF2FF':'#fff'};
+          color:${(typeof mfGetFamilyPrivacyMode==='function'?mfGetFamilyPrivacyMode():'all')==='owner'?'#4F46E5':'#6B7280'};">
           🔒 Owner + own only
         </button>
       </div>
       <div style="font-size:0.68em;color:#9CA3AF;margin-top:6px;line-height:1.4;">
-        ${mfGetFamilyPrivacyMode()==='owner' ? 'Members see your transactions + their own. Not each other\u2019s.' : 'All family members can see each other\u2019s shared transactions.'}
+        ${(typeof mfGetFamilyPrivacyMode==='function'?mfGetFamilyPrivacyMode():'all')==='owner' ? 'Members see your transactions + their own. Not each other\u2019s.' : 'All family members can see each other\u2019s shared transactions.'}
       </div>
     </div>` : ''}
 
