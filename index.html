@@ -7338,7 +7338,7 @@ async function fetchLiveMetalPrices(force) {
         if (result.silverOz) silverG = result.silverOz / TROY;
         break;
       }
-    } catch(e) { console.debug('[MoneyFi] Metal API fallback:', api.url.split('/')[2]); /* try next */ }
+    } catch(e) { /* try next */ }
   }
 
   // Fetch silver and platinum separately from gold-api.com if not already got
@@ -13091,29 +13091,22 @@ function searchDeleteTx(monthKey, type, snapshotIdx, snapshotAmt, snapshotCat) {
       const addedBy = ft._addedBy || 'a family member';
       const meta = typeof mfGetFamilyMeta === 'function' ? mfGetFamilyMeta() : null;
       if (meta && meta.role === 'owner') {
-        // Owner can delete any member's transaction from Firestore
-        if (!confirm(`Delete "${ft.category}" added by ${addedBy}?
-
-This will remove it from the family ledger.`)) return;
+        // Owner deletes member's transaction via Drive-based command queue
+        if (!confirm(`Delete "${ft.category}" added by ${addedBy}?\n\nThis will remove it from their device on next sync.`)) return;
         // Remove from local cache immediately
         familyList.splice(familyIdx, 1);
-        // Re-sync the affected member's Firestore doc — find their uid from the transaction
-        const memberUid = ft._memberUid || null;
-        if (memberUid) {
-          const docId = `${meta.familyId}_${memberUid}_${monthKey}`;
-          firebase.firestore().collection('mf_family_txns').doc(docId).get().then(doc => {
-            if (!doc.exists) return;
-            const d = doc.data();
-            const updList = (d[listKey] || []).filter(t =>
-              !(String(t.category) === String(snapshotCat) &&
-                Math.abs(Number(t.amount)) === Math.abs(Number(snapshotAmt)))
-            );
-            const update = {}; update[listKey] = updList;
-            doc.ref.update(update);
-          }).catch(e => console.warn('Family delete failed:', e.message));
-        }
         renderHome(); renderTransactions && renderTransactions();
-        showToast('🗑 Deleted from family ledger');
+        // Issue encrypted command → member's Drive updated on their next open
+        // No Firestore raw data — zero-server promise upheld
+        const fingerprint = ft.category + '|' + ft.amount + '|' + (ft.date || '');
+        const memberUid   = ft._memberUid || null;
+        if (memberUid) {
+          mfIssueCommand(memberUid, 'delete', monthKey, listKey, fingerprint, null)
+            .then(() => showToast('\uD83D\uDDD1 Deleted \u2014 member syncs on next open', 2500))
+            .catch(() => showToast('\uD83D\uDDD1 Removed locally \u2014 sync pending', 2000));
+        } else {
+          showToast('\uD83D\uDDD1 Deleted from family ledger');
+        }
       } else {
         showToast(`⚠️ Added by ${addedBy} — only they can delete it`, 3000);
       }
@@ -13362,15 +13355,13 @@ async function mfIssueCommand(targetUid, command, monthKey, type, fingerprint, p
 
   try {
     const enc = await mfFamilyEncrypt(sensitiveData, keyBytes);
+    // Minimise plaintext metadata — only familyId+targetUid needed for query
+    // issuedBy, issuedAt, status removed — they build a behavioural graph on server
     await firebase.firestore().collection('mf_family_cmds').add({
       familyId:  meta.familyId,  // plain — needed for query
       targetUid,                 // plain — needed for query
-      issuedBy:  meta.myUid || meta.familyId + '_owner',
-      issuedAt:  firebase.firestore.FieldValue.serverTimestamp(),
-      status:    'pending',
       enc,                       // AES-256 encrypted command payload
     });
-    console.log('[MF Cmd] Issued (encrypted)', command, 'for', targetUid);
   } catch(e) {
     console.warn('[MF Cmd] Issue failed:', e.message);
     showToast('⚠️ Command queued — will sync when online', 2500);
@@ -13390,7 +13381,6 @@ async function mfProcessPendingCommands() {
     snap = await firebase.firestore().collection('mf_family_cmds')
       .where('familyId', '==', meta.familyId)
       .where('targetUid', '==', myUid)
-      .where('status', '==', 'pending')
       .get();
   } catch(e) {
     console.warn('[MF Cmd] Query failed:', e.message);
@@ -13398,7 +13388,6 @@ async function mfProcessPendingCommands() {
   }
 
   if (snap.empty) return;
-  console.log('[MF Cmd] Processing', snap.size, 'pending commands');
 
   const keyBytes = mfGetFamilyKeyBytes();
   if (!keyBytes) { console.warn('[MF Cmd] No family key — cannot decrypt commands'); return; }
@@ -13417,7 +13406,7 @@ async function mfProcessPendingCommands() {
         cmd = await mfFamilyDecrypt(raw.enc, keyBytes);
       } catch(e) {
         console.warn('[MF Cmd] Decrypt failed:', e.message, '— skipping');
-        await cmdDoc.ref.update({status:'skipped_decrypt_failed'});
+        await cmdDoc.ref.delete(); // remove — don't leave metadata on server
         continue;
       }
     } else {
@@ -13427,7 +13416,7 @@ async function mfProcessPendingCommands() {
     const listKey = typeMap[cmd.type] || cmd.type;
     const mk = cmd.monthKey;
     if (!data[mk] || !data[mk][listKey]) {
-      await cmdDoc.ref.update({status:'skipped_no_month'});
+      await cmdDoc.ref.delete();
       continue;
     }
     const list = data[mk][listKey];
@@ -13439,7 +13428,7 @@ async function mfProcessPendingCommands() {
     );
 
     if (txIdx === -1) {
-      await cmdDoc.ref.update({status:'skipped_not_found'});
+      await cmdDoc.ref.delete();
       continue;
     }
 
@@ -13447,18 +13436,15 @@ async function mfProcessPendingCommands() {
       list.splice(txIdx, 1);
       anyChange = true;
       appliedMonths.add(mk);
-      console.log('[MF Cmd] Deleted:', cmd.fingerprint, 'from', mk);
     } else if (cmd.command === 'edit' && cmd.payload) {
       const original = list[txIdx];
       list[txIdx] = { ...cmd.payload, _addedBy: original._addedBy,
         _editedBy: cmd.issuedByName || 'Owner', _editedAt: new Date().toISOString() };
       anyChange = true;
       appliedMonths.add(mk);
-      console.log('[MF Cmd] Edited:', cmd.fingerprint, 'in', mk);
     }
 
-    await cmdDoc.ref.update({status:'applied',
-      appliedAt: firebase.firestore.FieldValue.serverTimestamp()});
+    await cmdDoc.ref.delete(); // delete after applying — no status metadata on server
   }
 
   if (anyChange) {
@@ -23049,11 +23035,10 @@ function migrateBudgetGoalLinkedCats() {
       if (toAdd.length > 0) {
         storedGoal.linkedCats = [...(storedGoal.linkedCats || []), ...toAdd];
         dirty = true;
-        console.debug(`[Budget Migration] Added to "${storedGoal.key}":`, toAdd);
       }
     });
   });
-  if (dirty) { save(); console.debug('[Budget Migration] Stored goals updated with new linkedCats'); }
+  if (dirty) { save(); }
 }
 
 function getBudgetGoals(type) {
@@ -27325,25 +27310,10 @@ function startSmsInboxListener() {
       return; // APK uses native path — no Firestore listener needed
     }
   }
-  // ── Web/PWA: Firestore smsInbox listener ─────────────────────────────
-  if (!user) return;
-  const baseRef = getDataRef(_db, user.uid, user.email || '');
-  if (!baseRef) return;
-
-  _smsUnsubscribe = baseRef.collection('smsInbox')
-    .where('status', '==', 'pending')
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(snap => {
-      _smsPending = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      updateSmsBadge();
-      updateSmsQueueStatus();
-      // Live-refresh the overlay if it's open
-      const overlay = document.getElementById('sms-review-overlay');
-      if (overlay && overlay.classList.contains('open')) renderSmsReviewCards();
-    }, err => {
-      // Index not ready / permission issue — degrade gracefully
-      console.warn('[SMS] inbox listener error:', err.message);
-    });
+  // ── Web/PWA: smsInbox Firestore listener removed ──────────────────
+  // Raw bank SMS data (amounts, senders, transaction bodies) must never
+  // be stored on or streamed through any server — zero-server promise.
+  // Web/PWA SMS import uses the manual paste flow only (Import → SMS tab).
 }
 
 function stopSmsInboxListener() {
@@ -38321,22 +38291,9 @@ const NW_TYPE_META = {
   ibond:             { taxBucket:'tax_deferred',  liquidity:'low'     },
 };
 
-// ── recommendationState: save/load from Firebase ─────────────────────
-async function saveRecommendationState(state) {
-  if (typeof db === 'undefined' || !_currentUser) return;
-  try {
-    await db.collection('users').doc(_currentUser.uid).set(
-      { _recommendationState: state }, { merge: true }
-    );
-  } catch(e) { console.warn('saveRecommendationState:', e.message); }
-}
-async function loadRecommendationState() {
-  if (typeof db === 'undefined' || !_currentUser) return null;
-  try {
-    const doc = await db.collection('users').doc(_currentUser.uid).get();
-    return doc.exists ? (doc.data()._recommendationState || null) : null;
-  } catch(e) { return null; }
-}
+// saveRecommendationState / loadRecommendationState removed —
+// dead code that wrote financial aggregates (NW, FHS, spending) to
+// Firestore users/{uid} — violates zero-server promise. Never called.
 
 // ── Context builder ────────────────────────────────────────────────
 function buildAIContext() {
@@ -41150,7 +41107,7 @@ document.addEventListener('touchend', e=>{
 
 // ── Constants ──────────────────────────────────────────────────────
 const MF_DRIVE_CLIENT_ID = '829444531718-qh5cvflnb7li78pmoof8qkp3u9mik1a0.apps.googleusercontent.com';
-const MF_DRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.appdata';
+const MF_DRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.file'; // drive.file = app-created files, shareable — honours zero-server promise
 const MF_FILE_NAME       = 'moneyfi_private.enc';
 const MF_SETUP_KEY       = 'mf_enc_setup';   // 'done' | 'skipped'
 const MF_SALT_KEY        = 'mf_enc_salt';
@@ -42160,7 +42117,6 @@ async function mfDriveInitWithUID() {
     const stored = await mfLoadStoredPassphrase();
     if (stored) {
       window._mfEncPassphrase = stored;
-      console.log('[MF Drive] Auto-unlocked silently');
       mfInitTokenClient();
 
       // Try silent connect — works on desktop Chrome (same Google account)
@@ -42314,10 +42270,14 @@ async function mfDriveCreateFamilyFolder() {
     },
     body: JSON.stringify(meta)
   });
-  if (!resp.ok) throw new Error('Failed to create family folder: ' + resp.status);
+  if (!resp.ok) {
+    const errBody = await resp.text().catch(() => '');
+    console.error('[MF Family] Folder create failed:', resp.status, errBody);
+    throw new Error('Failed to create family folder: ' + resp.status + ' ' + errBody.slice(0, 100));
+  }
   const json = await resp.json();
-  // Make folder readable by anyone with the link (for member access)
-  await fetch(`https://www.googleapis.com/drive/v3/files/${json.id}/permissions`, {
+  // Make folder writable by anyone with the link (drive.file scope supports this for app-created files)
+  const permResp = await fetch(`https://www.googleapis.com/drive/v3/files/${json.id}/permissions`, {
     method: 'POST',
     headers: {
       Authorization: 'Bearer ' + window._driveToken,
@@ -42325,13 +42285,18 @@ async function mfDriveCreateFamilyFolder() {
     },
     body: JSON.stringify({ role: 'writer', type: 'anyone' })
   });
+  if (!permResp.ok) {
+    const permErr = await permResp.text().catch(() => '');
+    console.warn('[MF Family] Permission set failed (non-fatal):', permResp.status, permErr.slice(0, 100));
+    // Non-fatal — folder exists, members may need explicit share instead
+  }
   return json.id;
 }
 
 async function mfDriveFindFamilyFolder() {
   if (!window._driveToken) return null;
   const resp = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='${MF_FAMILY_FOLDER}'+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name)`,
+    `https://www.googleapis.com/drive/v3/files?q=name='${MF_FAMILY_FOLDER}'+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name)&spaces=drive`,
     { headers: { Authorization: 'Bearer ' + window._driveToken } }
   );
   const json = await resp.json();
@@ -42349,7 +42314,7 @@ async function mfDriveWriteFamilyFile(folderId, fileName, b64Content) {
 
   const metadata = existingId
     ? {}
-    : { name: fileName, parents: ['appDataFolder'] };
+    : { name: fileName, parents: [folderId] }; // fixed: use actual family folder
 
   const boundary = 'mff_' + Date.now();
   const body = [
@@ -42402,10 +42367,8 @@ async function mfDriveReadFamilyFile(folderId, fileName) {
 async function mfReadSharedFolderFile(folderId, fileName) {
   const q = encodeURIComponent(`name='${fileName}' and '${folderId}' in parents and trashed=false`);
   const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`;
-  console.debug('[MF Family] Searching for file:', fileName, 'in folder:', folderId);
   const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + window._driveToken } });
   const json = await resp.json();
-  console.debug('[MF Family] Search result:', JSON.stringify(json).slice(0,200));
   const fileId = (json.files || [])[0]?.id;
   if (!fileId) return null;
   const fileResp = await fetch(
@@ -42450,29 +42413,10 @@ async function mfWriteSharedFolderFile(folderId, fileName, b64Content) {
   return (await resp.json()).id;
 }
 
-// Read manifest directly by file ID using public URL (no auth needed — file is set to public)
-async function mfReadManifestById(fileId, keyBytes) {
-  console.debug('[MF Family] Reading manifest by fileId (public URL):', fileId);
-  // Use Drive's export/download URL which works for publicly shared files
-  const publicUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-  try {
-    const resp = await fetch(publicUrl);
-    if (!resp.ok) {
-      console.error('[MF Family] Public URL fetch failed:', resp.status);
-      return null;
-    }
-    const text = await resp.text();
-    // Drive sometimes returns an HTML confirmation page for large files
-    if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-      console.error('[MF Family] Got HTML instead of data — file may not be public');
-      return null;
-    }
-    return mfFamilyDecrypt(text.trim(), keyBytes);
-  } catch(e) {
-    console.error('[MF Family] Public URL fetch error:', e);
-    return null;
-  }
-}
+// mfReadManifestById removed — used a public drive.google.com/uc URL
+// which made encrypted manifest files publicly discoverable by fileId.
+// All manifest access now goes through mfReadManifest() / mfReadManifestForFamily()
+// using authenticated Drive API calls only.
 
 async function mfWriteManifestById(fileId, keyBytes, manifest) {
   const b64 = await mfFamilyEncrypt(manifest, keyBytes);
@@ -42492,64 +42436,70 @@ async function mfDriveReadFamilyFileById(folderId, fileName) {
   return mfReadSharedFolderFile(folderId, fileName);
 }
 
-// ── Manifest helpers — Firestore backed (encrypted, cross-device) ──
-// Financial data stays on Drive. Only the encrypted member roster
-// goes to Firestore. Family key encrypts it — Firebase sees ciphertext only.
+// ── Manifest helpers — Drive backed (zero-server: owner's Google Drive only) ──
+// All family data lives in the owner's Drive folder (drive.file scope).
+// MoneyFi servers see nothing — not even encrypted blobs.
 
-const MF_FS_COLLECTION    = 'mf_family';    // Firestore collection for family manifests
-const MF_FS_REKEY_COLLECTION = 'mf_family_rekey'; // {familyId}_{memberUid} → new key delivery
-const MF_FS_TXNS_COLLECTION  = 'mf_family_txns';  // {familyId}_{uid}_{month} → shared transactions
-const MF_FS_CMD_COLLECTION   = 'mf_family_cmds';  // owner→member commands (delete/edit/hide)
+const MF_FS_COLLECTION       = 'mf_family';       // kept for legacy migration only
+const MF_FS_REKEY_COLLECTION = 'mf_family_rekey'; // no longer used — invite-based rekey
+const MF_FS_TXNS_COLLECTION  = 'mf_family_txns';  // no longer used — Drive-based sync
+const MF_FS_CMD_COLLECTION   = 'mf_family_cmds';  // owner commands (Drive-based)
+const MF_FS_NW_COLLECTION    = 'mf_family_nw';    // no longer used — Drive-based
 
 function mfGetDb() {
   return window._fbDb || (window._fbDb = firebase.firestore());
 }
 
+// Owner reads manifest from own folder; member reads from shared (public) folder
 async function mfReadManifest(folderId, keyBytes) {
-  const meta = mfGetFamilyMeta();
-  if (!meta?.familyId) return null;
+  const actualFolder = folderId || mfGetFamilyMeta()?.folderId;
+  if (!actualFolder || !window._driveToken) return null;
   try {
-    const doc = await mfGetDb().collection(MF_FS_COLLECTION).doc(meta.familyId).get();
-    if (!doc.exists) return null;
-    const b64 = doc.data()?.enc;
+    const b64 = await mfDriveReadFamilyFile(actualFolder, 'manifest.enc');
     if (!b64) return null;
-    return mfFamilyDecrypt(b64, keyBytes);
+    return await mfFamilyDecrypt(b64, keyBytes);
   } catch(e) {
-    console.error('[MF Family] Firestore read error:', e);
+    console.error('[MF Family] Drive manifest read error:', e);
     return null;
   }
 }
 
+// Write manifest to Drive — always goes to owner's folder
 async function mfWriteManifest(folderId, keyBytes, manifest) {
+  const actualFolder = folderId || mfGetFamilyMeta()?.folderId;
+  if (!actualFolder) throw new Error('No folderId for manifest write');
   const familyId = manifest.familyId || mfGetFamilyMeta()?.familyId;
-  if (!familyId) throw new Error('No familyId for manifest write');
   const b64 = await mfFamilyEncrypt(manifest, keyBytes);
-  await mfGetDb().collection(MF_FS_COLLECTION).doc(familyId).set({
-    enc: b64,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  console.debug('[MF Family] Manifest written to Firestore for familyId:', familyId);
-  return familyId; // return familyId as the "file ID" equivalent
+  await mfDriveWriteFamilyFile(actualFolder, 'manifest.enc', b64);
+  return familyId;
 }
 
-async function mfWriteManifestForFamily(familyId, keyBytes, manifest) {
+// Member writes updated manifest to shared (public) folder
+async function mfWriteManifestForFamily(familyId, keyBytes, manifest, folderId) {
+  const actualFolder = folderId || mfGetFamilyMeta()?.folderId;
+  if (!actualFolder) throw new Error('No folderId for family manifest write');
   const b64 = await mfFamilyEncrypt(manifest, keyBytes);
-  await mfGetDb().collection(MF_FS_COLLECTION).doc(familyId).set({
-    enc: b64,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
+  await mfWriteSharedFolderFile(actualFolder, 'manifest.enc', b64);
 }
 
-async function mfReadManifestForFamily(familyId, keyBytes) {
-  const doc = await mfGetDb().collection(MF_FS_COLLECTION).doc(familyId).get();
-  if (!doc.exists) return null;
-  const b64 = doc.data()?.enc;
-  if (!b64) return null;
-  return mfFamilyDecrypt(b64, keyBytes);
+// Member reads manifest from owner's shared public folder
+async function mfReadManifestForFamily(familyId, keyBytes, folderId) {
+  const actualFolder = folderId || mfGetFamilyMeta()?.folderId;
+  if (!actualFolder || !window._driveToken) return null;
+  try {
+    const b64 = await mfReadSharedFolderFile(actualFolder, 'manifest.enc');
+    if (!b64) return null;
+    return await mfFamilyDecrypt(b64, keyBytes);
+  } catch(e) {
+    console.error('[MF Family] Shared folder manifest read error:', e);
+    return null;
+  }
 }
 
 // ── CREATE FAMILY GROUP (Owner flow) ──────────────────────────────
 window.mfFamilyCreate = async function() {
+  // Drive-based family creation — zero-server promise upheld.
+  // Manifest lives in owner's Google Drive (drive.file scope), not MoneyFi servers.
   if (!window._driveToken) {
     showToast('⚠️ Connect Google Drive first (Settings → Zero-Knowledge Backup)', 3000);
     return;
@@ -42560,10 +42510,13 @@ window.mfFamilyCreate = async function() {
     const keyBytes = await mfFamilyGenKey();
     const familyId = mfGenFamilyId();
 
-    // 2. Create family folder on Drive
+    // 2. Create or find family folder in owner's Drive (drive.file scope)
     showToast('📁 Creating family folder on Drive…', 2000);
     let folderId = await mfDriveFindFamilyFolder();
-    if (!folderId) folderId = await mfDriveCreateFamilyFolder();
+    if (!folderId) {
+      folderId = await mfDriveCreateFamilyFolder();
+    }
+    if (!folderId) throw new Error('Could not create family folder on Drive');
 
     // 3. Get owner display name
     const ownerName = window._fbUser?.displayName ||
@@ -42571,7 +42524,7 @@ window.mfFamilyCreate = async function() {
                       localStorage.getItem('mf_owner_name') ||
                       'Owner';
 
-    // 4. Create initial manifest
+    // 4. Write encrypted manifest to Drive folder
     const manifest = {
       familyId,
       createdAt: new Date().toISOString(),
@@ -42584,18 +42537,25 @@ window.mfFamilyCreate = async function() {
         status: 'active'
       }]
     };
-    const manifestFileId = await mfWriteManifest(folderId, keyBytes, manifest);
+    await mfWriteManifest(folderId, keyBytes, manifest);
 
-    // 5. Save to localStorage
+    // 5. Save key + meta to localStorage
     mfSaveFamilyKey(keyBytes);
-    mfSaveFamilyMeta({ familyId, folderId, manifestFileId, role: 'owner', ownerName, myUid: familyId + '_owner' });
+    mfSaveFamilyMeta({
+      familyId,
+      folderId,
+      manifestFileId: folderId,
+      role: 'owner',
+      ownerName,
+      myUid: familyId + '_owner'
+    });
 
     // 6. Show invite screen
     mfHideFamilyModal();
     showToast('✅ Family group created!', 2000);
     setTimeout(() => mfFamilyShowInvite(), 500);
   } catch(e) {
-    console.error('Family create error:', e);
+    console.error('[MF Family] Create error:', e);
     mfHideFamilyModal();
     showToast('❌ Failed to create family group: ' + e.message, 3000);
   }
@@ -42625,7 +42585,7 @@ window.mfFamilyShowInvite = async function() {
   const payload = {
     v: 3,
     familyId: meta.familyId,
-    folderId: meta.folderId,
+    folderId: meta.familyId,  // Firestore doc key = familyId (no Drive folder needed)
     ownerName: meta.ownerName,
     keyB64,
     expires: Date.now() + MF_INVITE_EXPIRY_MS
@@ -42641,10 +42601,10 @@ window.mfFamilyShowInvite = async function() {
 
 // ── JOIN FAMILY (Member flow) ──────────────────────────────────────
 window.mfFamilyJoin = async function() {
-  // Member needs Drive connected to access owner's shared folder
-  if (!window._driveToken) {
-    showToast('⚠️ Connect Google Drive first: Settings → Zero-Knowledge Backup → Connect', 4000);
-    return; // Keep modal open so user can come back
+  // Drive not required for joining — manifest is in Firestore, txns sync via Firestore
+  if (!window._fbUser) {
+    showToast('⚠️ Sign in with Google first', 3000);
+    return;
   }
   const input = document.getElementById('mf-family-join-input');
   const raw   = (input?.value || '').trim();
@@ -42676,21 +42636,18 @@ window.mfFamilyJoin = async function() {
   }
 
   showToast('🔗 Joining family…', 2000);
-  console.debug('[MF Family] Joining familyId:', payload.familyId);
 
   try {
     // Read manifest from Firestore using familyId — works cross-account
     let manifest = null;
     try {
-      manifest = await mfReadManifestForFamily(payload.familyId, keyBytes);
-      console.debug('[MF Family] Manifest from Firestore:', manifest ? 'OK members='+manifest.members?.length : 'null');
+      manifest = await mfReadManifestForFamily(payload.familyId, keyBytes, payload.folderId);
     } catch(e) {
       console.warn('[MF Family] Firestore read failed:', e.message);
     }
 
     // If Firestore read failed (e.g. not yet signed in to Firebase), use a fresh manifest
     if (!manifest) {
-      console.debug('[MF Family] Creating fresh manifest for join');
       manifest = {
         familyId: payload.familyId,
         ownerName: payload.ownerName,
@@ -42724,8 +42681,7 @@ window.mfFamilyJoin = async function() {
 
     // Write updated manifest to Firestore — works cross-account, member has own Firebase auth
     try {
-      await mfWriteManifestForFamily(payload.familyId, keyBytes, manifest);
-      console.debug('[MF Family] Manifest written to Firestore — owner will see member on next open');
+      await mfWriteManifestForFamily(payload.familyId, keyBytes, manifest, payload.folderId);
     } catch(e) {
       console.warn('[MF Family] Firestore write failed:', e.message);
       showToast('⚠️ Joined locally — owner needs to be online to sync roster', 3000);
@@ -42754,7 +42710,6 @@ window.mfFamilyJoin = async function() {
       showToast('✅ Family history loaded', 2000);
       try { renderHome(); } catch(e) {}
       try { renderTransactions && renderTransactions(); } catch(e) {}
-      console.debug('[MF Family] New member loaded history for', monthsToLoad.length, 'months');
     } catch(e) {
       console.warn('[MF Family] History load failed:', e.message);
     }
@@ -42787,33 +42742,27 @@ window.mfFamilyRemoveMember = async function(uid, name) {
     // 4. Save new key on owner's device
     mfSaveFamilyKey(newKeyBytes);
 
-    // 5. Silently deliver new key to remaining active members via Firestore
-    // Each member checks mf_family_rekey/{familyId}_{uid} on open
+    // 5. Zero-server rekey: new key ONLY on devices, delivered via new invite codes only
+    // No plain-text keys ever touch MoneyFi servers. This is the promise.
     const remaining = manifest.members.filter(m =>
       m.status === 'active' && m.uid !== uid && m.role !== 'owner'
     );
-    let newKeyB64 = '';
-    newKeyBytes.forEach(b => newKeyB64 += String.fromCharCode(b));
-    newKeyB64 = btoa(newKeyB64);
-    const rekeyPromises = remaining.map(m =>
-      mfGetDb().collection(MF_FS_REKEY_COLLECTION).doc(`${meta.familyId}_${m.uid}`).set({
-        familyId: meta.familyId, newKeyB64,
-        rotatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        rotatedBy: meta.ownerName
-      })
-    );
-    await Promise.all(rekeyPromises);
-    console.debug('[MF Family] New key delivered to', remaining.length, 'remaining members');
 
-    // 6. Clean up departed member docs
-    try {
-      await mfGetDb().collection(MF_FS_NW_COLLECTION).doc(`${meta.familyId}_${uid}`).delete();
-      await mfGetDb().collection(MF_FS_REKEY_COLLECTION).doc(`${meta.familyId}_${uid}`).delete();
-    } catch(e) { /* best effort */ }
-
-    showToast(`✅ ${name} removed · Family key rotated 🔐`, 3000);
+    showToast('\u2705 ' + name + ' removed \u00b7 Key rotated \uD83D\uDD10', 3000);
     renderFamilyPanel();
     renderFamilyDashCard();
+
+    // 6. Prompt owner to re-invite remaining members with new key via invite code
+    if (remaining.length > 0) {
+      setTimeout(() => {
+        const names = remaining.map(m => m.name || 'Member').join(', ');
+        if (confirm(
+          '\uD83D\uDD12 Key rotated successfully.\n\n' +
+          'These members need a new invite to keep syncing:\n' + names +
+          '\n\nTap OK to generate a new invite code now.'
+        )) { mfFamilyShowInvite(); }
+      }, 1200);
+    }
   } catch(e) {
     console.error('Remove member error:', e);
     showToast('❌ Failed to remove member: ' + e.message, 3000);
@@ -42983,7 +42932,6 @@ window.renderFamilyDashCard = async function() {
 
   const meta     = mfGetFamilyMeta();
   const keyBytes = mfGetFamilyKeyBytes();
-  console.debug('[MF Family] renderFamilyDashCard — meta:', meta?.familyId, 'hasKey:', !!keyBytes);
 
   // Hide card if not in a family
   if (!meta || !keyBytes) {
@@ -43102,7 +43050,7 @@ window.renderFamilyDashCard = async function() {
 // Firestore. Owner's dashboard reads all members and aggregates.
 // Financial data is encrypted with the family key — Firestore sees ciphertext.
 
-const MF_FS_NW_COLLECTION = 'mf_family_nw'; // {familyId}_{uid}
+// MF_FS_NW_COLLECTION declared above — Drive-based NW sync
 
 // ── FAMILY TRANSACTION SYNC ───────────────────────────────────────
 // Each member pushes their month transactions to Firestore.
@@ -43147,23 +43095,21 @@ async function mfSyncFamilyTxns(monthKey) {
     additional:  (mData.additional  || []).map(t => ({...t})),
   };
 
-  // Firestore document — only routing metadata in plain text, financial data encrypted
+  // Drive: encrypted txn file in shared family folder — MoneyFi sees nothing
   try {
     const keyBytes = mfGetFamilyKeyBytes();
     if (!keyBytes) throw new Error('Family key not available');
-    const enc = await mfFamilyEncrypt(txnData, keyBytes);
-    await firebase.firestore().collection(MF_FS_TXNS_COLLECTION).doc(docId).set({
-      familyId:  meta.familyId,  // plain — needed for Firestore query index
-      uid:       myUid,          // plain — needed for dedup logic
-      month:     monthKey,       // plain — needed for Firestore query index
-      enc,                       // AES-256-GCM encrypted blob — Firestore sees nothing else
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    console.debug('[MF Family] Txns synced (encrypted) for', monthKey,
-      '— exp:', txnData.expenses.length, 'inc:', txnData.income.length);
+    if (!meta.folderId) throw new Error('No family folder ID');
+    const enc      = await mfFamilyEncrypt(txnData, keyBytes);
+    const fileName = 'txn_' + myUid + '_' + monthKey + '.enc';
+    if (meta.role === 'owner') {
+      await mfDriveWriteFamilyFile(meta.folderId, fileName, enc);
+    } else {
+      await mfWriteSharedFolderFile(meta.folderId, fileName, enc);
+    }
   } catch(e) {
-    console.error('[MF Family] Txn sync FAILED for', monthKey, ':', e.message);
-    if (typeof showToast === 'function') showToast('⚠️ Family sync failed — will retry on next save', 3000);
+    console.error('[MF Family] Drive txn sync FAILED for', monthKey, ':', e.message);
+    if (typeof showToast === 'function') showToast('\u26a0\ufe0f Family sync failed', 3000);
   }
 }
 
@@ -43194,47 +43140,46 @@ async function mfLoadFamilyTxns(monthKey) {
   window[lockKey] = true;
 
   try {
-    const snap = await mfGetDb().collection(MF_FS_TXNS_COLLECTION)
-      .where('familyId', '==', meta.familyId)
-      .where('month', '==', monthKey)
-      .get();
-
+    if (!meta.folderId || !window._driveToken) { window[lockKey]=false; return; }
     const keyBytes = mfGetFamilyKeyBytes();
-    if (!keyBytes) throw new Error('Family key not available for decryption');
+    if (!keyBytes) { window[lockKey]=false; return; }
+    // List all txn files for this month in the shared family Drive folder
+    const _q    = encodeURIComponent(`'${meta.folderId}' in parents and name contains '_${monthKey}.enc' and trashed=false`);
+    const _url  = `https://www.googleapis.com/drive/v3/files?q=${_q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`;
+    const _r    = await fetch(_url, { headers: { Authorization: 'Bearer ' + window._driveToken } });
+    if (!_r.ok) { window[lockKey]=false; return; }
+    const _j    = await _r.json();
+    const _files= (_j.files||[]).filter(f => f.name.startsWith('txn_') && f.name !== 'txn_'+myUid+'_'+monthKey+'.enc');
+    const snap  = { docs: [] };
+    for (const file of _files) {
+      try {
+        const fr = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`,
+          { headers: { Authorization: 'Bearer ' + window._driveToken } }
+        );
+        if (!fr.ok) continue;
+        const b64 = await fr.text();
+        const dec = await mfFamilyDecrypt(b64, keyBytes);
+        if (dec) {
+          // Extract uid from filename: txn_{uid}_{month}.enc
+          const uidMatch = file.name.match(/^txn_(.+)_[0-9]{4}-[0-9]{2}\.enc$/);
+          if (dec && uidMatch) dec.uid = uidMatch[1];
+          snap.docs.push({ _data: dec });
+        }
+      } catch(e) { /* skip corrupt or wrong-key files */ }
+    }
 
-    // Decrypt each member's doc — deduplicate by uid (keep doc with most txns)
+    // snap.docs already pre-decoded from Drive files — just deduplicate by uid
     const docsByUid = {};
     for (const doc of snap.docs) {
-      const d = doc.data();
-      if (!d.uid || d.uid === myUid) continue; // skip own
-
-      let txnData;
-      if (d.enc) {
-        // New encrypted format
-        try {
-          txnData = await mfFamilyDecrypt(d.enc, keyBytes);
-        } catch(e) {
-          console.warn('[MF Family] Decrypt failed for uid', d.uid, '— wrong key or corrupted:', e.message);
-          continue; // skip undecryptable doc
-        }
-      } else if (d.expenses) {
-        // Legacy plain-text doc — accept but log warning
-        console.warn('[MF Family] Plain-text doc found for uid', d.uid, '— member needs to re-sync');
-        txnData = d;
-      } else {
-        continue;
-      }
-
-      // Attach routing metadata back onto decrypted payload
-      txnData.uid = d.uid;
-      txnData.memberName = txnData.memberName || d.memberName || 'Family';
-
-      const existing = docsByUid[d.uid];
+      const txnData = doc._data;
+      if (!txnData || !txnData.uid || txnData.uid === myUid) continue;
+      txnData.memberName = txnData.memberName || 'Family';
+      const existing = docsByUid[txnData.uid];
       const newCount = (txnData.expenses||[]).length + (txnData.income||[]).length + (txnData.investments||[]).length;
       const oldCount = existing
-        ? (existing.expenses||[]).length + (existing.income||[]).length + (existing.investments||[]).length
-        : -1;
-      if (!existing || newCount >= oldCount) docsByUid[d.uid] = txnData;
+        ? (existing.expenses||[]).length + (existing.income||[]).length + (existing.investments||[]).length : -1;
+      if (!existing || newCount >= oldCount) docsByUid[txnData.uid] = txnData;
     }
 
     const merged = { expenses:[], income:[], investments:[], additional:[] };
@@ -43249,8 +43194,6 @@ async function mfLoadFamilyTxns(monthKey) {
       });
     });
     window._mfFamilyTxns[monthKey] = merged;
-    console.debug('[MF Family] Loaded + decrypted txns for', monthKey,
-      '— exp:', merged.expenses.length, 'inc:', merged.income.length);
   } catch(e) {
     console.warn('[MF Family] Load txns failed:', e.message);
     window._mfFamilyTxns[monthKey] = null;
@@ -43274,43 +43217,25 @@ function mfStartFamilyTxnsListener() {
     }
   }
   if (!meta) return;
-  if (_mfTxnsUnsubscribe) _mfTxnsUnsubscribe();
 
-  let _listenerInitialized = false; // skip initial delivery
-
-  _mfTxnsUnsubscribe = mfGetDb().collection(MF_FS_TXNS_COLLECTION)
-    .where('familyId', '==', meta.familyId)
-    .onSnapshot(async snap => {
-      // Skip the initial delivery (all docs as "added") — we load explicitly below
-      if (!_listenerInitialized) {
-        _listenerInitialized = true;
-        return;
-      }
-      // Only react to actual changes after initialization
-      const changedMonths = new Set();
-      snap.docChanges().forEach(change => {
-        if (change.type === 'added' || change.type === 'modified' || change.type === 'removed') {
-          const month = change.doc.data()?.month;
-          if (month) {
-            delete window._mfFamilyTxns[month];
-            changedMonths.add(month);
-          }
-        }
-      });
-      if (changedMonths.size > 0) {
-        await Promise.all([...changedMonths].map(m => mfLoadFamilyTxns(m)));
-        try { renderHome(); } catch(e) {}
-        try { renderTransactions && renderTransactions(); } catch(e) {}
-        try { if (typeof _roiCurrentTab !== 'undefined' && _roiCurrentTab === 'flow') renderSankeyFlow(); } catch(e) {}
-        console.debug('[MF Family] Txns updated — months reloaded:', [...changedMonths].join(', '));
-      }
-    }, err => console.warn('[MF Family] Txns listener error:', err.message));
-
-  // Explicit initial load — correctly skips own uid
+  // Drive-based polling replaces Firestore real-time listener.
+  // 5-minute poll is perfect for a personal finance app — MoneyFi sees nothing.
+  if (window._mfFamilyPollTimer) clearInterval(window._mfFamilyPollTimer);
+  const _pollRefresh = async () => {
+    if (!window._driveToken || !mfGetFamilyMeta()) return;
+    const now = new Date();
+    const mk  = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    await mfLoadFamilyTxns(mk).catch(() => {});
+    try { renderHome(); } catch(e) {}
+    try { renderTransactions && renderTransactions(); } catch(e) {}
+    try { if (typeof _roiCurrentTab !== 'undefined' && _roiCurrentTab === 'flow') renderSankeyFlow(); } catch(e) {}
+  };
+  window._mfFamilyPollTimer = setInterval(_pollRefresh, 5 * 60 * 1000);
+  // Immediate first load
   mfLoadFamilyTxns(viewMonth).then(() => {
     try { renderHome(); } catch(e) {}
     try { renderTransactions && renderTransactions(); } catch(e) {}
-  }).catch(e => {});
+  }).catch(() => {});
 }
 window.mfGetCombinedEntries = function(monthKey, type) {
   const own    = (data[monthKey] || {})[type] || [];
@@ -43340,13 +43265,13 @@ async function mfSyncMemberNW() {
     }));
 
   try {
-    const b64 = await mfFamilyEncrypt({ accounts: visibleAccounts, updatedAt: Date.now() }, keyBytes);
-    await mfGetDb().collection(MF_FS_NW_COLLECTION).doc(`${meta.familyId}_${myUid}`).set({
-      enc: b64,
-      familyId: meta.familyId,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    console.debug('[MF Family] NW sync pushed:', visibleAccounts.length, 'visible accounts');
+    const b64      = await mfFamilyEncrypt({ accounts: visibleAccounts, updatedAt: Date.now() }, keyBytes);
+    const nwFile   = 'nw_' + myUid + '.enc';
+    if (meta.role === 'owner') {
+      await mfDriveWriteFamilyFile(meta.folderId, nwFile, b64);
+    } else {
+      await mfWriteSharedFolderFile(meta.folderId, nwFile, b64);
+    }
   } catch(e) {
     console.warn('[MF Family] NW sync failed:', e.message);
   }
@@ -43359,20 +43284,29 @@ async function mfReadAllMemberNW() {
   if (!meta || !keyBytes) return [];
 
   try {
-    const snapshot = await mfGetDb().collection(MF_FS_NW_COLLECTION)
-      .where('familyId', '==', meta.familyId)
-      .get();
-
+    if (!meta.folderId || !window._driveToken) return [];
+    const _nwq = encodeURIComponent(`'${meta.folderId}' in parents and name contains 'nw_' and trashed=false`);
+    const _nwr = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${_nwq}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+      { headers: { Authorization: 'Bearer ' + window._driveToken } }
+    );
+    if (!_nwr.ok) return [];
+    const _nwj = await _nwr.json();
     const allAccounts = [];
-    for (const doc of snapshot.docs) {
+    for (const file of (_nwj.files||[])) {
       try {
-        const payload = await mfFamilyDecrypt(doc.data().enc, keyBytes);
+        const fr = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`,
+          { headers: { Authorization: 'Bearer ' + window._driveToken } }
+        );
+        if (!fr.ok) continue;
+        const payload = await mfFamilyDecrypt(await fr.text(), keyBytes);
         if (payload?.accounts) allAccounts.push(...payload.accounts);
-      } catch(e) { /* skip undecryptable docs — old key */ }
+      } catch(e) { /* skip — old key or corrupt */ }
     }
     return allAccounts;
   } catch(e) {
-    console.warn('[MF Family] Read member NW failed:', e.message);
+    console.warn('[MF Family] Drive NW read failed:', e.message);
     return [];
   }
 }
@@ -43604,50 +43538,19 @@ document.getElementById('mf-family-overlay')?.addEventListener('click', function
   if (e.target === this) mfHideFamilyModal();
 });
 
-// ── SILENT RE-KEY CHECK (runs on every open for members) ──────────
-// When owner removes a member and rotates the key, remaining members
-// get the new key silently via Firestore on their next open.
-async function mfCheckRekey() {
-  const meta = mfGetFamilyMeta();
-  if (!meta || meta.role === 'owner') return; // owner already has new key
+// ── RE-KEY: invite-based only — no Firestore plaintext key storage ──
+// mfCheckRekey() removed: previously read newKeyB64 plaintext from
+// mf_family_rekey Firestore collection — violates zero-server promise.
+// Rekey is now handled entirely via new invite code from owner.
 
-  const myUid = meta.myUid;
-  if (!myUid) return;
 
-  try {
-    const doc = await mfGetDb()
-      .collection(MF_FS_REKEY_COLLECTION)
-      .doc(`${meta.familyId}_${myUid}`)
-      .get();
-
-    if (!doc.exists) return; // no re-key pending
-
-    const newKeyB64 = doc.data()?.newKeyB64;
-    if (!newKeyB64) return;
-
-    // Apply new key silently
-    const newKeyBytes = Uint8Array.from(atob(newKeyB64), c => c.charCodeAt(0));
-    mfSaveFamilyKey(newKeyBytes);
-    console.debug('[MF Family] Silent re-key applied — new family key installed');
-
-    // Delete the rekey doc so it only applies once
-    await mfGetDb()
-      .collection(MF_FS_REKEY_COLLECTION)
-      .doc(`${meta.familyId}_${myUid}`)
-      .delete();
-
-    showToast('🔐 Family security updated', 2000);
-  } catch(e) {
-    console.warn('[MF Family] Re-key check failed:', e.message);
-  }
-}
 
 // Trigger family dash card render after module loads
 setTimeout(() => {
   // renderFamilyDashCard is called by renderHome() with 800ms debounce
   // Start real-time txns listener + background tasks
   setTimeout(async () => {
-    mfCheckRekey();
+    // mfCheckRekey() removed — rekey is now invite-based only
     mfSyncMemberNW();
     // Guard: data and viewMonth may not be defined if main app hasn't loaded yet
     const mk = (typeof viewMonth !== 'undefined') ? viewMonth : null;
@@ -43905,7 +43808,6 @@ function renderSankeyFlow() {
 
   // Diagnostic log — helps debug empty state
   const _dbgInc = Object.keys(fd.incMap||{}).length, _dbgExp = Object.keys(fd.expMap||{}).length;
-  console.debug('[MoneyFlow] viewMonth='+viewMonth+' period='+_flowPeriod+' incKeys='+_dbgInc+' expKeys='+_dbgExp+' totalInc='+fd.totalInc.toFixed(2)+' totalExp='+fd.totalExp.toFixed(2));
 
   // Gate: need at least some financial data to render
   const hasAnyData = fd.totalInc > 0 || fd.totalExp > 0 || fd.totalInvest > 0;
