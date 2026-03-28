@@ -43790,11 +43790,28 @@ window.mfFamilyRefresh = async function() {
     }
 
     if (newMembers > 0) {
-      // 3. Write updated manifest back to Drive
+      // 3. Write updated manifest back to Drive (also mirrors to Firestore)
       await mfWriteManifest(meta.folderId, keyBytes, manifest);
       // 4. Delete processed pending records from Firestore
       await Promise.all(toDelete.map(ref => ref.delete()));
-      showToast(`✅ ${newMembers} new member${newMembers > 1 ? 's' : ''} added!`, 2500);
+      showToast(`✅ ${newMembers} new member${newMembers > 1 ? 's' : ''} added! Syncing history…`, 2500);
+
+      // 5. Push owner's last 6 months of transactions to shared folder
+      // so new members can see historical data, not just going-forward transactions
+      try {
+        const now = new Date();
+        const monthsToSync = [];
+        for (let i = 0; i < 6; i++) {
+          const d  = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const mk = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+          if (data[mk]) monthsToSync.push(mk); // only sync months that have data
+        }
+        // Run sequentially to avoid hammering Drive
+        for (const mk of monthsToSync) {
+          await mfSyncFamilyTxns(mk).catch(() => {});
+        }
+        showToast('✅ History synced for new members', 2000);
+      } catch(e) { /* non-fatal */ }
     } else {
       showToast('✅ Member list is up to date', 1500);
     }
