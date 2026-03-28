@@ -44253,10 +44253,23 @@ window.renderFamilyPanel = async function() {
       // Member or owner with stale folderId — Firestore mirror
       manifest = await mfReadManifestForFamily(meta.familyId, keyBytes, meta.folderId);
     }
-  } catch(e) { /* offline — show last known state */ }
+  } catch(e) {
+    // Auth error — clear token and show reconnect
+    if (e.message && (e.message.includes('401') || e.message.includes('403'))) {
+      mfClearFamilyToken && mfClearFamilyToken();
+      if (label) label.textContent = '👑 Owner · Drive reconnect needed';
+      container.innerHTML = '<div style="background:#FEF3C7;border-radius:12px;padding:14px 16px;margin:12px 0;text-align:center;"><div style="font-size:0.82em;font-weight:800;color:#D97706;margin-bottom:8px;">🔑 Drive access expired</div><div style="font-size:0.74em;color:#6B7280;margin-bottom:12px;">Reconnect to sync your family data</div><button onclick="mfFamilyRefresh()" style="background:#F59E0B;color:#fff;border:none;border-radius:10px;padding:9px 20px;font-family:Nunito;font-weight:900;font-size:0.8em;cursor:pointer;">🔑 Reconnect Drive</button></div>';
+      return;
+    }
+  }
+
+  // If manifest is null and we're owner — Drive read silently failed
+  // Show last known member count from meta but indicate sync needed
   const members      = (manifest?.members || []);
   const activeMembers = members.filter(m => m.status === 'active');
-  const slots        = `${activeMembers.length} of ${MF_MAX_MEMBERS} members`;
+  const slots        = manifest
+    ? `${activeMembers.length} of ${MF_MAX_MEMBERS} members`
+    : `${MF_MAX_MEMBERS} slots · tap Refresh to sync`;
 
   if (label) label.textContent = isOwner ? `👑 Owner · ${slots}` : `👤 Member · ${meta.ownerName}'s family`;
   setTimeout(() => { try { mfRenderCatDefaultPills && mfRenderCatDefaultPills(); } catch(e) {} }, 100);
@@ -44287,6 +44300,7 @@ window.renderFamilyPanel = async function() {
       </div>
       <div style="font-size:0.72em;color:#666;font-weight:600;">Family ID: ${meta.familyId} · ${slots}</div>
     </div>
+    ${isOwner && !manifest ? '<div style="background:#FFF7ED;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.78em;color:#92400E;font-weight:700;">⚠️ Could not load member list from Drive — tap Refresh to reconnect</div>' : ''}
 
     <div style="margin-bottom:14px;">${memberRows}</div>
 
