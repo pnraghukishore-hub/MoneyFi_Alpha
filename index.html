@@ -2741,10 +2741,11 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
 <div class="screen active" id="screen-home">
 
   <!-- ── EMPTY DATA RECOVERY BANNER (shown when no data + Drive not connected) ── -->
+  <!-- Empty state banner — content set dynamically by renderHome() -->
   <div id="empty-data-banner" style="display:none;background:linear-gradient(135deg,#FFF7ED,#FFFBEB);border:1.5px solid #FDE68A;border-radius:16px;padding:16px 18px;margin-bottom:14px;">
-    <div style="font-weight:900;font-size:0.95em;color:#92400E;margin-bottom:6px;">🌅 Welcome back — let's restore your data</div>
-    <div style="font-size:0.78em;color:#78716C;font-weight:600;line-height:1.5;margin-bottom:12px;">Your data lives in your encrypted Google Drive backup. Connect Drive to restore everything automatically.</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+    <div style="font-weight:900;font-size:0.95em;color:#92400E;margin-bottom:6px;" id="empty-banner-title">🌅 Welcome to MoneyFi</div>
+    <div style="font-size:0.78em;color:#78716C;font-weight:600;line-height:1.5;margin-bottom:12px;" id="empty-banner-body">Start by adding your first transaction using the + button below.</div>
+    <div id="empty-banner-actions" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       <button onclick="mfDriveConnect()"
         style="background:#7C3AED;color:white;border:none;border-radius:10px;padding:10px;font-family:Nunito;font-weight:800;font-size:0.78em;cursor:pointer;">
         Connect Drive
@@ -10469,7 +10470,7 @@ function renderHome() {
   ensureMonth(viewMonth);
   try { renderPulseRow(); } catch(e) {}
 
-  // ── Empty data detection — show recovery banner ──
+  // ── Empty data detection — smart banner distinguishing new vs returning user ──
   const emptyBanner = document.getElementById('empty-data-banner');
   if (emptyBanner) {
     const allMonthKeys = Object.keys(data).filter(k => /^\d{4}-\d{2}$/.test(k));
@@ -10478,9 +10479,46 @@ function renderHome() {
       return (m.expenses||[]).length > 0 || (m.income||[]).length > 0 || (m.investments||[]).length > 0;
     });
     const hasNW = (data._nwAccounts || []).length > 0;
+    const isEmpty = !hasAnyTxn && !hasNW;
+    const driveSetup   = localStorage.getItem('mf_enc_setup') === 'done';
     const driveConnected = !!(window._driveToken && window._mfEncPassphrase);
-    // Show banner if completely empty AND (Drive not connected OR Drive last backup was very recent = backed up empty state)
-    emptyBanner.style.display = (!hasAnyTxn && !hasNW) ? 'block' : 'none';
+    const hasBackedUpBefore = !!localStorage.getItem('mf_last_backup');
+
+    if (!isEmpty) {
+      emptyBanner.style.display = 'none';
+    } else if (!driveSetup) {
+      // Drive not set up yet — passphrase modal will handle this. Hide banner.
+      emptyBanner.style.display = 'none';
+    } else if (driveConnected && !hasBackedUpBefore) {
+      // Drive connected but never backed up — brand new user. Show fresh start message.
+      emptyBanner.style.display = 'block';
+      const t = document.getElementById('empty-banner-title');
+      const b = document.getElementById('empty-banner-body');
+      const a = document.getElementById('empty-banner-actions');
+      if (t) t.textContent = '👋 Welcome to MoneyFi!';
+      if (b) b.textContent = 'You\'re all set. Start by adding your first transaction with the + button below.';
+      if (a) a.style.display = 'none'; // no restore needed for genuinely new user
+    } else if (!driveConnected) {
+      // Data empty + Drive not connected — could be returning user on new device
+      emptyBanner.style.display = 'block';
+      const t = document.getElementById('empty-banner-title');
+      const b = document.getElementById('empty-banner-body');
+      const a = document.getElementById('empty-banner-actions');
+      if (t) t.textContent = '🌅 Returning user? Restore your data';
+      if (b) b.textContent = 'Connect Drive to restore your encrypted backup, or start fresh.';
+      if (a) a.style.display = 'grid';
+    } else if (driveConnected && hasBackedUpBefore) {
+      // Drive connected, has backed up before, but local data is empty — restore needed
+      emptyBanner.style.display = 'block';
+      const t = document.getElementById('empty-banner-title');
+      const b = document.getElementById('empty-banner-body');
+      const a = document.getElementById('empty-banner-actions');
+      if (t) t.textContent = '☁️ Your backup is on Drive';
+      if (b) b.textContent = 'Go to Settings → Restore from Drive to get your data back.';
+      if (a) a.style.display = 'none';
+    } else {
+      emptyBanner.style.display = 'none';
+    }
   }
 
   // ── Annual Review banner: show if year has data and not dismissed ──
@@ -33500,8 +33538,25 @@ async function mfHandleDriveToken(accessToken, expiresIn) {
     showSyncStatus('✅ Synced from Drive', '#10B981', 2500);
     setTimeout(() => { if (typeof window.mfDriveSaveNow === 'function') window.mfDriveSaveNow(); }, 3000);
   } else {
-    showToast('✅ Google Drive connected — backing up...', 2000);
-    if (typeof window.mfDriveSaveNow === 'function') window.mfDriveSaveNow();
+    // No Drive file exists — this is a brand new user
+    // Don't try to backup empty data, just confirm connection
+    const allMonthKeys = Object.keys(
+      JSON.parse(localStorage.getItem('financeData') || '{}')
+    ).filter(k => /^\d{4}-\d{2}$/.test(k));
+    const hasData = allMonthKeys.some(k => {
+      try {
+        const m = JSON.parse(localStorage.getItem('financeData') || '{}')[k] || {};
+        return (m.expenses||[]).length > 0 || (m.income||[]).length > 0;
+      } catch(e) { return false; }
+    });
+    if (hasData) {
+      showToast('✅ Google Drive connected — backing up...', 2000);
+      if (typeof window.mfDriveSaveNow === 'function') window.mfDriveSaveNow();
+    } else {
+      showToast('✅ Google Drive connected — add transactions to start backup', 3000);
+      // Update the empty banner to show the fresh start message
+      try { renderHome(); } catch(e) {}
+    }
   }
 }
 
@@ -42191,7 +42246,12 @@ window.mfDriveSaveNow = async function() {
   }) || (dataObj._nwAccounts||[]).length > 0;
   if (!hasAnyData) {
     console.warn('[KashRA Drive] Backup skipped — data appears empty, refusing to overwrite Drive');
-    showSyncStatus('⚠️ Backup skipped — restore your data first', '#F59E0B', 4000);
+    // Don't show confusing "restore first" message to brand new users
+    const hasBackedUpBefore = !!localStorage.getItem('mf_last_backup');
+    if (hasBackedUpBefore) {
+      showSyncStatus('⚠️ No data to backup — restore from Drive first', '#F59E0B', 4000);
+    }
+    // For brand new users: silently skip — they'll back up once they add data
     return;
   }
 
