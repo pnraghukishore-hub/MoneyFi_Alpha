@@ -42830,7 +42830,7 @@ window.mfFamilyShowInvite = async function() {
   const payload = {
     v: 3,
     familyId: meta.familyId,
-    folderId: meta.familyId,  // Firestore doc key = familyId (no Drive folder needed)
+    folderId: meta.folderId,  // real Drive folder ID — members use this to access shared folder
     ownerName: meta.ownerName,
     keyB64,
     expires: Date.now() + MF_INVITE_EXPIRY_MS
@@ -43337,7 +43337,7 @@ async function mfSyncFamilyTxns(monthKey) {
     const validFolder = meta.folderId && !meta.folderId.startsWith('MF-');
 
     if (hasDrive && validFolder) {
-      // Drive path — preferred, zero-server
+      // Drive path — owner's source of truth
       const fileName = 'txn_' + myUid + '_' + monthKey + '.enc';
       if (meta.role === 'owner') {
         await mfDriveWriteFamilyFile(meta.folderId, fileName, enc);
@@ -43345,8 +43345,7 @@ async function mfSyncFamilyTxns(monthKey) {
         await mfWriteSharedFolderFile(meta.folderId, fileName, enc);
       }
     } else {
-      // Firestore fallback — for members without Drive (iOS PWA, web)
-      // Server sees: familyId, uid, month, encrypted blob — no financial data
+      // Firestore fallback — only if no Drive token (should not happen if all users have Drive)
       await firebase.firestore().collection(MF_FS_TXNS_COLLECTION).doc(docId).set({
         familyId:  meta.familyId,
         uid:       myUid,
@@ -43532,11 +43531,28 @@ async function mfSyncMemberNW() {
 
   try {
     const b64      = await mfFamilyEncrypt({ accounts: visibleAccounts, updatedAt: Date.now() }, keyBytes);
-    const nwFile = 'nw_' + myUid + '.enc';
-    if (meta.role === 'owner') {
-      await mfDriveWriteFamilyFile(meta.folderId, nwFile, b64);
+    const nwFile      = 'nw_' + myUid + '.enc';
+    const nwTok       = window._familyDriveToken || window._driveToken;
+    const nwValidFold = meta.folderId && !meta.folderId.startsWith('MF-');
+    if (nwTok && nwValidFold) {
+      if (meta.role === 'owner') {
+        await mfDriveWriteFamilyFile(meta.folderId, nwFile, b64);
+      } else {
+        await mfWriteSharedFolderFile(meta.folderId, nwFile, b64);
+      }
+      // Mirror to Firestore for cross-platform members
+      try {
+        await mfGetDb().collection(MF_FS_NW_COLLECTION).doc(`${meta.familyId}_${myUid}`).set({
+          enc: b64, familyId: meta.familyId,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch(e) {}
     } else {
-      await mfWriteSharedFolderFile(meta.folderId, nwFile, b64);
+      // Firestore only fallback
+      await mfGetDb().collection(MF_FS_NW_COLLECTION).doc(`${meta.familyId}_${myUid}`).set({
+        enc: b64, familyId: meta.familyId,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     }
   } catch(e) {
     console.warn('[MF Family] NW sync failed:', e.message);
@@ -43550,28 +43566,53 @@ async function mfReadAllMemberNW() {
   if (!meta || !keyBytes) return [];
 
   try {
-    if (!meta.folderId) return [];
-    const _nwTok = window._familyDriveToken || window._driveToken;
-    if (!_nwTok) return []; // no Drive token — skip silently (PWA members)
-    const _nwq   = encodeURIComponent(`'${meta.folderId}' in parents and name contains 'nw_' and trashed=false`);
-    const _nwr   = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${_nwq}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
-      { headers: { Authorization: 'Bearer ' + _nwTok } }
-    );
-    if (!_nwr.ok) return [];
-    const _nwj = await _nwr.json();
-    const allAccounts = [];
-    for (const file of (_nwj.files||[])) {
+    const allAccounts  = [];
+    const seenUids     = new Set();
+    const _nwTok       = window._familyDriveToken || window._driveToken;
+    const _nwValidFold = meta.folderId && !meta.folderId.startsWith('MF-');
+
+    // Path A: Drive (owner or member with valid token + folder)
+    if (_nwTok && _nwValidFold) {
       try {
-        const fr = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`,
+        const _nwq = encodeURIComponent(`'${meta.folderId}' in parents and name contains 'nw_' and trashed=false`);
+        const _nwr = await fetch(
+          `https://www.googleapis.com/drive/v3/files?q=${_nwq}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
           { headers: { Authorization: 'Bearer ' + _nwTok } }
         );
-        if (!fr.ok) continue;
-        const payload = await mfFamilyDecrypt(await fr.text(), keyBytes);
-        if (payload?.accounts) allAccounts.push(...payload.accounts);
-      } catch(e) { /* skip */ }
+        if (_nwr.ok) {
+          const _nwj = await _nwr.json();
+          for (const file of (_nwj.files||[])) {
+            try {
+              const fr = await fetch(
+                `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`,
+                { headers: { Authorization: 'Bearer ' + _nwTok } }
+              );
+              if (!fr.ok) continue;
+              const payload = await mfFamilyDecrypt(await fr.text(), keyBytes);
+              if (payload?.accounts) {
+                allAccounts.push(...payload.accounts);
+                if (payload.uid) seenUids.add(payload.uid);
+              }
+            } catch(e) {}
+          }
+        }
+      } catch(e) {}
     }
+
+    // Path B: Firestore (members without Drive — iOS PWA, web)
+    try {
+      const snap = await mfGetDb().collection(MF_FS_NW_COLLECTION)
+        .where('familyId', '==', meta.familyId).get();
+      for (const doc of snap.docs) {
+        const uid = doc.id.replace(meta.familyId + '_', '');
+        if (seenUids.has(uid)) continue; // already got from Drive
+        try {
+          const payload = await mfFamilyDecrypt(doc.data().enc, keyBytes);
+          if (payload?.accounts) allAccounts.push(...payload.accounts);
+        } catch(e) {}
+      }
+    } catch(e) {}
+
     return allAccounts;
   } catch(e) {
     console.warn('[MF Family] NW read failed:', e.message);
