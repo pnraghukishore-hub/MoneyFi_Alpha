@@ -43890,20 +43890,26 @@ async function mfSyncFamilyTxns(monthKey) {
     if (!keyBytes) throw new Error('Family key not available');
     const enc      = await mfFamilyEncrypt(filteredTxnData, keyBytes);
 
-    const hasDrive   = !!(window._familyDriveToken || window._driveToken);
-    const validFolder = meta.folderId && !meta.folderId.startsWith('MF-');
+    // _familyDriveToken = drive scope (can access shared folder)
+    // _driveToken       = drive.appdata scope only — CANNOT access shared folder
+    // Must only use _familyDriveToken for family folder operations
+    const hasFamilyDrive = !!(window._familyDriveToken);
+    const validFolder    = meta.folderId && !meta.folderId.startsWith('MF-');
 
-    if (hasDrive && validFolder) {
-      // Drive path — owner's source of truth
+    if (hasFamilyDrive && validFolder) {
+      // Drive path — write to shared folder
       const fileName = 'txn_' + myUid + '_' + monthKey + '.enc';
       if (meta.role === 'owner') {
         await mfDriveWriteFamilyFile(meta.folderId, fileName, enc);
       } else {
         await mfWriteSharedFolderFile(meta.folderId, fileName, enc);
       }
-      mfDequeueFailedFamilySync(monthKey); // success
-    } else {
-      // Firestore fallback — only if no Drive token (should not happen if all users have Drive)
+      mfDequeueFailedFamilySync(monthKey); // success on Drive
+    }
+    // ALWAYS also write to Firestore — this is the cross-platform bridge
+    // iOS PWA members can't use Drive scope, so Firestore is their only read path
+    // Encrypted blob — Firestore never sees plain financial data
+    try {
       await firebase.firestore().collection(MF_FS_TXNS_COLLECTION).doc(docId).set({
         familyId:  meta.familyId,
         uid:       myUid,
@@ -43911,6 +43917,10 @@ async function mfSyncFamilyTxns(monthKey) {
         enc,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+      if (!hasFamilyDrive) mfDequeueFailedFamilySync(monthKey); // Firestore success = queued item resolved
+    } catch(eFs) {
+      console.warn('[MF Family] Firestore mirror failed:', eFs.message);
+      if (!hasFamilyDrive) mfQueueFailedFamilySync(monthKey); // retry later
     }
   } catch(e) {
     console.warn('[MF Family] Txn sync failed for', monthKey, ':', e.message);
@@ -43940,7 +43950,8 @@ function mfDequeueFailedFamilySync(monthKey) {
 
 async function mfDrainFamilySyncQueue() {
   if (!mfGetFamilyMeta() || !navigator.onLine) return;
-  if (!(window._familyDriveToken || window._driveToken)) return;
+  // Can drain even without family Drive token — Firestore path will be used
+  // if _familyDriveToken is absent
   try {
     var q = JSON.parse(localStorage.getItem(MF_FAMILY_SYNC_QUEUE_KEY) || '[]');
     if (!q.length) return;
@@ -43992,10 +44003,12 @@ async function mfLoadFamilyTxns(monthKey) {
     const keyBytes2 = mfGetFamilyKeyBytes();
     if (!keyBytes2) { window[lockKey]=false; return; }
     const snap        = { docs: [] };
-    const _tok        = window._familyDriveToken || window._driveToken;
+    // Only use _familyDriveToken for reading the shared folder
+    // _driveToken (drive.appdata) cannot access the shared folder
+    const _tok        = window._familyDriveToken;
     const validFolder = meta.folderId && !meta.folderId.startsWith('MF-');
 
-    // ── Path A: Drive (owner or member with Drive token + valid folder) ────
+    // ── Path A: Drive (only if we have the family Drive token) ────────────
     if (_tok && validFolder) {
       try {
         const _q = encodeURIComponent(`'${meta.folderId}' in parents and name contains '_${monthKey}.enc' and trashed=false`);
@@ -44024,7 +44037,8 @@ async function mfLoadFamilyTxns(monthKey) {
       } catch(e) {}
     }
 
-    // ── Path B: Firestore (members without Drive — iOS PWA, web) ──────────
+    // ── Path B: Firestore — always read (primary channel for iOS/PWA members) ─
+    // Owner always writes here as mirror; members without Drive use this exclusively
     try {
       const fsSnap = await mfGetDb().collection(MF_FS_TXNS_COLLECTION)
         .where('familyId', '==', meta.familyId)
