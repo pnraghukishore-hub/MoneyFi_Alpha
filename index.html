@@ -9309,6 +9309,7 @@ function _renderStoryFrame() {
       <div class="story-badge">${s.badge}</div>
       <div class="story-headline">${s.headline}</div>
       <div class="story-subtext">${s.subtext}</div>
+      ${s.extraHTML || ''}
       ${s.detail ? `<div style="font-size:0.75em;font-weight:700;color:rgba(255,255,255,0.6);line-height:1.4;margin-bottom:16px;border-left:2px solid rgba(255,255,255,0.3);padding-left:10px;position:relative;z-index:12;">${s.detail}</div>` : ''}
       ${s._aiNarrated ? `<div style="font-size:0.62em;font-weight:800;color:rgba(255,255,255,0.3);margin-bottom:12px;position:relative;z-index:12;">✨ AI-personalised insight</div>` : ''}
       <div class="story-btn-row">
@@ -9325,6 +9326,36 @@ function _renderStoryFrame() {
     const fill = document.getElementById('pulse-seg-active');
     if (fill) fill.style.width = '100%';
   });
+
+  // Fire slide's onShow callback (confetti, counter animations, etc.)
+  if (s.onShow) {
+    setTimeout(() => { try { s.onShow(); } catch(e) {} }, 80);
+  }
+
+  // Animate number counters — elements with data-counter attribute
+  setTimeout(() => {
+    overlay.querySelectorAll('[data-counter]').forEach(el => {
+      const target = parseFloat(el.dataset.counter) || 0;
+      const prefix = el.dataset.prefix || '';
+      const suffix = el.dataset.suffix || '';
+      const decimals = parseInt(el.dataset.decimals || '0');
+      const dur = 1200;
+      const start = performance.now();
+      const tick = (now) => {
+        const p = Math.min((now - start) / dur, 1);
+        const ease = 1 - Math.pow(1 - p, 3); // ease-out cubic
+        const val = target * ease;
+        el.textContent = prefix + (decimals > 0 ? val.toFixed(decimals) : Math.round(val).toLocaleString()) + suffix;
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    // Animate bar chart fills
+    overlay.querySelectorAll('[data-bar-width]').forEach(el => {
+      el.style.transition = 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)';
+      el.style.width = el.dataset.barWidth;
+    });
+  }, 100);
 
   // Auto-advance
   _pulseTimer = setTimeout(() => _pulseStep(1), PULSE_DURATION);
@@ -9668,6 +9699,11 @@ function _getYearTransactions(year) {
     (m.income||[]).forEach(t => inc.push({...t, _mk:k}));
     (m.expenses||[]).forEach(t => exp.push({...t, _mk:k}));
     (m.investments||[]).forEach(t => inv.push({...t, _mk:k}));
+    // Include family shared transactions in annual totals
+    const fm = (window._mfFamilyTxns && window._mfFamilyTxns[k]) || {};
+    (fm.income||[]).forEach(t => inc.push({...t, _mk:k, _fromFamily:true}));
+    (fm.expenses||[]).forEach(t => exp.push({...t, _mk:k, _fromFamily:true}));
+    (fm.investments||[]).forEach(t => inv.push({...t, _mk:k, _fromFamily:true}));
   });
   return {inc, exp, inv};
 }
@@ -9860,6 +9896,50 @@ function _arAmt(n, pct, total) {
 // ══════════════════════════════════════════════════════════════════════════════
 // BUILD ANNUAL REVIEW  —  returns 8-slide array
 // ══════════════════════════════════════════════════════════════════════════════
+// ── Best Month helper ────────────────────────────────────────────────────────
+function _getBestMonth(year) {
+  const keys = _getYearMonthKeys(year);
+  let best = null, bestRate = -999;
+  keys.forEach(k => {
+    const m = data[k] || {};
+    const inc = (m.income||[]).reduce((s,t)=>s+Math.abs(Number(t.amount)||0),0);
+    const exp = (m.expenses||[]).reduce((s,t)=>s+Math.abs(Number(t.amount)||0),0);
+    if (inc <= 0) return;
+    const rate = (inc - exp) / inc * 100;
+    if (rate > bestRate) { bestRate = rate; best = { mk: k, rate: Math.round(rate), inc, exp, saved: inc - exp }; }
+  });
+  if (!best) return null;
+  const [yr, mo] = best.mk.split('-');
+  const monthName = new Date(+yr, +mo-1, 1).toLocaleDateString('en-US', {month:'long'});
+  return { ...best, monthName };
+}
+
+// ── Monthly savings rates for sparkline ──────────────────────────────────────
+function _getMonthlySavingsRates(year) {
+  return _getYearMonthKeys(year).map(k => {
+    const m = data[k] || {};
+    const inc = (m.income||[]).reduce((s,t)=>s+Math.abs(Number(t.amount)||0),0);
+    const exp = (m.expenses||[]).reduce((s,t)=>s+Math.abs(Number(t.amount)||0),0);
+    const mo  = parseInt(k.split('-')[1]);
+    const name = new Date(2000, mo-1, 1).toLocaleDateString('en-US',{month:'short'});
+    return { name, rate: inc > 0 ? Math.max(0, Math.min(100, (inc-exp)/inc*100)) : 0 };
+  });
+}
+
+// ── Streak / consistency helper ───────────────────────────────────────────────
+function _getStreakData(year) {
+  const keys = _getYearMonthKeys(year);
+  let txnCount = 0, monthsActive = 0, longestStreak = 0, curStreak = 0;
+  keys.forEach(k => {
+    const m = data[k] || {};
+    const n = (m.expenses||[]).length+(m.income||[]).length+(m.investments||[]).length;
+    txnCount += n;
+    if (n > 0) { monthsActive++; curStreak++; longestStreak = Math.max(longestStreak, curStreak); }
+    else { curStreak = 0; }
+  });
+  return { txnCount, monthsActive, longestStreak };
+}
+
 function buildAnnualReview(year) {
   const s = sym();
   const {inc, exp, inv} = _getYearTransactions(year);
@@ -10033,7 +10113,161 @@ function buildAnnualReview(year) {
     cta:'Share My '+year+' →', ctaAction:()=>{ generateAnnualShareCard(_annualSlides[7]||_annualSlides[_annualSlides.length-1]); }
   };
 
-  return [slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8];
+  // Upgrade slides with animations
+  if (nwBounds.end > 0 && !privacy) {
+    slide1.extraHTML = '<div style="position:relative;z-index:12;margin-bottom:14px;">' +
+      '<div data-counter="' + Math.round(nwBounds.end) + '" data-prefix="' + s + '" style="font-size:3em;font-weight:900;color:#fff;letter-spacing:-2px;text-shadow:0 2px 20px rgba(0,0,0,0.4);">' + s + '0</div>' +
+      (nwBounds.start > 0 ? '<div style="font-size:0.72em;font-weight:700;color:rgba(255,255,255,0.55);margin-top:2px;">' + _arFmt(nwBounds.start) + ' \u2192 ' + _arFmt(nwBounds.end) + (nwDeltaPct ? ' (' + (nwDelta>=0?'+':'') + nwDeltaPct + '%)' : '') + '</div>' : '') +
+      '</div>';
+  }
+  if (hasData && !privacy) {
+    slide2.extraHTML = '<div style="position:relative;z-index:12;display:flex;gap:10px;margin-bottom:14px;">' +
+      '<div style="flex:1;background:rgba(255,255,255,0.1);border-radius:12px;padding:10px;text-align:center;">' +
+      '<div style="font-size:0.58em;font-weight:800;color:rgba(255,255,255,0.55);margin-bottom:3px;">EARNED</div>' +
+      '<div data-counter="' + Math.round(totalInc) + '" data-prefix="' + s + '" style="font-size:1.2em;font-weight:900;color:#6EE7B7;">' + s + '0</div></div>' +
+      '<div style="flex:1;background:rgba(255,255,255,0.1);border-radius:12px;padding:10px;text-align:center;">' +
+      '<div style="font-size:0.58em;font-weight:800;color:rgba(255,255,255,0.55);margin-bottom:3px;">SAVED</div>' +
+      '<div data-counter="' + Math.round(Math.max(0,totalSaved)) + '" data-prefix="' + s + '" style="font-size:1.2em;font-weight:900;color:#FCD34D;">' + s + '0</div></div>' +
+      '<div style="flex:1;background:rgba(255,255,255,0.1);border-radius:12px;padding:10px;text-align:center;">' +
+      '<div style="font-size:0.58em;font-weight:800;color:rgba(255,255,255,0.55);margin-bottom:3px;">RATE</div>' +
+      '<div data-counter="' + savRateN + '" data-suffix="%" style="font-size:1.2em;font-weight:900;color:#fff;">0%</div></div></div>';
+  }
+  if (catBreak.top3.length) {
+    var _maxAmt = catBreak.top3[0].amt || 1;
+    slide3.extraHTML = '<div style="position:relative;z-index:12;margin-bottom:12px;">' +
+      catBreak.top3.slice(0,4).map(function(c,i){
+        var pct = Math.round(c.amt / _maxAmt * 100);
+        var medals = ['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49','4\uFE0F\u20E3'];
+        return '<div style="margin-bottom:7px;"><div style="display:flex;justify-content:space-between;margin-bottom:2px;">' +
+          '<span style="font-size:0.7em;font-weight:800;color:rgba(255,255,255,0.9);">' + medals[i] + ' ' + c.cat + '</span>' +
+          (privacy?'':'<span style="font-size:0.65em;color:rgba(255,255,255,0.55);">' + _arFmt(c.amt) + '</span>') +
+          '</div><div style="height:6px;background:rgba(255,255,255,0.15);border-radius:3px;">' +
+          '<div data-bar-width="' + pct + '%" style="height:100%;width:0%;background:rgba(255,255,255,0.8);border-radius:3px;"></div></div></div>';
+      }).join('') + '</div>';
+  }
+
+  // New Slide: Best Month
+  var bestMonth = _getBestMonth(year);
+  var monthlyRates = _getMonthlySavingsRates(year);
+  var sparkMax = Math.max.apply(null, monthlyRates.map(function(m){return m.rate;}));
+  if (sparkMax < 1) sparkMax = 1;
+  var sparkBars = monthlyRates.map(function(m,i){
+    var h = Math.round(m.rate / sparkMax * 40);
+    var isB = bestMonth && m.name === bestMonth.monthName.slice(0,3);
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;">' +
+      '<div data-bar-width="' + h + 'px" style="width:100%;height:0px;max-width:14px;border-radius:3px 3px 0 0;background:' + (isB?'#FCD34D':'rgba(255,255,255,0.35)') + ';"></div>' +
+      '<div style="font-size:0.42em;color:rgba(255,255,255,' + (isB?'0.9':'0.35') + ');font-weight:800;">' + m.name.slice(0,1) + '</div></div>';
+  }).join('');
+  var slideNewBest = bestMonth ? {
+    id:'annual_review_'+year+'_s_best', type:'annualReview', isAnnual:true,
+    icon:'\uD83C\uDF1F', gradFrom:'#134E4A', gradTo:'#0891B2',
+    badge:'BEST MONTH \u00b7 '+year,
+    headline: bestMonth.monthName + ' was your month',
+    subtext: privacy ? 'Your peak savings month of the year' : 'You saved ' + _arFmt(bestMonth.saved) + ' \u2014 a ' + bestMonth.rate + '% savings rate',
+    detail: bestMonth.rate >= 30 ? 'Exceptional. If every month looked like '+bestMonth.monthName+', FIRE is closer than you think.' :
+            bestMonth.rate >= 15 ? 'Solid month. Build on what worked.' : 'Every peak shows what is possible.',
+    extraHTML: '<div style="position:relative;z-index:12;display:flex;align-items:flex-end;gap:3px;height:52px;margin-bottom:14px;padding:0 2px;">' + sparkBars + '</div>',
+    label:'BestMonth',
+    shareMetric: bestMonth.monthName+' '+year+': '+bestMonth.rate+'% savings rate via MoneyFi',
+    cta:'See Transactions \u2192', ctaAction:function(){closePulsePlayer();switchScreen('tx',document.querySelectorAll('.nav-item')[1]);}
+  } : null;
+
+  // New Slide: Family Picture
+  var famMeta = typeof mfGetFamilyMeta === 'function' ? mfGetFamilyMeta() : null;
+  var famKeys = _getYearMonthKeys(year);
+  var famTotalExp = 0, famTxnCount = 0;
+  var famMembersSet = {};
+  famKeys.forEach(function(k){
+    var fm = (window._mfFamilyTxns && window._mfFamilyTxns[k]) || {};
+    (fm.expenses||[]).forEach(function(t){ famTotalExp += Math.abs(Number(t.amount)||0); famTxnCount++; if(t._addedBy) famMembersSet[t._addedBy]=1; });
+  });
+  var famMemberNames = Object.keys(famMembersSet);
+  var slideFamily = (famMeta && famTxnCount > 0) ? {
+    id:'annual_review_'+year+'_s_family', type:'annualReview', isAnnual:true,
+    icon:'\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67', gradFrom:'#1E1B4B', gradTo:'#312E81',
+    badge:'FAMILY PICTURE \u00b7 '+year,
+    headline: (famMeta.ownerName || 'Your family') + ' moved money together',
+    subtext: privacy ? famMemberNames.length + ' members in your household this year' : _arFmt(famTotalExp) + ' in shared expenses \u00b7 ' + famTxnCount + ' transactions',
+    detail: famMemberNames.length ? '\uD83D\uDC65 ' + famMemberNames.join(' \u00b7 ') : null,
+    extraHTML: '<div style="position:relative;z-index:12;display:flex;gap:8px;margin-bottom:14px;">' +
+      '<div style="flex:1;background:rgba(255,255,255,0.1);border-radius:12px;padding:10px;text-align:center;">' +
+      '<div style="font-size:0.58em;font-weight:800;color:rgba(255,255,255,0.55);margin-bottom:3px;">SHARED SPEND</div>' +
+      '<div data-counter="' + Math.round(famTotalExp) + '" data-prefix="' + s + '" style="font-size:1.2em;font-weight:900;color:#C4B5FD;">' + s + '0</div></div>' +
+      '<div style="flex:1;background:rgba(255,255,255,0.1);border-radius:12px;padding:10px;text-align:center;">' +
+      '<div style="font-size:0.58em;font-weight:800;color:rgba(255,255,255,0.55);margin-bottom:3px;">TRANSACTIONS</div>' +
+      '<div data-counter="' + famTxnCount + '" style="font-size:1.2em;font-weight:900;color:#A5B4FC;">0</div></div></div>',
+    label:'Family',
+    shareMetric: 'Our family tracked ' + famTxnCount + ' shared transactions in ' + year + ' via MoneyFi',
+    cta:'See Family \u2192', ctaAction:function(){closePulsePlayer();switchScreen('settings',document.querySelectorAll('.nav-item')[4]);}
+  } : null;
+
+  // New Slide: You Showed Up (streak)
+  var streak = _getStreakData(year);
+  var streakEmoji = streak.monthsActive>=12?'\uD83D\uDD25':streak.monthsActive>=9?'\u26A1':streak.monthsActive>=6?'\uD83D\uDCAA':'\uD83C\uDF31';
+  var slideStreak = streak.txnCount > 0 ? {
+    id:'annual_review_'+year+'_s_streak', type:'annualReview', isAnnual:true,
+    icon:streakEmoji, gradFrom:'#1C1917', gradTo:'#292524',
+    badge:'CONSISTENCY \u00b7 '+year,
+    headline: streak.monthsActive>=12 ? '12 months. Not one missed.' :
+              streak.monthsActive>=9  ? 'You showed up '+streak.monthsActive+' of 12 months' :
+              'You tracked '+streak.monthsActive+' months in '+year,
+    subtext: streak.txnCount.toLocaleString()+' transactions recorded'+(streak.longestStreak>1?' \u00b7 '+streak.longestStreak+'-month streak':''),
+    detail: streak.monthsActive>=12 ? 'Perfect attendance. Most people quit in March.' :
+            streak.monthsActive>=9  ? 'Top quartile discipline. Fill the gaps next year.' :
+            'The act of tracking is the act of caring. Keep going.',
+    extraHTML: '<div style="position:relative;z-index:12;display:flex;gap:3px;margin-bottom:14px;justify-content:center;">' +
+      _getYearMonthKeys(year).map(function(k,i){
+        var m2 = data[k] || {};
+        var n = (m2.expenses||[]).length+(m2.income||[]).length+(m2.investments||[]).length;
+        var moName = new Date(2000,i,1).toLocaleDateString('en-US',{month:'short'}).slice(0,1);
+        return '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">' +
+          '<div style="width:24px;height:24px;border-radius:6px;background:'+(n>0?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.1)')+';display:flex;align-items:center;justify-content:center;font-size:0.65em;color:'+(n>0?'#1C1917':'rgba(255,255,255,0.3)')+';">'+(n>0?'\u2713':'\u00b7')+'</div>' +
+          '<div style="font-size:0.4em;color:rgba(255,255,255,'+(n>0?'0.65':'0.2')+');font-weight:700;">'+moName+'</div></div>';
+      }).join('')+'</div>',
+    label:'Streak',
+    shareMetric: streak.txnCount.toLocaleString()+' transactions in '+year+(streak.monthsActive>=12?' \u2014 12-month streak!':' \u2014 '+streak.monthsActive+' months')+' via MoneyFi',
+    cta:'Keep the streak \u2192', ctaAction:function(){closePulsePlayer();}
+  } : null;
+
+  // Confetti on finale slide
+  slide8.onShow = function() {
+    var overlay = document.getElementById('story-overlay');
+    var card = overlay && overlay.querySelector('.story-card');
+    if (!card) return;
+    var cnv = document.createElement('canvas');
+    cnv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;border-radius:inherit;';
+    cnv.width = card.offsetWidth || 360; cnv.height = card.offsetHeight || 640;
+    card.appendChild(cnv);
+    var ctx2 = cnv.getContext('2d');
+    var particles = [];
+    for (var _ci=0;_ci<90;_ci++) {
+      particles.push({x:Math.random()*cnv.width,y:-20,r:3+Math.random()*6,d:1.5+Math.random()*3.5,
+        color:['#FCD34D','#6EE7B7','#C4B5FD','#FCA5A5','#93C5FD','#fff'][Math.floor(Math.random()*6)],
+        angle:Math.random()*360,spin:(Math.random()-0.5)*0.15,sx:(Math.random()-0.5)*2.5});
+    }
+    var frame=0;
+    var animate = function(){
+      ctx2.clearRect(0,0,cnv.width,cnv.height);
+      particles.forEach(function(p){
+        p.y+=p.d; p.x+=p.sx; p.angle+=p.spin;
+        ctx2.save(); ctx2.translate(p.x,p.y); ctx2.rotate(p.angle);
+        ctx2.fillStyle=p.color; ctx2.fillRect(-p.r/2,-p.r/2,p.r,p.r*0.55);
+        ctx2.restore();
+      });
+      frame++;
+      if(frame<140) requestAnimationFrame(animate); else cnv.remove();
+    };
+    requestAnimationFrame(animate);
+  };
+
+  // Assemble slides
+  var slides = [slide1, slide2, slide3];
+  if (slideNewBest) slides.push(slideNewBest);
+  slides.push(slide4, slide5, slide6, slide7);
+  if (slideFamily) slides.push(slideFamily);
+  if (slideStreak) slides.push(slideStreak);
+  slides.push(slide8);
+  return slides;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
