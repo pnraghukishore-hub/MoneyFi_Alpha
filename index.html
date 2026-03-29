@@ -12242,10 +12242,14 @@ function renderCalListView(container) {
           </button>
         </div>
         <div class="swipe-actions-right">
+          ${!t._fromFamily ? `
           <button class="swipe-btn swipe-btn-edit" onclick="listEditTx('${mk}','${t._type}',${t._idx})">
             <span class="swipe-btn-icon">✏️</span>Edit
-          </button>
-          <button class="swipe-btn swipe-btn-del" onclick="listDeleteTx('${mk}','${t._type}',${t._idx})">
+          </button>` : ''}
+          <button class="swipe-btn swipe-btn-del"
+            data-month="${mk}" data-type="${t._type}" data-idx="${t._idx}"
+            data-family="${t._fromFamily?'1':''}" data-fkey="${t._fkey||''}"
+            onclick="listFamilyOrOwnDelete(this)">
             <span class="swipe-btn-icon">🗑️</span>Delete
           </button>
         </div>
@@ -13696,10 +13700,17 @@ function listFamilyOrOwnDelete(btn) {
 }
 
 function calDeleteTx(monthKey, type, idx) {
-  if(!confirm('Delete this transaction?')) return;
   const typeMap={expense:'expenses',income:'income',investment:'investments',debt:'debts',given:'givenToOthers',additional:'additional'};
+  const tx = data[monthKey] && data[monthKey][typeMap[type]] && data[monthKey][typeMap[type]][idx];
+  if (!tx) { showToast('Transaction not found', 2000); return; }
+  if(!confirm('Delete "' + (tx.category||'transaction') + '" · ' + fmtConverted(Math.abs(tx.amount), tx.currency||currentCurrency.code) + '?')) return;
+  // If metal-linked — also remove paired _metals entry
+  if (tx._qaLinkId && data._metals) {
+    const mi = data._metals.findIndex(m => m._qaLinkId === tx._qaLinkId);
+    if (mi >= 0) data._metals.splice(mi, 1);
+  }
   data[monthKey][typeMap[type]].splice(idx,1);
-  save(); renderTransactions(); renderHome(); showToast('Transaction deleted');
+  save(); renderTransactions(); renderHome(); showToast('🗑 Deleted');
 }
 
 function setTxFilter(filter, el) { /* legacy – no-op in calendar view */ }
@@ -44118,6 +44129,14 @@ async function mfLoadFamilyTxns(monthKey) {
       if (!existing || newCount >= oldCount) docsByUid[txnData.uid] = txnData;
     }
 
+    // Check what we already had cached before this load
+    const prevCache = (window._mfFamilyTxns && window._mfFamilyTxns[monthKey]) || {};
+    const prevKeys = new Set(
+      ['expenses','income','investments','additional'].flatMap(type =>
+        (prevCache[type] || []).map(t => (t.category||'') + '|' + (t.amount||'') + '|' + (t.date||'') + '|' + (t._memberUid||''))
+      )
+    );
+
     const merged = { expenses:[], income:[], investments:[], additional:[] };
     Object.values(docsByUid).forEach(d => {
       const name = d.memberName || 'Family';
@@ -44125,8 +44144,13 @@ async function mfLoadFamilyTxns(monthKey) {
       ['expenses','income','investments','additional'].forEach(type => {
         (d[type] || []).forEach(t => {
           if (t._fromFamily === false) return;
+          // Only assign fresh _syncedAt if this txn wasn't in previous cache
+          // Prevents all old txns triggering the badge on every reload
+          const tKey = (t.category||'') + '|' + (t.amount||'') + '|' + (t.date||'') + '|' + (memberUid||'');
+          const isNew = !prevKeys.has(tKey);
+          const syncedAt = t._syncedAt || (isNew ? Date.now() : 0);
           merged[type].push({ ...t, _addedBy: t._addedBy || name, _fromFamily: true, _memberUid: memberUid,
-            _syncedAt: t._syncedAt || Date.now() }); // timestamp for new-activity detection
+            _syncedAt: syncedAt }); // timestamp for new-activity detection
         });
       });
     });
@@ -44214,6 +44238,15 @@ function mfStartFamilyTxnsListener() {
     try { renderHome(); } catch(e) {}
     try { renderTransactions && renderTransactions(); } catch(e) {}
   }).catch(() => {});
+
+  // Pre-populate manifest members cache for author chips
+  // so 👥 chips show immediately without waiting for panel to open
+  try {
+    mfReadManifestForFamily(meta.familyId, mfGetFamilyKeyBytes()).then(manifest => {
+      const active = (manifest?.members || []).filter(m => m.status === 'active');
+      if (active.length > 0) window._mfLastManifestMembers = active;
+    }).catch(() => {});
+  } catch(e) {}
 }
 window.mfGetCombinedEntries = function(monthKey, type) {
   const own    = (data[monthKey] || {})[type] || [];
