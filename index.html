@@ -3024,7 +3024,10 @@ CRITICAL — GOALS: Every goal in the snapshot already includes funded amount, t
   <!-- Author filter — 👥 icon, tap to slide out member chips -->
   <div id="author-filter-strip" style="display:none;">
     <div class="author-filter-wrap">
-      <div class="author-toggle-btn" id="author-toggle-btn" onclick="toggleAuthorChips();trackFeature('author_filter')" title="Filter by family member">👥</div>
+      <div class="author-toggle-btn" id="author-toggle-btn" onclick="toggleAuthorChips();trackFeature('author_filter')" title="Filter by family member" style="position:relative;">
+        👥
+        <span id="family-new-badge" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;background:#EF4444;border-radius:50%;border:2px solid white;"></span>
+      </div>
       <div class="author-chips-slide" id="author-chips-slide">
         <div class="author-chips-scroll" id="author-chips-row"></div>
       </div>
@@ -12311,49 +12314,68 @@ function renderAuthorChips() {
   const row   = document.getElementById('author-chips-row');
   if (!strip || !row) return;
 
-  // Gather authors from own data
-  const m = data[viewMonth] || {};
-  const ownEntries = [
-    ...(m.expenses||[]), ...(m.income||[]), ...(m.investments||[]),
-    ...(m.debts||[]), ...(m.givenToOthers||[]), ...(m.additional||[])
-  ];
-
-  // Also gather authors from family txns cache
-  const familyM = (window._mfFamilyTxns && window._mfFamilyTxns[viewMonth]) || {};
-  const familyEntries = [
-    ...(familyM.expenses||[]), ...(familyM.income||[]),
-    ...(familyM.investments||[]), ...(familyM.additional||[])
-  ];
-
-  const allEntries = [...ownEntries, ...familyEntries];
-  const authors = [...new Set(allEntries.map(e => e._addedBy).filter(Boolean))];
-
-  // Check if in a family group (using new family meta)
   const isInFamily = !!(typeof mfGetFamilyMeta === 'function' && mfGetFamilyMeta());
 
-  if (!isInFamily && authors.length <= 1) {
+  if (!isInFamily) {
     strip.style.display = 'none';
     _authorFilter = 'all';
     return;
   }
 
+  // Always show strip when in a family
   strip.style.display = '';
 
-  if (authors.length <= 1) {
-    // In family but no multi-author txns yet — show icon only
-    row.innerHTML = '';
-    const btn = document.getElementById('author-toggle-btn');
-    if (btn) btn.classList.remove('active');
-    const slide = document.getElementById('author-chips-slide');
-    if (slide) { slide.classList.remove('open'); _authorChipsOpen = false; }
+  // Build member list from manifest (source of truth) — not from transaction data
+  // This ensures chips show even when a member has no transactions this month
+  const meta = mfGetFamilyMeta();
+  const manifestMembers = window._mfLastManifestMembers || []; // cached from last manifest read
+
+  // Gather authors actually seen in transactions this month
+  const m = data[viewMonth] || {};
+  const ownEntries = [
+    ...(m.expenses||[]), ...(m.income||[]), ...(m.investments||[]),
+    ...(m.additional||[])
+  ];
+  const familyM = (window._mfFamilyTxns && window._mfFamilyTxns[viewMonth]) || {};
+  const familyEntries = [
+    ...(familyM.expenses||[]), ...(familyM.income||[]),
+    ...(familyM.investments||[]), ...(familyM.additional||[])
+  ];
+  const txnAuthors = new Set([...ownEntries, ...familyEntries]
+    .map(e => e._addedBy).filter(Boolean));
+
+  // Build chip list: prefer manifest members, fall back to txn authors
+  // So chips always show family members even with 0 txns this month
+  let chipNames = [];
+  if (manifestMembers.length > 0) {
+    chipNames = manifestMembers.map(m => m.name).filter(Boolean);
+  }
+  // Add any txn authors not in manifest (edge case)
+  txnAuthors.forEach(a => { if (!chipNames.includes(a)) chipNames.push(a); });
+
+  // Add own name if missing
+  const myName = meta.role === 'owner' ? meta.ownerName : (meta.myName || '');
+  if (myName && !chipNames.includes(myName)) chipNames.unshift(myName);
+
+  if (chipNames.length <= 1) {
+    // Solo or only you — still show icon, no chips needed
+    row.innerHTML = '<span style="font-size:0.75em;color:#999;padding:0 4px;">Only you so far</span>';
     return;
   }
 
-  const chips = ['all', ...authors].map(a =>
-    `<div class="author-chip ${_authorFilter===a?'active':''}"
-      onclick="setAuthorFilter('${a}')">${a==='all'?'All':a}</div>`
-  ).join('');
+  // Render: All + each member
+  // Grey out members with no txns this month so user knows data isn't loaded yet
+  const chips = ['all', ...chipNames].map(a => {
+    const hasTxns = a === 'all' || txnAuthors.has(a);
+    const isActive = _authorFilter === a;
+    return `<div class="author-chip ${isActive?'active':''}"
+      onclick="setAuthorFilter('${a.replace(/'/g,"\'")}');trackFeature('author_filter')"
+      style="${!hasTxns && a!=='all'?'opacity:0.45;':''}">
+      ${a==='all'?'All':a}${!hasTxns && a!=='all'?' <span style="font-size:0.7em;">·no data</span>':''}
+    </div>`;
+  }).join('');
   row.innerHTML = chips;
+
   const btn = document.getElementById('author-toggle-btn');
   if (btn) btn.classList.toggle('active', _authorFilter !== 'all');
 }
@@ -12858,16 +12880,20 @@ function toggleAuthorChips() {
   if (slide) slide.classList.toggle('open', _authorChipsOpen);
   if (btn)   btn.classList.toggle('active', _authorChipsOpen);
   if (_authorChipsOpen) {
-    // Force-load family txns if chips would be empty (family data may not be cached yet)
+    // Clear new-activity badge when user opens the family filter
+    try { mfSetFamilyLastSeen(); } catch(e) {}
+    // Render chips immediately from manifest (no need to wait for txns)
+    renderAuthorChips();
+    // Ensure slide stays open regardless of what renderAuthorChips did
+    if (slide) slide.classList.add('open');
+    // Also load family txns in background to show txn counts
     const famM = (window._mfFamilyTxns && window._mfFamilyTxns[viewMonth]) || {};
     const hasFamEntries = Object.values(famM).some(arr => Array.isArray(arr) && arr.length > 0);
     if (!hasFamEntries && typeof mfLoadFamilyTxns === 'function' && mfGetFamilyMeta && mfGetFamilyMeta()) {
       mfLoadFamilyTxns(viewMonth).then(() => {
         renderAuthorChips();
-        if (slide) slide.classList.add('open');
+        if (slide) slide.classList.add('open'); // keep open after async render
       }).catch(() => {});
-    } else {
-      renderAuthorChips();
     }
     return;
   }
@@ -43730,6 +43756,8 @@ window.renderFamilyDashCard = async function() {
     try {
       const manifest = await mfReadManifestForFamily(meta.familyId, keyBytes);
       const active   = (manifest?.members || []).filter(m => m.status === 'active');
+          // Cache active members for renderAuthorChips (so chips show even w/o txns)
+          window._mfLastManifestMembers = active;
       if (active.length) {
         membersEl.innerHTML = active.map(m => {
           const initials = m.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
@@ -43853,13 +43881,15 @@ async function mfSyncFamilyTxns(monthKey) {
   // Bug fix 3: Snapshot arrays at this moment to prevent race condition
   // during concurrent edits within the debounce window
   // Financial data to encrypt — Firestore must never see plain transaction data
+  const _nowTs = Date.now();
+  const _tagTs = arr => (arr || []).map(t => ({ ...t, _syncedAt: t._syncedAt || _nowTs }));
   const txnData = {
     memberName,
     month:       monthKey,
-    expenses:    (mData.expenses    || []).map(t => ({...t})),
-    income:      (mData.income      || []).map(t => ({...t})),
-    investments: (mData.investments || []).map(t => ({...t})),
-    additional:  (mData.additional  || []).map(t => ({...t})),
+    expenses:    _tagTs(mData.expenses),
+    income:      _tagTs(mData.income),
+    investments: _tagTs(mData.investments),
+    additional:  _tagTs(mData.additional),
   };
 
   // Sync strategy:
@@ -44074,17 +44104,62 @@ async function mfLoadFamilyTxns(monthKey) {
       ['expenses','income','investments','additional'].forEach(type => {
         (d[type] || []).forEach(t => {
           if (t._fromFamily === false) return;
-          merged[type].push({ ...t, _addedBy: t._addedBy || name, _fromFamily: true, _memberUid: memberUid });
+          merged[type].push({ ...t, _addedBy: t._addedBy || name, _fromFamily: true, _memberUid: memberUid,
+            _syncedAt: t._syncedAt || Date.now() }); // timestamp for new-activity detection
         });
       });
     });
     window._mfFamilyTxns[monthKey] = merged;
+    // Check if any new activity since last viewed — update badge
+    try { mfCheckFamilyNewActivity(monthKey); } catch(e) {}
   } catch(e) {
     console.warn('[MF Family] Load txns failed:', e.message);
     window._mfFamilyTxns[monthKey] = null;
   } finally {
     window[lockKey] = false;
   }
+}
+
+// ── Family new-activity badge ────────────────────────────────────────────────
+// Shows a red dot on the 👥 icon when members added transactions since last view
+
+const MF_FAMILY_LAST_SEEN_KEY = 'mf_family_last_seen';
+
+function mfGetFamilyLastSeen() {
+  try { return parseInt(localStorage.getItem(MF_FAMILY_LAST_SEEN_KEY) || '0'); }
+  catch(e) { return 0; }
+}
+
+function mfSetFamilyLastSeen() {
+  localStorage.setItem(MF_FAMILY_LAST_SEEN_KEY, String(Date.now()));
+  mfUpdateFamilyBadge(false); // clear badge immediately
+}
+
+function mfUpdateFamilyBadge(hasNew) {
+  const badge = document.getElementById('family-new-badge');
+  if (!badge) return;
+  badge.style.display = hasNew ? 'block' : 'none';
+}
+
+// Called after mfLoadFamilyTxns completes — check if any OTHER member
+// added transactions more recently than we last viewed the family data
+function mfCheckFamilyNewActivity(monthKey) {
+  const meta = mfGetFamilyMeta();
+  if (!meta) { mfUpdateFamilyBadge(false); return; }
+
+  const lastSeen = mfGetFamilyLastSeen();
+  const famData  = window._mfFamilyTxns && window._mfFamilyTxns[monthKey];
+  if (!famData) { mfUpdateFamilyBadge(false); return; }
+
+  // Check every transaction's _syncedAt timestamp
+  // If any member txn was added after lastSeen, show the badge
+  const hasNew = ['expenses','income','investments','additional'].some(type =>
+    (famData[type] || []).some(t => {
+      const ts = t._syncedAt || t._addedTs || 0;
+      return ts > lastSeen;
+    })
+  );
+  mfUpdateFamilyBadge(hasNew);
 }
 
 // Start real-time listener for family transactions
@@ -44586,6 +44661,7 @@ window.renderFamilyPanel = async function() {
 
   const members       = (manifest?.members || []);
   const activeMembers = members.filter(m => m.status === 'active');
+  if (activeMembers.length > 0) window._mfLastManifestMembers = activeMembers; // cache for author chips
   const slots         = manifest
     ? `${activeMembers.length} of ${MF_MAX_MEMBERS} members`
     : `${MF_MAX_MEMBERS} slots · tap Refresh to sync`;
