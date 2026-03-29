@@ -42609,8 +42609,22 @@ window.addEventListener('offline', () => {
 });
 
 document.addEventListener('visibilitychange', function(){
-  if(document.visibilityState==='visible'&&navigator.onLine)
+  if(document.visibilityState==='visible'&&navigator.onLine){
+    // Drain any queued failed syncs
     setTimeout(function(){if(typeof mfDrainFamilySyncQueue==='function')mfDrainFamilySyncQueue();},2000);
+    // Reload family txns so new member activity appears immediately on foreground
+    setTimeout(function(){
+      if(typeof mfGetFamilyMeta==='function' && mfGetFamilyMeta() && typeof mfLoadFamilyTxns==='function'){
+        var mk = typeof viewMonth!=='undefined' ? viewMonth : null;
+        if(mk){
+          mfLoadFamilyTxns(mk).then(function(){
+            try{ renderTransactions && renderTransactions(); }catch(e){}
+            try{ renderHome && renderHome(); }catch(e){}
+          }).catch(function(){});
+        }
+      }
+    }, 1500);
+  }
 });
 
 // Check offline on init
@@ -44068,22 +44082,29 @@ async function mfLoadFamilyTxns(monthKey) {
     }
 
     // ── Path B: Firestore — always read (primary channel for iOS/PWA members) ─
-    // Owner always writes here as mirror; members without Drive use this exclusively
+    // Single-field query only — avoids composite index requirement
+    // Firestore compound queries (.where A .where B) require a composite index
+    // which may not exist. Single .where on familyId then filter month in JS.
     try {
       const fsSnap = await mfGetDb().collection(MF_FS_TXNS_COLLECTION)
         .where('familyId', '==', meta.familyId)
-        .where('month',    '==', monthKey)
         .get();
       const driveUids = new Set(snap.docs.map(d => d._data?.uid).filter(Boolean));
       for (const doc of fsSnap.docs) {
-        const docUid = doc.data().uid;
+        const docData = doc.data();
+        // Filter by month in JS — avoids composite index requirement
+        if (docData.month && docData.month !== monthKey) continue;
+        const docUid = docData.uid;
         if (!docUid || docUid === myUid || driveUids.has(docUid)) continue;
         try {
-          const dec = await mfFamilyDecrypt(doc.data().enc, keyBytes2);
+          const dec = await mfFamilyDecrypt(docData.enc, keyBytes2);
           if (dec) { dec.uid = docUid; snap.docs.push({ _data: dec }); }
-        } catch(e) {}
+        } catch(e) { console.warn('[MF Family] Firestore decrypt failed:', e.message); }
       }
-    } catch(e) {}
+      console.warn('[MF Family] Firestore read ok, docs:', fsSnap.size);
+    } catch(eFs) {
+      console.warn('[MF Family] Firestore Path B failed:', eFs.message);
+    }
 
 
     const docsByUid = {};
@@ -44187,7 +44208,8 @@ function mfStartFamilyTxnsListener() {
     try { renderTransactions && renderTransactions(); } catch(e) {}
     try { if (typeof _roiCurrentTab !== 'undefined' && _roiCurrentTab === 'flow') renderSankeyFlow(); } catch(e) {}
   };
-  window._mfFamilyPollTimer = setInterval(_pollRefresh, 5 * 60 * 1000);
+  window._mfFamilyPollTimer = setInterval(_pollRefresh, 2 * 60 * 1000); // 2 min poll
+  Object.keys(window).filter(function(k){return k.startsWith('_mfLoadLock_');}).forEach(function(k){window[k]=false;});
   mfLoadFamilyTxns(viewMonth).then(() => {
     try { renderHome(); } catch(e) {}
     try { renderTransactions && renderTransactions(); } catch(e) {}
@@ -44567,6 +44589,19 @@ window.mfFamilyRefresh = async function() {
       showToast('✅ Member list is up to date', 1500);
     }
 
+    // Also load latest family txns — Firestore doesn't need Drive token
+    // This is what brings in KPTEST's transactions to Kishore's device
+    try {
+      const now = new Date();
+      for (let i = 0; i < 2; i++) { // load current + previous month
+        const d  = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const mk = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+        await mfLoadFamilyTxns(mk).catch(() => {});
+      }
+      try { renderHome(); } catch(e) {}
+      try { renderTransactions && renderTransactions(); } catch(e) {}
+    } catch(e) {}
+
     await renderFamilyPanel();
   } catch(e) {
     console.warn('[MF Refresh] Error:', e.message);
@@ -44715,6 +44750,9 @@ window.renderFamilyPanel = async function() {
     ${isOwner ? `
     <button onclick="mfFamilyRefresh()" style="width:100%;background:#F1F5F9;color:#1E2A6E;border:none;border-radius:12px;padding:11px;font-family:Nunito;font-weight:900;font-size:0.82em;cursor:pointer;margin-bottom:8px;">
       🔄 Refresh Member List
+    </button>
+    <button onclick="mfPullFamilyTxns()" style="width:100%;background:#F0FDF4;color:#166534;border:1.5px solid #BBF7D0;border-radius:12px;padding:11px;font-family:Nunito;font-weight:900;font-size:0.82em;cursor:pointer;margin-bottom:8px;">
+      📥 Pull Latest Transactions
     </button>` : ''}
 
     ${isOwner ? `
@@ -44772,6 +44810,31 @@ window.mfRenderCatDefaultPills = function() {
   el.innerHTML = cats.map(c =>
     `<span style="background:#EEF2FF;color:#4F46E5;border-radius:20px;padding:3px 10px;font-size:0.72em;font-weight:800;">${c}</span>`
   ).join('');
+};
+
+// Manually pull latest transactions from Firestore (no Drive token needed)
+window.mfPullFamilyTxns = async function() {
+  if (!mfGetFamilyMeta()) { showToast('No family group', 2000); return; }
+  showToast('📥 Pulling family transactions…', 2000);
+  try {
+    const now = new Date();
+    let loaded = 0;
+    for (let i = 0; i < 3; i++) {
+      const d  = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mk = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      // Clear lock so fresh load always runs
+      window['_mfLoadLock_' + mk] = false;
+      await mfLoadFamilyTxns(mk).catch(() => {});
+      const famM = window._mfFamilyTxns && window._mfFamilyTxns[mk];
+      const count = famM ? ['expenses','income','investments'].reduce((s,t) => s+(famM[t]||[]).length, 0) : 0;
+      if (count > 0) loaded++;
+    }
+    try { renderHome(); } catch(e) {}
+    try { renderTransactions && renderTransactions(); } catch(e) {}
+    showToast('✅ Family transactions updated — ' + loaded + ' month' + (loaded!==1?'s':'') + ' with data', 2500);
+  } catch(e) {
+    showToast('⚠️ Pull failed: ' + e.message, 3000);
+  }
 };
 
 // Re-sync 6 months of family-visible history to Drive
@@ -44980,11 +45043,16 @@ setTimeout(() => {
             }
           }).catch(() => {});
       }
-      mfSyncFamilyTxns(mk);
-      mfStartFamilyTxnsListener();
-      await mfLoadFamilyTxns(mk);
+      // Load OTHER members' txns from Firestore FIRST (no Drive token needed)
+      // Then sync own txns, then start the poll listener
+      await mfLoadFamilyTxns(mk).catch(() => {});
       try { renderHome(); } catch(e) {}
       try { renderTransactions && renderTransactions(); } catch(e) {}
+      // Short delay so load lock clears before sync
+      setTimeout(() => {
+        mfSyncFamilyTxns(mk);
+        mfStartFamilyTxnsListener();
+      }, 1500);
     }
   }, 3000);
 }, 800);
